@@ -81,6 +81,42 @@ gate-level netlist (LUTs + FFs + connectivity), so the pipeline is **Mistral (bi
 The remaining gap for a modem is the DSP/M10K internal config (not decoded by current
 Cyclone-V tooling), which holds the multiplier/RAM datapath.
 
+## Forward-fuzz / "Rosetta stone" — compile known RTL/IP and match patterns
+
+A powerful complement to decoding gates: **compile known Verilog/IP in the same vendor
+tool (Quartus) and device, then recognise those patterns in DJI's bitstream/netlist.**
+Two uses:
+
+1. **Fabric-bit mapping** (what Mistral already did): toggle one RTL feature, diff the two
+   bitstreams, tabulate bit <-> fabric feature. Decodes the bitstream to a netlist.
+2. **Functional-block templating (the high-value one):** compile a known block (FFT, FIR,
+   LFSR scrambler, CP insert, symbol mapper, FEC) and capture its *structural signature* —
+   DSP mode/count, M10K count + init, local routing topology, LUT clusters — then
+   graph-match that signature against DJI's decompiled `m2001` netlist. This **gets past
+   the DSP/M10K decode gap**: you don't decode DJI's DSP internals, you match the *shape*
+   of a known IP whose internals you already have, and transfer them.
+
+Why it is likely to work here: the modem is almost certainly built from **Altera's own
+OFDM/WiMAX MegaCores**, not hand-rolled gates. Evidence and templates:
+
+- Altera shipped a **WiMAX OFDM kernel reference design** (clear-text VHDL) using the
+  **FFT MegaCore**, FFT sizes 128-2K for 1.25-20 MHz bandwidths, plus OFDMA symbol-level
+  blocks (subchannelization, cyclic-prefix insert) and bit-level blocks (symbol mapping,
+  FEC MegaCore). It targeted older families but **recompiles to Cyclone V**.
+- `m2001` shows **64 DSP blocks + M10K RAMs + DLLs** — exactly an FFT/FIR MegaCore
+  datapath with twiddle/coefficient tables. The LB2 MCU strings (`mcs`, `harq`, `bw`)
+  confirm a WiMAX/LTE-family design that would use these IP cores.
+
+So the template library is small and known: **FFT II, FIR II, symbol-mapping + FEC
+MegaCores, and the WiMAX OFDM reference design**, compiled in era-matching **Quartus
+(~13.x-15.x)** for the `5CEBA4`/`e50f` device.
+
+Caveats: placement/routing vary with Quartus version/seed/settings, so match *structural
+signatures* (DSP mode, M10K init, local topology), not absolute bit positions; you need
+the right Quartus version + device; and today's DSP Builder drops Cyclone V, but the
+Quartus 13-15 IP catalog MegaCores (FFT II, FIR II) support it. HAL's module
+identification plus a compiled-IP fingerprint library is the matching engine.
+
 ## Why this is especially limited for a radio modem
 
 - **Mistral's README states DSPs and M10K block-RAMs are not decoded** ("neither the mux
