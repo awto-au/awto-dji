@@ -34,7 +34,13 @@ Ambarella A9SE ─H.264→ DM368 enc ─→ air FPGA/MCU ))) 2.4GHz ((( gnd FPGA
 ## The video protocol
 
 - **Link:** DJI **Lightbridge** (full Lightbridge on the Pro/Advanced; the Standard uses
-  Wi-Fi instead). It's a proprietary **OFDM 2.4 GHz** downlink, not Wi-Fi.
+  Wi-Fi instead). It's a proprietary **OFDM** downlink, not Wi-Fi.
+- **RF band: 2.4 GHz only (2.400–2.483 GHz).** The HD video downlink **and** the RC
+  control uplink share this one band on the P3 Pro/Advanced — they are multiplexed on
+  the same link, not on separate frequencies. There is **no 5.8 GHz** (that split
+  arrived with the Phantom 4 / Inspire). Consequence: 2.4 GHz interference or range loss
+  degrades picture and stick response together. GPS (~1.575 GHz, receive-only) and the
+  compass/IMU are not part of this link.
 - **Codec / resolution:** **H.264 (AVC)**, live view **720p @ 30 fps** (DJI's spec,
   "depending on conditions and device"). The 4K/2.7K recording is stored on the
   camera's SD card; only the lower-res live stream is transmitted.
