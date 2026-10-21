@@ -52,6 +52,58 @@ is ultimately received and acted on by `m0306`. Confirming the exact command pay
 is best done by **capturing live DUML** between a working RC/app and the aircraft, not
 by modifying firmware.
 
+## GPL source availability (verified)
+
+The camera module runs Linux, so DJI must *offer* that source under GPL v2. They list
+it on [dji.com/opensource](https://www.dji.com/opensource) under the Ambarella platform
+(which names the Phantom 3). Checked with `scripts/check_gpl_sources.sh` on 2026-10-21:
+
+| Package | Version | License | Link status |
+|---|---|---|---|
+| busybox | 1.23.2 | GPL v2 | **OK** — 2,252,786 bytes, extracts cleanly (sha256 `05a6f9e2…`) |
+| Linux kernel | 3.10 (Ambarella BSP) | GPL v2 | **EMPTY** — `linux-ambarella.tar.gz` returns HTTP 200 but **0 bytes** |
+
+So the kernel source is listed but not actually downloadable right now — a GPL-compliance
+gap, re-confirmed across retries. Even when present it is a generic Ambarella 3.10 BSP,
+without DJI's proprietary drivers/apps, so it is of limited use for this project (the
+flight-control and DUML code is not Linux and is not covered by GPL).
+
+## How firmware is updated
+
+The whole aircraft+RC is updated from the single package `.bin` (~66 MB for the P3).
+
+**Delivery — three ways, same package:**
+1. **DJI GO app** downloads the package and pushes it to the aircraft; progress is
+   reported back via `DataCommonGetPushUpgradeStatusInfo`.
+2. **microSD card** — copy the `.bin` to the camera's card and power-cycle; the camera
+   picks it up on boot.
+3. **DJI Assistant 2** over USB to the camera.
+
+**Internal mechanism — the camera orchestrates, DUML distributes:**
+The Ambarella camera module (`m0100`, the Linux host) is the upgrade manager. It reads
+and verifies the package, then flashes each of the other processors over the internal
+**DUML bus** using the General command set (`cmd_set = 0x00`), observed in the reference
+dissector:
+
+| cmd_id | Step |
+|---|---|
+| `0x0f` Upgrade Self Request | compatibility / consistency check per module |
+| `0x07` Enter Loader | put the target module into its bootloader |
+| `0x08` Update Confirm | prepare / start the upgrade procedure |
+| `0x09` Update Transmit | stream the firmware data blocks |
+| `0x0a` Update Finish | verify (CRC / signature) |
+| `0x0b` Reboot Chip | restart into the new image |
+| `0x0c` Get Device State | check whether a module is in loader or app mode |
+
+Modules are flashed **sequentially** (camera, FC, gimbal, Lightbridge MCUs/FPGAs, …),
+each announced by the aircraft's audio tones; a failure mid-sequence can leave a module
+on its bootloader (the "won't boot / needs reflash" state owners sometimes hit).
+
+**Verification & downgrade:** each module image carries a CRC (P3 `xV4`); newer DJI
+products add the `IMaH` signature layer. The P3 permits **downgrade** to earlier
+versions (DJI's own notes allowed going back to v1.4.10+), which is how the research
+community moved between builds.
+
 ## Boundaries
 
 The reference also ships tools to edit firmware (including a no-fly-zone editor and
