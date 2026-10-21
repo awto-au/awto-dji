@@ -73,9 +73,45 @@ active but can't always decode which mux source drives it (global/local intercon
    unresolved interconnect on the specific cycle, which is a bounded, local problem to
    resolve per-candidate rather than the whole fabric.
 
+## Follow-up: the LUT masks are present but not directly interpretable
+
+Attempted the LFSR hunt directly on the masks (find affine/XOR LUTs = scrambler feedback).
+Result: **0 affine LUTs**, and every one of the 17,144 masks reads as ANF **degree 4-6**,
+with min degree 4 even for unused `BMNONE/BMNONE` ALMs. That is diagnostic, not real:
+
+- ANF degree is invariant under input-variable permutation, so uniform high degree **cannot**
+  be a mere input reordering.
+- It means the 64 mask bits are in Mistral's **raw CRAM physical layout** (the order
+  `bmux_val_read` assembles from `bmux_cram_bpos`), not logical truth-table-address order,
+  **and** fractured ALMs interleave two independent sub-LUT truth tables in the 64 bits.
+- Splitting into two 32-bit halves gives only 952/34,288 "affine" halves — and those are
+  just all-0/all-1 unused halves (degree 0), not XOR taps.
+
+So to read the logic as Boolean functions you need the **Cyclone-V ALM model**: the
+CRAM-bit -> logical-LUT-address map plus the `TMODE/BMODE/*EF_SEL/ARITH_SEL` fracturing
+rules that say which bits/inputs form which sub-LUT. That model lives in **nextpnr-mistral**
+(its architecture/bel code), not in the raw `.bt`. Mistral's `.bt` faithfully dumps the
+*bits*; turning bits into *gates* is the ALM-decode layer on top.
+
+## Status of both tracks (LFSR extraction + interconnect resolver)
+
+| Track | State | Blocker |
+|---|---|---|
+| (1) LFSR / logic extraction | masks dumped; affine-detector written and correct | need ALM model (CRAM->address map + fracturing) to interpret masks as gates |
+| (2) interconnect resolver | ~54k routes unresolved; `p2r/p2p/cmux` tables available | unresolved mux-source decode is itself incomplete Cyclone-V model coverage |
+
+Both bottom out on the **same root**: completeness of the open Cyclone-V model (Mistral +
+nextpnr-mistral), not on anything DJI-specific. Pushing them further means contributing to
+that model (reuse nextpnr-mistral's ALM bel decode for masks; extend mux-source tables for
+routing) — a real, reusable effort, but an open-FPGA-tooling project, not a quick script.
+
 ## Bottom line
 
-Mistral decodes the **logic** of `m2001` (LUTs, FFs, DSP, M10K) far more completely than our
-docs claimed. What is genuinely incomplete is **interconnect source resolution** (~54k
-unresolved routes). The path to a simulatable netlist / LFSR extraction runs through closing
-those interconnect gaps locally, not through any DSP/M10K wall.
+Mistral decodes the **logic bits** of `m2001` (LUT masks, FF modes, DSP mode+coef, M10K
+config+contents) far more completely than our docs claimed — the DSP/M10K "wall" was wrong.
+The genuine remaining layers are (a) the ALM-decode model to read masks as gates and (b)
+interconnect source resolution; both are open Cyclone-V tooling gaps, not DJI secrets. This
+re-confirms `alternative-approaches.md`: the **cheapest path to the whitening is not netlist
+extraction but recognising the standard WiMAX scrambler (`x^15+x^14+1`) and solving only the
+seed from an all-0s / repetitive capture** — which needs none of this FPGA-model work. Keep
+the netlist route as the fallback that only becomes attractive if the ALM model gets wired in.
