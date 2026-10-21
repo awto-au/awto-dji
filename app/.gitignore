@@ -1,0 +1,8 @@
+# Dart/Flutter
+.dart_tool/
+build/
+.packages
+pubspec.lock
+
+# Rust
+target/
