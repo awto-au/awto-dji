@@ -116,6 +116,25 @@ There is no PC-based software Lightbridge demod; the "base station" is the LB2 g
 unit (hardware), and the PC "DJI GroundStation"/"GS Pro" tools are app-layer (DUML), not
 radio.
 
+### Lightbridge 2 (C1) firmware — the ground/RX side + a richer MCU (unpacked)
+
+Unpacking `C1_FW_V01.06.0000` (Lightbridge 2) gave the **ground/RX side** the aircraft
+firmware lacked:
+
+- `m1300` — DM365 video **decoder** (ground), 4.4 MB.
+- `m1400`/`m1401` — ground radio MCU, **NXP LPC1765** (different chip from the air-side
+  STM32F103), v04.10.0006. **Least-stripped radio firmware found** — 683 strings, source
+  paths (`@LPC17xx_LIB\lpc17xx_rtc.c`), and the `ch/mcs/bw/snr/rssi/harq` link-telemetry
+  string (see link-security.md). Best MCU RE target so far.
+- `m1600`/`m1601` — receiver USB firmware: FX2LP (`68013`) is a tiny 2.7 KB 8051 image;
+  the CY2014 variant is 190 KB.
+- `m2000`/`m2001`/`m2002` — ground FPGA bitstream, **8 MB** (vs the air FPGA's 4 MB), three
+  board-revision variants, same compressed (entropy ~7.99) style as the air image but a
+  distinct, larger bitstream (RX differs from TX).
+
+So "look at another product" paid off here: LB2 completes both ends of the radio and the
+LPC1765 ground MCU is the richer target for recovering the AD9363 config + link framing.
+
 ## FPGA image reuse + the ASIC/DSP (software-defined) generations
 
 Measured P3 vs Inspire 1 per module: **only `m1900` (the air FPGA bitstream) is

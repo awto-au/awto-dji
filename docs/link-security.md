@@ -109,7 +109,26 @@ PHY, not cryptography:
   academic Lightbridge work is signal *detection/parameter estimation* (gr-inspector), not
   decode-to-pixels.
 
-**But Lightbridge is "based on WiMAX" (IEEE 802.16 OFDM)** per the receiver-board docs — a
+**DJI's own firmware confirms the LTE/WiMAX family.** The Lightbridge 2 ground MCU
+(`m1400`, LPC1765; from the C1/LB2 firmware) carries a link-telemetry format string:
+
+```
+ch:%d  mcs:%d  mode:%d  bw:%d  snr:%d  rssi:%d  harq:%d  err:%d
+```
+
+- `mcs` = **Modulation and Coding Scheme** (adaptive BPSK->64QAM + code rate — an LTE/WiMAX
+  concept), `bw` = selectable channel bandwidth, `snr`/`rssi` = standard metrics, and
+- `harq` = **Hybrid ARQ**, a 3GPP LTE/WiMAX retransmission scheme — a direct giveaway that
+  the link is LTE/WiMAX-family, not a bespoke waveform.
+
+Also in `m1400`: `MASTER`/`SLAVER`/`TestMaster`/`TestSlaver` (confirms the master/slave ID
+pairing), and `sha204p_send_slave_address` — an **ATSHA204 crypto-auth chip**. That is
+SHA-256 challenge-response for **component authentication (anti-counterfeit)**, not link
+encryption; it is the one real cryptographic element, and it authenticates *genuine
+hardware*, not the RF payload. (LB2 is also dual-band — a `5.8G VER ERR!` string — unlike
+the P3's 2.4 GHz-only Lightbridge.)
+
+**And Lightbridge is "based on WiMAX" (IEEE 802.16 OFDM)** per the receiver-board docs — a
 *published standard*. So reaching symbol demod is approachable (blind OFDM param estimation
 + standard WiMAX/LTE sync; the DroneID pipeline is a ready template). The remaining work is
 DJI-specific and *findable* rather than secret: the exact scrambler seed/polynomial, framing
