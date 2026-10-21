@@ -2,6 +2,7 @@ name: geofence
 description: Transparent, data-driven no-fly/altitude safety gate for the awto-dji app.
 version: 0.1.0
 publish_to: none
+# SPDX-License-Identifier: GPL-3.0-only (see repository LICENSE)
 
 environment:
   sdk: ">=3.0.0 <4.0.0"

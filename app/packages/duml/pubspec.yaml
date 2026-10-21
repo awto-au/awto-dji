@@ -2,6 +2,7 @@ name: duml
 description: Pure-Dart DUML codec for DJI phone-to-aircraft communication.
 version: 0.1.0
 publish_to: none
+# SPDX-License-Identifier: GPL-3.0-only (see repository LICENSE)
 
 environment:
   sdk: ">=3.0.0 <4.0.0"
