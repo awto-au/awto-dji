@@ -32,6 +32,43 @@ pattern`). Forcing it feeds a **known, static, low-entropy** input to the H.264 
   unkeyed, so this fully breaks the "scrambling"). Capture black and white patterns for
   two reference payloads.
 
+## Patching the payload: the radio chain is content-agnostic
+
+The FPGA modem, AD9363 and FX2LP **transport bytes/frames; they do not parse or validate
+H.264**. Patching the payload (closest to the FPGA, e.g. in the camera Linux `m0100`,
+which is unsigned/reflashable) to a **constant (all-0s / all-1s)** transmits fine — only
+the phone-side `libdjivideo` decoder wants valid H.264, and it merely shows garbage. The
+link doesn't reject it.
+
+**A constant is the *optimal* scrambler-recovery input.** A whitening scrambler exists to
+turn constant/low-entropy input into flat output, so feeding **all-0s** makes the
+scrambled bytes equal `scrambler_sequence XOR 0` = the raw LFSR sequence — read the PRBS
+directly off the wire (all-1s gives the inverted sequence). Better than the all-black test
+image, which is still structured H.264.
+
+Practical: overwrite the **payload bytes** (not the encoder control flow) so rate-control
+keeps running and no watchdog trips; keep framing/length headers valid (constant as the
+payload inside normal frames); the adaptive MCS/rate tracks RF link quality, not content,
+so constant data just fills frames.
+
+## Recovering the *logic* from the netlist (assisted RE tools)
+
+Mistral yields the fabric netlist; dedicated tools then recover higher-level structure:
+
+- **HAL** (`emsec/hal`) — open-source gate-level netlist RE framework (graph model,
+  Python/C++ API, plugins).
+- **DANA** (HAL plugin) — recovers high-level **registers/words** from flip-flop dataflow.
+- **Module identification** (HAL) — finds **adders, multipliers, counters**, recovers bit
+  order within registers.
+- **RELIC** (UT Austin) — classifies registers as **control vs data**.
+- Reference: *"Stealing Maggie's Secrets — IP Theft Through FPGA Reverse Engineering"*
+  (2023) documents the bitstream->intent pipeline.
+
+Scope: these do **assisted, partial** recovery (register banks, arithmetic blocks, FSM-ish
+structure) toward human-reconstructed intent — not clean source. They need the LUT
+contents (Mistral decodes LAB/LUT; DSP/M10K internals remain the gap). The chain
+**Mistral -> HAL/DANA/module-id -> human** is real.
+
 ## Where to capture — digital tap on a DJI device beats SDR
 
 The strongest method is the **digital boundary on the board**, with a logic analyzer:

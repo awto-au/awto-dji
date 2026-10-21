@@ -56,14 +56,30 @@ From active routes + occupied LABs/LUTs/FFs you reconstruct a **structural netli
 LUT init masks, flip-flop modes, and the wires between them. This is emittable as
 gate-level Verilog (a flattened mesh of LUT/FF primitives).
 
-## 4. Behavioral recovery — the hard, partial step
+## 4. Behavioral recovery — assisted by dedicated netlist-RE tools
 
-Turning the structural netlist into readable RTL means recognising *word-level* structure
-in a LUT sea: grouping bit-slices into buses, LUT clusters into adders/multipliers, FF
-chains into registers/FSMs. This is an open research problem (e.g. "word-level model
-recovery from LUT netlists"); it is **manual and partial**, not a decompiler. You may
-identify block shapes (a multiplier array, a memory, an LFSR) but not regenerate DJI's
-source.
+Turning the structural netlist into readable logic means recognising *word-level*
+structure in a LUT sea: grouping bit-slices into buses, LUT clusters into
+adders/multipliers, FF chains into registers/FSMs. There are **dedicated tools** for this
+(not just manual work):
+
+- **HAL** (`emsec/hal`) — open-source gate-level netlist RE framework (graph model,
+  Python/C++ API, plugin system).
+- **DANA** (HAL plugin) — recovers high-level registers/words from flip-flop dataflow
+  (no tuned thresholds; evaluated on OpenTitan).
+- **HAL module identification** — detects adders, subtractors, constant multipliers,
+  counters; recovers bit order within registers.
+- **RELIC** (UT Austin) — classifies registers as control vs data.
+- Reference pipeline: *"Stealing Maggie's Secrets — IP Theft Through FPGA Reverse
+  Engineering"* (arXiv 2312.06195), and *"Reverse Engineering Word-Level Models from
+  Look-Up Table Netlists"* (arXiv 2303.02762).
+
+Scope is still **assisted and partial**: these recover register banks, arithmetic blocks
+and FSM-ish structure to guide a human, not regenerate DJI's RTL. They consume a
+gate-level netlist (LUTs + FFs + connectivity), so the pipeline is **Mistral (bitstream
+-> LUT/FF/routing netlist) -> HAL/DANA/module-id/RELIC (word-level recovery) -> human**.
+The remaining gap for a modem is the DSP/M10K internal config (not decoded by current
+Cyclone-V tooling), which holds the multiplier/RAM datapath.
 
 ## Why this is especially limited for a radio modem
 
