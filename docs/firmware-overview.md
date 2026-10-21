@@ -181,18 +181,27 @@ The FPGA-bitstream-documentation projects are the right tools here:
 - **Lattice:** Project IceStorm (iCE40), Project Trellis (ECP5).
 - **Intel/Altera Cyclone V — the P3's part:** **Project Mistral**
   (`Ravenslofty/mistral`), a library/CLI that **compiles and decompiles Cyclone-V
-  bitstreams**. Its only dependency is **`liblzma`**, because Altera's on-chip real-time
-  decompression is **LZMA-based** — which matches `m1900` exactly (incompressible to gzip,
-  non-uniform, structured header): it is an **LZMA-compressed** Cyclone-V bitstream, not
-  encrypted. (Stock `python-lzma` can't open it — Altera uses a custom LZMA framing that
-  Mistral implements; that failure is expected and doesn't change the conclusion.)
+  bitstreams** (loads `.rbf` → configuration RAM, and back). Correction to an earlier
+  note: Altera's on-chip config compression is a **nibble-RLE scheme** (see Mistral's
+  `rbf_load`), **not LZMA** — Mistral's `liblzma` dependency is only for its own device
+  database `.xz` files, not the bitstream.
 
-Realistic feasibility: Mistral can decompress and round-trip the bitstream and gives the
-device's routing/LUT model, so you can decompress `m1900` and inspect structure. But
-recovering readable RTL for a whole OFDM modem from a compressed bitstream is still
-impractical — Mistral gives you bits and a fabric model, not a netlist-to-Verilog
-decompiler. Decompressing/cloning the stream onto the same Cyclone-V part is plausible;
-understanding the modem logic from it is not.
+**Is `m1900` a usable bitstream? Yes — a compressed (not encrypted) config image.**
+Re-tested on the payload bulk (header excluded): chi-square 27,810 for 2 MB (uniform
+would be ~255; encryption gives ~uniform) → **not encrypted**; gzip 99.3% + non-uniform
+→ **compressed**, with a structured framing header. So the "random look" is compression,
+confirmed.
+
+**But Mistral can't load it directly, for two reasons:** (1) the **air FPGA part is
+unknown** — the firmware labels it only "model 0"; Mistral ships data for `5CEBA4`/
+`5CSEBA6`, the P3 *ground* FPGA is `5CEFA4`, the air one is unidentified; and (2)
+`rbf_load` expects a **plain (uncompressed / nibble-RLE) `.rbf`**, whereas `m1900` is a
+further-packed image (structured header + high-entropy bulk) that must be de-packed to a
+plain `.rbf` first.
+
+Realistic feasibility: decompressing/cloning onto the *identical* part is plausible once
+de-packed; recovering readable RTL for the OFDM modem is not — bitstream-RE tools yield a
+LUT/FF-level **structural** netlist on a documented fabric, not behavioral Verilog.
 
 ## Boundaries
 
