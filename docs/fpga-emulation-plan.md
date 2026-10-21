@@ -73,6 +73,32 @@ netlist from Mistral** (transform `routes` + LUT config into structural Verilog;
 everything). Trivial for the LFSR; bounded for broader logic. The DSP/M10K wall does not
 apply because those blocks are re-implemented, not emulated.
 
+## Which emulators actually exist for these ICs
+
+Per chip (corrects the earlier raw-Unicorn attempt, which was CPU-only and therefore
+diverged):
+
+- **MCUs `m0900` (STM32F103) / `m1400` (LPC1765): a full emulator exists — Renode.**
+  Renode (Antmicro) models MCU **peripherals** (SPI/GPIO/timers/IRQ), runs unmodified
+  firmware, supports the STM32 and LPC families, and co-simulates **Verilator HDL
+  peripherals**, SystemC TLM, and multiple nodes. QEMU also has some STM32 board models.
+  With peripherals modeled, the firmware should boot and reach the AD9363 SPI config +
+  ID/framing — unlike the raw-Unicorn run. Caveat: the exact `STM32F103CB`/`LPC1765` board
+  is not pre-canned; write a `.repl` platform description and model the custom FPGA-bus
+  peripheral (attach the Verilated subnetlist). Real setup, but the right tool.
+- **FPGA (Cyclone V): no bitstream-level emulator.** Nothing runs a raw Altera bitstream;
+  route stays Mistral netlist -> Verilator (LAB/LUT/FF; DSP/M10K black-boxed), attached to
+  Renode as a co-sim peripheral.
+- **Ambarella A9SE / DaVinci DM368/DM365: no full emulator.** QEMU has no machine model
+  for these proprietary SoCs (only generic Cortex-A9 boards); userland can run under QEMU
+  user-mode (CPU only). Not needed for the ID/whitening (they are the payload path).
+- **AD9363 / FX2LP:** behavioral models (ADI AD9361 sim model; trivial FX2LP), attachable
+  to Renode as peripherals.
+
+So the minimal recovery can run as **one Renode + Verilator co-emulation, no hardware**:
+`m0900`/`m1400` firmware in Renode + the FPGA LFSR/framing subnetlist as a Verilated
+peripheral + a behavioral AD9363. Redo the MCU emulation in Renode, not Unicorn.
+
 ## Honest assessment
 
 Valid method, and the proper one. Steps **1, 3, 4** are what actually pass the DSP/M10K
