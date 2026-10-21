@@ -63,10 +63,28 @@ it on [dji.com/opensource](https://www.dji.com/opensource) under the Ambarella p
 | busybox | 1.23.2 | GPL v2 | **OK** — 2,252,786 bytes, extracts cleanly (sha256 `05a6f9e2…`) |
 | Linux kernel | 3.10 (Ambarella BSP) | GPL v2 | **EMPTY** — `linux-ambarella.tar.gz` returns HTTP 200 but **0 bytes** |
 
-So the kernel source is listed but not actually downloadable right now — a GPL-compliance
-gap, re-confirmed across retries. Even when present it is a generic Ambarella 3.10 BSP,
-without DJI's proprietary drivers/apps, so it is of limited use for this project (the
-flight-control and DUML code is not Linux and is not covered by GPL).
+So the kernel source is listed but not actually downloadable from DJI right now — a
+GPL-compliance gap, re-confirmed across retries.
+
+**But GPL source is freely redistributable, so DJI's broken link doesn't make it
+unavailable.** A community mirror carries it:
+[`sin5678/DJI_Ambarella_Linux`](https://github.com/sin5678/DJI_Ambarella_Linux).
+Verified it is the genuine Ambarella BSP, not a vanilla tree:
+
+- Kernel **3.10.71** (Makefile `VERSION=3 PATCHLEVEL=10 SUBLEVEL=71`) — the same 3.10
+  line DJI lists and a P3 boot log shows (3.10.62); minor point-release difference.
+- `arch/arm/mach-ambarella/` is present — the Ambarella SoC machine support that
+  mainline 3.10 does **not** have, which is what makes it the real BSP.
+- Uploaded as a single bulk commit (how GPL source drops usually appear).
+
+Caveats: it's a community mirror (one commit, no signature), and DJI's own copy is empty
+so there's nothing to diff it against — so treat it as "the right kernel line and the
+real Ambarella BSP", not as byte-verified against DJI's exact build. The Wayback Machine
+is another avenue if a DJI-hosted snapshot with content is wanted.
+
+Either way it is a generic Ambarella 3.10 BSP (camera SoC Linux), without DJI's
+proprietary drivers/apps, so it is of limited use for this project — the flight-control
+and DUML code is not Linux and is not covered by GPL.
 
 ## How firmware is updated
 
