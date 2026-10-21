@@ -104,14 +104,26 @@ diverged):
   ID/framing — unlike the raw-Unicorn run. Caveat: the exact `STM32F103CB`/`LPC1765` board
   is not pre-canned; write a `.repl` platform description and model the custom FPGA-bus
   peripheral (attach the Verilated subnetlist). Real setup, but the right tool.
-- **FPGA (Cyclone V): no bitstream-level emulator — and this is fundamental, not a gap.**
-  A CPU emulator interprets a known ISA; an FPGA bitstream is not instructions but a
-  proprietary, undocumented configuration of one specific die's fabric, with no ISA to
-  interpret. To "run" it you must first **decode the bitstream to a netlist**
-  (device-specific RE = Mistral's job) and then simulate that netlist. No tool runs a raw
-  foreign `.rbf` as silicon. The only two ways to execute DJI's bitstream:
+- **FPGA (Cyclone V): the bitstream->sim path exists per-family via the RE projects, and
+  for Cyclone-V that project is Mistral — which we already use.** Important correction: for
+  FPGA families whose bitstream format has been reverse-engineered, a bitstream *can* be
+  taken straight into simulation — **iCE40** (Project IceStorm), **ECP5** (Project Trellis),
+  **Xilinx 7-series** (Project X-Ray/prjxray). Those map the fabric so completely that
+  `bitstream -> unpack -> netlist -> simulate` feels direct. The Altera **Cyclone-V** member
+  of that same family of projects is **Project Mistral**, and it is the tool already run
+  here (it unpacked `m2001` to a 56,337-route netlist). So this is **not** "no tool exists":
+  a CPU emulator interprets a known ISA, but an FPGA bitstream is a device-specific fabric
+  config that must be *decoded* by the matching RE project first — and for our silicon that
+  decoder (Mistral) exists and works. The one difference from ECP5/Trellis is **coverage,
+  not existence**: Trellis maps the ECP5 fabric essentially completely, while Mistral maps
+  Cyclone-V **LAB/LUT/FF/routing but not the DSP/M10K internals yet** — exactly the gap the
+  minimal-recovery plan routes around (re-implement the standard WiMAX datapath; pull only
+  the small DJI-specific LFSR/ID out of what Mistral *does* decode). What still does not
+  exist for any vendor is a tool that runs a *foreign* `.rbf` as opaque silicon without that
+  decode step. The two ways to execute DJI's bitstream:
   - **Decode -> netlist -> simulate (software):** Mistral -> Verilog -> Verilator/Icarus.
-    The real "FPGA emulator"; limited by the DSP/M10K decode gap (black-box those).
+    The real "FPGA emulator" (same pattern as ECP5/Trellis -> nextpnr/sim); limited by the
+    DSP/M10K decode gap (black-box those).
     Mistral also carries a fabric timing/SPICE model (`tnet`/`trun`/`timing`), so it is
     more than functional, but it is a de/compile tool, not plug-and-play.
   - **Real silicon (full fidelity):** load the de-packed bitstream on a matching Cyclone-V
