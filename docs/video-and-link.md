@@ -107,6 +107,35 @@ thing that carries the live video down and the control up. The P3 Pro uses
   **OcuSync** from the Phantom 4 Pro / Mavic onward. So the P3 is the Lightbridge-2
   generation; OcuSync is a different, later system.
 
+## Which chip feeds the FPGA (data flow)
+
+There is an FPGA at each end; what feeds it differs by direction:
+
+- **Aircraft (TX):** Ambarella A9SE camera → **TI DaVinci DM368** H.264 encoder (`m0800`)
+  → **air FPGA** (`m1900`: OFDM + scrambler) → **AD9363** transceiver → PA → antenna.
+  The **DM368 sends the video payload into the FPGA**; the A3 FC / center board feed
+  telemetry in over UART/CAN.
+- **Remote (RX):** antenna → LNA → **AD9363** → **ground FPGA** (Cyclone V `5CEFA4`) →
+  **Cypress FX2LP (CY7C68013A)** → USB to phone. Here the **AD9363 feeds the FPGA** the
+  received samples, and the FPGA hands recovered H.264 to the FX2LP. The **STM32F103**
+  (`m0900`) only sends *configuration* (AD9363 over SPI, FPGA config/reset) — not payload.
+
+Summary: **DM368 → FPGA** (air), **AD9363 → FPGA → FX2LP** (ground).
+
+## The DaVinci chipsets
+
+**TI DaVinci** is Texas Instruments' DMxxx video-SoC family — an ARM926 CPU plus a
+hardware **H.264 video coprocessor** (HDVICP/MJCP), built for IP cameras/camcorders. DJI
+uses two across the link:
+
+- **DM368** — `m0800`, "video encoder in air": compresses the camera feed to H.264 for
+  transmission.
+- **DM365** — `m1300`, "video decoder" on the ground/RC side.
+
+They bracket the radio: DM368 encodes on the aircraft, the Lightbridge link carries it,
+and the live stream is decoded on the phone (`libdjivideo`); the RC's DM365 is the
+ground-side DaVinci.
+
 ## Relevance to the app
 
 For a direct app, the USB-AOA link from the phone carries **both** the DUML telemetry we
