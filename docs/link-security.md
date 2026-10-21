@@ -117,6 +117,30 @@ tweaks, and H.264 depacketization. Still genuinely unproven to a picture — "ap
 is not "weekend project to live video" — but there is no cryptographic wall, only effort and
 the DJI-specific framing.
 
+## Is Lightbridge really different from the understood streams?
+
+Working assumption: **no — treat it as an understood-family stream with unknown
+parameters, not a new waveform.** DJI reuses PHY IP across products, so the right prior
+is strong:
+
+- **Same primitives.** DroneID/OcuSync decode to LTE-style OFDM (CP, pilots, Zadoff-Chu
+  sync, Gold-sequence scrambler, turbo/convolutional FEC, QPSK/QAM). Lightbridge is
+  "based on WiMAX" (802.16 OFDM) per the receiver board — WiMAX and LTE are siblings. The
+  understood-stream toolkit (blind OFDM estimation, Schmidl-Cox, the `dji_droneid`
+  pipeline) applies directly.
+- **Differences are parameters, not principle:**
+  - *Lineage:* WiMAX (Lightbridge) vs LTE (DroneID/OcuSync) — siblings; preamble/pilot/
+    framing details differ, so adapt the decoder, don't run it unchanged.
+  - *Scale:* DroneID is a tiny fixed beacon (9 symbols, ~10 MHz, 601 subcarriers);
+    Lightbridge is a continuous video link — wider, 2T2R MIMO, adaptive BPSK→64QAM, with a
+    MAC to multiplex H.264 + control.
+  - *Undocumented specifics to recover:* FFT size/CP/subcarrier spacing, ZC roots,
+    scrambler seed/polynomial, FEC rate, video/control framing — recovered, not invented.
+
+So model it as "WiMAX-family OFDM with DJI framing"; the task reduces to parameter
+estimation + adapting a known pipeline, with the WiMAX-vs-LTE deltas and the extra
+video-link framing as the real (but bounded) unknowns.
+
 ## Probing it (how to confirm dynamically)
 
 An Android **emulator can run DJI GO but cannot reach the RC** (no USB-accessory
