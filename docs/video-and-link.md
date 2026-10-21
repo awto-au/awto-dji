@@ -54,6 +54,25 @@ Ambarella A9SE ─H.264→ DM368 enc ─→ air FPGA/MCU ))) 2.4GHz ((( gnd FPGA
   surfaces through `UsbAccessoryService` (`putVideoBuffer`, `toTransVideoData`,
   `onGetBody(mode=dual)` — the "dual" being video + data on one link).
 
+### Video formats (from the real firmware)
+
+Confirmed by unpacking the actual P3 Pro firmware (`P3X_FW_V01.11.0020`) and reading
+the camera module (`m0100`) strings — so this is what the camera genuinely supports,
+not marketing copy:
+
+**Recorded to the SD card (high quality):**
+- Resolutions: **DCI 4K 4096×2160**, **UHD 4K 3840×2160**, 2.7K, **1920×1080**,
+  **1280×720** (strings `4096x2160`, `3840x2160`, `1920x1080`, `1280x720`, `60fps`).
+- Codec: **H.264 (AVC)**; the hardware also supports **MJPEG**
+  (`video_type … none(0)/h264(1)/mjpeg(2)`).
+- Containers: **.MOV** and **.MP4**.
+- Photo: **JPEG** and **DNG** raw (`.DNG` strings present).
+
+**Transmitted to the phone (live downlink, transcoded down):**
+- `dji sto video [set][resolution][val]` → **0: 720P, 1: WVGA, 2: WQVGA**, H.264.
+  So the live feed is a separate, lower-res **720p** H.264 transcode — the 4K never
+  goes over the air, only to the card.
+
 ### Control channel for the video chain (DUML)
 
 The transcoders and radio MCUs are themselves DUML devices, with their own command
@@ -65,6 +84,28 @@ sets seen in the dissector:
   air/gnd side`, `HD transmission FPGA air/gnd side`.
 - Camera command set has `SDK Ctrl Camera Start/Stop Video Ctrl` (0x21/0x22) to
   start/stop the stream.
+
+## What is Lightbridge
+
+Lightbridge is **DJI's proprietary long-range digital HD transmission system** — the
+thing that carries the live video down and the control up. The P3 Pro uses
+**Lightbridge 2**.
+
+- **What it does:** a one-way **HD video downlink** plus a **bidirectional control +
+  telemetry** link, all on the single 2.4 GHz OFDM radio. The camera's H.264 stream is
+  modulated by the air-side FPGA and MCU, sent over the air, and demodulated on the
+  ground.
+- **Not Wi-Fi:** it's a custom OFDM PHY with forward error correction and adaptive
+  bitrate/coding (it drops video quality as the link degrades to keep latency low and
+  the link alive), rather than 802.11. That's what buys the range (~several km) and the
+  low (~220 ms) latency versus the Wi-Fi-based P3 Standard.
+- **The hardware that implements it** (from the firmware module map): air-side **FPGA**
+  (`m1900`) + **STM32F103** MCU (`m0900`); ground-side FPGA + **LPC1765** MCU; and the
+  **Cypress FX2LP** USB bridge to the phone. The DM368/DM365 DaVinci chips encode/
+  transcode the video that rides the link.
+- **Lineage:** Lightbridge (2014) → Lightbridge 2 (Inspire 1, Phantom 3) → superseded by
+  **OcuSync** from the Phantom 4 Pro / Mavic onward. So the P3 is the Lightbridge-2
+  generation; OcuSync is a different, later system.
 
 ## Relevance to the app
 

@@ -122,6 +122,18 @@ products add the `IMaH` signature layer. The P3 permits **downgrade** to earlier
 versions (DJI's own notes allowed going back to v1.4.10+), which is how the research
 community moved between builds.
 
+## Verified by unpacking the real firmware
+
+Downloaded the actual last P3 Pro firmware (`P3X_FW_V01.11.0020`, 66 MB, built
+2017-07-05) and extracted it with `dji_xv4_fwcon.py`. It is a plain `xV4` container
+(no keys needed) and unpacked to 17 modules, matching the module map above:
+`m0306`/`m0305` (A3 flight controller app/loader), `m0400` (gimbal), `m1100`/`m1101`,
+`m1200`–`m1203` (the four ESCs), `m1500`, `m1700`/`m1701`, `m1900` (air FPGA),
+`m0100`/`m0101` (camera app/loader — the 56 MB Linux module), `m0800` (DM368 video
+encoder), `m0900` (Lightbridge air MCU). Manifest: `model=P3X`, `pkg_format=201507`.
+The camera module's strings are the source of the video-format details in
+`video-and-link.md`.
+
 ## Boundaries
 
 The reference also ships tools to edit firmware (including a no-fly-zone editor and
