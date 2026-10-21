@@ -58,6 +58,35 @@ estimation into a near-turnkey demod: you already know the bandwidth, sample rat
 frequency and (maybe) the seed, so sync + descramble fall into place. MCU + SDR together
 are the practical path; the bitstream is not on the critical path.
 
+## What radare2 actually found in `m0900` (this session)
+
+Analysed the real `m0900` image (load `0x08000000`, Cortex-M Thumb-2):
+
+- **Peripheral map (32-bit base constants in literal pools):** `GPIOA/B/C` (9/7/4 refs),
+  `RCC` (2), `SPI1` and `SPI2` (adjacent at `0x08001c00`), `USART1/2`. So the MCU uses
+  **SPI** (AD9363 + FPGA config), **GPIO** (FPGA config/reset lines), **USART** (DUML),
+  with **RCC** enabling the clocks — exactly the control-plane role.
+- **SPI driver identified:** disassembly around the SPI literals is the **ST Standard
+  Peripheral Library** SPI code — halfword ops on the peripheral base at offset `0x00`
+  (CR1; set/clear bits `0x2000`/`0x4000`), `0x08` (SR; `tst` for TXE/RXNE/BSY flags),
+  `0x0C` (DR), `0x10/14/18` (CRC regs). Bare-metal STM32 on ST's StdPeriph lib, no RTOS.
+
+This confirms the model from the binary itself. The next (manual, Ghidra-grade) step is to
+trace the callers of the SPI send/flag helpers to recover the **AD9363 register-write
+table** (decode vs UG-570 -> frequency/bandwidth/sample rate) and to find where the
+**Master-ID is written into the outgoing frame header** (the addressing/"tagging" the
+hypothesis describes). That tracing wasn't completed this session.
+
+## On the "FPGA just tags the ID" hypothesis
+
+Consistent with everything found: the "key" is an **address/ID**, not crypto — frames
+carry the Master-ID and receivers filter out frames not addressed to them. Whether the ID
+is inserted by the MCU (building the frame header, then handing payload to the FPGA) or in
+the FPGA itself is the open question; the StdPeriph SPI + DUML code in `m0900` suggests the
+**MCU builds/handles the addressed frames** and the FPGA does PHY (modulate + whiten).
+Confirming it means finding the frame-build routine in `m0900` (trace from the USART/DUML
+parser to the SPI/FPGA path).
+
 ## Honest boundary
 
 The MCU will not contain the OFDM math (that's the FPGA) or the H.264 codec (that's the
