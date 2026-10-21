@@ -149,14 +149,29 @@ this is why P3 firmware can be downgraded/modified/reflashed by the community.
 - The FPGA module `m1900` is `encrypt_type=0` (no DJI wrapper); its high entropy is the
   Altera tool's own bitstream compression/encryption, separate from DJI's container.
 
-### FPGA bitstream portability
-A Cyclone-V bitstream loads only onto that exact device; the near-8.0-bit/byte entropy
-means it is Altera-compressed and/or AES-encrypted. If AES-encrypted to a key in the
-FPGA's fuses/BBRAM, a blank same-model part cannot use it; if only compressed, the same
-part could. Either way it needs the surrounding board (AD9363, clocks, PAs, the
-configuring MCU) to function. The modem/scrambler logic exists only as gates in this
-bitstream — the `m0900` MCU merely brings the FPGA up (config/reset lines, AD9363 over
-SPI), so reading the MCU does not reveal the radio logic.
+### FPGA bitstream: compressed, not encrypted (tested)
+
+High entropy alone does not prove encryption — a *compressed* bitstream also looks
+random, while a *plain* one is low entropy (zero-heavy). Tests on the `m1900` used
+region (2.06 MB) settle it:
+
+- gzip → **98.6%** (incompressible): compressed or encrypted — inconclusive alone.
+- chi-square vs uniform = **113,468** (encryption would give <~310): byte distribution
+  is strongly **non-uniform** → **not AES-encrypted**; non-uniformity is the mark of
+  compression.
+- header is **structured, not random**: first 2 KB entropy **1.22** (mid 7.91), a
+  repeating `xxxx ffff …` pattern. Encrypted data is random from byte 0, so a structured
+  cleartext header rules out whole-file encryption.
+- only **1.85%** zero bytes → not a plain/uncompressed bitstream either.
+
+Conclusion: it is an **Altera-compressed** bitstream, **not encrypted**. The protection
+is obscurity + device-specificity, not a device-bound key. So it is **not**
+cryptographically locked to one chip — the same Cyclone-V part could in principle be
+configured with it (it still needs the board: AD9363, clocks, PAs, the configuring MCU).
+Reversing the *logic* remains hard (undocumented compressed config format). The
+modem/scrambler exists only as gates in this bitstream; the `m0900` MCU merely brings the
+FPGA up (config/reset lines, AD9363 over SPI), so reading the MCU does not reveal the
+radio logic.
 
 ## Boundaries
 
