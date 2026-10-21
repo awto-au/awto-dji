@@ -173,6 +173,27 @@ modem/scrambler exists only as gates in this bitstream; the `m0900` MCU merely b
 FPGA up (config/reset lines, AD9363 over SPI), so reading the MCU does not reveal the
 radio logic.
 
+### Bitstream reverse-engineering tooling
+
+The FPGA-bitstream-documentation projects are the right tools here:
+
+- **Xilinx 7-series:** Project X-Ray (F4PGA/SymbiFlow).
+- **Lattice:** Project IceStorm (iCE40), Project Trellis (ECP5).
+- **Intel/Altera Cyclone V — the P3's part:** **Project Mistral**
+  (`Ravenslofty/mistral`), a library/CLI that **compiles and decompiles Cyclone-V
+  bitstreams**. Its only dependency is **`liblzma`**, because Altera's on-chip real-time
+  decompression is **LZMA-based** — which matches `m1900` exactly (incompressible to gzip,
+  non-uniform, structured header): it is an **LZMA-compressed** Cyclone-V bitstream, not
+  encrypted. (Stock `python-lzma` can't open it — Altera uses a custom LZMA framing that
+  Mistral implements; that failure is expected and doesn't change the conclusion.)
+
+Realistic feasibility: Mistral can decompress and round-trip the bitstream and gives the
+device's routing/LUT model, so you can decompress `m1900` and inspect structure. But
+recovering readable RTL for a whole OFDM modem from a compressed bitstream is still
+impractical — Mistral gives you bits and a fabric model, not a netlist-to-Verilog
+decompiler. Decompressing/cloning the stream onto the same Cyclone-V part is plausible;
+understanding the modem logic from it is not.
+
 ## Boundaries
 
 The reference also ships tools to edit firmware (including a no-fly-zone editor and
