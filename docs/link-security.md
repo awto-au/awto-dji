@@ -35,6 +35,40 @@ So "linking" associates RC↔aircraft by **identifier + frequency** — not by e
 rotating a secret key. (`RC Push Rmc Key Info` and `RC Self Defined Key Func` refer to the
 physical RC **buttons**, not crypto keys.)
 
+## How do they "pair" then, without keys?
+
+Pairing is real, but it is **association by identity, not cryptographic pairing** — think
+Wi-Fi/Bluetooth addressing minus the encryption layer:
+
+1. Every aircraft and RC has a unique **ID** ("Master ID" — effectively a serial/address).
+2. **Linking** (the physical link button, done with the two close together) is
+   **trust-on-first-use by proximity**: a short local exchange where each records the
+   other's ID — `RC Request Join By Slave`, `RC List Request Join Slave`,
+   `RC Connected Master Id Set`.
+3. Afterwards RF frames **carry that ID**, and each side **filters by it**: the aircraft
+   obeys only frames from its bound RC, the RC shows only its aircraft. They also agree a
+   **channel** (`RC Pairing` = "Frequency Set") and hop within 2.4 GHz.
+4. The OFDM + Gold-sequence scrambler only makes frames *well-formed Lightbridge frames*
+   (vs random noise), not *authenticated* ones.
+
+So the binding stops accidental cross-control (IDs differ) and casual interference, but
+with **no key there is no authentication** — the association is spoofable, which is the
+property the hijacking literature (Behind The Wings, Enhanced-Wi-Fi) exploited. Pairing ≠
+security here.
+
+## Sample data / public captures
+
+No Lightbridge-video-specific labelled dataset was found. Available instead:
+- **Zenodo 4264467** — real IQ of 10 drones incl. DJI at 2.44 GHz / 5.8 GHz, raw
+  interleaved 16-bit `.bin` (120/200 MHz sampling). The most useful real capture.
+- **DroneID tooling** — `proto17/dji_droneid`, `anarkiwi/samples2djidroneid`,
+  `droneid-native` decode the *beacon* (not video); proto17 withholds its IQ (GPS privacy).
+- **Synthetic/other** — a Mendeley Phantom 4 Pro 2.4 GHz set (generated), an IEEE-DataPort
+  RC-RF-signal set.
+
+For the actual P3 Lightbridge waveform, capturing your own with the SDR is the realistic
+source.
+
 ## Firmware crypto search — nothing for the link
 
 Searched `m0900` (radio MCU), `m0100`/`m0101` (camera) for
