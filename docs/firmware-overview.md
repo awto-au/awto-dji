@@ -134,6 +134,30 @@ encoder), `m0900` (Lightbridge air MCU). Manifest: `model=P3X`, `pkg_format=2015
 The camera module's strings are the source of the video-format details in
 `video-and-link.md`.
 
+## Is the firmware signed? (P3: no)
+
+Checked in `dji_xv4_fwcon.py`: the P3 `xV4` package is validated only by **CRC-16 +
+per-module MD5 checksums** — there is **no cryptographic signature** (no RSA/ECDSA).
+Checksums detect corruption but are recomputable, so they do not prevent modification;
+this is why P3 firmware can be downgraded/modified/reflashed by the community.
+
+- Cryptographic signing arrived with the newer **`IMaH`** format (Phantom 4 / Mavic on)
+  — RSA PKCS#1/PSS with DJI `PRAK`/`PUEK` keys (`dji_imah_fwsig.py`). P3 predates it.
+- Some P3 modules carry DJI module-level AES (`encrypt_type=1`, e.g. the A3 FC `m0306`),
+  **but the keys are known/extracted** — the tool decrypts them automatically (that's how
+  we disassembled `m0306`). So that layer is effectively open too.
+- The FPGA module `m1900` is `encrypt_type=0` (no DJI wrapper); its high entropy is the
+  Altera tool's own bitstream compression/encryption, separate from DJI's container.
+
+### FPGA bitstream portability
+A Cyclone-V bitstream loads only onto that exact device; the near-8.0-bit/byte entropy
+means it is Altera-compressed and/or AES-encrypted. If AES-encrypted to a key in the
+FPGA's fuses/BBRAM, a blank same-model part cannot use it; if only compressed, the same
+part could. Either way it needs the surrounding board (AD9363, clocks, PAs, the
+configuring MCU) to function. The modem/scrambler logic exists only as gates in this
+bitstream — the `m0900` MCU merely brings the FPGA up (config/reset lines, AD9363 over
+SPI), so reading the MCU does not reveal the radio logic.
+
 ## Boundaries
 
 The reference also ships tools to edit firmware (including a no-fly-zone editor and
