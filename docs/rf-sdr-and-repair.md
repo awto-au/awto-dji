@@ -86,6 +86,32 @@ Other repair resources: the dji-firmware-tools wiki (sister pages for the camera
 other boards), the PhantomPilots forum, OpenBoardView/Badcaps for any shared boardview,
 and specialist drone-repair shops.
 
+### Is the FPGA bitstream in the firmware? Yes.
+
+Confirmed by unpacking the firmware: module **`m1900`** is the **air Lightbridge FPGA
+configuration image** — "lightbridge FPGA on air model 0", version `01.00.2144`,
+`encrypt_type=0` (plaintext), exactly **4 MiB**, 0xFF-padded (an FPGA config-flash image,
+not CPU code). The **ground/RC FPGA** bitstream ships likewise in the remote's firmware.
+
+How it's used: a firmware update writes this bitstream into the board's **serial NOR
+flash** (`N25Q064` / the `ATH` chip on the receiver board), and the FPGA loads it from
+there at every power-on. So the FPGA "program" is firmware — reflashable, not fused.
+
+**Why that matters for "it just stopped one day with a system error":** there are two
+broad causes, and they point opposite ways:
+
+1. **Software/firmware corruption** — e.g. an interrupted update, or a module left in its
+   bootloader, or a bad bitstream load. This presents as a sudden "system error" / lost
+   link even though nothing was physically damaged. **This is the reflashable case:**
+   forcing a full firmware re-write (SD-card method, or DJI Assistant 2) rewrites the
+   FPGA bitstream and every module and can bring it back. Cheap to try first.
+2. **Hardware failure** — cold/cracked solder (thermal cycling), a failed PA/LNA/regulator,
+   or a dead FX2LP/FPGA. A bitstream doesn't "rot" on its own, so a unit that was fine
+   and died with no update is often this. Reflashing won't fix it; it needs board work.
+
+Try the reflash first (non-destructive, rules out case 1). If it still errors, it's
+hardware — use the SDR + service pads below to localise it.
+
 ### Diagnosing the broken unit
 The SDR + the service pads together make a good diagnostic kit:
 - If the aircraft is dead: does it emit the 2.4 GHz downlink at all (SDR)? Does the FC
