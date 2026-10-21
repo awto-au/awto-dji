@@ -98,6 +98,26 @@ evidence of a SignalTap / Virtual-JTAG runtime debug core** baked into the bitst
 the MCU firmware shows no JTAG/debug strings (though SWD service pads exist on the board).
 So: hardware JTAG/SWD yes; an in-fabric logic-analyzer to tap, no evidence.
 
+## Static AD9361 register-table search — result: no flat table (config is programmatic)
+
+Scanned `m0900` (air STM32) and `m1400` (ground LPC1765) for an AD9361/AD9363 init table
+(write-command / address words in `0x000-0x3FF`, and addr/value record windows). Result:
+**no transceiver register table.** Zero runs of AD9361 write-command words; the structured
+regions found are **zero-padded lookup/index tables** (e.g. `0001 0000 0001 0000 0002...`
+small-integer LUT; `0013 0000 00b0 0001 0006 0002...` an indexed table), not register init.
+
+Conclusion: the AD9363 is configured **programmatically (ADI-driver style), not from a
+static table** — register values are computed at runtime from PLL/clock/bandwidth
+parameters. This matches the emulation finding (config is code/command-driven, not a boot
+blob). So static table extraction does not yield the RF config.
+
+Remaining routes to the actual register values:
+- **Disassemble the SPI-config driver** (located `~0x08001b70` in `m0900`) and trace the
+  computed writes -> recovers the logic deriving registers from target frequency/bandwidth.
+- **Live capture** (SWD, or a logic analyzer on the AD9363 SPI during link bring-up) ->
+  reads the exact bytes written; cleanest.
+- Check whether the **FPGA** mediates any of the AD9363 SPI rather than the MCU.
+
 ## On the "FPGA just tags the ID" hypothesis
 
 Consistent with everything found: the "key" is an **address/ID**, not crypto — frames
