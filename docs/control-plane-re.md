@@ -116,6 +116,33 @@ There is no PC-based software Lightbridge demod; the "base station" is the LB2 g
 unit (hardware), and the PC "DJI GroundStation"/"GS Pro" tools are app-layer (DUML), not
 radio.
 
+## FPGA image reuse + the ASIC/DSP (software-defined) generations
+
+Measured P3 vs Inspire 1 per module: **only `m1900` (the air FPGA bitstream) is
+byte-identical** (both `01.00.2144`, SHA `f3a55dea…`, 4 MiB). Every other module (camera,
+FC, gimbal, ESC, radio MCU, video) differs per product. So the OFDM modem is one shared,
+fixed bitstream across the Lightbridge family — one RE effort covers all, and there is no
+richer in-family variant to exploit.
+
+"Maybe some designs use a DSP/processor instead of an FPGA" — correct, and it maps to
+three DJI generations of increasing reversibility:
+
+1. **Early P3 / Inspire (FPGA):** modem = Altera Cyclone-V bitstream (`m1900`). Gates;
+   hard to reverse; not accessible as code.
+2. **Later P3 / GL300 (Artosyn ASIC):** AR8001 "data encoder/DSP" replaced the FPGA, with
+   a design that *exactly matches the previous FPGA bitstream* (board-compatible). Same
+   logic hardened into an ASIC — **not** easier (fixed silicon, no bitstream, no modem
+   code exposed). AR8003 replaced the AD9363; an STM32F103 still drives both.
+3. **P4 Pro / Mavic / Spark (OcuSync):** moved to a CPU+DSP chipset running *custom modem
+   software* (Leadcore LC1860C-class lineage). **This is the reversible case** — the modem
+   is software on a DSP/CPU, not gates, which is why the community decodes OcuSync and not
+   Lightbridge. Trade-off: those firmwares are IMaH-signed/encrypted (harder to extract),
+   but once extracted the modem is analyzable code.
+
+Implication: a "software-defined DJI modem" to reverse exists — in the **OcuSync
+generation**, not the P3. For the P3 the modem stays FPGA/ASIC, so its practical path is
+**SDR capture + MCU-derived parameters**, not reversing the modem logic.
+
 ## Honest boundary
 
 The MCU will not contain the OFDM math (that's the FPGA) or the H.264 codec (that's the
