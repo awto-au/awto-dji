@@ -1,5 +1,12 @@
 # Minimal recovery: eliminate the complex FPGA, reverse only the small DJI-specific parts
 
+> **Update (see `m2001-decomp-findings.md`):** the DSP/M10K "one hard blocker" referenced
+> below is **decoded after all** (LUT masks, FF modes, DSP mode+coef, M10K config+contents
+> all recovered by Mistral `decomp`). The genuine residual is **interconnect source
+> resolution** (~54k unresolved routes). The minimal strategy still holds — re-implement the
+> standard WiMAX datapath, extract only the small LFSR/ID — and the LFSR is now better posed
+> because the LUT masks (XOR/parity = linear feedback) are in hand.
+
 Strategy that collapses the whole effort. The protocol family is established (WiMAX/LTE
 OFDM, confirmed by `mcs`/`harq` in firmware, FCC DTS classification, and the `m2001`
 netlist). So the standard modem is **re-implemented from spec, not reversed** — and the

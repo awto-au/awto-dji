@@ -1,5 +1,11 @@
 # FPGA emulation / co-simulation plan (reconcile netlist against firmware + chips)
 
+> **Correction (see `m2001-decomp-findings.md`):** the "DSP/M10K internals are the
+> undecodable wall" claim below is **wrong on re-run**. Mistral's `decomp` recovers LUT
+> masks (17,144), FF modes, DSP mode+coefficients, and M10K config+contents. The real
+> residual gap is **interconnect source resolution** (~53,889 unresolved active routes),
+> not the logic blocks. Read the bullets below with that correction in mind.
+
 Approach: once a bitstream is decompiled to a netlist, identify the pins, simulate the
 fabric, and **reconcile simulated I/O against real captures and the surrounding firmware/
 chips** to recover what the netlist alone can't (the DSP/M10K internals). This is the
