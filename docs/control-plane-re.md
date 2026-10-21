@@ -87,6 +87,35 @@ the FPGA itself is the open question; the StdPeriph SPI + DUML code in `m0900` s
 Confirming it means finding the frame-build routine in `m0900` (trace from the USART/DUML
 parser to the SPI/FPGA path).
 
+## Cross-product reuse (is there an easier build elsewhere?)
+
+The radio stack is shared across DJI's Lightbridge-family products — the same `xV4`
+format and module slots appear in Inspire 1 (`WM610`), Matrice 100/600, A3, the GL300/C1
+remotes, etc. Tested the idea by unpacking **Inspire 1 `WM610_FW_V01.11.01.50`** and
+diffing its `m0900` against the P3's:
+
+- Same slot/role (Lightbridge STM32 MCU), but **different build**: Inspire v05.00.0000
+  (88 KB) vs P3 v04.01.0000 (76 KB); nearly all bytes differ.
+- Inspire build is **not richer**: no debug/symbol strings, similar string count — equally
+  stripped. So a sibling product doesn't automatically give an easier target.
+
+Still-useful directions this opens:
+- **Standalone DJI Lightbridge / Lightbridge 2** — an integrator-facing product (HDMI/SDI,
+  documented serial controls in its manual); its firmware is the most likely to expose a
+  richer/serial-documented interface. Best next candidate to unpack.
+- **DJI Onboard SDK** (A3/N3/M100/M600) — DJI's **open-source** SDK documents the serial
+  command/telemetry protocol (the control layer) officially. It is the genuine "DJI
+  published it" source for the command protocol (not the radio PHY), and gives a PC/Linux
+  companion-computer UART path to those flight controllers (the P3 does not officially
+  expose it).
+- **Comparative diffing** across versions/products to isolate the stable config tables
+  (e.g. the AD9363 register sequence) from the churn — a standard RE shortcut even when no
+  single build is symbol-bearing.
+
+There is no PC-based software Lightbridge demod; the "base station" is the LB2 ground
+unit (hardware), and the PC "DJI GroundStation"/"GS Pro" tools are app-layer (DUML), not
+radio.
+
 ## Honest boundary
 
 The MCU will not contain the OFDM math (that's the FPGA) or the H.264 codec (that's the
