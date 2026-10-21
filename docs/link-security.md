@@ -141,6 +141,23 @@ So model it as "WiMAX-family OFDM with DJI framing"; the task reduces to paramet
 estimation + adapting a known pipeline, with the WiMAX-vs-LTE deltas and the extra
 video-link framing as the real (but bounded) unknowns.
 
+### Did DJI say anything? (FCC is the only disclosure)
+
+DJI's one authoritative public statement is the **FCC filing**. The P3 aircraft
+(`SS3-WM3231503`/`-507`/`-510`) is authorised as a **Digital Transmission System (DTS),
+2406.5-2476.5 MHz, Part 15C**. "DTS" is the FCC class for **wideband digitally-modulated
+(OFDM-class)** systems, not frequency hopping — i.e. DJI officially declared it as the
+same kind of wideband OFDM signal the decoded streams are. The exact emission designator
+and occupied bandwidth are in the test-report PDF (BACL `RDG150107002-00A`, viewable on
+fccid.io); its OB is the figure to compare against DroneID's ~10 MHz channel. No DJI
+patent or white paper describing the Lightbridge modulation/coding was found.
+
+**Conclusion:** there is no DJI statement, and no evidence, that Lightbridge differs in
+kind from the decoded OFDM streams; the FCC classification agrees with "wideband OFDM,
+2.4 GHz." What's missing is only a published bit-level spec — absence of documentation,
+not evidence of difference. Correct default: assume it is the understood stream until a
+capture shows a specific parameter differs.
+
 ## Probing it (how to confirm dynamically)
 
 An Android **emulator can run DJI GO but cannot reach the RC** (no USB-accessory
