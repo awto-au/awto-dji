@@ -77,6 +77,27 @@ table** (decode vs UG-570 -> frequency/bandwidth/sample rate) and to find where 
 **Master-ID is written into the outgoing frame header** (the addressing/"tagging" the
 hypothesis describes). That tracing wasn't completed this session.
 
+## MCU emulation attempt (Unicorn) + debug interfaces
+
+Attempted to extract the AD9363 config by running `m0900` in a Unicorn Cortex-M harness
+(map flash `0x08000000`/SRAM/MMIO, pre-set "ready" status regs, hook SPI_DR writes). It
+boots and executes, but the stripped firmware **diverges to `0x0` after ~10 instructions**
+without fuller system modelling, and — more fundamentally — the AD9363 config is almost
+certainly **triggered by a runtime DUML command from the main controller, not emitted at
+cold boot**. So cold-boot emulation does not just dump the config.
+
+Reliable routes instead: (a) **static** — the SPI driver is already located
+(`~0x08001b70`, ST StdPeriph); trace its callers to the AD9361 register table/sequence;
+(b) **on-hardware SWD** capture of the live SPI during link bring-up. The emulator is
+better used for *stimulus generation in co-simulation* (drive the recovered FPGA netlist),
+per `fpga-emulation-plan.md`, than for booting the MCU to completion.
+
+**Debug interfaces (evidence in code):** the `m2001` FPGA fabric exposes standard JTAG
+(`TCK`/`TMS`/`TDI` nodes) — a Cyclone-V config/boundary-scan interface — but there is **no
+evidence of a SignalTap / Virtual-JTAG runtime debug core** baked into the bitstream, and
+the MCU firmware shows no JTAG/debug strings (though SWD service pads exist on the board).
+So: hardware JTAG/SWD yes; an in-fabric logic-analyzer to tap, no evidence.
+
 ## On the "FPGA just tags the ID" hypothesis
 
 Consistent with everything found: the "key" is an **address/ID**, not crypto — frames
