@@ -48,6 +48,24 @@ drive controlled inputs, capture outputs. Real silicon runs the DSP/M10K correct
 sidesteps decoding them. Caveats: need the right die/package, and must present the correct
 interface signals (use the step-1 pin map); device/package differences can misplace I/O.
 
+**On the vendor "emulator".** Quartus ships a free logic simulator (ModelSim / Questa
+**Intel Starter Edition**) plus device simulation libraries — but it simulates *your own*
+design (RTL or a gate netlist), not a captured foreign bitstream. No vendor tool ingests an
+arbitrary `.rbf` and runs it as silicon; that capability exists from nobody, because the
+bitstream->fabric mapping is the undocumented part the vendor never published. So the
+"vendor emulator" path is the *same* as Mistral->netlist->sim — the vendor just provides a
+nicer back-half simulator once Mistral has decoded the front half. It is not a shortcut
+around the decode step.
+
+**On JTAG probing (the dev-board route).** JTAG on a Cyclone-V gives **configuration +
+boundary-scan**: you can read/toggle the device-boundary **I/O pins** — exactly what the
+input/output reconciliation needs. It does **not** expose internal nodes; that requires a
+**SignalTap** logic-analyzer core compiled *into* the design, and `m2001` has no SignalTap
+instance (DJI would not ship one, and we can't add one without recompiling). So the clean
+hardware path is: matching 5CEBA4/e50f board -> load the de-packed bitstream -> drive known
+inputs and capture outputs at the boundary using the 199-pin map (step 1) -> reconcile.
+Internal visibility, where needed, comes from the Mistral netlist sim, not from JTAG.
+
 ## Can the minimal recovery be done purely in an FPGA emulator? Yes
 
 The minimal strategy (`minimal-recovery.md`) makes emulation viable, because the small
@@ -86,9 +104,23 @@ diverged):
   ID/framing — unlike the raw-Unicorn run. Caveat: the exact `STM32F103CB`/`LPC1765` board
   is not pre-canned; write a `.repl` platform description and model the custom FPGA-bus
   peripheral (attach the Verilated subnetlist). Real setup, but the right tool.
-- **FPGA (Cyclone V): no bitstream-level emulator.** Nothing runs a raw Altera bitstream;
-  route stays Mistral netlist -> Verilator (LAB/LUT/FF; DSP/M10K black-boxed), attached to
-  Renode as a co-sim peripheral.
+- **FPGA (Cyclone V): no bitstream-level emulator — and this is fundamental, not a gap.**
+  A CPU emulator interprets a known ISA; an FPGA bitstream is not instructions but a
+  proprietary, undocumented configuration of one specific die's fabric, with no ISA to
+  interpret. To "run" it you must first **decode the bitstream to a netlist**
+  (device-specific RE = Mistral's job) and then simulate that netlist. No tool runs a raw
+  foreign `.rbf` as silicon. The only two ways to execute DJI's bitstream:
+  - **Decode -> netlist -> simulate (software):** Mistral -> Verilog -> Verilator/Icarus.
+    The real "FPGA emulator"; limited by the DSP/M10K decode gap (black-box those).
+    Mistral also carries a fabric timing/SPICE model (`tnet`/`trun`/`timing`), so it is
+    more than functional, but it is a de/compile tool, not plug-and-play.
+  - **Real silicon (full fidelity):** load the de-packed bitstream on a matching Cyclone-V
+    (same die/package, e.g. 5CEBA4/e50f); the chip runs DSP/M10K and all. Not an emulator,
+    but the only full-fidelity run. Needs the exact part + correct interface signals.
+  - **Not applicable:** vendor simulators (ModelSim/Questa/Quartus) need the design
+    RTL/netlist, not a bitstream; commercial emulators (Palladium/Veloce/ZeBu/HAPS) map
+    your own RTL, not a foreign bitstream; openFPGALoader/Quartus programmer program real
+    hardware, they do not emulate.
 - **Ambarella A9SE / DaVinci DM368/DM365: no full emulator.** QEMU has no machine model
   for these proprietary SoCs (only generic Cortex-A9 boards); userland can run under QEMU
   user-mode (CPU only). Not needed for the ID/whitening (they are the payload path).
