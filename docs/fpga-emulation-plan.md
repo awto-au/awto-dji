@@ -48,6 +48,31 @@ drive controlled inputs, capture outputs. Real silicon runs the DSP/M10K correct
 sidesteps decoding them. Caveats: need the right die/package, and must present the correct
 interface signals (use the step-1 pin map); device/package differences can misplace I/O.
 
+## Can the minimal recovery be done purely in an FPGA emulator? Yes
+
+The minimal strategy (`minimal-recovery.md`) makes emulation viable, because the small
+DJI-specific logic lives in **LAB/LUT/FF** fabric — which Mistral decodes and a simulator
+(Verilator/Icarus) runs — while the **DSP/M10K** (undecodable) hold only the FFT/FEC
+datapath you re-implement. So the one thing that blocks full FPGA emulation is in the part
+you don't need.
+
+- **Whitening LFSR — near-trivial.** It is ~a dozen flip-flops + XOR taps, a small isolated
+  subcircuit of LABs/LUTs/FFs. Find it in the Mistral `routes` output (FF outputs fed back
+  through LUTs), transcribe those cells to Verilog, simulate -> the scrambler sequence
+  comes straight out, no hardware/capture. (Berlekamp-Massey on the sim output is a free
+  cross-check.)
+- **FPGA-side framing/control** — extract the LAB/LUT/FF subnetlist (DSP/M10K as black
+  boxes), export to Verilog, run in Verilator.
+- **ID / MAC** — emulate in the MCU emulator (Unicorn/QEMU on `m0900`/`m1400`) if the MCU
+  inserts it; if any is in the FPGA it is LAB logic and emulatable too.
+
+Full picture: a two-part **co-sim** — FPGA emulator (LFSR + framing) + MCU emulator (ID) —
+entirely in software, no board. The one tooling gate is **exporting a simulatable Verilog
+netlist from Mistral** (transform `routes` + LUT config into structural Verilog; the full
+`decomp`/`.bt` came out empty, so isolate the needed subcircuits rather than dump
+everything). Trivial for the LFSR; bounded for broader logic. The DSP/M10K wall does not
+apply because those blocks are re-implemented, not emulated.
+
 ## Honest assessment
 
 Valid method, and the proper one. Steps **1, 3, 4** are what actually pass the DSP/M10K
