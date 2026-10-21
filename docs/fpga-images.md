@@ -25,6 +25,30 @@ properties. (Images live in the analysis env, not in this repo.)
   plain bitstream. It is the easiest to feed to Project Mistral or to de-pack, far more
   tractable than the near-max-entropy air image.
 
+## Mistral decompile of `m2001` (actually run)
+
+De-packed `m2001` (strip leading/trailing `0xFF`; payload starts at `0x20`, first byte
+`0x6a`) and loaded it into Project Mistral (built from source) against model
+`5CEBA4U19C8` (same `e50f` die, idcode `2b05`, as the documented ground FPGA
+`5CEFA4U19I7`). Result — a genuine fabric-level decompile:
+
+- **56,337 fully-resolved routing connections** (real endpoints, e.g.
+  `LAB.026.023.5:FFB1L -> LAB.026.023.9:C`, `DSP.008.001:RESULT.46 -> H6...`).
+- Block inventory: **~1,795 LABs**, 6,174 MLAB + 2,588 M10K refs (memories/FIFOs/tables),
+  **64 DSP blocks** (multipliers), 1,855 GPIO refs, 314 SCLK, 15 DLL.
+- **199 named package I/O pins** (e.g. `Y3`, `W2`, `AA2`) — a recoverable pin map to
+  correlate against the AD9363 data port / FX2LP on the board.
+
+The 64 DSP multipliers + M10K RAMs + DLLs are exactly an OFDM modem datapath (FFT/filter/
+FEC + buffers + sample-clock timing). This confirms `m2001` is a real, **unencrypted,
+de-packable** Cyclone-V bitstream that decompiles to structure.
+
+**Limit:** the full `decomp` to `.bt` came out empty — some global routing nodes
+(`GOUT`) are unresolved and, per Mistral's README, **DSP/M10K internal configuration is
+not decoded**. So we recover **connectivity + block placement + pin map**, not the
+block-internal math (multiplier modes, RAM contents). Structure, not the modem's
+arithmetic. (Reproducible: `mistral-cv routes 5CEBA4U19C8 m2001.depack.bin`.)
+
 ## What's missing
 
 - The **Artosyn-ASIC** board revision has no FPGA bitstream (its logic is hardened into
