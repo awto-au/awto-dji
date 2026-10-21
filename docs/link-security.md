@@ -58,6 +58,31 @@ Caveat: a stripped MCU or the FPGA fabric could hide logic the string search can
 so this is "no positive evidence of link crypto", not a proof of its absence. But the
 binding commands are plainly identifier-based.
 
+## Documentation status: how approachable is the waveform?
+
+Updated after a deeper search — the barrier is obscurity + effort over a standards-based
+PHY, not cryptography:
+
+- **DroneID (OcuSync-era beacon) is fully reverse-engineered** — NDSS 2023 (peer-reviewed):
+  601 subcarriers, 15 kHz spacing, Zadoff-Chu sync (roots 600/147), Schmidl-Cox timing,
+  QPSK, a **3GPP Gold-sequence scrambler**, LTE turbo code — with working decoders
+  (`proto17/dji_droneid`, `gr-droneid`, a native-C real-time one). This confirms DJI's
+  "scrambler" is a **standard Gold sequence, not a keyed cipher**.
+- **OcuSync video (O3/O4)** is being actively RE'd (2024-25); community repos document
+  LTE-like PHY params (subcarrier spacing, CP lengths, Zadoff-Chu, QPSK/QAM). Provisional
+  but clearly LTE-derived.
+- **Lightbridge-2 (the P3) video:** no public end-to-end decoder or frame spec found; the
+  academic Lightbridge work is signal *detection/parameter estimation* (gr-inspector), not
+  decode-to-pixels.
+
+**But Lightbridge is "based on WiMAX" (IEEE 802.16 OFDM)** per the receiver-board docs — a
+*published standard*. So reaching symbol demod is approachable (blind OFDM param estimation
++ standard WiMAX/LTE sync; the DroneID pipeline is a ready template). The remaining work is
+DJI-specific and *findable* rather than secret: the exact scrambler seed/polynomial, framing
+tweaks, and H.264 depacketization. Still genuinely unproven to a picture — "approachable PHY"
+is not "weekend project to live video" — but there is no cryptographic wall, only effort and
+the DJI-specific framing.
+
 ## Probing it (how to confirm dynamically)
 
 An Android **emulator can run DJI GO but cannot reach the RC** (no USB-accessory
