@@ -43,10 +43,15 @@ De-packed `m2001` (strip leading/trailing `0xFF`; payload starts at `0x20`, firs
 
 - **56,337 fully-resolved routing connections** (real endpoints, e.g.
   `LAB.026.023.5:FFB1L -> LAB.026.023.9:C`, `DSP.008.001:RESULT.46 -> H6...`).
-- Block inventory, counted by **unique tile coordinate** (an earlier pass miscounted
-  these as line-references — 3-8x inflated for MLAB/M10K/GPIO; corrected here):
-  **1,848 LAB, 484 MLAB, 308 M10K** (memories/FIFOs/tables), **66 DSP**, 68 GPIO,
-  4 PLL, 4 DLL. Zero HSSI/XCVR/PMA tiles used — plain-fabric design, no hard-SerDes.
+- **1,832 LABs/MLABs actually configured** (nonzero `LUT_MASK`, i.e. a real logic
+  function present — not just "tile exists in the decompile," which is a non-signal:
+  it sits at 100% of die capacity for every tile type regardless of whether the die is
+  even correct, confirmed while investigating the air FPGA in issue #3). Tile-presence
+  counts for the rest (308 M10K, 66 DSP, 68 GPIO, 4 PLL, 4 DLL — the die's full
+  capacity for each, so not independently informative about design complexity) are
+  consistent with a real design using most/all of a mid-size Cyclone V, which the
+  56,337 resolved routes above already establish directly. Zero HSSI/XCVR/PMA tiles
+  referenced — no hard-SerDes used by this design.
 - **224 unique package pins** used, spread across all four physical edges of the die
   (not clustered to one connector) — consistent with several independent board
   interfaces (AD9363, MCU, USB bridge) sharing the die. Of named GPIO signal lines,
