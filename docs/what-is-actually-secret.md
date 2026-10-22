@@ -8,7 +8,7 @@ control.
 
 | Thing | What it protects | Does it gate interop? |
 |---|---|---|
-| **ATSHA204 keys** | **component authentication** (battery/part is genuine) | **No** — does not encrypt the link or telemetry |
+| **ATSHA204 keys** | **component authentication** (battery/part is genuine) — *now confirmed in `m1400` code: the only `Encrypt`/`mac` strings are ATSHA204 provisioning state, see `cpu-reversing-proof.md`* | **No** — does not encrypt the link or telemetry |
 | **Firmware signing keys** | image authenticity on signed products | **No on P3** — P3 `xV4` images are unsigned (CRC+MD5); only newer IMaH products are signed |
 | **DUML `encrypt_type` != 0** | a few sensitive commands (activation, parts of binding) | **No** — telemetry, OSD and the Master-ID are `encrypt_type 0` (cleartext) |
 

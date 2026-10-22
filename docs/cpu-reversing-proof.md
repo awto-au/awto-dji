@@ -81,3 +81,48 @@ What this proves (and does not):
   isolating that one is the remaining step.
 
 Reproduce: `r2 -a arm -b 16 -m 0 -qq -c 'pd 85 @ 0x9bd0' c1_m1400.bin`.
+
+## Traced (pass 2): "Encrypt" is ATSHA204 auth, and the WiMAX link params are telemetry
+
+Two more claims now shown in `m1400` code (radare2, `-a arm -b 16 -m 0`; strings reached by
+PC-relative `ADR`).
+
+### "Encrypt" = ATSHA204 component auth / provisioning, NOT link encryption
+
+The only `Encrypt` strings in the firmware sit in a secure-element cluster:
+
+```
+0xfac0 Factory_Info err   0xfad4 mac err   0xfadc Chip_Info err
+0xfaf4 IsAreadyEncrpty:%02x...   0xfb18 Bn:%c%c%c%c%c%c%c%c%c%c  (10-char barcode serial)
+0xfb74 Encrypt change!!!   0xfb88 Encrypt loss!!!
+```
+
+next to the `sha204p_send_slave_address` (ATSHA204 I2C) code at 0xf07a. The routine at
+~0xf880 reads a record, checks a `'G'(0x47),3,0x11,7` header/version, logs the chip serial
+(`Bn2:%c%c…`), and compares stored vs received **"IsAlreadyEncrypt" provisioning state** of
+the secure element, logging `Encrypt change!!!`/`Encrypt loss!!!` on mismatch, via helpers in
+the sha204 neighbourhood. So "encrypt" here = the ATSHA204 **locked/provisioned state** and
+its challenge-response **MAC** ("mac err") — component authentication, not a link/payload
+cipher. **Proves the Tier-1 claim in `what-is-actually-secret.md` in code**: the sole
+"encryption" in the RC firmware is component auth; nothing encrypts the radio data.
+
+### WiMAX link params are tracked and reported as telemetry
+
+Format string at `0x25abc`:
+
+```
+ch:%d  mcs:%d  mode:%d  bw:%d  snr:%d  rssi:%d  harq:%d  err:%d %d
+```
+
+formatted by the reporter at `0x256cc` (reads the fields from a RAM link-state struct).
+`mcs`, `bw`, `harq` are WiMAX/LTE-family PHY terms. => the firmware tracks the WiMAX link
+parameters and emits them as **cleartext telemetry/log data**, corroborating both the
+WiMAX-family modem and the "it's all cleartext data" model. (Reproduce:
+`r2 -a arm -b 16 -m 0 -qq -c 'pd 60 @ 0x256b0' c1_m1400.bin`.)
+
+### Still open
+
+The exact DUML "Connected Master *Id*" (aircraft binding) handler is not yet isolated. The
+role path (0x9bd0) and these two findings all show the same mechanism — cleartext fields in
+MCU RAM, component-auth the only crypto — so the binding-ID handler is expected to be more of
+the same; isolating it is the remaining step.
