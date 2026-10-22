@@ -31,6 +31,9 @@ the current state and next steps, and `../CLAUDE.md` for agent onboarding.
 - `rf-sdr-and-repair.md` — SDR tooling and RF notes.
 - `safety-geofence.md` — public-airspace geofence gate (safety, not defeat).
 
+## Active task
+- `renode-task.md` — **TASK**: build Renode from source, emulate `m0900`, capture the AD9363 config (closes the PHY-params open item).
+
 ## Safety / scope
 See `../CLAUDE.md` → "Scope & safety constraints". This is interoperability for an owned
 aircraft: no geofence defeat, no extraction of secret key values, structural analysis only.
