@@ -15,10 +15,10 @@ addr	kind	name	note	source
 0x0800d7a4	func	fpga_reg0_toggle	FPGA reg0 |= 9 then &= 0xfe; real prologue push{r4,lr} at this address	disasm (verified)
 0x0800d7c6	func	init_fpga_config	FPGA cfg tables 0x08016260/0x08016460 -> FPGA regs 0..0xff (2 pages; page 2 sets reg 0xE9 = 0x03 on boards 2/4/5); then runs AD9363 script (see below) via 0x0800d318; then ENSM/lock status reads	disasm (verified)
 0x08016660	table	ad9363_script_a	2639 x 4-byte records, boards 2/4/5 (limit 0x293c); includes RFPLL words, BBPLL, filters, gain table (91 idx), cals; decode: scripts/re/m0900_ad_script.py	disasm+decode (verified)
-0x08018f9c	table	ad9363_script_b	0x10c bytes of records, boards 6/7 (64 regs, no polls)	disasm+decode
+0x08018f9c	table	ar8003_script_b	0x10c bytes of records, boards 6/7 = Artosyn AR8003 variants ar6/ar7 (64 regs, no polls); not an AD9363 profile	disasm+decode
 0x080190a8	table	fpga_extra_writes	14 FPGA writes [05 0e reg val] (regs 0x00,0x03,0x2c,0x2f,0x30,0x31,0x33,0x34,0x35,0x3b,0x3f,0x00), run when board 4/5 and [0x200000f8]==0x01000910	disasm
 0x080190e0	table	channel_table_a	39 x 9 B: int16 N, frac24, float32 MHz; boards 2/4/5; MHz/N = 20.000 (RFPLL ref 80 MHz /4); ch00=2404 .. ch38=2480 MHz step 2; ch09 (2422) is what the base script programs	decode (table verified; float=LO MHz inferred)
-0x0801923f	table	channel_table_b	39 x 9 B; boards 6/7; same MHz list 2404..2480; MHz/N 19.35-19.5 (different ref)	decode (inferred)
+0x0801923f	table	channel_table_b	39 x 9 B; boards 6/7 (Artosyn AR8003); same MHz list 2404..2480; MHz/N 19.35-19.5 (different ref)	decode (inferred)
 0x0800f0bc	func	tcx_config_update1	TX attenuation update: boards 2/4/5 write AD9363 0x073/0x075 (TX1/TX2 ATTEN_0) when radio_state+0x11b differs from applied [0x20000167]; boards 6/7 write FPGA 0xCE and AD 0x054/0x05C. Writes NO RF-PLL regs. Guards: [+0x119]!=0, +0x11b != [0x20000167], FPGA reg 0xE9 bits 0 AND 1 set	disasm (verified)
 0x0800f3d8	func	fpga_cfg_load	writes FPGA regs 0x97-0x9b, 0x04-0x07.. from two structs; called from radio_start_stop and 0x080100ae	disasm
 0x0800f436	func	radio_config_apply	sets radio_state+0x84 = 3, then FPGA regs 0xBA-0xBE (boards 2/4/5) / 0xB8-0xBB (6/7) <- 9-byte channel table record [idx]; stores float at +5 to radio_state+0x94. Whether +0x84 is re-set before use elsewhere: UNKNOWN	disasm

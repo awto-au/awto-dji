@@ -51,7 +51,8 @@ flowchart TD
 | PA13 | control line, push-pull, driven low at init, set high by `0x0800ce6c` (role unknown; SWDIO pin repurposed, SWJ_CFG written at boot) | out | `0x0800ce14`, `0x0800ce6c` |
 | PB12 | SPI2 chip select for FPGA bridge, active low | out | `0x0800b5e8/b5f6` |
 
-- Board code = `(PA0 << 2) | (PC15 << 1) | PC14`. Mapping of codes to hardware revisions: unknown.
+- Board code = `(PA0 << 2) | (PC15 << 1) | PC14`.
+- Board variants (outside source: dji-firmware-tools `lightbridge_stm32_hardcoder.py`, variant names `ad1`-`ad5`, `ar0`, `ar6`, `ar7`): codes 2, 4, 5 = Analog Devices transceiver boards (AD9363 family); codes 6, 7 = Artosyn AR8003 boards. Which code the owned board has: unknown (P01007.06 is the AD9363 + Cyclone V revision per the wiki; P01007.14 is Artosyn).
 - Pull-up on PA0 means an unstrapped board reads at least 4.
 
 ## FPGA boot handshake (`0x0800cfd0`, partly decoded)
@@ -79,5 +80,5 @@ flowchart TD
 ## Open
 
 - Meaning of FPGA regs 0x8A, 0x00 bits 0 and 7, 0x01, 0x0F, 0x02 (all bits tested above).
-- Role of PB3 and PA13 on the board; board code to hardware mapping.
+- Role of PB3 and PA13 on the board; which AD code (2, 4 or 5) matches P01007.06.
 - Return codes 3, 8, 9 of `0x0800cfd0` and `0x0800c320` (called with 1 or 2 on failure paths).
