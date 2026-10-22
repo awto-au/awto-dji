@@ -35,6 +35,9 @@ the current state and next steps, and `../CLAUDE.md` for agent onboarding.
 - `renode-task.md` — **TASK**: build Renode from source, emulate `m0900`, capture the AD9363 config (closes the PHY-params open item).
 - `phy-params.md` — result slot + capture method for the above. Tooling in `../renode/` is **built and validated**; the capture is blocked only on the `m0900` firmware image (not in repo).
 
+## Provenance
+- `code-provenance.md`, `license-compliance.md`, `data-manifest.md` — the downloaded inputs (firmware/APK/tools) with SHA-256s; **none of the bytes are stored here** (copyright/size) — re-fetch + verify.
+
 ## Safety / scope
 See `../CLAUDE.md` → "Scope & safety constraints". This is interoperability for an owned
 aircraft: no geofence defeat, no extraction of secret key values, structural analysis only.
