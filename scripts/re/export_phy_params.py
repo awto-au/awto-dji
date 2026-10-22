@@ -84,13 +84,13 @@ def main():
                     "why": "reg 0x03A=0x27 (=Fref/1MHz-1 in no-OS), VCO range, RF ref 80 MHz fits channel table"},
         "bbpll_vco_hz": {"value": round(fref * bb_ratio), "status": "inferred (needs Fref)"},
         "adc_clk_hz": {"value": round(fref * bb_ratio / 8), "status": "inferred"},
-        "sample_rate_hz": {"value": 11_200_000, "status": "inferred", "why": "no-OS divider formulas, decimation 8"},
+        "sample_rate_hz": {"value": 11_200_000, "status": "verified bits; absolute value needs Fref", "why": "ADC=BBPLL/8, HB2 /2, HB1 /2, FIR /2 from regs 0x00A,0x003"},
         "lo_hz_base_profile": {"value": round(rx_n * 20_000_000), "status": "inferred (RF ref 80 MHz / 4)"},
         "rf_bandwidth_hz": {"value": 10_000_000, "status": "inferred",
-                            "note": "RX BB 5 MHz then second pass sets 0.625 MHz; final state unexplained"},
+                            "note": "FIR cutoff 5.0 MHz, TX BB ~5 MHz, RX BB pass 1 5 MHz; last RX BB calibration target is 0.625 MHz (exact), likely not the operating bandwidth"},
         "gains": {"agc_mode": "fast attack (inferred)", "max_gain_index": 76, "gain_table_entries": 91,
                   "tx_attenuation": "unknown (set at run time via 0x073/0x075)"},
-        "unknown": ["Fref confirmation", "why RX BW ends 0.625 MHz", "run-time channel hop index",
+        "unknown": ["Fref confirmation", "why last RX BB calibration targets 0.625 MHz", "run-time channel hop index",
                     "TX attenuation values", "board code to hardware revision"],
     }
     with open(os.path.join(OUT, "phy-params.json"), "w") as f:

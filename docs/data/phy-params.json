@@ -47,8 +47,8 @@
   },
   "sample_rate_hz": {
     "value": 11200000,
-    "status": "inferred",
-    "why": "no-OS divider formulas, decimation 8"
+    "status": "verified bits; absolute value needs Fref",
+    "why": "ADC=BBPLL/8, HB2 /2, HB1 /2, FIR /2 from regs 0x00A,0x003"
   },
   "lo_hz_base_profile": {
     "value": 2421999999,
@@ -57,7 +57,7 @@
   "rf_bandwidth_hz": {
     "value": 10000000,
     "status": "inferred",
-    "note": "RX BB 5 MHz then second pass sets 0.625 MHz; final state unexplained"
+    "note": "FIR cutoff 5.0 MHz, TX BB ~5 MHz, RX BB pass 1 5 MHz; last RX BB calibration target is 0.625 MHz (exact), likely not the operating bandwidth"
   },
   "gains": {
     "agc_mode": "fast attack (inferred)",
@@ -67,7 +67,7 @@
   },
   "unknown": [
     "Fref confirmation",
-    "why RX BW ends 0.625 MHz",
+    "why last RX BB calibration targets 0.625 MHz",
     "run-time channel hop index",
     "TX attenuation values",
     "board code to hardware revision"

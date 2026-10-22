@@ -21,10 +21,14 @@ Tags: **verified** = read from firmware/registers or checked against no-OS sourc
 | Capture: 261 regs, all polls complete (run 2026-10-23, `renode/captures/m0900-ad9363-spi2.txt`) | verified as emulated; base script ran 3x in that run |
 | Fref = 40 MHz | inferred: reg 0x03A = 0x27 (no-OS writes Fref/1 MHz - 1); BBPLL 716.8 MHz in range; RF ref x2 = 80 MHz fits channel table. No schematic |
 | BBPLL: int 17 + 1921843/2088960 = x17.92 -> 716.8 MHz; ADC_CLK 89.6 MHz | verified regs (0x041 is MSB per no-OS); Fref assumed |
-| Sample rate 11.2 MHz (RX and TX), decimation/interp 8 (HB1, HB2, FIR x2) | inferred (divider formulas checked against no-OS ad9361.c clock-scale code) |
+| Sample rate 11.2 MHz (RX and TX): ADC = BBPLL/8 = 89.6 MHz, then HB2 /2, HB1 /2, FIR /2 | register bits verified (0x00A=03, 0x002/0x003=0xCE decoded with no-OS get_clk_scaler); absolute value depends on inferred Fref 40 MHz |
 | LO N = 121.1 -> 2422 MHz (VCO 9688 MHz, /4); RX = TX words | verified regs; MHz inferred from Fref |
 | RX BB bandwidth 5 MHz (regs 0x1FB/0x1FC), RF 10 MHz (ADI RF = 2xBB); TX BBF divider 10 consistent with 5 MHz | regs verified; RF=2xBB per no-OS |
-| Final RX BB bw register state is 0.625 MHz (script second pass, records 2581-2590) | verified regs; purpose unknown |
+| Script is linear (markers only at records 0 and 2638); both RX BB filter calibration passes run: 5 MHz (record 2458) then 0.625 MHz (record 2581), then RX TIA caps and ADC setup (0x200-0x227) | verified (script decode) |
+| 0x1FC is fractional MHz in 1/128 units, not kHz: 0x50 = 80/128 = 0.625 MHz exactly | verified (no-OS ad9361.c rx_bb_analog_filter_calib) |
+| Divider 0x5B = 91 is exact for 625,000 Hz only with float bw/10000 (no-OS integer math gives 92); only 625 kHz gives 91 at BBPLL 716.8 MHz | verified arithmetic; vendor tool differs from no-OS; mildly supports Fref 40 MHz |
+| RX and TX FIRs are identical 64-tap symmetric low-pass (cfg 0x7E = 64 taps); -3 dB at 0.2239 x FIR rate (22.4 MHz) = 5.0 MHz | verified (coefficients decoded); FIR rate from register bits |
+| Digital path (FIR +-5 MHz), TX BB divider 10 (4.9-5.5 MHz) and pass-1 RX BB 5 MHz all indicate a ~10 MHz channel; only the last analog RX BB calibration says 0.625 MHz | inferred: 0.625 MHz is likely not the operating bandwidth. No other firmware code writes 0x1FB/0x1FC (static scan) |
 | Channel table @0x080190e0: 39 ch, 2404-2480 MHz, 2 MHz step; float = N x 20 exactly | table verified; float = LO MHz inferred |
 | Gains: AGC code 1 (fast attack, inferred) both RX, max table idx 76, gain table 91 idx loaded | regs verified; TX attenuation not in script (unknown) |
 | Real DUML session driving this | unknown (functions called directly with forced state) |
@@ -81,7 +85,7 @@ Tags: **verified** = read from firmware/registers or checked against no-OS sourc
 ## Open (do not treat as results)
 
 - Fref: 40 MHz inferred, not confirmed by schematic/measurement.
-- Why the script ends with RX BB bw 0.625 MHz; whether runtime restores 5 MHz.
+- Why the script ends with an RX BB calibration at 0.625 MHz. Not restored by any other m0900 code (static scan). Needs a real chip or an SDR measurement of the RX passband; narrow-uplink hypothesis (wide TX, narrow RX on the air unit) untested.
 - TX attenuation / gain values at run time (`S+0x11b`, `[0x20000167]`).
 - Run-time channel index source (`S+0x84`) and meaning of cfg-word fields (bits 7-11, 18-20, 27-29).
 - Confirm with a real DUML 0x09 session.
