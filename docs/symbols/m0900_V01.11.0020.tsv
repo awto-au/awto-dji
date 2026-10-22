@@ -82,3 +82,15 @@ addr	kind	name	note	source
 0x0801623c	table	fpga_bit_records	3-byte records [idx, fpga_reg, mask], 11 used	disasm (verified)
 0x0800c154	func	tick_scheduler	increments RAM 0x200000e0, sets flags 0x200000dc/dd/de every 5/20/100 ticks	disasm
 0x0800c2b8	func	nullsub_1	empty stub; compiled-out log calls (strings Fpga Boot/Cfg remain in flash)	disasm (verified)
+0x0800d112	func	fpga_upgrade_enter	FPGA upgrade-mode handshake (boot-style records + 6,7); status 0 ok, 5/8/9 fail; called by Enter Loader (receiver 0x13)	disasm (verified flow)
+0x0800d1ea	func	fpga_update_confirm	compare [0x200000f4] with 0x010007ec, set bit records 10/1; returns 0	disasm
+0x0800d206	func	fpga_update_finish	check FPGA reg0F b1, compare regs 0x09/0x08 with 2 host bytes, handshake; 4 ok, 6/7/8/9 fail, 2 -> reload	disasm (verified flow)
+0x0800d2d8	func	fpga_reload	set reg0 b0 and wait for reg 0x8A[1:0]==1 (3x400 polls); returns 3 ok or 9	disasm
+0x08012320	func	duml_enter_loader	set 0x00 cmd 0x07: receiver 9 writes OOXX to flash page 0x7400; receiver 0x13 (boards 4/5) enters FPGA upgrade	disasm (verified)
+0x080123b8	func	duml_update_confirm	set 0x00 cmd 0x08 (receiver 0x13): reply status and block size 0x200	disasm
+0x080123e6	func	duml_update_finish	set 0x00 cmd 0x0A (receiver 0x13): calls fpga_update_finish, reply status	disasm
+0x08012428	func	duml_reboot_chip	set 0x00 cmd 0x0B	table only
+0x080110f2	func	duml_req_0904	request 0x0904: reply 0x0954 with STM32 96-bit UID (12 B)	disasm (verified)
+0x080127be	func	read_stm32_uid	copies 12 bytes from 0x1FFFF7E8; single caller 0x08011110	disasm (verified)
+0x0801279a	func	load_cfg_page	reads 256 B from flash offset 0x7b00, validates via 0x08011e7a	disasm
+0x08012690	func	flash_write_magic	flash write of 4 bytes at offset 0x7400 (helper 0x0800bc2c); returns 1 if all bytes written	disasm (inferred write)
