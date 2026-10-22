@@ -77,10 +77,67 @@ needs:
 - **UART:** TX/RX at **256000 8N1** to the flight controller (DUML — useful for probing).
 - **SPI** (MOSI/MISO/SCK/NSS), **CAN** (CANL/CANH), **USB** (DP/DM), FX2LP control lines,
   and labelled power rails (3V3, 5V/6V, 2V5, 1V1/1V2/1V3/1V7/1V8).
-- **Connectors:** `CAMERA` (6-pin ribbon: USB video + CAN/DUML) and `CENTER` (6-pin: UART
-  DUML + power).
-- **Board revisions:** `P01007.06` (AD9363 + Cyclone V FPGA) vs `P01007.14` (Artosyn
-  AR8003 + AR8001 ASIC) — the wiki notes the Artosyn version can be noticeably noisier.
+- **Connectors:** `CAMERA` (6-pin, 1.25 mm pitch ribbon, to the gimbal/camera board — USB
+  `DP`/`DM`) and `CENTER` (6-pin ribbon, to the ESC center board — UART DUML + power). Wiki
+  gives pin **count** and **pitch** but not a pin-1..6 signal order for either connector —
+  only the labelled service pads (below) are mapped to signals. For bench use, probe/solder
+  to the service pads (known signal names), don't guess ribbon pin order.
+- **`CENTER` service pads** (known-good for bench power + DUML UART, no USB/CAN needed):
+  - `P01007.06`: `GND`, `6V`, `TX`, `RX` (top); `6V`, `GND` repeated (bottom). UART is
+    **256000 8N1**.
+  - `P01007.14`: `5V`, `GND`, `RX`/`TX` (top) — same UART rate; this rev also exposes a
+    second UART pair (`RX1/TX1/RX2/TX2`) on the bottom, not present on `.06`.
+  - `CAMERA` pads are just `DP`/`DM` (USB) — only useful if you're also driving the
+    gimbal/camera board, not for a bare bench power-up.
+- **Board revisions — how to tell `.06` from `.14` apart (component markings, not
+  silkscreen):**
+  - `P01007.06`: Altera **Cyclone V `5CEFA4U19I7`** FPGA; MCU marked
+    `STM32F103CBU6 GH24W 93 CHN 516`; flash marked `ATH520 64DM Y`; has JTAG pads
+    (`TDO/TCK/TDI/TMS`) in addition to SWD.
+  - `P01007.14`: no FPGA — **Artosyn `AR8001`/`AR8003`** instead; MCU marked
+    `STM32F103CBU6 GH24W 93 CHN 536`; flash marked `ATH542 64DM Y A3GXAA`; **no JTAG pads**,
+    SWD only (`SWCLK`/`SWDIO`).
+  - `P01007.08` (between the two) is noted only as "switched to different voltage
+    regulators" — same FPGA as `.06`.
+- **`CENTER` connector type (sourced, not guessed):** the OFDM board's own wiki page
+  doesn't give a part number, but the **mating connector on the other end of the same
+  cable** — on the `P3X ESC center board` — does: **JST GH series, `MB10B-GHS-TBT`,
+  1.25 mm pitch, top-entry** (crimp wire-to-board). That page's "10-pin OFDM con." table
+  (it's 10-pin because one header also feeds the VPS module) numbers the pins:
+
+  | Pin | Signal |
+  |---|---|
+  | 1, 2 | GND |
+  | 3, 4 | 5V |
+  | 5 | TX1 (FC→OFDM) |
+  | 6 | RX1 (OFDM→FC) |
+  | 7 | GND |
+  | 8 | TX6 (FC→VPS) |
+  | 9 | RX6 (VPS→FC) |
+  | 10 | 5V |
+
+  The OFDM module's 6-pin `CENTER` only needs pins 1/2 (GND), 3/4 (5V), 5 (TX1), 6 (RX1) —
+  matches the `GND`/`5V`/`RX`/`TX` set on the `P01007.14` service pads above. **Caveat:**
+  this is the ESC board's connector/pin order, not an independently confirmed pin-1..6 map
+  on the OFDM board's own header — check continuity before powering up.
+
+### Bench power-up without the gimbal/camera attached
+
+Not covered by the wiki; reasoned from the data-flow docs, **unconfirmed by bench test**:
+
+- Per `video-and-link.md`, video (from the gimbal-side DM368 encoder, via `CAMERA`) and
+  control/telemetry (from the FC, via `CENTER`) are **separate logical channels**
+  multiplexed by the air FPGA/MCU — control/telemetry "do not depend on" video. So a
+  `CENTER`-only bench rig (power + DUML UART) should plausibly still pair/transmit, just
+  with no video.
+- Leaving `CAMERA` (`DP`/`DM` USB, CAN) disconnected is expected to be harmless electrically
+  (floating USB reads as "nothing enumerated"; a CAN bus with no other node just has no
+  traffic). If the board's CAN transceiver instead throws a bus fault with nothing attached,
+  a 120Ω termination across `CANH`/`CANL` is the standard stub — **not verified against this
+  board**.
+- Actually emulating the `CAMERA` link to get real video out is a much bigger job: the
+  DM368→FPGA framing is undocumented (`fpga-interfaces.md`), so there's no published
+  protocol to emulate against.
 
 Other repair resources: the dji-firmware-tools wiki (sister pages for the camera, FC and
 other boards), the PhantomPilots forum, OpenBoardView/Badcaps for any shared boardview,
