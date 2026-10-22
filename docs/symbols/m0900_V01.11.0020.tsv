@@ -51,3 +51,23 @@ addr	kind	name	note	source
 0x0801a160	table	duml_dispatch_set09	records [handler|1, (cmdid<<24)|(set<<16)|0x0009]: cmd 05 06 07 12 13 01(set00 & 13) ff(09&13) 07(set00,13) 08(set13)	table dump (verified)
 0x08016260	table	fpga_cfg_table_a	boards 2/4/5; 2x256 bytes written to FPGA regs 0..0xff; page 2 [0xE9]=0x03	init_fpga_config
 0x08016460	table	fpga_cfg_table_b	boards 6/7; page 2 [0xE9]=0x80	init_fpga_config
+0x0800ddc8	func	system_init	SystemInit: HSION, clears CFGR/CR, CIR=0x9f0000, then falls into set_sysclk	disasm (verified)
+0x0800dd28	func	set_sysclk	HSE on, FLASH 2 wait states, PPRE1 /2, PLLSRC=HSE PLLMUL x6, PLL on, SW=PLL; HSE_VALUE literal 0xb71b00 = 12 MHz => 72 MHz SYSCLK, PCLK1 36, PCLK2 72	disasm (verified; crystal inferred)
+0x08009854	func	rcc_get_clocks_freq	StdPeriph RCC_GetClocksFreq: out[0]=SYSCLK [1]=HCLK [2]=PCLK1 [3]=PCLK2 [4]=ADCCLK	disasm
+0x0800aca0	func	uart_init	USART1 256000 8N1 (DMA1 ch4 TX buf 0x200001d0, ch5 RX 0x200002d0 512 B); USART2 250000 only if board==7; USART3 256000 8N1 (DMA ch2 TX 0x200007d0, ch3 RX 0x200008d0 256 B); RX IDLE-line IRQ framing	disasm (verified)
+0x0800a75c	func	usart_init	StdPeriph USART_Init; BRR = int(25*clk/(4*baud)) split /100 and *16+50 /100; USART1 uses PCLK2 else PCLK1	disasm (verified)
+0x0800b0a4	func	uart_send	args (port 1/2/3, buf, len): copies into per-port TX FIFO then starts DMA (port1 buf 0x200001d0, port2 0x200004d0, port3 0x200007d0)	disasm (verified)
+0x0800b536	func	spi2_init	SPI2 master, 8-bit, CPOL0 CPHA1, soft NSS, BR /8 (4.5 MHz at PCLK1 36), MSB first; PB13/PB15 AF_PP, PB14 input, PB12 CS output high	disasm (verified; Renode CR1=0x355)
+0x0800b31c	func	can_init	CAN1: PA11 RX IPU, PA12 TX AF_PP, prescaler 3, SJW 1tq, BS1 6tq, BS2 5tq => 1 Mbit/s at PCLK1 36 MHz; ABOM+AWUM; called only if board in {2,4,5,6}	disasm (verified)
+0x0800b3ec	func	can_queue_init	(obj, std_id, is_tx, size, buf): ring for one CAN id; init at 0x080113a8 with 0x412 TX and 0x413 RX	disasm
+0x0800b468	func	can_enqueue_and_tx	enqueue bytes into queue obj then CAN_Transmit up to 8 B with StdId=obj[0] when TX idle	disasm
+0x0800b23c	func	can_rx0_handler	CAN RX0 IRQ (vector 20): match StdId to queue objects, push bytes	disasm
+0x0800ab86	func	usart1_irq	IDLE IRQ: stop DMA ch5, count = 0x200 - remaining, copy to RX FIFO, re-arm	disasm
+0x0800ac42	func	usart3_irq	IDLE IRQ: same pattern, buffer size 0x100	disasm
+0x0801198a	func	duml_dispatch	walks 8-byte records at 0x0801a120 [handler,type,index,set,id] matching pkt[5] pkt[9] pkt[10]; no match => tail-call packet_send (forward)	disasm (verified)
+0x080118e4	table	packet_send_route_tbb	31-byte tbb indexed by pkt[5]&0x1f: types 2,6,13,14,16,20,22 => uart_send(3); 1,4,8,15 => 0x0801141c; 3,5,10,11,12,18,21,23 => 0x08011938; 17 => 0x0801195c; 30 => 0x0801190e; others dropped	disasm (verified)
+0x0801141c	func	route_path_a	boards 2/4/5/6: CAN queue 0x20002330; board 7: type 8 idx 1 or 7 => USART1 else USART2	disasm (verified)
+0x08011eae	func	duml_crc16_fix	recompute DUML CRC16 (seed 0x3692) over pkt[0..len-3] and store at tail	disasm
+0x08011ed4	func	duml_set03_id43_fwd	dispatch key 0x43030009: rewrite receiver type to 2 then 1, fix CRC, packet_send (fan-out of FC OSD push)	disasm (verified)
+0x08012012	func	duml_set03_id42_fwd	dispatch key 0x42030009: rewrite receiver type to 4 (gimbal), fix CRC, packet_send	disasm (verified)
+0x0800bd30	func	iwdg_init	IWDG PR=4 (/64) RLR=0x271 => 1.0 s at LSI 40 kHz nominal	disasm
