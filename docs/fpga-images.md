@@ -10,6 +10,7 @@ properties. (Images live in the analysis env, not in this repo.)
 | LB2 `m2000` | ground FPGA rev 00 (RX) | 8 MiB | 4.65 MB | 01.00.2107 | 7.99 | `39a74d8d4a69ebaf` |
 | LB2 `m2001` | ground FPGA rev 01 (RX) | 8 MiB | 2.12 MB | 01.01.2107 | **5.84** | `b6cc5e96f12446b1` |
 | LB2 `m2002` | ground FPGA rev 02 (RX) | 8 MiB | 4.80 MB | 01.02.2109 | 7.99 | `30aa24c31e5180a7` |
+| P3S `m1900` | air FPGA (TX) | 4 MiB | 2.01 MB | — | — | (independent sample, see below) |
 
 ## Observations
 
@@ -20,6 +21,14 @@ properties. (Images live in the analysis env, not in this repo.)
   2107/2107/2109) from `C1_FW_V01.06.0000` (Lightbridge 2). They differ ~55% from each
   other — genuinely different bitstreams, almost certainly the AD9363+Cyclone-V vs
   Artosyn-ASIC board revisions.
+- **A second, independent air-FPGA sample corroborates the unidentified-die finding.**
+  Phantom 3 Advanced (`P3S_FW_V01.01.0008`) carries its own `m1900`, not byte-identical
+  to the P3X/Inspire1 image (different SHA-256, different firmware era: v01.01.0008 vs
+  v01.11.0020), same header format. Probed against all 7 Mistral dies with the same
+  result as the P3X image — no die resolves cleanly, resolved-route count climbs with
+  device size rather than plateauing. Two independent builds failing identically rules
+  out "artifact of one bad image" as an explanation; the air die really is unidentified
+  from the bitstream. See GitHub issue #3 for the full probe data.
 - **`m2001` is the standout and the best decompile candidate.** Entropy **5.84** vs ~7.99
   for the rest, with less "used" span — i.e. **much less compressed/packed**, closest to a
   plain bitstream. It is the easiest to feed to Project Mistral or to de-pack, far more
