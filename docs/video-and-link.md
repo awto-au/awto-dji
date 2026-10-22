@@ -180,3 +180,27 @@ pcap or SDR capture of the video link was found — generate your own (usbmon on
 USB, or the MCU UART). Caveat: the standalone **Lightbridge 2** product markets an optional
 encryption toggle; our P3 firmware analysis found no payload cipher on the integrated link —
 keep the two separate.
+
+### How to confirm it's data, not burned OSD (bOSD) — no capture needed
+
+Converging evidence, cheapest first:
+
+1. **Degradation test (observable in any P3 flight video).** If the OSD were burned into the
+   H.264, it would macroblock *with* the video when the link weakens. It does not — the video
+   pixelates while the OSD stays crisp (redrawn locally from the last telemetry packet; the
+   telemetry channel is lower-rate and better protected, so it often survives when video is
+   breaking up). Sharp OSD over blocky video = separately transmitted data. Any weak-signal
+   moment in a public P3 YouTube flight shows this.
+2. **Flight control / geofence need real numbers.** No-fly enforcement runs on the aircraft
+   from its own onboard GPS (independent of the downlink), and the app's map/warnings/zone
+   dialogs need real position too. The data demonstrably exists as numbers. (This is about
+   where the data lives, not about altering enforcement.)
+3. **`.SRT` telemetry files.** DJI recordings ship a `.SRT` subtitle sidecar with per-frame
+   GPS, altitude/height, etc. as plain text — telemetry persisted as structured data. If it
+   were only burned pixels there would be no `.SRT`.
+4. **Decodable DUML.** `app/packages/duml` already turns `OSD General` (0x03/0x43) into
+   height/velocity/attitude numbers — the on-wire message is structured data.
+
+Burned OSD *does* exist in the system, but only as a **ground-side output option** (the
+Lightbridge ground unit can composite the overlay onto its HDMI/SDI out for monitors that
+can't draw it) — generated at the ground from the received data, never sent from the bird.
