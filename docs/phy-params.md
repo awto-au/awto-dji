@@ -40,10 +40,10 @@ Tags: **verified** = read from firmware/registers or checked against no-OS sourc
 - `docs/data/channel-table.tsv`: 39-entry channel plan, tables A (boards 2/4/5) and B (6/7)
 - Regenerate: `python3 scripts/re/export_phy_params.py`
 
-## FPGA register map (MCU -> FPGA over SPI2)
+## FPGA register access table (MCU -> FPGA over SPI2; meanings NOT decoded)
 
-- Table: `docs/data/fpga-regs.tsv` (reg, init-table values for boards A=2/4/5 and B=6/7, constant-register writers/readers). Regenerate: `python3 scripts/re/fpga_regmap.py`.
-- Verified: page 2 of table A holds the channel PLL words at 0xB0-0xBE: `79 00 CB CC 0C` (N=121, frac 0x0CCCCB = 2422 MHz), `7A 00 F8 FF 3F` (N=122.5 = 2450 MHz), then 2422 MHz again. `radio_config_apply` rewrites 0xB8-0xBE at run time from the channel table.
+- Table: `docs/data/fpga-regs.tsv`: what the firmware writes/reads, not what registers do (no FPGA documentation or decoded bitstream used). Columns: (reg, init-table values for boards A=2/4/5 and B=6/7, constant-register writers/readers). Regenerate: `python3 scripts/re/fpga_regmap.py`.
+- Pattern match (inferred meaning): page 2 of table A holds bytes equal to the channel PLL words at 0xB0-0xBE: `79 00 CB CC 0C` (N=121, frac 0x0CCCCB = 2422 MHz), `7A 00 F8 FF 3F` (N=122.5 = 2450 MHz), then 2422 MHz again. `radio_config_apply` rewrites 0xB8-0xBE at run time from the channel table.
 - Inferred: the FPGA retunes the AD9363 itself from these words, so live AD9363 state can differ from the MCU script. Needs an SDR or logic-analyser check.
 - Verified (static): 0x97-0x9B (cfg struct), 0x04-0x07, 0x02, 0x10, 0xCE and 0xE9 are touched by named code paths; 0xA0-0xAE are written by one large function (0x0800d400). Register meanings are NOT decoded; 4 write and 9 read call sites use a computed register number.
 
