@@ -8,7 +8,7 @@ method — honestly separating "shown" from "needs more work / tooling".
 
 | Claim | Proof target | Status |
 |---|---|---|
-| ID is CPU-placed cleartext data | DUML "Connected Master Id" handler storing + emitting the ID on the data path | **shown (role path)** — traced the RC role/pairing state machine at `m1400:0x9bd0`: cleartext field parse into RAM, no crypto (below). Binding-`Id` handler itself not yet isolated |
+| ID is CPU-placed cleartext data | DUML "Connected Master Id" handler storing + emitting the ID on the data path | **shown** — role path (`0x9bd0`) AND the binding handler itself: Connected Master Id Set `0x2bca` / Get `0x2b10`, cleartext DUML <-> RAM `0x100005e8`, no crypto (below) |
 | FPGA is just the datastream (control via GPIO, data via UART) | MCU GPIO = discrete control strobes; data over UART | **shown on `m1400`** — GPIO routine at 0x1234 does FIOSET/FIOCLR bit toggles; UART ISR present; no SPI (see `id-entry-point.md`) |
 | Whitening is stock / at most a seed | MCU writing (or not) a scrambler-seed/frame-mode register to the FPGA | **not yet** — needs the FPGA bring-up path in `m0900`/`m1400` |
 | PHY is WiMAX-family with standard params | `m0900` AD9363 SPI register sequence decoded vs UG-570 | **partial** — SPI confirmed; config is runtime-computed, not a static table (below) |
@@ -126,3 +126,35 @@ The exact DUML "Connected Master *Id*" (aircraft binding) handler is not yet iso
 role path (0x9bd0) and these two findings all show the same mechanism — cleartext fields in
 MCU RAM, component-auth the only crypto — so the binding-ID handler is expected to be more of
 the same; isolating it is the remaining step.
+
+## ISOLATED: the "Connected Master Id" Set/Get handlers (`m1400`)
+
+Full dispatch chain, from the DUML frame to the leaf handlers, all on cleartext bytes
+(radare2 `-a arm -b 16 -m 0`; cmd ids from the o-gs/dji-firmware-tools DUML dissector:
+set 0x06 = RC, cmd 0x0C = Connected Master Id Set, 0x0D = Get).
+
+```
+1. DUML frame dispatcher  @0x5c76:  ldrb r0,[frame,9]  ; cmd_set (frame byte 9)
+                                    cmp r0,6; (==6) route to RC command handling
+2. RC cmd_id dispatcher   @0x56e4:  ldrb r1,[frame,0xa] ; cmd_id (frame byte 10)
+                                    cmp r1,0xd; beq 0x5762            ; 0x0D Get
+                                    TBB [pc,r1] @0x56f0 for id<=0x0C
+                                    table[0x0C]=0x33 -> 0x575a        ; 0x0C Set
+3. Leaf stubs:   0x575a: mov r0,r4(frame); bl 0x2bca   ; SET handler
+                 0x5762:                    bl 0x2b10   ; GET handler
+4. SET 0x2bca:  copies connection/ID fields from RAM state 0x100005e8(+0x62...) into a
+                15-byte buffer via plain ldrb/strb, then bl 0x2832 (build+send DUML response)
+5. GET 0x2b10:  r0=frame+0xb (payload); loops over payload fields, bound from the DUML
+                10-bit length field (ldrh [frame,1]; ubfx ,0,0xa); switch on each field id
+                (1/3/0xa/0xc/0xd/0xf) -> return stored values from RAM state 0x100005e8
+```
+
+**Proven:** the Connected Master Id Set/Get path is entirely **cleartext in MCU software** —
+`cmd_set`/`cmd_id` are read straight from the frame bytes (9 and 10), the handlers copy the
+ID/connection fields as **plain bytes** between the DUML payload and a RAM state struct at
+**`0x100005e8`**, and build a cleartext DUML response. **No decryption/encryption anywhere in
+the path.** The binding ID is CPU-placed cleartext data, read/written over DUML — exactly the
+model. This closes the one item left open in the role-path trace above.
+
+Reproduce: `r2 -a arm -b 16 -m 0 -qq -c 'pd 48 @ 0x56d8' c1_m1400.bin` (dispatcher);
+`... -c 'pd 40 @ 0x2bca'` (Set); `... -c 'pd 36 @ 0x2b10'` (Get).
