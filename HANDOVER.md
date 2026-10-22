@@ -34,7 +34,7 @@ WiMAX scrambler. Proven in MCU code on the ground side:
 | FPGA = just the datastream (GPIO control, UART data, no SPI) | **proven** on `m1400`; corroborated by o-gs teardown |
 | "Encrypt" in firmware = ATSHA204 component auth, not link crypto | **proven** — `m1400:0xf880` cluster; no AES/TEA in either MCU |
 | WiMAX link params tracked + emitted as telemetry | **proven** — fmt `0x25abc`, reporter `0x256cc` |
-| PHY params (AD9363 freq/BW/sample-rate) | **open, tooling ready** — config is runtime-computed; the Renode capture harness (`renode/`) is built + validated (`docs/phy-params.md`), blocked only on the `m0900` firmware image |
+| PHY params (AD9363 freq/BW/sample-rate) | **open, firmware now boots in Renode** — real `m0900` boots byte-exact (`docs/data-manifest.md`), but makes **zero** AD9363 SPI transactions in 15s sim time; bring-up looks gated behind an external trigger not yet supplied. Tracked in [awto-au/awto-dji#2](https://github.com/awto-au/awto-dji/issues/2); detail in `docs/phy-params.md` |
 | **Data is unencrypted OVER THE AIR** | **NOT proven** — MCU-layer cleartext ≠ air-layer; FPGA could encrypt. Needs an SDR capture. See `what-is-actually-secret.md` LAYER CAVEAT |
 
 ## Tooling status (what you need on Selwyn)
@@ -55,11 +55,15 @@ WiMAX scrambler. Proven in MCU code on the ground side:
 ## DATA NOT IN THE REPO (important)
 
 Firmware images, the Mistral build, and all unpacked/decompiled artifacts (routes/`.bt`,
-`m2001_analysis/`, etc.) lived in the cloud container's **ephemeral scratch** and are **not**
-committed (binaries/licensing). To reproduce on Selwyn:
+`m2001_analysis/`, etc.) are **not committed** (binaries/licensing) — same ephemeral-scratch
+rule as before, but acquisition is no longer a blocker: `docs/data-manifest.md` records every
+input (source, version, size, **SHA-256**) so anyone can re-fetch byte-identical files. `m0900`
+has been obtained + verified this way and is already running in Renode (see PHY-params row
+above). To reproduce the rest on Selwyn:
 
 1. Obtain the P3 firmware (`P3X_FW_V01.11.0020`) and the C1 RC firmware (`c1_*`) — DJI xV4
-   containers. See `docs/code-provenance.md` / `docs/firmware-overview.md`.
+   containers. See `docs/data-manifest.md` for exact sources/hashes, `docs/code-provenance.md`
+   / `docs/firmware-overview.md` for background.
 2. Unpack with dji-firmware-tools `dji_xv4_fwcon.py` → per-module `.bin` (m0900 air STM32,
    m1400 ground LPC1765, m2001 ground Cyclone-V FPGA, etc.).
 3. For FPGA work: de-pack `m2001` and run Mistral (`mistral-cv decomp 5CEBA4U19C8 m2001.depack.bin out.bt`).
@@ -75,10 +79,12 @@ All the analysis docs cite exact offsets so you can re-derive against your own u
 2. **Extend the telemetry decoders** (battery `0x0b`, GPS, flight-status, home-point
    `0x03/0x44`, version/SN `0x00/0x01`) from the o-gs dji-firmware-tools dissector; mark each
    "confirm against capture".
-3. **Renode-emulate `m0900`** to capture the AD9363 SPI register writes → decode vs UG-570 →
-   exact freq/BW/sample-rate (closes the PHY-params item). *Harness built + validated in
-   `renode/`; drop in `P3X_FW_V01.11.0020_m0900.bin` and run `renode/scripts/m0900_capture.resc`
-   (see `docs/phy-params.md`).*
+3. **Find what gates AD9363 bring-up in `m0900`** — it boots in Renode but idles with zero
+   SPI transactions; either disassemble its main loop/state machine, or inject a plausible
+   DUML/GPIO stimulus and re-run. Tracked in
+   [awto-au/awto-dji#2](https://github.com/awto-au/awto-dji/issues/2); detail + repro steps
+   in `docs/phy-params.md`. Once it's talking to the AD9363, decode the capture vs UG-570 for
+   exact freq/BW/sample-rate.
 4. **Over-the-air SDR capture** → (a) settle the air-encryption question, (b) run
    Berlekamp-Massey on an all-0s / repetitive-telemetry capture to recover the scrambler
    (`known-plaintext-plan.md`, `alternative-approaches.md`).
@@ -101,7 +107,9 @@ The **repo is the join point**, not the chat. To pick this up correctly:
    clone). Everything is on **`main`**.
 2. Read in order: `CLAUDE.md` (scope + safety + conventions) → `HANDOVER.md` (this file) →
    `docs/README.md` (doc index). Those give the full state; you do **not** need the chat.
-3. Pick a task from "Next steps" above. The active one is `docs/renode-task.md`.
+3. Pick a task from "Next steps" above. The active one is
+   [awto-au/awto-dji#2](https://github.com/awto-au/awto-dji/issues/2) (AD9363 bring-up
+   trigger); `docs/renode-task.md` has the original harness-build task, now done.
 4. Firmware/binaries are not in the repo — `docs/data-manifest.md` has every input with its
    SHA-256 so you can re-fetch and verify the exact files.
 
