@@ -158,3 +158,21 @@ model. This closes the one item left open in the role-path trace above.
 
 Reproduce: `r2 -a arm -b 16 -m 0 -qq -c 'pd 48 @ 0x56d8' c1_m1400.bin` (dispatcher);
 `... -c 'pd 40 @ 0x2bca'` (Set); `... -c 'pd 36 @ 0x2b10'` (Get).
+
+## Scope limit: MCU-layer cleartext is NOT over-the-air proof
+
+Everything proven above is at the **MCU / DUML layer** (the bytes at USB/UART, after DJI's
+hardware has demodulated the radio). It does **not** prove the data is unencrypted **over the
+air**: the MCU hands cleartext bytes to the FPGA, and the FPGA could encrypt / keyed-scramble
+them before modulation with the MCU code looking identical.
+
+Firmware-side check done: **no block cipher in either MCU.** Scanned `m1400` and `m0900` for
+AES S-box / inverse S-box / T-table and TEA/XTEA constants -> none. `m0900` has no crypto
+strings at all; `m1400`'s only `Encrypt*` strings (`EncryptErr`, `Encrypt change/loss`) are
+the ATSHA204 component-auth cluster. This is **supporting** evidence that the MCU does not run
+link encryption, but it is **not conclusive**: a cipher could live in the FPGA (fixed or
+key-loaded) which firmware cannot rule out (FPGA datapath unreadable - the decode gaps).
+
+Remaining firmware angle: look for a cipher key/seed being loaded MCU->FPGA at bring-up (same
+place as the scrambler-seed check). Even "none found" would not fully exclude a fixed FPGA
+cipher. **The only definitive test of over-the-air encryption is an SDR capture.**

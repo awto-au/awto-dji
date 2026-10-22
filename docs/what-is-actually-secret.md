@@ -4,6 +4,18 @@ Synthesis of the link analysis. "Hidden" is three different things; only a narro
 real cryptography, and none of it gates reading the ID, reading telemetry, or app-to-bird
 control.
 
+> **LAYER CAVEAT (important).** Everything "cleartext/no-crypto" below is **proven only at
+> the MCU / DUML layer** — i.e. at the USB/UART, where DJI's own hardware has already
+> demodulated the radio. It is **not proof that the data is unencrypted over the air.** The
+> MCU hands cleartext bytes to the FPGA; the FPGA *could* encrypt or keyed-scramble them
+> before modulation and the MCU code would look identical. Supporting (not conclusive)
+> evidence: no AES/TEA cipher tables or crypto routines exist in either MCU (`m1400`,
+> `m0900`); the only `Encrypt*` strings are ATSHA204 component auth. But a cipher in the
+> **FPGA** cannot be ruled out from firmware, because the FPGA datapath is unreadable
+> (decode gaps). **The over-the-air claim (incl. "unkeyed whitening") is inference from the
+> WiMAX basis, NOT proof.** Only an over-the-air SDR capture (or reading the FPGA datapath)
+> settles it. Treat Tier-3 "whitening unkeyed" accordingly.
+
 ## Tier 1 — genuinely secret (real cryptography)
 
 | Thing | What it protects | Does it gate interop? |
