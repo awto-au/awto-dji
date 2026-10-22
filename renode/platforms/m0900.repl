@@ -32,3 +32,12 @@ spi2: SPI.STM32SPI @ sysbus 0x40003800
 ad9363_spi1: SPI.AD9363SpiTap @ spi1
 
 ad9363_spi2: SPI.AD9363SpiTap @ spi2
+
+// RCC isn't modeled (same gap the stock repl's own RCC_CR tag works around), so CFGR's
+// SWS bits never report "switched to PLL" and the firmware's clock-switch wait spins
+// forever. Statically tag it with SWS=PLL (bits[3:2]=10) pre-set, same pattern as the
+// stock RCC_CR tag below it. Verified: without this, boot never reaches the AD9363
+// bring-up (confirmed by running the real m0900 firmware - see docs/phy-params.md).
+sysbus:
+    init:
+        Tag <0x40021004, 0x40021007> "RCC_CFGR" 0x00000008

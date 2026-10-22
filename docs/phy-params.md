@@ -9,21 +9,58 @@ Honesty markers used throughout: **verified** (reproduced here), **needs-tooling
 ready, waiting on an input), **inferred** (reasoned, not yet observed). This file is the
 result slot; the numbers land here once the capture runs.
 
-## Status (2026-10-22)
+## Status (2026-10-23)
 
 | Piece | State |
 |---|---|
 | Renode built from source (1.17.0, `--no-gui`, .NET 8) | **verified** — builds, runs |
-| STM32F103 platform for `m0900` (`renode/platforms/m0900.repl`) | **verified** — loads; adds SPI1/SPI2 + AD9363 taps to the stock F103 |
+| STM32F103 platform for `m0900` (`renode/platforms/m0900.repl`) | **verified** — loads; adds SPI1/SPI2 + AD9363 taps + RCC_CFGR fix (see below) |
 | AD9363 SPI tap (`renode/peripherals/AD9363SpiTap.cs`) | **verified** — compiles at runtime; frames + decodes SPI; see self-test below |
-| End-to-end capture harness (`renode/scripts/m0900_capture.resc`) | **verified** to load; **needs-tooling** to run (firmware) |
-| **Captured AD9363 register sequence** | **needs-tooling** — blocked on the `m0900` firmware binary (not in repo) |
+| `m0900` firmware obtained + verified | **verified** — downloaded from `dl.djicdn.com` (DJI's own CDN, still live), unpacked with `dji_xv4_fwcon.py`; SHA-256 of both the container and the unpacked module match `docs/data-manifest.md` byte-for-byte |
+| Real firmware boots in Renode | **verified** — `PC = 0x8008201, SP = 0x20004CB8`, exactly the documented reset vector/SP; required one fix (RCC_CFGR, below) to get past the clock-switch wait |
+| **Captured AD9363 register sequence** | **needs-tooling** — firmware boots and reaches a steady idle loop (watchdog-kick only) but makes **zero** SPI1/SPI2 transactions in 15 simulated seconds. AD9363 bring-up appears gated behind an external trigger (UART/DUML command from another module, or a GPIO input) not yet supplied in the emulation. See "Boot findings" below |
 | **Decoded freq / BW / sample-rate / gains** | **needs-tooling** — follows from the capture |
 
-The capture is **blocked only on obtaining the `m0900` firmware image**
-(`P3X_FW_V01.11.0020_m0900.bin`), which is not committed to this repo. See `HANDOVER.md` →
-"DATA NOT IN THE REPO" and `docs/code-provenance.md` (DJI xV4 container, unpacked with
-dji-firmware-tools `dji_xv4_fwcon.py`). Everything else is built and validated.
+### Fix required: RCC_CFGR tag
+
+The stock `stm32f103.repl` already works around the unmodeled RCC peripheral for `RCC_CR`
+(`Tag <0x40021000, 0x40021003> "RCC_CR" 0x0A020083`, pre-set PLL-ready/HSE-ready bits) — but
+not for `RCC_CFGR`. Without a value there, `m0900`'s clock-switch-to-PLL wait loop (polling
+CFGR's SWS bits) spins forever, since nothing ever reports "switched". Added the same pattern
+to `renode/platforms/m0900.repl`:
+
+```
+sysbus:
+    init:
+        Tag <0x40021004, 0x40021007> "RCC_CFGR" 0x00000008   // SWS = PLL selected
+```
+
+With this, the real firmware boots past clock init, AFIO/GPIO config, and what look like
+CAN/I2C/USB bring-up writes (0x40006600, 0x40003000 region addresses - not yet identified
+against the base repl's memory map) into a steady loop that only services the independent
+watchdog (`IWDG_KR` writes of `0xAAAA`/`0xCCCC` at 0x40003000, ~500ms period).
+
+### Boot findings (2026-10-23, real firmware, 15 simulated seconds)
+
+- `cpu PC`/`SP` at start match the documented vector table exactly — confirms the firmware
+  module, load address, and VectorTableOffset are correct.
+- `spi1.ad9363_spi1 TransactionCount` and `spi2.ad9363_spi2 TransactionCount` are **both 0**
+  after 15 s of simulated time (`emulation RunFor "00:00:15"`) — `m0900` never touches either
+  SPI controller from cold boot alone.
+- The firmware settles into a steady state (watchdog kick every ~0.5s, no change over the
+  run) rather than progressing further - consistent with the air MCU waiting for a command
+  (DUML over UART, or a GPIO signal from the FPGA/another module) before it brings up the
+  radio, rather than configuring the AD9363 unconditionally at boot.
+- **Next step (not yet done):** either (a) disassemble `m0900`'s main loop/state machine to
+  find what condition gates AD9363 init (same method as the `m1400` proofs in
+  `docs/cpu-reversing-proof.md`), or (b) inject a plausible stimulus (a DUML "enable
+  transmission" command on a UART, or drive a candidate GPIO input) and re-run. (a) is more
+  certain; (b) is faster if the trigger is guessable.
+
+Firmware acquisition is **no longer the blocker** — the harness runs against the byte-exact,
+hash-verified real `m0900.bin` (see `docs/data-manifest.md`). The open item is now purely
+firmware behavioural: finding/supplying whatever `m0900` is waiting on before it talks to the
+AD9363.
 
 ## Why emulation (recap)
 
