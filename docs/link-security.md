@@ -5,6 +5,34 @@ firmware and the DUML command set. Short answer: **binding is by identifier, not
 crypto key pair; the "scrambler" is whitening, not a cipher; no evidence of a
 negotiated/rolling link key.**
 
+## Guiding principle: nothing in this link is hidden — don't reverse what isn't secret
+
+Neither the ID nor the whitening is a secret, so neither should be *excavated* from the
+FPGA. Treat them as what they are:
+
+- **The ID is placed into the data by a CPU, in cleartext.** Confirmed from firmware: the
+  ground MCU `m1400` (LPC1765) frames the Master-ID as a **DUML message** and sends it to
+  the FPGA over a **UART** (`docs/id-entry-point.md`). The FPGA only modulates the bytes it
+  is handed. So the ID is read **off the wire** (UART tap / `usbmon` / DUML stream) — never
+  from the FPGA netlist. "Where it enters the FPGA" is just framed bytes arriving on a
+  serial port.
+- **The whitening is not a security mechanism at all.** A scrambler exists for DC-balance
+  and clock recovery (break up long 0/1 runs so the PLL stays locked, keep the spectrum
+  flat) — every PHY publishes one. It is almost certainly the **standard WiMAX randomizer**
+  (`x^15 + x^14 + 1`, seed from frame/ID per spec): you **recognise** it, you don't reverse
+  it. And even if DJI used a custom polynomial, it is **unkeyed and linear**, so
+  **Berlekamp-Massey recovers it from one known-plaintext capture**, mechanically. "Linear +
+  no key" falls out of a single capture either way.
+
+Consequence: **there is nothing cryptographically secret in this link.** No payload cipher
+(ATSHA204 is component auth only), the ID is an address, the whitening is unkeyed. The only
+"protection" is proprietary PHY + pairing-by-address — obscurity, not key secrecy. So interop
+needs: re-implement a documented-family (WiMAX/LTE) PHY, read a cleartext address, solve one
+unkeyed scrambler. **None of it requires the FPGA netlist, the Mistral ALM model, or
+silicon** — those answer "how is the modem built", not "how do we talk to it". The FPGA
+analysis (`m2001-decomp-findings.md`, `fpga-emulation-plan.md`) stands as architecture, not
+as a dependency of the link goal.
+
 ## Two different "protocols" — only one is secret
 
 - **DUML** — the command/telemetry/app protocol. **Publicly documented / reverse-
