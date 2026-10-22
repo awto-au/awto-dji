@@ -34,6 +34,40 @@ valid bare image).
 Reproduce: `scripts/fpga/*` for the FPGA side; the MCU scan is a literal-pool search for the
 peripheral bases above over `c1_m1400.bin`.
 
+## Transport refined by disassembly (GPIO = control, data = UART)
+
+Disassembling the GPIO routine at `0x1234` (radare2, `-a arm -b 16 -m 0`) settles what the
+GPIO bus is actually *for*. It loads GPIO base `0x2009c000` and, on a 0-3 state selector,
+does read-modify-write **bit set/clear** on the LPC176x fast-GPIO `FIOSET`/`FIOCLR`
+registers:
+
+```
+case 1: [r1,0x3c] |= 0x400000   ; GPIO1.FIOCLR  bit22
+        [r1,0x18] |= 0x010000   ; GPIO0.FIOSET  bit16
+case 2: [r1,0x38] |= 0x400000   ; GPIO1.FIOSET  bit22
+        [r1,0x18] |= 0x010000   ; GPIO0.FIOSET  bit16
+        [r1,0x7c] |= 0x2000000  ; GPIO3.FIOCLR  bit25
+case 3: [r1,0x38] |= 0x400000   ; GPIO1.FIOSET  bit22
+        [r1,0x1c] |= 0x010000   ; GPIO0.FIOCLR  bit16
+        [r1,0x78] |= 0x2000000  ; GPIO3.FIOSET  bit25
+```
+
+(LPC176x fast-GPIO: port *n* at `0x2009c000 + 0x20*n`; `FIOSET=+0x18`, `FIOCLR=+0x1C`.)
+These are **discrete control lines** toggled by state — reset / mode / enable / config
+strobes to the FPGA (port0 bit16, port1 bit22, port3 bit25). There is **no byte-streaming
+loop and no `FIOPIN` data write**, so the GPIO is *not* a parallel data bus for the ID.
+
+The MCU's data transport is **UART, interrupt-driven**: the handler at `0x16f3c` reads a
+UART's IIR (`[base,8] & 0xf`, interrupt-ID decode) off base `0x4009c000` (UART3), and the
+image sets up UART0-3. DJI's standard inter-module transport is **DUML over UART**, and the
+Master-ID is a DUML field ("RC Connected Master Id"). So:
+
+> **The Master-ID enters the FPGA as a DUML frame over a MCU<->FPGA UART; the GPIO lines are
+> the control/handshake (reset/mode/enable) beside it, not the data path.** SPI is unused.
+
+Still not determinable from firmware alone: **which** UART (0/1/2/3) is the FPGA link vs the
+RC-host / stick links — that needs the PINCON pin-mux trace plus the board schematic.
+
 ## Verified from the bitstream (`m2001`)
 
 The ground FPGA exposes **~195 true external input pins** and ~55 outputs (counted by edge
