@@ -8,7 +8,7 @@ method — honestly separating "shown" from "needs more work / tooling".
 
 | Claim | Proof target | Status |
 |---|---|---|
-| ID is CPU-placed cleartext data | DUML "Connected Master Id" handler storing + emitting the ID on the data path | **partial** — `m1400` has `MASTER`/`TestMaster`/`FpgaErr` strings; handler not yet traced to the send |
+| ID is CPU-placed cleartext data | DUML "Connected Master Id" handler storing + emitting the ID on the data path | **shown (role path)** — traced the RC role/pairing state machine at `m1400:0x9bd0`: cleartext field parse into RAM, no crypto (below). Binding-`Id` handler itself not yet isolated |
 | FPGA is just the datastream (control via GPIO, data via UART) | MCU GPIO = discrete control strobes; data over UART | **shown on `m1400`** — GPIO routine at 0x1234 does FIOSET/FIOCLR bit toggles; UART ISR present; no SPI (see `id-entry-point.md`) |
 | Whitening is stock / at most a seed | MCU writing (or not) a scrambler-seed/frame-mode register to the FPGA | **not yet** — needs the FPGA bring-up path in `m0900`/`m1400` |
 | PHY is WiMAX-family with standard params | `m0900` AD9363 SPI register sequence decoded vs UG-570 | **partial** — SPI confirmed; config is runtime-computed, not a static table (below) |
@@ -50,3 +50,34 @@ parameter proof needs **emulation (Renode) to capture the runtime AD9363 config*
 available in this environment, so it is the clear next-tooling step rather than something a
 static pass can finish. No part of this requires defeating a secret; it is interoperability
 analysis of the operator's own device.
+
+## Traced: RC role/pairing state machine (`m1400` @ 0x9bd0)
+
+Disassembled with radare2 (`-a arm -b 16 -m 0`). The strings `MASTER` (0x9db4) / `SLAVER`
+(0x9dbc) are reached by **PC-relative `ADR`** (why no literal-pool or `MOVW` match exists; a
+raw address byte-search cannot find ADR refs). The referencing function is the RC role state
+machine:
+
+```
+0x9bd0  ldrb r0,[recv]; ubfx r0,r0,2,2   ; extract a 2-bit ROLE field from a received byte
+0x9bd6  cmp r0,[r4,0x18]                  ; vs the stored role; skip if unchanged
+        switch(r0): 1 -> MASTER (0x9be6), 2 -> SLAVER (0x9c20), 0 -> none (0x9c42)
+MASTER: copy [r5,0x07]->state+0x2e (u32), [r5,0x0b]->+0x32 (u16),
+        [r5,0x1d]/[r5,0x1e] bytes -> state; adr r1,"MASTER"; movs r0,3; bl 0x5d6c  (log)
+SLAVER: set slave flags [r5,0x1c]=1,[r5,0x0f]=1; adr r1,"SLAVER"; movs r0,3; bl 0x5d6c
+none:   fast-GPIO 0x2009c000: FIOCLR/FIOSET bit toggles (control lines)
+```
+
+What this proves (and does not):
+
+- **Proven:** the pairing/identity path is handled in **MCU software on cleartext data** —
+  fields are parsed straight out of the received message buffer by byte offset
+  (`ldrb`/`ldrh`/`str`) into a RAM state struct (`0x10003c06+…`), with **no decryption step
+  anywhere** in the routine, and the radio is driven by **GPIO control-line** toggles. This
+  matches the model: cleartext DUML field -> MCU state -> control, FPGA just the datastream.
+- **Scope (honest):** this specific routine is the RC **master/slave *role*** (dual-remote),
+  adjacent to but not identical with the "Connected Master *Id*" (aircraft binding). Same
+  mechanism (cleartext field -> MCU state), but it is not literally the binding-ID handler;
+  isolating that one is the remaining step.
+
+Reproduce: `r2 -a arm -b 16 -m 0 -qq -c 'pd 85 @ 0x9bd0' c1_m1400.bin`.
