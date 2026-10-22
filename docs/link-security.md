@@ -243,3 +243,22 @@ passthrough), so it won't see live link data — the weakest tap. Better, in ord
 
 The scrambler polynomial/seed, if wanted, is best recovered by probing the MCU↔FPGA
 config at bring-up or from the bitstream — not from the app layer.
+
+### Is the ID "telemetry" or does it "need demod"? (the practical crux)
+
+The ID is **cleartext telemetry/control data — no demodulation needed to read it.** The
+answer depends only on where you tap:
+
+| Goal | Demod? | How the ID is obtained |
+|---|---|---|
+| Read/monitor the ID + telemetry from the real system | **No** | cleartext DUML at the ground USB (`usbmon`) or inter-module UART (`tool/telemetry_scan.dart`) |
+| Drive the bird via the normal link (app-to-bird) | **No** | pairing is already done in hardware; just speak DUML |
+| Receive the link independently from the air (SDR) | **Yes** (full OFDM chain) | descramble -> DUML bytes -> the *same* ID value |
+
+DJI's own hardware has already demodulated the link by the time data reaches the ground USB
+/ UART, so the Master-ID (MCU-handled "Connected Master Id") is right there in the clear,
+beside the telemetry. The ID only "needs demod" in the SDR path — and only because *every*
+byte does there; the ID is not specially hidden, and its value is identical to the cleartext
+one read at the host. So for reading the ID, reading telemetry, and talking to the bird, no
+SDR / descrambler / demod is required; that work is exclusively for the optional
+"build-your-own air receiver" goal.
