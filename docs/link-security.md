@@ -33,6 +33,30 @@ silicon** — those answer "how is the modem built", not "how do we talk to it".
 analysis (`m2001-decomp-findings.md`, `fpga-emulation-plan.md`) stands as architecture, not
 as a dependency of the link goal.
 
+### Caveat: compressed video is already near-random — entropy is not encryption
+
+The downlink is mostly **H.264 video**, which is already high-entropy/noise-like. So a
+capture that "looks random" is **not** evidence of encryption, nor even of strong whitening —
+it is mostly just compressed video. The scrambler on top is a thin, standard, unkeyed layer.
+Do not infer a cipher from entropy.
+
+### Two different "IDs" — and the one that matters may be metadata, not a PHY field
+
+- **Link-layer pairing address:** *if* the FPGA does hardware address-filtering, the ID would
+  live in the PHY/MAC header so the radio drops other aircraft before decode.
+- **Device / Master-ID as application metadata:** carried as cleartext **DUML** muxed with
+  the video/OSD/telemetry, checked in **software**.
+
+Current firmware evidence leans toward the **software/metadata** model: the MCU (`m1400`)
+owns the Master-ID, frames it as DUML, and moves it over a UART — no sign of a hardware MAC
+filter in the FPGA. If pairing is enforced by the **CPU checking the ID in the decoded
+frame** (demod the paired channel, drop mismatches in software), then the FPGA does **no
+addressing** at all — it only modulates/demodulates — and the ID is **just metadata in the
+stream**. Not yet proven which model holds; one capture settles it: the Master-ID almost
+certainly appears in the **cleartext DUML/OSD metadata** alongside the video (where SN and
+telemetry already live). Either way: read it as metadata off the wire, nothing in the FPGA to
+reverse.
+
 ## Two different "protocols" — only one is secret
 
 - **DUML** — the command/telemetry/app protocol. **Publicly documented / reverse-
