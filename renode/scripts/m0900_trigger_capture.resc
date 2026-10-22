@@ -1,18 +1,14 @@
 :name: m0900 AD9363 SPI capture (bring-up triggered)
 :description: Boot m0900, then drive the radio bring-up that cold boot alone never reaches, and capture the AD9363 register sequence the firmware computes. See awto-au/awto-dji#2 + docs/phy-params.md.
 
-# WHY a trigger is needed (static trace, scripts/re/m0900_trace.py):
-# m0900 idles kicking the watchdog until a DUML cmdset-0x09 command arrives. The AD9363 is
-# reached through the FPGA SPI bridge on SPI2 (renode/peripherals/AD9363SpiTap.cs). We call
-# two functions directly instead of plumbing the DUML/UART path:
-#   init_fpga_config  (0x0800d7c6)  FPGA tables + AD9363 base profile: a 2639-record script at
-#                                   0x08016660 run by 0x0800d318 (decode: scripts/re/m0900_ad_script.py).
-#                                   Includes the RF-PLL words (0x231.., 0x271..), BBPLL, filters, cals.
-#   tcx_config_update1(0x0800f0bc)  TX attenuation update: writes AD9363 0x073/0x075 (boards 2/4/5)
-#                                   from radio_state+0x11b. Writes no RF-PLL registers.
-# Both need get_board_version (RAM 0x200000d8) in {2,4,5,6,7}; reads 0 in emulation, so we set it.
-# tcx guards: active flag, "changed" check, FPGA reg 0xE9 bits 0 AND 1 (init_fpga_config writes 0x03).
-# Which board code is the owned aircraft's P01007.06 is UNKNOWN (no source).
+# WHY direct calls: on real hardware main (0x0800db00) brings up the FPGA and AD9363 at power-on
+# when the board straps (PA0, PC15, PC14) give a code in {2,4,5,6,7}; see docs/fpga-bringup.md.
+# Renode has no FPGA model, so the boot handshake on FPGA reg 0x8A never completes. We boot
+# (straps read 0, bring-up skipped), then call the AD9363 writers directly with forced state:
+#   init_fpga_config  (0x0800d7c6)  FPGA tables + AD9363 base profile (static script 0x08016660)
+#   tcx_config_update1(0x0800f0bc)  TX attenuation writes (AD9363 0x073/0x075)
+# Both need get_board_version (RAM 0x200000d8) in {2,4,5,6,7}; tcx also needs an active flag, a
+# channel-changed check and FPGA reg 0xE9 bits 0 and 1 (the firmware writes 0xE9=0x03 itself).
 
 $fw ?= @firmware/P3X_FW_V01.11.0020_m0900.bin
 $appBase ?= 0x08008000

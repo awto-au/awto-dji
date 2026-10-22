@@ -71,3 +71,14 @@ addr	kind	name	note	source
 0x08011ed4	func	duml_set03_id43_fwd	dispatch key 0x43030009: rewrite receiver type to 2 then 1, fix CRC, packet_send (fan-out of FC OSD push)	disasm (verified)
 0x08012012	func	duml_set03_id42_fwd	dispatch key 0x42030009: rewrite receiver type to 4 (gimbal), fix CRC, packet_send	disasm (verified)
 0x0800bd30	func	iwdg_init	IWDG PR=4 (/64) RLR=0x271 => 1.0 s at LSI 40 kHz nominal	disasm
+0x0800db00	func	main	boot: peripheral init, board straps, FPGA boot, init_fpga_config, radio_start_chain, then tick-flag main loop at 0x0800dc62	disasm (verified)
+0x0800c0bc	func	board_straps_read	PA0 pull-up in, PC15/PC14 floating in -> board_version = PA0<<2 | PC15<<1 | PC14 (RAM 0x200000d8)	disasm (verified)
+0x0800ce14	func	fpga_gpio_init	PB3 push-pull out set high (FPGA reset idle), PA13 push-pull out low	disasm (verified)
+0x0800ce48	func	fpga_reset_pulse	PB3 low, ~200 loop iterations, PB3 high (reset role inferred)	disasm (verified action)
+0x0800cfd0	func	fpga_boot_status	FPGA boot handshake via reg0/0x8A, retries 3x; returns 3/4/8/9 (meaning of 4 = ready inferred from caller)	disasm (partial)
+0x0800cf48	func	fpga_bits_set	set bits of FPGA reg per record idx in table 0x0801623c	disasm (verified)
+0x0800cf66	func	fpga_bits_clear	clear bits per record idx	disasm (verified)
+0x0800cf86	func	fpga_bits_test	test bits per record idx; returns reg & mask	disasm (verified)
+0x0801623c	table	fpga_bit_records	3-byte records [idx, fpga_reg, mask], 11 used	disasm (verified)
+0x0800c154	func	tick_scheduler	increments RAM 0x200000e0, sets flags 0x200000dc/dd/de every 5/20/100 ticks	disasm
+0x0800c2b8	func	nullsub_1	empty stub; compiled-out log calls (strings Fpga Boot/Cfg remain in flash)	disasm (verified)

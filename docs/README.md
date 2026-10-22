@@ -46,3 +46,4 @@ the current state and next steps, and `../CLAUDE.md` for agent onboarding.
 ## Safety / scope
 See `../CLAUDE.md` → "Scope & safety constraints". This is interoperability for an owned
 aircraft: no geofence defeat, no extraction of secret key values, structural analysis only.
+- [fpga-bringup.md](fpga-bringup.md): m0900 boot flow, board straps, FPGA GPIO lines, FPGA boot handshake

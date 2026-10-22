@@ -82,11 +82,10 @@ R 0x037 [0x0A]  ; product id
    spi2.ad9363_spi2 TransactionCount
    ```
 
-   **Current finding (2026-10-23, real firmware, 15s simulated):** both counts are 0 - the
-   real firmware boots correctly (PC/SP match the documented vector table) but settles into
-   a steady watchdog-kick idle loop without ever touching either SPI controller. AD9363
-   bring-up looks gated behind an external trigger (DUML/UART command or a GPIO input) not
-   yet supplied here - see `docs/phy-params.md` "Boot findings" for detail and next steps.
+   **Cold-boot finding:** both counts are 0 because the board straps (PA0, PC15, PC14) read 0
+   in Renode, so `main` skips FPGA and AD9363 bring-up. With PA0 set the firmware starts the
+   FPGA boot itself and stalls on FPGA reg 0x8A. See `docs/fpga-bringup.md`. The AD9363
+   profile is captured with `scripts/re/m0900_capture.py` (direct calls, `renode/scripts/m0900_trigger_capture.resc`).
 5. If/when it does reach a status-read spin instead (watch the log for a tight read loop on
    one address), seed that register's "done/lock" value and restart:
 

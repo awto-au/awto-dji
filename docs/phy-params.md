@@ -47,14 +47,16 @@ Tags: **verified** = read from firmware/registers or checked against no-OS sourc
 - Inferred: the FPGA retunes the AD9363 itself from these words, so live AD9363 state can differ from the MCU script. Needs an SDR or logic-analyser check.
 - Verified (static): 0x97-0x9B (cfg struct), 0x04-0x07, 0x02, 0x10, 0xCE and 0xE9 are touched by named code paths; 0xA0-0xAE are written by one large function (0x0800d400). Register meanings are NOT decoded; 4 write and 9 read call sites use a computed register number.
 
-## Gate: why cold boot never programs the AD9363 (verified)
+## Gate: why the emulated cold boot made no SPI traffic (corrected)
 
-- Cold boot ends in an IWDG-kick idle loop; bring-up is DUML-driven (cmdset 0x09 and 0x0904..0x0914 table).
-- Dispatch tables: `0x0801a160` (set 0x09) and `0x0801a0f0`; handlers in `docs/symbols/m0900_V01.11.0020.tsv`.
-- `get_board_version` (RAM `0x200000d8`) must be in {2,4,5,6,7}; 0 in emulation. Code-to-hardware mapping (P01007.06) unknown.
-- `tcx_config_update1` guards: active flag, `+0x11b` != applied `[0x20000167]`, FPGA reg 0xE9 bits 0 AND 1 (`init_fpga_config` writes 0x03).
-- `tcx_config_update1` is a TX attenuation update (AD9363 0x073/0x075), not a retune. RF-PLL words come only from the init script.
-- `radio_start_stop` (`0x08010864`) calls fpga_cfg_load and other helpers; that it never touches the AD9363 is not proven.
+- Earlier claim "DUML-gated" was wrong. `main` skips FPGA and AD9363 bring-up unless the board
+  code (3 GPIO straps: PA0, PC15, PC14) is in {2,4,5,6,7}. Renode read 0. Full flow:
+  `docs/fpga-bringup.md`.
+- With PA0 forced high the firmware starts the FPGA boot by itself, then stalls on FPGA reg 0x8A
+  (handshake not modelled).
+- DUML set 0x09 handlers (tables `0x0801a160`, `0x0801a0f0`) change settings at run time.
+- `init_fpga_config` (base profile) and `tcx_config_update1` (TX attenuation) are the AD9363
+  writers; `radio_start_stop(1)` AD9363 involvement not proven.
 
 ## Protocol: AD9363 is behind the FPGA on SPI2 (verified)
 
