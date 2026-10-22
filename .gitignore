@@ -1,0 +1,19 @@
+# Rust build artifacts
+target/
+**/target/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# Dart/Flutter
+.dart_tool/
+.packages
+build/
+
+# Editor/OS
+.DS_Store
+*.swp

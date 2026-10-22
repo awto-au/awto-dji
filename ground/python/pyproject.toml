@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "awto-dji-ground"
+version = "0.1.0"
+description = "Ground-station client for controlling a DJI aircraft via the awto-dji Android MSDK v4 bridge"
+requires-python = ">=3.9"
+license = { text = "GPL-3.0-only" }
+dependencies = ["pymavlink>=2.4"]
+
+[project.optional-dependencies]
+dev = ["pytest>=7"]
+
+[project.scripts]
+awto-dji-sim = "awto_dji_ground.sim_bridge:main"
+
+[tool.setuptools.packages.find]
+include = ["awto_dji_ground*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

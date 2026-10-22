@@ -1,0 +1,13 @@
+[package]
+name = "awto_dji_ground"
+version = "0.1.0"
+edition = "2021"
+description = "Ground-station client for controlling a DJI aircraft via the awto-dji Android MSDK v4 bridge"
+license = "GPL-3.0-only"
+
+[dependencies]
+mavlink = { version = "0.20.0", default-features = false, features = ["dialect-common", "std", "transport-udp", "format-generated-code"] }
+
+[[bin]]
+name = "fly"
+path = "src/bin/fly.rs"
