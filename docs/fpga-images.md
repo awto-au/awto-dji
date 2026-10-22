@@ -43,25 +43,37 @@ De-packed `m2001` (strip leading/trailing `0xFF`; payload starts at `0x20`, firs
 
 - **56,337 fully-resolved routing connections** (real endpoints, e.g.
   `LAB.026.023.5:FFB1L -> LAB.026.023.9:C`, `DSP.008.001:RESULT.46 -> H6...`).
-- Block inventory: **~1,795 LABs**, 6,174 MLAB + 2,588 M10K refs (memories/FIFOs/tables),
-  **64 DSP blocks** (multipliers), 1,855 GPIO refs, 314 SCLK, 15 DLL.
-- **199 named package I/O pins** (e.g. `Y3`, `W2`, `AA2`) — a recoverable pin map to
-  correlate against the AD9363 data port / FX2LP on the board.
+- Block inventory, counted by **unique tile coordinate** (an earlier pass miscounted
+  these as line-references — 3-8x inflated for MLAB/M10K/GPIO; corrected here):
+  **1,848 LAB, 484 MLAB, 308 M10K** (memories/FIFOs/tables), **66 DSP**, 68 GPIO,
+  4 PLL, 4 DLL. Zero HSSI/XCVR/PMA tiles used — plain-fabric design, no hard-SerDes.
+- **224 unique package pins** used, spread across all four physical edges of the die
+  (not clustered to one connector) — consistent with several independent board
+  interfaces (AD9363, MCU, USB bridge) sharing the die. Of named GPIO signal lines,
+  most (1,243/1,691) are clock-tree CLKIN/CLKOUT fanout, not data I/O.
+- Of the 66 DSP tiles: **31x M9X9, 10x M18X18P36, 6x M27X27, 6x M18X19_COMBINED,
+  7x unused**. Mixed multiplier widths within one design fits a multi-stage OFDM
+  datapath (narrow coefficient multiplies vs wide FFT butterflies), not a uniform
+  systolic array — see `m2001-decomp-findings.md` for the DSP mode/coefficient detail.
 
-The 64 DSP multipliers + M10K RAMs + DLLs are exactly an OFDM modem datapath (FFT/filter/
-FEC + buffers + sample-clock timing). This confirms `m2001` is a real, **unencrypted,
-de-packable** Cyclone-V bitstream that decompiles to structure.
+The DSP/M10K/DLL mix is exactly an OFDM modem datapath (FFT/filter/FEC + buffers +
+sample-clock timing). This confirms `m2001` is a real, **unencrypted, de-packable**
+Cyclone-V bitstream that decompiles to structure.
 
-**Limit:** the full `decomp` to `.bt` came out empty — some global routing nodes
-(`GOUT`) are unresolved and, per Mistral's README, **DSP/M10K internal configuration is
-not decoded**. So we recover **connectivity + block placement + pin map**, not the
-block-internal math (multiplier modes, RAM contents). Structure, not the modem's
-arithmetic. (Reproducible: `mistral-cv routes 5CEBA4U19C8 m2001.depack.bin`.)
+**Limit:** some global routing nodes (`GOUT`) are unresolved (~40%+ of active routes
+have unresolved mux sources — an open Cyclone-V interconnect-decode gap, not specific
+to this bitstream). Routing recovery is partial; block placement, LUT masks, FF modes,
+DSP mode+coefficients, and M10K config+contents are fully decoded (corrects an earlier
+claim here that DSP/M10K internals were an undecodable wall — see
+`m2001-decomp-findings.md`). (Reproducible: `mistral-cv routes 5CEBA4U19C8 m2001.depack.bin`.)
 
 ## What's missing
 
 - The **Artosyn-ASIC** board revision has no FPGA bitstream (its logic is hardened into
   the AR8001 ASIC — see `control-plane-re.md`).
-- Exact FPGA part per image is unconfirmed (ground board is documented as Cyclone V
-  `5CEFA4`; the air part is unlabelled). `m2001`'s lower entropy may indicate a different
-  device/encoding and is the one to identify first.
+- **Ground FPGA part confirmed**: `m2001` decompiles cleanly against `5CEBA4U19C8`
+  (e50f die) — 56,337 resolved routes, full block inventory above. **Air FPGA part
+  (`m1900`) remains unidentified** — all 7 Cyclone V dies Mistral ships data for fail to
+  decode it, confirmed independently on two samples (P3X and P3S firmware). Exhausted at
+  the bitstream-analysis level; physical part marking or JTAG IDCODE readback are the
+  only remaining paths. See GitHub issue #3 for the full investigation.
