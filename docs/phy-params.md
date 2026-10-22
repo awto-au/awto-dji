@@ -29,6 +29,13 @@ Tags: **verified** = read from firmware/registers or checked against no-OS sourc
 | Gains: AGC code 1 (fast attack, inferred) both RX, max table idx 76, gain table 91 idx loaded | regs verified; TX attenuation not in script (unknown) |
 | Real DUML session driving this | unknown (functions called directly with forced state) |
 
+## Machine-readable exports (for FPGA RE)
+
+- `docs/data/phy-params.json`: values with status (verified/inferred/unknown) and source
+- `docs/data/ad9363-registers.tsv`: effective AD9363 register map (261 regs)
+- `docs/data/channel-table.tsv`: 39-entry channel plan, tables A (boards 2/4/5) and B (6/7)
+- Regenerate: `python3 scripts/re/export_phy_params.py`
+
 ## Gate: why cold boot never programs the AD9363 (verified)
 
 - Cold boot ends in an IWDG-kick idle loop; bring-up is DUML-driven (cmdset 0x09 and 0x0904..0x0914 table).

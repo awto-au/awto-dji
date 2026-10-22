@@ -1,0 +1,75 @@
+{
+  "source": {
+    "firmware": "P3X_FW_V01.11.0020_m0900.bin",
+    "capture": "renode/captures/m0900-ad9363-spi2.txt",
+    "method": "Renode emulation, direct calls with forced state; no real DUML session or SDR yet"
+  },
+  "bus": {
+    "value": "SPI2 0x40003800 via FPGA bridge",
+    "status": "verified"
+  },
+  "bbpll": {
+    "integer": 17,
+    "fraction": 1921843,
+    "modulus": 2088960,
+    "multiplier_of_fref": 17.92,
+    "status": "verified"
+  },
+  "rfpll": {
+    "integer": 121,
+    "fraction": 838859,
+    "modulus": 8388593,
+    "n": 121.1,
+    "rx_equals_tx": true,
+    "status": "verified"
+  },
+  "channel_table": {
+    "address": "0x080190e0",
+    "entries": 39,
+    "lo_mhz_first": 2404.0,
+    "lo_mhz_last": 2480.0,
+    "step_mhz": 2.0,
+    "file": "docs/data/channel-table.tsv",
+    "status": "verified (table); MHz meaning inferred"
+  },
+  "fref_hz": {
+    "value": 40000000,
+    "status": "inferred",
+    "why": "reg 0x03A=0x27 (=Fref/1MHz-1 in no-OS), VCO range, RF ref 80 MHz fits channel table"
+  },
+  "bbpll_vco_hz": {
+    "value": 716799996,
+    "status": "inferred (needs Fref)"
+  },
+  "adc_clk_hz": {
+    "value": 89600000,
+    "status": "inferred"
+  },
+  "sample_rate_hz": {
+    "value": 11200000,
+    "status": "inferred",
+    "why": "no-OS divider formulas, decimation 8"
+  },
+  "lo_hz_base_profile": {
+    "value": 2421999999,
+    "status": "inferred (RF ref 80 MHz / 4)"
+  },
+  "rf_bandwidth_hz": {
+    "value": 10000000,
+    "status": "inferred",
+    "note": "RX BB 5 MHz then second pass sets 0.625 MHz; final state unexplained"
+  },
+  "gains": {
+    "agc_mode": "fast attack (inferred)",
+    "max_gain_index": 76,
+    "gain_table_entries": 91,
+    "tx_attenuation": "unknown (set at run time via 0x073/0x075)"
+  },
+  "unknown": [
+    "Fref confirmation",
+    "why RX BW ends 0.625 MHz",
+    "run-time channel hop index",
+    "TX attenuation values",
+    "board code to hardware revision"
+  ]
+}
