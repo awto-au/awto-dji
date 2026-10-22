@@ -1,0 +1,37 @@
+:name: m0900 AD9363 SPI capture
+:description: Boot the DJI Phantom 3 air MCU (m0900, STM32F103) and capture every AD9363 SPI register write it makes, for decoding against ADI UG-570.
+
+# --- inputs -------------------------------------------------------------------------------
+# Path to the m0900 firmware module (NOT in this repo; see HANDOVER.md "DATA NOT IN THE
+# REPO" + docs/code-provenance.md to obtain/unpack P3X_FW_V01.11.0020 with dji-firmware-tools).
+# Override on the command line:  renode -e "$fw=@/abs/path/m0900.bin; i @renode/scripts/m0900_capture.resc"
+$fw ?= @firmware/P3X_FW_V01.11.0020_m0900.bin
+$appBase ?= 0x08008000
+
+# --- compile + register the AD9363 SPI tap peripheral -------------------------------------
+include @renode/peripherals/AD9363SpiTap.cs
+
+# --- machine ------------------------------------------------------------------------------
+mach create "m0900"
+machine LoadPlatformDescription @renode/platforms/m0900.repl
+
+# mirror the console to a file so the decoded transaction stream is saved as it runs
+logFile @m0900-capture.log true
+
+# --- load firmware + boot from its vector table -------------------------------------------
+sysbus LoadBinary $fw $appBase
+sysbus.cpu VectorTableOffset $appBase
+
+# Seed ID/status readbacks the bring-up may poll before it will proceed. Start with the
+# product id; add PLL-lock / cal-done registers here if 'start' spins (watch the log for a
+# tight read loop on one address, then seed its "done" value). The tap is a child of the
+# controller, so the monitor path is spi1.ad9363_spi1 / spi2.ad9363_spi2.
+#   spi1.ad9363_spi1 SetReadDefault 0x037 0x0A
+#   spi2.ad9363_spi2 SetReadDefault 0x037 0x0A
+
+echo ""
+echo "m0900 loaded at $appBase. Run 'start', let the AD9363 bring-up proceed, then:"
+echo "    spi1.ad9363_spi1 SaveCapture @spi1-capture.txt   ; decoded transactions"
+echo "    spi1.ad9363_spi1 SaveRaw     @spi1-raw.txt        ; lossless MOSI byte stream"
+echo "  (use spi2.ad9363_spi2 if SPI2 is the AD9363 bus - check TransactionCount on each)"
+echo ""

@@ -11,7 +11,7 @@ method — honestly separating "shown" from "needs more work / tooling".
 | ID is CPU-placed cleartext data | DUML "Connected Master Id" handler storing + emitting the ID on the data path | **shown** — role path (`0x9bd0`) AND the binding handler itself: Connected Master Id Set `0x2bca` / Get `0x2b10`, cleartext DUML <-> RAM `0x100005e8`, no crypto (below) |
 | FPGA is just the datastream (control via GPIO, data via UART) | MCU GPIO = discrete control strobes; data over UART | **shown on `m1400`** — GPIO routine at 0x1234 does FIOSET/FIOCLR bit toggles; UART ISR present; no SPI (see `id-entry-point.md`) |
 | Whitening is stock / at most a seed | MCU writing (or not) a scrambler-seed/frame-mode register to the FPGA | **not yet** — needs the FPGA bring-up path in `m0900`/`m1400` |
-| PHY is WiMAX-family with standard params | `m0900` AD9363 SPI register sequence decoded vs UG-570 | **partial** — SPI confirmed; config is runtime-computed, not a static table (below) |
+| PHY is WiMAX-family with standard params | `m0900` AD9363 SPI register sequence decoded vs UG-570 | **partial, tooling ready** — SPI confirmed; config is runtime-computed, not a static table (below); the Renode capture harness is built + validated (`docs/phy-params.md`, `renode/`), pending only the `m0900` firmware image |
 
 ## Confirmed so far
 
@@ -33,8 +33,10 @@ method — honestly separating "shown" from "needs more work / tooling".
    **emulate `m0900`'s init and capture the SPI writes**, then decode against UG-570 ->
    exact centre frequency / channel bandwidth / sample rate. Tool: **Renode** (full STM32F103
    peripheral models incl. SPI; Unicorn is CPU-only and diverged — see
-   `fpga-emulation-plan.md`). Renode is **not installed in this analysis env**; this is the
-   gated step. Alternative: statically reverse the driver's BBPLL/clock math (harder, noisier).
+   `fpga-emulation-plan.md`). Renode is now **built from source + validated** and the capture
+   harness exists in `renode/` (custom platform + AD9363 SPI-tap peripheral; see
+   `docs/phy-params.md`); the gating input is now just the `m0900` firmware image. Alternative:
+   statically reverse the driver's BBPLL/clock math (harder, noisier).
 2. **ID framing (proves "cleartext, CPU-placed").** Trace the DUML "Connected Master Id"
    handler in `m1400`/`m0900` from the USART parser to where the stored ID is emitted; show
    it travels as a DUML field (encrypt_type 0), not inserted by the FPGA.

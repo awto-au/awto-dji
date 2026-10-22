@@ -1,0 +1,34 @@
+// m0900 — DJI Phantom 3 Professional air-side MCU (STM32F103) platform for Renode.
+//
+// Extends Renode's stock STM32F103 description (which models the core, flash, SRAM,
+// USARTs, timers, GPIO, DMA and NVIC) and adds the two SPI controllers the firmware uses
+// plus an AD9363 SPI tap on each, so the runtime-computed RF config can be captured.
+//
+// Firmware facts (docs/renode-task.md / docs/cpu-reversing-proof.md):
+//   app base   0x08008000   (bootloader occupies 0x08000000..0x08008000)
+//   initial SP 0x20004cb8
+//   reset vec  0x08008201
+// The stock description maps flash at 0x00000000 size 0x20000000, which backs 0x08008000,
+// and SRAM at 0x20000000. The reset SP/PC are taken from the firmware's own vector table
+// once VectorTableOffset is set to 0x08008000 (done in the .resc).
+
+using "platforms/cpus/stm32f103.repl"
+
+// SPI1 and SPI2 are both referenced by m0900; one of them is the AD9363 control bus
+// (docs/control-plane-re.md). NVIC positions: SPI1 = 35, SPI2 = 36 on STM32F103.
+spi1: SPI.STM32SPI @ sysbus 0x40013000
+    series: STM32Series.F1
+    IRQ -> nvic@35
+
+spi2: SPI.STM32SPI @ sysbus 0x40003800
+    series: STM32Series.F1
+    IRQ -> nvic@36
+
+// AD9363 transceiver, tapped on BOTH candidate buses. Whichever SPI the firmware actually
+// drives will accumulate transactions; the other stays empty. This empirically settles the
+// open "confirm which SPI drives the AD9363" question from the task spec. AD9363SpiTap is
+// an external peripheral compiled from renode/peripherals/AD9363SpiTap.cs — the .resc must
+// `include` it before loading this platform.
+ad9363_spi1: SPI.AD9363SpiTap @ spi1
+
+ad9363_spi2: SPI.AD9363SpiTap @ spi2
