@@ -13,54 +13,45 @@ result slot; the numbers land here once the capture runs.
 
 | Piece | State |
 |---|---|
-| Renode built from source (1.17.0, `--no-gui`, .NET 8) | **verified** — builds, runs |
-| STM32F103 platform for `m0900` (`renode/platforms/m0900.repl`) | **verified** — loads; adds SPI1/SPI2 + AD9363 taps + RCC_CFGR fix (see below) |
-| AD9363 SPI tap (`renode/peripherals/AD9363SpiTap.cs`) | **verified** — compiles at runtime; frames + decodes SPI; see self-test below |
-| `m0900` firmware obtained + verified | **verified** — downloaded from `dl.djicdn.com` (DJI's own CDN, still live), unpacked with `dji_xv4_fwcon.py`; SHA-256 of both the container and the unpacked module match `docs/data-manifest.md` byte-for-byte |
-| Real firmware boots in Renode | **verified** — `PC = 0x8008201, SP = 0x20004CB8`, exactly the documented reset vector/SP; required one fix (RCC_CFGR, below) to get past the clock-switch wait |
-| **Captured AD9363 register sequence** | **needs-tooling** — firmware boots and reaches a steady idle loop (watchdog-kick only) but makes **zero** SPI1/SPI2 transactions in 15 simulated seconds. AD9363 bring-up appears gated behind an external trigger (UART/DUML command from another module, or a GPIO input) not yet supplied in the emulation. See "Boot findings" below |
-| **Decoded freq / BW / sample-rate / gains** | **needs-tooling** — follows from the capture |
+| Renode 1.17.0 built from source, STM32F103 platform, SPI tap, real firmware boots | **verified** |
+| Why cold boot makes 0 SPI transactions | **verified (static + emulation)** — see "Gate" |
+| AD9363 bus + access protocol | **verified** — SPI2, via FPGA bridge, see "Protocol" |
+| AD9363 register sequence captured (177 regs, 2464 writes) | **verified as emulated** — `renode/captures/m0900-ad9363-spi2.txt`; produced by calling firmware fns directly with forced state, not by a real DUML session |
+| BBPLL word: integer 17, frac 1921843/2088960 => Fvco = Fref x 17.92 | **verified** (register values), Fref unknown |
+| Sample rate, RF centre freq, BW, gains | **needs-tooling** — see "Open" |
 
-### Fix required: RCC_CFGR tag
+## Gate: why cold boot never programs the AD9363 (verified)
 
-The stock `stm32f103.repl` already works around the unmodeled RCC peripheral for `RCC_CR`
-(`Tag <0x40021000, 0x40021003> "RCC_CR" 0x0A020083`, pre-set PLL-ready/HSE-ready bits) — but
-not for `RCC_CFGR`. Without a value there, `m0900`'s clock-switch-to-PLL wait loop (polling
-CFGR's SWS bits) spins forever, since nothing ever reports "switched". Added the same pattern
-to `renode/platforms/m0900.repl`:
+- Cold boot ends in an IWDG-kick idle loop. Radio bring-up is DUML-driven (cmdset 0x09).
+- DUML dispatch tables in flash: `0x0801a160` (set 0x09: cmd 0x06/0x07/0x12/0x13) and
+  `0x0801a0f0` (ids 0x0904, 0x0911-0x0914). Full list: `docs/symbols/m0900_V01.11.0020.tsv`.
+- Second gate: `get_board_version` (RAM `0x200000d8`) must be in {2,4,5,6,7}; reads 0 in emulation.
+- Third gate: `tcx_config_update1` needs active flag, channel-changed, FPGA reg 0xE9 bit1.
+- `radio_start_stop(1)` @ `0x08010864` programs the FPGA only, not the AD9363.
+  The AD9363 is programmed by `init_fpga_config` (base profile) and `tcx_config_update1` (tune).
 
-```
-sysbus:
-    init:
-        Tag <0x40021004, 0x40021007> "RCC_CFGR" 0x00000008   // SWS = PLL selected
-```
+## Protocol: AD9363 is behind the FPGA on SPI2 (verified)
 
-With this, the real firmware boots past clock init, AFIO/GPIO config, and what look like
-CAN/I2C/USB bring-up writes (0x40006600, 0x40003000 region addresses - not yet identified
-against the base repl's memory map) into a steady loop that only services the independent
-watchdog (`IWDG_KR` writes of `0xAAAA`/`0xCCCC` at 0x40003000, ~500ms period).
+- SPI2 `0x40003800`; SPI1 sees nothing.
+- `[0x0E, reg, val]` FPGA write; `[0x0F, reg, 0xFF]` FPGA read.
+- AD9363 access: `[0E 01 01]` arm, then `[0x80|hi, lo, val]` write / `[hi, lo, 0xFF]` read.
+- Tap frames 3-byte units, resyncs on stray bytes (`renode/peripherals/AD9363SpiTap.cs`).
 
-### Boot findings (2026-10-23, real firmware, 15 simulated seconds)
+## Capture method (reproduce)
 
-- `cpu PC`/`SP` at start match the documented vector table exactly — confirms the firmware
-  module, load address, and VectorTableOffset are correct.
-- `spi1.ad9363_spi1 TransactionCount` and `spi2.ad9363_spi2 TransactionCount` are **both 0**
-  after 15 s of simulated time (`emulation RunFor "00:00:15"`) — `m0900` never touches either
-  SPI controller from cold boot alone.
-- The firmware settles into a steady state (watchdog kick every ~0.5s, no change over the
-  run) rather than progressing further - consistent with the air MCU waiting for a command
-  (DUML over UART, or a GPIO signal from the FPGA/another module) before it brings up the
-  radio, rather than configuring the AD9363 unconditionally at boot.
-- **Next step (not yet done):** either (a) disassemble `m0900`'s main loop/state machine to
-  find what condition gates AD9363 init (same method as the `m1400` proofs in
-  `docs/cpu-reversing-proof.md`), or (b) inject a plausible stimulus (a DUML "enable
-  transmission" command on a UART, or drive a candidate GPIO input) and re-run. (a) is more
-  certain; (b) is faster if the trigger is guessable.
+- `python3 scripts/re/m0900_capture.py` -> `tmp/spi2-capture.txt` (copy kept in `renode/captures/`)
+- `python3 scripts/re/decode_ad9363.py` -> effective map + derived values
+- Forced state: board=2, tcx guards, status seeds (0x05E=0x80, 0x247=0x02, 0x037=0x0A, FPGA 0xE9=0x02)
+- Static tools: `scripts/re/m0900_trace.py` (`dis`, `who`, `ptr`)
 
-Firmware acquisition is **no longer the blocker** — the harness runs against the byte-exact,
-hash-verified real `m0900.bin` (see `docs/data-manifest.md`). The open item is now purely
-firmware behavioural: finding/supplying whatever `m0900` is waiting on before it talks to the
-AD9363.
+## Open (do not treat as results)
+
+- RX and TX RFPLL words decode identically (int 3276) and cal polls 0x244/0x284/0x287 hit
+  300-iteration timeouts: the tune phase likely ran on timed-out paths or the 0x231/0x271
+  field mapping is wrong. Centre frequency NOT recovered.
+- Fref (AD9363 reference clock) not in the SPI stream; needs board/schematic or firmware constant.
+- Sample rate needs BBPLL dividers + FIR/decimation regs decoded vs UG-570.
+- Captured by direct function calls with forced state; confirm by driving a real DUML 0x09 command.
 
 ## Why emulation (recap)
 
@@ -123,27 +114,6 @@ Once `spi1-capture.txt` exists, decode the write groups against the UG-570 regis
 
 Record the raw sequence and the decoded values in the tables below, then flip the
 PHY-params row in `HANDOVER.md` and `docs/cpu-reversing-proof.md` from "open" to the result.
-
-### Captured sequence (pending)
-
-```
-(paste spi1-capture.txt here after the run)
-```
-
-### Decoded parameters (pending)
-
-| Parameter | Value | Source register(s) |
-|---|---|---|
-| AD9363 control bus | SPI? (TransactionCount winner) | — |
-| Reference clock | — | — |
-| BBPLL frequency | — | BBPLL int/frac + ref scaler |
-| I/Q sample rate | — | BBPLL ÷ dividers ÷ decimation |
-| RX centre frequency | — | RX RFPLL |
-| TX centre frequency | — | TX RFPLL |
-| RX channel bandwidth | — | Rx TIA / BB LPF + FIR |
-| TX channel bandwidth | — | Tx LPF + FIR |
-| RX gain | — | Rx gain table / manual gain |
-| TX attenuation | — | Tx atten registers |
 
 ## Scope
 

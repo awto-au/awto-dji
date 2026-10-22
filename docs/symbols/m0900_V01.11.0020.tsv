@@ -1,0 +1,32 @@
+addr	kind	name	note	source
+0x08008000	region	app_base	bootloader below; SP 0x20004cb8, reset 0x08008201	docs/renode-task.md
+0x0800b500	func	SPI_UsrWaitTransferComplete	send 1 byte on SPI2, return rx byte	0030 map; verified on 0020 by disasm
+0x0800b5e8	func	spi_fpga_or_tcx_transfer_mark	assert FPGA/TCX chip-select (GPIO)	0030 map
+0x0800b5f6	func	spi_fpga_or_tcx_transfer_clear	deassert chip-select	0030 map
+0x0800c142	func	get_board_version	returns byte at RAM 0x200000d8; AD9363 path needs {2,4,5,6,7}	0030 map; disasm
+0x200000d8	ram	board_version	0 under emulation (no straps); set to 2 for P01007.06	disasm 0x0800c142
+0x0800ce76	func	spi_fpga_raw_write	SPI2 [0x0E, reg, val] -> FPGA reg write	disasm
+0x0800ce9a	func	spi_fpga_raw_read	SPI2 [0x0F, reg, 0xFF] -> FPGA reg read	disasm
+0x0800cebe	func	ad936x_reg_sync_write	arm passthrough [0E 01 01] then [0x80|hi, lo, val]	disasm
+0x0800cf00	func	ad936x_reg_sync_read	arm passthrough then [hi&0x7f, lo, 0xFF]	disasm
+0x0800d7c6	func	init_fpga_config	FPGA tables (0x8016260/0x8016460) + AD9363 base profile; no args	disasm
+0x0800d7a4	func	fpga_reg0_toggle	FPGA reg0 |=9 then &=0xfe (heuristic start; tail of pool before init_fpga_config)	disasm
+0x0800f0bc	func	tcx_config_update1	per-channel AD9363 re-tune; guards: [0x20001ab4+0x119]!=0, chan changed, FPGA reg0xE9 bit1	disasm
+0x0800f3d8	func	fpga_cfg_load	writes FPGA regs 0x97-0x9b, 0x04-0x07 from two 5/4-byte structs	disasm
+0x0800f436	func	radio_config_apply	board-version gated; FPGA regs 0xb8/0xb9..; called from 0x08010092	disasm
+0x0800fc4c	func	tcx_tune_caller	only caller of tcx_config_update1; no direct BL caller (table/task)	trace
+0x0800fdc2	func	tcx_config_power_zone	AD9363 TX attenuation / power zone writes	0030 map
+0x08010092	func	radio_start_chain	calls radio_config_apply (0x0800f436)	trace
+0x08010864	func	radio_start_stop	r0=1 start / 0=stop; guarded by [0x20001ab4+0x11a]==0; does FPGA cfg only (NOT AD9363)	disasm
+0x20001ab4	ram	radio_state	struct base; +0x119 active, +0x11a started, +0x11b last channel	disasm
+0x20000167	ram	active_transceiver_attenuation	requested channel/atten byte compared with +0x11b	0030 map
+0x080118d0	func	packet_send	DUML tx	0030 map
+0x08011d66	func	packet_make_response	DUML response builder	0030 map
+0x08011180	func	duml_cmd_0913	config-report handler (dispatch table 0x0801a0f0 key 0x0913)	ptr search
+0x080111fc	func	duml_cmd_0914	config-report handler (key 0x0914)	ptr search
+0x08012122	func	cmd_exec_set09_cmd06	DUML set 0x09 cmd 0x06: single AD9363 reg access (debug)	0030 map; table 0x0801a160
+0x080121b4	func	cmd_exec_set09_cmd12	DUML set 0x09 cmd 0x12 (table 0x0801a160 key 0x12090009)	table
+0x0801a0f0	table	duml_dispatch_a	records [handler, id16]	ptr search
+0x0801a160	table	duml_dispatch_set09	records [handler, (cmdid<<24)|(set<<16)|0x0009]	ptr search
+0x08016260	table	fpga_cfg_table_a	boards 2,4,5; 2x256 bytes written to FPGA regs 0..0xff	init_fpga_config
+0x08016460	table	fpga_cfg_table_b	boards 6,7	init_fpga_config

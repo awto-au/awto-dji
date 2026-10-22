@@ -1,0 +1,73 @@
+:name: m0900 AD9363 SPI capture (bring-up triggered)
+:description: Boot m0900, then drive the radio bring-up that cold boot alone never reaches, and capture the AD9363 register sequence the firmware computes. See awto-au/awto-dji#2 + docs/phy-params.md.
+
+# WHY a trigger is needed (proven by static trace, scripts/re/m0900_trace.py):
+# m0900 does NOT configure the AD9363 at cold boot — it idles kicking the watchdog until a
+# DUML cmdset-0x09 command arrives. The AD9363 is reached through a Lightbridge FPGA SPI
+# bridge on SPI2 (see renode/peripherals/AD9363SpiTap.cs). Two self-contained functions do
+# the AD9363 programming; we call them directly (bounded, deterministic) rather than
+# plumbing the DUML/UART path:
+#   init_fpga_config  (0x0800d7c6)  FPGA config tables + AD9363 BASE PROFILE (sample rate/BW/gains)
+#   tcx_config_update1(0x0800f0bc)  per-CHANNEL AD9363 re-tune (RF-PLL centre frequency)
+# Both branch on get_board_version (RAM 0x200000d8) needing {2,4,5,6,7} (AD9363 boards,
+# P01007.06/.08); cold-boot detection reads 0 under emulation, so we set it. tcx also guards
+# on an "active" flag, a channel-changed check, and an FPGA PLL-lock read (reg 0xE9 bit1,
+# supplied by the tap). Our owned aircraft is P01007.06 (AD9363 + Cyclone V).
+
+$fw ?= @firmware/P3X_FW_V01.11.0020_m0900.bin
+$appBase ?= 0x08008000
+$initcfg ?= 0x0800d7c6        # init_fpga_config: FPGA tables + AD9363 base profile
+$tcxtune ?= 0x0800f0bc        # tcx_config_update1: per-channel AD9363 re-tune
+$trap    ?= 0x2000FF00        # scratch RAM for a spin trap to catch each function's return
+$board   ?= 0x02              # override with -e "$board=0x.." to try other AD9363 board codes
+
+include @renode/peripherals/AD9363SpiTap.cs
+mach create "m0900"
+machine LoadPlatformDescription @renode/platforms/m0900.repl
+
+sysbus LoadBinary $fw $appBase
+sysbus.cpu VectorTableOffset $appBase
+
+# Seed AD9363 status readbacks so the bring-up's lock/cal poll loops complete (the emulated
+# transceiver otherwise never reports lock and the init spins). UG-570: 0x05E[7]=BBPLL lock;
+# 0x247 CAL done bits; 0x037 product id. Tune here if a new tight read loop appears.
+spi2.ad9363_spi2 SetReadDefault 0x05E 0x80
+spi2.ad9363_spi2 SetReadDefault 0x247 0x02
+spi2.ad9363_spi2 SetReadDefault 0x037 0x0A
+
+# 1) Cold-boot init to its steady idle loop (deterministic sim time, not wall clock).
+emulation RunFor "00:00:02"
+
+# 2) Set the state the bring-up reads: board version, and tcx tune guards
+#    ([0x20001ab4+0x119]=active=1, [+0x11b]=last-channel=0xFF != requested [0x20000167]=0 so
+#    the re-tune is not skipped as "unchanged").
+sysbus WriteByte 0x200000D8 $board
+sysbus WriteByte 0x20001BCD 0x01
+sysbus WriteByte 0x20001BCF 0xFF
+sysbus WriteByte 0x20000167 0x00
+sysbus WriteWord $trap 0xE7FE
+
+# 3) Phase A — init_fpga_config: FPGA config tables + AD9363 base profile. LR -> spin trap.
+sysbus.cpu SetRegisterUnsafe 14 0x2000FF01
+sysbus.cpu PC $initcfg
+emulation RunFor "00:00:03"
+
+# 4) Phase B — tcx_config_update1: per-channel AD9363 re-tune (RF-PLL centre frequency).
+sysbus.cpu SetRegisterUnsafe 14 0x2000FF01
+sysbus.cpu PC $tcxtune
+emulation RunFor "00:00:02"
+
+# 5) Report which bus carried the AD9363 traffic and dump the capture. Output paths are
+#    injected by the runner (scripts/re/m0900_capture.py) as absolute paths, because Renode
+#    resolves relative write paths against its own binary dir, not the repo CWD.
+echo "--- SPI1 (0x40013000) total / AD9363 ops ---"
+spi1.ad9363_spi1 TransactionCount
+spi1.ad9363_spi1 Ad9363Count
+echo "--- SPI2 (0x40003800) total / AD9363 ops ---"
+spi2.ad9363_spi2 TransactionCount
+spi2.ad9363_spi2 Ad9363Count
+spi1.ad9363_spi1 SaveCapture $cap1
+spi1.ad9363_spi1 SaveRaw     $raw1
+spi2.ad9363_spi2 SaveCapture $cap2
+spi2.ad9363_spi2 SaveRaw     $raw2
+quit
