@@ -209,3 +209,28 @@ The MCU will not contain the OFDM math (that's the FPGA) or the H.264 codec (tha
 DaVinci/Ambarella chips). It yields configuration, control, IDs, channel/pairing, and the
 AD9363 setup — which is exactly the glue needed to point the SDR demod at the right
 signal with the right parameters.
+
+## External corroboration: FPGA = datastream encoder; scrambler is stock WiMAX
+
+Independent teardown and standards material back the "FPGA is just the link datastream"
+reading:
+
+- The `o-gs/dji-firmware-tools` teardown of a DJI air OFDM board describes the FPGA as
+  "a **digital data encoder for the Lightbridge protocol** [that] prepares the video data
+  and telemetry to be sent through [the] radio channel, and supplies it to [the]
+  transceiver" — i.e. framing + modulate an opaque payload, no application logic.
+  <https://github.com/o-gs/dji-firmware-tools/wiki/IG800-Air-OFDM-Transceiver-board>
+- The WiMAX (IEEE 802.16e) data randomizer is a **standard** 15-bit LFSR PRBS with
+  polynomial `1 + x^14 + x^15` (= `x^15 + x^14 + 1`). If Lightbridge uses the stock WiMAX
+  randomizer (the WiMAX-family evidence points that way), the scrambler is documented and
+  only the **seed** could be DJI-specific — and the seed is recoverable from a capture.
+
+Precision for the P3: its FPGA (Cyclone V) does the whole digital PHY (framing + OFDM
+baseband + FEC + scramble); the AD9363 does D/A + RF. So it is "all PHY, no application
+logic" — the sense in which it is "just the datastream".
+
+Caveats (do not overclaim "stock"): no source directly confirms DJI's scrambler polynomial;
+it is a strong inference from the WiMAX basis, not proof. One forum post calls Lightbridge
+"full custom ASIC", but the chip evidence (AD9363 SDR + Cyclone V, not a bespoke baseband
+ASIC) favours the WiMAX-family reading; "custom" more likely describes the system than a
+novel PHY algorithm.
