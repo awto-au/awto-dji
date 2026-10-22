@@ -92,3 +92,25 @@ r2 -a arm -b 16 -m 0 -qq -c 'pd 40 @ 0x2bca' c1_m1400.bin   # Connected Master I
 r2 -a arm -b 16 -m 0 -qq -c 'pd 36 @ 0x2b10' c1_m1400.bin   # Connected Master Id GET
 r2 -a arm -b 16 -m 0 -qq -c 'pd 85 @ 0x9bd0' c1_m1400.bin   # role state machine
 ```
+
+## Joining this work (person or agent)
+
+The **repo is the join point**, not the chat. To pick this up correctly:
+
+1. `git clone https://github.com/awto-au/awto-dji && cd awto-dji` (or `git pull` an existing
+   clone). Everything is on **`main`**.
+2. Read in order: `CLAUDE.md` (scope + safety + conventions) → `HANDOVER.md` (this file) →
+   `docs/README.md` (doc index). Those give the full state; you do **not** need the chat.
+3. Pick a task from "Next steps" above. The active one is `docs/renode-task.md`.
+4. Firmware/binaries are not in the repo — `docs/data-manifest.md` has every input with its
+   SHA-256 so you can re-fetch and verify the exact files.
+
+**Sessions driving this work (for the operator):**
+- Main analysis session: `session_01KFSY3kZtDXknaxmmHkztxv` — resume at
+  `https://claude.ai/code/session_01KFSY3kZtDXknaxmmHkztxv`.
+- Spawned Renode task agent: `session_017yMpBMX7BGj3PyZtJHvThK` (building Renode from source,
+  committing to `main`).
+
+Commit messages carry a `Claude-Session:` footer linking history back to the session that
+made each change. A new agent just works on `main` and pushes; the operator syncs other
+machines (e.g. Selwyn `/mnt/2tb/git/awto-dji`) with `git pull`.
