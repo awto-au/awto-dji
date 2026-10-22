@@ -1,0 +1,20 @@
+// m0900 — Lightbridge air MCU (STM32F103, see docs/firmware-overview.md).
+//
+// Extends Renode's generic stm32f103.repl with the two SPI controllers and attaches a
+// capture-only spy (AD9363Spy, see ../peripherals/AD9363Spy.cs) to each. Which SPIx is
+// actually wired to the AD9363 vs FPGA config is NOT yet confirmed from the firmware
+// disassembly (needs-tooling: find the RCC SPI1EN/SPI2EN enable + base-address xref once
+// m0900.bin is available) — both are spied so the firmware's own enable sequence tells us.
+using "platforms/cpus/stm32f103.repl"
+
+spi1: SPI.STM32SPI @ sysbus 0x40013000
+    series: STM32Series.F1
+    IRQ -> nvic@35
+
+spi2: SPI.STM32SPI @ sysbus 0x40003800
+    series: STM32Series.F1
+    IRQ -> nvic@36
+
+spi1Target: Antmicro.Renode.Peripherals.AwtoDji.AD9363Spy @ spi1
+
+spi2Target: Antmicro.Renode.Peripherals.AwtoDji.AD9363Spy @ spi2

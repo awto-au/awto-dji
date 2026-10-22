@@ -17,3 +17,6 @@ build/
 # Editor/OS
 .DS_Store
 *.swp
+
+# Scratch / logs (never firmware images - those are DATA NOT IN THE REPO, see HANDOVER.md)
+tmp/
