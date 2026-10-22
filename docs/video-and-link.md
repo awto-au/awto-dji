@@ -144,3 +144,39 @@ Showing live video additionally needs: de-multiplexing the video substream from 
 container, then an H.264 decoder (the platform `MediaCodec` on Android can replace
 `libdjivideo`). Video is therefore a separable, later milestone — telemetry and control
 do not depend on it.
+
+## OSD is client-rendered, not burned at the aircraft
+
+The aircraft sends **clean H.264 video** and **telemetry as separate data**; the OSD
+overlay is composited at the **ground/remote/app**, not at the bird. Evidence is in this
+repo: the `OSD General` push (`cmd_set 0x03 / cmd_id 0x43`) that `app/packages/duml`
+decodes into lat/lon/height/attitude is a *structured telemetry* message — if the overlay
+were burned into pixels on the aircraft there would be no reason to also send those numbers
+as data. The DJI GO app draws vector OSD from it; the Lightbridge ground unit's HDMI/SDI
+"built-in OSD" likewise composites at the ground box from received telemetry.
+
+### Where telemetry meets video (the mux point)
+
+They are multiplexed onto the downlink, never pixel-composited:
+
+- **Air:** FC (`m0306`) emits telemetry DUML; camera (A9SE `m0100`) emits H.264; the air
+  video encoder (DM368 `m0800`) + air radio MCU (`m0900`) + air FPGA (`m1900`) multiplex
+  **video + telemetry + control as separate logical channels** into the OFDM frames.
+- **Ground:** ground FPGA (`m2000/01/02`) demuxes -> video to the DM365 decoder (`m1300`)
+  -> FX2LP USB (`m1600`) -> app; telemetry DUML -> ground MCU (`m1400`) -> app.
+- **Client:** app/ground recombine them visually (decoded video + telemetry-drawn OSD).
+
+(Module roles are verified from the firmware set; the exact encapsulation — a separate link
+channel vs a data PID — is inference, confirmable from one capture.)
+
+Consequence for interop: telemetry arrives as **clean structured data** (what
+`tool/telemetry_scan.dart` parses) and the video arrives with **no overlay to strip**.
+
+### Public captures
+
+Protocol knowledge is public; ready-made P3 link captures are not. DUML is documented/
+dissected (`samuelsadok/dji_protocol`, `o-gs/dji-firmware-tools`), but no shared P3 usbmon
+pcap or SDR capture of the video link was found — generate your own (usbmon on the ground
+USB, or the MCU UART). Caveat: the standalone **Lightbridge 2** product markets an optional
+encryption toggle; our P3 firmware analysis found no payload cipher on the integrated link —
+keep the two separate.
