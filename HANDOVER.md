@@ -34,7 +34,7 @@ WiMAX scrambler. Proven in MCU code on the ground side:
 | FPGA = just the datastream (GPIO control, UART data, no SPI) | **proven** on `m1400`; corroborated by o-gs teardown |
 | "Encrypt" in firmware = ATSHA204 component auth, not link crypto | **proven** — `m1400:0xf880` cluster; no AES/TEA in either MCU |
 | WiMAX link params tracked + emitted as telemetry | **proven** — fmt `0x25abc`, reporter `0x256cc` |
-| PHY params (AD9363 freq/BW/sample-rate) | **open, firmware now boots in Renode** — real `m0900` boots byte-exact (`docs/data-manifest.md`), but makes **zero** AD9363 SPI transactions in 15s sim time; bring-up looks gated behind an external trigger not yet supplied. Tracked in [awto-au/awto-dji#2](https://github.com/awto-au/awto-dji/issues/2); detail in `docs/phy-params.md` |
+| PHY params (AD9363 freq/BW/sample-rate) | **mostly recovered, partly inferred** — base profile is a static 2639-record script at `m0900:0x08016660` (not runtime-computed); AD9363 is behind the FPGA on SPI2. Registers verified: BBPLL x17.92, RFPLL N=121.1, 39-entry channel table (2404-2480 MHz, 2 MHz step). **Inferred:** Fref 40 MHz, sample rate 11.2 MHz, RF BW 10 MHz. **Open:** Fref confirmation, why RX BW ends at 0.625 MHz, run-time channel hop. Not yet confirmed by a real DUML session or SDR. Issue [#2](https://github.com/awto-au/awto-dji/issues/2); `docs/phy-params.md`, `docs/symbols/` |
 | **Data is unencrypted OVER THE AIR** | **NOT proven** — MCU-layer cleartext ≠ air-layer; FPGA could encrypt. Needs an SDR capture. See `what-is-actually-secret.md` LAYER CAVEAT |
 
 ## Tooling status (what you need on Selwyn)

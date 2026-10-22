@@ -11,7 +11,7 @@ method — honestly separating "shown" from "needs more work / tooling".
 | ID is CPU-placed cleartext data | DUML "Connected Master Id" handler storing + emitting the ID on the data path | **shown** — role path (`0x9bd0`) AND the binding handler itself: Connected Master Id Set `0x2bca` / Get `0x2b10`, cleartext DUML <-> RAM `0x100005e8`, no crypto (below) |
 | FPGA is just the datastream (control via GPIO, data via UART) | MCU GPIO = discrete control strobes; data over UART | **shown on `m1400`** — GPIO routine at 0x1234 does FIOSET/FIOCLR bit toggles; UART ISR present; no SPI (see `id-entry-point.md`) |
 | Whitening is stock / at most a seed | MCU writing (or not) a scrambler-seed/frame-mode register to the FPGA | **not yet** — needs the FPGA bring-up path in `m0900`/`m1400` |
-| PHY is WiMAX-family with standard params | `m0900` AD9363 SPI register sequence decoded vs UG-570 | **partial, tooling ready** — SPI confirmed; config is runtime-computed, not a static table (below); the Renode capture harness is built + validated (`docs/phy-params.md`, `renode/`), pending only the `m0900` firmware image |
+| PHY is WiMAX-family with standard params | `m0900` AD9363 SPI register sequence decoded vs UG-570 | **mostly recovered** — captured in Renode; base profile is a static record script at `0x08016660` (corrects the earlier "runtime-computed" note); Fref, sample rate and BW partly inferred. See `docs/phy-params.md` |
 
 ## Confirmed so far
 

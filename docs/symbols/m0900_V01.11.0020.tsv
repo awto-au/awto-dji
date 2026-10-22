@@ -1,32 +1,53 @@
 addr	kind	name	note	source
 0x08008000	region	app_base	bootloader below; SP 0x20004cb8, reset 0x08008201	docs/renode-task.md
-0x0800b500	func	SPI_UsrWaitTransferComplete	send 1 byte on SPI2, return rx byte	0030 map; verified on 0020 by disasm
-0x0800b5e8	func	spi_fpga_or_tcx_transfer_mark	assert FPGA/TCX chip-select (GPIO)	0030 map
-0x0800b5f6	func	spi_fpga_or_tcx_transfer_clear	deassert chip-select	0030 map
-0x0800c142	func	get_board_version	returns byte at RAM 0x200000d8; AD9363 path needs {2,4,5,6,7}	0030 map; disasm
-0x200000d8	ram	board_version	0 under emulation (no straps); set to 2 for P01007.06	disasm 0x0800c142
+0x0800b500	func	SPI_UsrWaitTransferComplete	send 1 byte on SPI2: wait TXE (200 polls), write DR, wait RXNE (200 polls), return rx byte; returns 0 silently on expiry	disasm (verified)
+0x0800b5e8	func	spi_fpga_or_tcx_transfer_mark	CS assert: GPIOB ODR (0x4001100c) bit12 cleared (active low)	disasm (verified)
+0x0800b5f6	func	spi_fpga_or_tcx_transfer_clear	CS deassert: GPIOB ODR bit12 set	disasm (verified)
+0x0800c142	func	get_board_version	returns byte at RAM 0x200000d8; AD9363 paths test {2,4,5} and {6,7}	disasm
+0x200000d8	ram	board_version	0 under emulation (no straps); mapping of codes to hardware revisions (e.g. P01007.06) UNKNOWN	disasm 0x0800c142
+0x0800c1dc	func	delay_units	delay used by script op 0x0B and poll loops (unit not verified; ms assumed)	disasm callers
 0x0800ce76	func	spi_fpga_raw_write	SPI2 [0x0E, reg, val] -> FPGA reg write	disasm
 0x0800ce9a	func	spi_fpga_raw_read	SPI2 [0x0F, reg, 0xFF] -> FPGA reg read	disasm
-0x0800cebe	func	ad936x_reg_sync_write	arm passthrough [0E 01 01] then [0x80|hi, lo, val]	disasm
-0x0800cf00	func	ad936x_reg_sync_read	arm passthrough then [hi&0x7f, lo, 0xFF]	disasm
-0x0800d7c6	func	init_fpga_config	FPGA tables (0x8016260/0x8016460) + AD9363 base profile; no args	disasm
-0x0800d7a4	func	fpga_reg0_toggle	FPGA reg0 |=9 then &=0xfe (heuristic start; tail of pool before init_fpga_config)	disasm
-0x0800f0bc	func	tcx_config_update1	per-channel AD9363 re-tune; guards: [0x20001ab4+0x119]!=0, chan changed, FPGA reg0xE9 bit1	disasm
-0x0800f3d8	func	fpga_cfg_load	writes FPGA regs 0x97-0x9b, 0x04-0x07 from two 5/4-byte structs	disasm
-0x0800f436	func	radio_config_apply	board-version gated; FPGA regs 0xb8/0xb9..; called from 0x08010092	disasm
+0x0800cebe	func	ad936x_reg_sync_write	args (addr16, val, flag): FPGA [0E 01 01] arm; CS low; [0x80|addr>>8, addr&0xff, val]; CS high; FPGA [0E 01 (flag?02:00)] trailer	disasm (verified)
+0x0800cf00	func	ad936x_reg_sync_read	args (addr16, flag): arm [0E 01 01]; CS low; [(addr>>8)&0x7f, addr&0xff, 0xff]; CS high; trailer [0E 01 (flag?02:00)]	disasm (verified)
+0x0800d318	func	ad_script_exec_record	interprets one 4-byte script record [op,a,b,c]: 05 FPGA wr(reg=b,val=c); 06 AD wr(a:b,c; reg 0xA3 value patched from RAM 0x20000100); 08 AD rd; 0A poll AD reg((a&0xF)<<8|b) bit(c>>4)==(c&1), 300 tries; 0B delay c; others nop	disasm (verified)
+0x0800d3d0	func	fpga_passthrough_mode	r0=1: FPGA reg0 |= 0x88; r0=2: FPGA reg0 = (reg0|0x08)&~0x80 (brackets set-09 raw reg access)	disasm (partial)
+0x0800d7a4	func	fpga_reg0_toggle	FPGA reg0 |= 9 then &= 0xfe; real prologue push{r4,lr} at this address	disasm (verified)
+0x0800d7c6	func	init_fpga_config	FPGA cfg tables 0x08016260/0x08016460 -> FPGA regs 0..0xff (2 pages; page 2 sets reg 0xE9 = 0x03 on boards 2/4/5); then runs AD9363 script (see below) via 0x0800d318; then ENSM/lock status reads	disasm (verified)
+0x08016660	table	ad9363_script_a	2639 x 4-byte records, boards 2/4/5 (limit 0x293c); includes RFPLL words, BBPLL, filters, gain table (91 idx), cals; decode: scripts/re/m0900_ad_script.py	disasm+decode (verified)
+0x08018f9c	table	ad9363_script_b	0x10c bytes of records, boards 6/7 (64 regs, no polls)	disasm+decode
+0x080190a8	table	fpga_extra_writes	14 FPGA writes [05 0e reg val] (regs 0x00,0x03,0x2c,0x2f,0x30,0x31,0x33,0x34,0x35,0x3b,0x3f,0x00), run when board 4/5 and [0x200000f8]==0x01000910	disasm
+0x080190e0	table	channel_table_a	39 x 9 B: int16 N, frac24, float32 MHz; boards 2/4/5; MHz/N = 20.000 (RFPLL ref 80 MHz /4); ch00=2404 .. ch38=2480 MHz step 2; ch09 (2422) is what the base script programs	decode (table verified; float=LO MHz inferred)
+0x0801923f	table	channel_table_b	39 x 9 B; boards 6/7; same MHz list 2404..2480; MHz/N 19.35-19.5 (different ref)	decode (inferred)
+0x0800f0bc	func	tcx_config_update1	TX attenuation update: boards 2/4/5 write AD9363 0x073/0x075 (TX1/TX2 ATTEN_0) when radio_state+0x11b differs from applied [0x20000167]; boards 6/7 write FPGA 0xCE and AD 0x054/0x05C. Writes NO RF-PLL regs. Guards: [+0x119]!=0, +0x11b != [0x20000167], FPGA reg 0xE9 bits 0 AND 1 set	disasm (verified)
+0x0800f3d8	func	fpga_cfg_load	writes FPGA regs 0x97-0x9b, 0x04-0x07.. from two structs; called from radio_start_stop and 0x080100ae	disasm
+0x0800f436	func	radio_config_apply	sets radio_state+0x84 = 3, then FPGA regs 0xBA-0xBE (boards 2/4/5) / 0xB8-0xBB (6/7) <- 9-byte channel table record [idx]; stores float at +5 to radio_state+0x94. Whether +0x84 is re-set before use elsewhere: UNKNOWN	disasm
 0x0800fc4c	func	tcx_tune_caller	only caller of tcx_config_update1; no direct BL caller (table/task)	trace
 0x0800fdc2	func	tcx_config_power_zone	AD9363 TX attenuation / power zone writes	0030 map
-0x08010092	func	radio_start_chain	calls radio_config_apply (0x0800f436)	trace
-0x08010864	func	radio_start_stop	r0=1 start / 0=stop; guarded by [0x20001ab4+0x11a]==0; does FPGA cfg only (NOT AD9363)	disasm
-0x20001ab4	ram	radio_state	struct base; +0x119 active, +0x11a started, +0x11b last channel	disasm
-0x20000167	ram	active_transceiver_attenuation	requested channel/atten byte compared with +0x11b	0030 map
+0x080100ae	func	radio_start_chain	large init function (push.w {r1-fp,lr}); BL at 0x0801015a calls radio_config_apply (0x0800f436); also calls 0x0800f3d8 and 0x0800e820	disasm (verified)
+0x08010092	func	radio_first_init	small: if [S+0x109]==0 call 0x0800bace, 0x0800bad4, set [S+0x109]=1. Does NOT call radio_config_apply	disasm (verified)
+0x08010864	func	radio_start_stop	r0=1 start / 0=stop; guarded by [S+0x11a]==0 for start; calls 0x08010286, 0x0800f3d8, 0x0800e820, 0x08010092. That it touches no AD9363 register is NOT proven (indirect calls not followed)	disasm
+0x20001ab4	ram	radio_state_S	struct base. +0x0c cfg word (below); +0x84 channel index; +0x88 channel count(?); +0x94 channel MHz float; +0x109 first-init flag; +0x119 active; +0x11a started; +0x11b TX atten index (written to AD9363 0x073/0x075); +0x128/+0x12a/+0x12c set by 0x0913	disasm
+0x20001ac0	ram	radio_cfg_word	S+0x0c: bit21 fixed-channel flag (0x08010900); bits12-17 fixed channel idx (0x08010916); bits7-11 5-bit field (0x0801092c); bits18-20 3-bit field (0x08010942); bits27-29 3-bit field (0x08010968); bit31 compared in tcx_config_update1 to select atten values	disasm (setters verified; meaning inferred)
+0x20000167	ram	applied_tx_atten	last applied value compared with S+0x11b by tcx_config_update1	disasm
+0x0800e78a	code	channel_index_calc	if cfg bit21: S+0x84 = ((cfg>>12)&0x3f) % S+0x88; else hop: index advanced mod S+0x88 using sequence table at S+0x90 indexed by S+0x80&0x1f. Inferred hopper (not run)	disasm (inferred)
 0x080118d0	func	packet_send	DUML tx	0030 map
-0x08011d66	func	packet_make_response	DUML response builder	0030 map
-0x08011180	func	duml_cmd_0913	config-report handler (dispatch table 0x0801a0f0 key 0x0913)	ptr search
-0x080111fc	func	duml_cmd_0914	config-report handler (key 0x0914)	ptr search
-0x08012122	func	cmd_exec_set09_cmd06	DUML set 0x09 cmd 0x06: single AD9363 reg access (debug)	0030 map; table 0x0801a160
-0x080121b4	func	cmd_exec_set09_cmd12	DUML set 0x09 cmd 0x12 (table 0x0801a160 key 0x12090009)	table
-0x0801a0f0	table	duml_dispatch_a	records [handler, id16]	ptr search
-0x0801a160	table	duml_dispatch_set09	records [handler, (cmdid<<24)|(set<<16)|0x0009]	ptr search
-0x08016260	table	fpga_cfg_table_a	boards 2,4,5; 2x256 bytes written to FPGA regs 0..0xff	init_fpga_config
-0x08016460	table	fpga_cfg_table_b	boards 6,7	init_fpga_config
+0x08011d66	func	packet_make_response	DUML response builder (r0=send fn, r1=req, r2=payload, r3=len)	disasm
+0x080110f2	func	duml_cmd_0904	reply id 0x0954, 16-byte body	disasm
+0x08011122	func	duml_cmd_0911	reply id 0x0961, 4+ bytes	disasm
+0x0801114a	func	duml_cmd_0912	reply id 0x0962; value from 0x080105d2	disasm
+0x08011180	func	duml_cmd_0913	radio config SET (reply 0x0963): payload u16 at +8 = mode. mode0: radio_start_stop(1); byte+0x12 -> cfg bits27-29; byte+0xc -> bits7-11; s16 +0xa -> S+0x12a; u16 +0x10 -> S+0x12c. mode1: radio_start_stop(1); flag(1) -> bit21; byte+0x18 -> bits12-17; byte+0x1c -> bits27-29; S+0x128=0	disasm (verified flow; field meanings inferred)
+0x080111fc	func	duml_cmd_0914	radio status GET (reply 0x0964); sub-modes 0/4/5 compute from helpers (not decoded)	disasm (partial)
+0x08012102	func	cmd_exec_set09_cmd05	DUML set 0x09 cmd 0x05: FPGA reg read, payload[0]=reg; reply [0, val]	disasm (verified)
+0x08012122	func	cmd_exec_set09_cmd06	DUML set 0x09 cmd 0x06: WRITE only. payload [lo,hi,val]; hi==0xFE -> FPGA reg lo (spi_fpga_raw_write, IRQs off); else ad936x_reg_sync_write(addr=hi:lo, val, 1). Reply [0]	disasm (verified)
+0x0801216a	func	cmd_exec_set09_cmd07	DUML set 0x09 cmd 0x07: read counterpart of cmd 0x06 (hi==0xFE -> FPGA read, else ad936x_reg_sync_read); reply [0, val]	disasm (verified)
+0x080121b4	func	cmd_exec_set09_cmd12	DUML set 0x09 cmd 0x12 SET: calls radio_start_stop(0); b0 bit7 -> cfg bit21, b0&0x7f -> bits12-17; b1>>6 -> bits27-29; b1&0x3f -> bits7-11 (5-bit setter); b2 -> S+0x11b (TX atten idx); b3 -> bits18-20. Reply [0]. Does not itself call tcx_config_update1/radio_config_apply	disasm (verified)
+0x08012210	func	cmd_exec_set09_cmd13	DUML set 0x09 cmd 0x13 GET: returns readback of the cmd 0x12 fields + float(0x0800be36)*10 u16 (8 bytes)	disasm (partial)
+0x0801226e	func	cmd_exec_set09_default	handler for keys 0x01 (set 0x09 and 0x13), builds 0x22-byte reply with board-dependent words from RAM 0x200000f4/0x200000f8	disasm (partial)
+0x08012320	func	cmd_exec_key07_set00	table entries 0x07000009/0x07000013 share this handler (not decoded)	table
+0x0801253a	func	cmd_exec_set09_catchall	keys 0xff000009 / 0xff000013 (not decoded)	table
+0x080123b8	func	cmd_exec_set13_cmd08	key 0x08000013 (not decoded)	table
+0x0801a0f0	table	duml_dispatch_a	records [handler|1, id16]: 0x0904 0x0911 0x0912 0x0913 0x0914; then 0x42030009 0x43030009 0x44030009 0xda03000e 0x0e090009 (keys cmdid<<24|set<<16|0x0009)	table dump (verified)
+0x0801a160	table	duml_dispatch_set09	records [handler|1, (cmdid<<24)|(set<<16)|0x0009]: cmd 05 06 07 12 13 01(set00 & 13) ff(09&13) 07(set00,13) 08(set13)	table dump (verified)
+0x08016260	table	fpga_cfg_table_a	boards 2/4/5; 2x256 bytes written to FPGA regs 0..0xff; page 2 [0xE9]=0x03	init_fpga_config
+0x08016460	table	fpga_cfg_table_b	boards 6/7; page 2 [0xE9]=0x80	init_fpga_config

@@ -235,12 +235,11 @@ namespace Antmicro.Renode.Peripherals.SPI
         {
             Array.Clear(ad9363, 0, ad9363.Length);
             Array.Clear(fpga, 0, fpga.Length);
-            // AD9361/3 product-id (UG-570 reg 0x037). AD9361 reports 0x0A; AD9363 differs —
-            // confirm/tune at run time. Seeded so a presence check does not stall.
+            // Product-id reg 0x037: 0x0A passes the no-OS 0xF8-masked 0x08 check; arbitrary seed.
             ad9363[0x037] = 0x0A;
-            // FPGA PLL-lock bit the per-channel tune (tcx_config_update1 @0x0800f0bc) polls on
-            // FPGA reg 0xE9: it requires bit1 set or it skips the AD9363 re-tune.
-            fpga[0xE9] = 0x02;
+            // tcx_config_update1 (0x0800f0bc) needs FPGA reg 0xE9 bits 0 and 1 set; init_fpga_config
+            // writes 0x03 from its config table, which overwrites this seed.
+            fpga[0xE9] = 0x03;
             foreach(var kv in adReadDefaults)
             {
                 ad9363[kv.Key] = kv.Value;

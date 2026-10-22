@@ -57,9 +57,15 @@ SYMS = {
     0x0800CE9A: "spi_fpga_raw_read",
     0x0800CEBE: "ad936x_reg_sync_write",
     0x0800CF00: "ad936x_reg_sync_read",
+    0x0800D318: "ad_script_exec_record",
+    0x0800D7A4: "fpga_reg0_toggle",
     0x0800D7C6: "init_fpga_config",
     0x0800F0BC: "tcx_config_update1",
+    0x0800F436: "radio_config_apply",
     0x0800FDC2: "tcx_config_power_zone",
+    0x08010092: "radio_first_init",
+    0x080100AE: "radio_start_chain",
+    0x08010864: "radio_start_stop",
     0x08011320: "send_func",
     0x080118D0: "packet_send",
     0x08011D66: "packet_make_response",
@@ -202,8 +208,11 @@ def make_func_start(insn_at):
         a = addr
         for _ in range(limit):
             a -= 2
+            if a in SYMS:
+                return a
             it = insn_at.get(a)
-            if it and it[1] == "push" and "lr" in it[2]:
+            # push.w (32-bit encoding) also starts functions; exact-match "push" missed them
+            if it and it[1].startswith("push") and "lr" in it[2]:
                 return a
         return None
     return func_start
