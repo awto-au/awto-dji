@@ -34,7 +34,7 @@ WiMAX scrambler. Proven in MCU code on the ground side:
 | FPGA = just the datastream (GPIO control, UART data, no SPI) | **proven** on `m1400`; corroborated by o-gs teardown |
 | "Encrypt" in firmware = ATSHA204 component auth, not link crypto | **proven** — `m1400:0xf880` cluster; no AES/TEA in either MCU |
 | WiMAX link params tracked + emitted as telemetry | **proven** — fmt `0x25abc`, reporter `0x256cc` |
-| PHY params (AD9363 freq/BW/sample-rate) | **open** — config is runtime-computed; needs Renode capture on `m0900` |
+| PHY params (AD9363 freq/BW/sample-rate) | **open, tooling ready** — config is runtime-computed; the Renode capture harness (`renode/`) is built + validated (`docs/phy-params.md`), blocked only on the `m0900` firmware image |
 | **Data is unencrypted OVER THE AIR** | **NOT proven** — MCU-layer cleartext ≠ air-layer; FPGA could encrypt. Needs an SDR capture. See `what-is-actually-secret.md` LAYER CAVEAT |
 
 ## Tooling status (what you need on Selwyn)
@@ -42,8 +42,12 @@ WiMAX scrambler. Proven in MCU code on the ground side:
 - **radare2** — used for all MCU disassembly (`-a arm -b 16 -m 0`). Ghidra would resolve
   ADR/xrefs far better; recommended for deeper tracing.
 - **Project Mistral** (Cyclone-V bitstream RE) — was built in scratch; clone+build on Selwyn.
-- **Renode** — NOT available in the cloud env; **required** to emulate `m0900` and capture the
-  AD9363 SPI config (the open PHY-params proof). Install on Selwyn.
+- **Renode** — **built from source + validated** in the cloud env (1.17.0, `--no-gui`, .NET 8).
+  The emulation harness for the open PHY-params proof lives in `renode/` (custom STM32F103
+  platform + AD9363 SPI-tap peripheral + capture/self-test scripts; see `renode/README.md`
+  and `docs/phy-params.md`). To rebuild elsewhere: `./build.sh --no-gui` after installing
+  `dotnet-sdk-8.0 libc6-dev libicu-dev gcc cmake python3`. Only the `m0900` firmware is still
+  needed to run the actual capture.
 - **SDR** (e.g. wideband 2.4 GHz) — **required** for the definitive over-the-air tests
   (encryption question + whitening/Berlekamp-Massey). Physical hardware.
 - dji-firmware-tools (`dji_xv4_fwcon.py`) — to unpack firmware modules.
@@ -72,7 +76,9 @@ All the analysis docs cite exact offsets so you can re-derive against your own u
    `0x03/0x44`, version/SN `0x00/0x01`) from the o-gs dji-firmware-tools dissector; mark each
    "confirm against capture".
 3. **Renode-emulate `m0900`** to capture the AD9363 SPI register writes → decode vs UG-570 →
-   exact freq/BW/sample-rate (closes the PHY-params item).
+   exact freq/BW/sample-rate (closes the PHY-params item). *Harness built + validated in
+   `renode/`; drop in `P3X_FW_V01.11.0020_m0900.bin` and run `renode/scripts/m0900_capture.resc`
+   (see `docs/phy-params.md`).*
 4. **Over-the-air SDR capture** → (a) settle the air-encryption question, (b) run
    Berlekamp-Massey on an all-0s / repetitive-telemetry capture to recover the scrambler
    (`known-plaintext-plan.md`, `alternative-approaches.md`).

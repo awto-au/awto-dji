@@ -1,0 +1,35 @@
+:name: m0900 SPI-tap self-test
+:description: Firmware-free smoke test. Builds the platform + AD9363 tap and drives a few SPI transactions straight at the controller (as the CPU would) to prove the tap frames and decodes AD9361/AD9363 traffic. No firmware required.
+
+include @renode/peripherals/AD9363SpiTap.cs
+
+mach create "m0900-selftest"
+machine LoadPlatformDescription @renode/platforms/m0900.repl
+
+# Enable SPI1 as master (CR1.SPE bit6 | CR1.MSTR bit2 = 0x0044) then push bytes at SPI1_DR
+# (0x4001300C), MSB-first, exactly as the m0900 AD9361 driver would. The tap self-frames
+# from the 16-bit header. (These bus writes execute at include time; no 'start' needed.)
+sysbus WriteDoubleWord 0x40013000 0x0044
+
+# (1) WRITE reg 0x017 = 0x05   -> header 0x00 0x17 (write, addr 0x017), data 0x05
+sysbus WriteByte 0x4001300C 0x00
+sysbus WriteByte 0x4001300C 0x17
+sysbus WriteByte 0x4001300C 0x05
+
+# (2) WRITE reg 0x000 = 0x00   -> header 0x00 0x00, data 0x00 (soft-reset clear)
+sysbus WriteByte 0x4001300C 0x00
+sysbus WriteByte 0x4001300C 0x00
+sysbus WriteByte 0x4001300C 0x00
+
+# (3) READ  reg 0x037          -> header 0x80 0x37 (read, addr 0x037), 1 dummy byte;
+#     the tap returns the seeded product-id default (0x0A) on the dummy byte.
+sysbus WriteByte 0x4001300C 0x80
+sysbus WriteByte 0x4001300C 0x37
+sysbus WriteByte 0x4001300C 0x00
+
+echo ""
+echo "self-test: expect 3 transactions logged on spi1.ad9363_spi1 (W 0x017, W 0x000, R 0x037)."
+echo "   spi1.ad9363_spi1 TransactionCount    ; should print 3"
+echo "   spi2.ad9363_spi2 TransactionCount    ; should print 0"
+echo "   spi1.ad9363_spi1 SaveCapture @selftest-capture.txt"
+echo ""
