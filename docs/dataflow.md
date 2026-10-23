@@ -228,6 +228,34 @@ sequenceDiagram
 11. HSE 12 MHz is a compiled literal; crystal on the board not read: I.
 12. Why SPI2 runs /8 (4.5 MHz) while PCLK1/2 would be 18 MHz: reason not recorded.
 
+## 5a. Cross-check against the DJI GO 4 APK's cmdset-9 names - numbering does not match (2026-10-23)
+
+Per the revised scope decision in `apk-analysis.md` section 0 (numeric facts from the
+dynamically-unpacked dex only, never DJI's code), `docs/data/apk-dynamic-cmdset-ids.tsv` names
+cmdset 9 (app's internal name: `OSD`; this doc's/dissector's name: `HD Link`) commands `SetFPGA`
+(4), `GetFPGA`(5), `Set9363`(6), `Get9363`(7) - **four separate named commands**, not the single
+combined-write-with-discriminator-byte scheme this doc's own firmware trace found.
+
+- **V, does not reconcile cleanly.** This doc's own `m0900` dispatcher trace (section above,
+  `0x08012103`) found: cmd `05`=FPGA read, `06`=write (one command, internally distinguishing
+  FPGA-register-vs-AD9363 via payload byte `hi==0xFE`), `07`=another read variant, `12`/`13`=radio
+  SET/GET. `GetFPGA`(5) and `Get9363`(7) line up with the firmware's `05`/`07` reads, but
+  `SetFPGA`(4) does not match the firmware's combined write at `06`, and the firmware's
+  single-command-with-discriminator-byte design doesn't match having two separately named
+  `Set*` commands in the app's enum.
+- **U, not resolved:** whether this reflects (a) a different/later HD-Link generation's protocol
+  than what this specific `m0900` firmware (`P3X_FW_V01.11.0020`) implements, (b) this
+  particular APK version carrying dead/unused enum constants for a feature P3 doesn't support,
+  or (c) an error in the original firmware-side numbering note above. Flagged rather than
+  assumed - do not treat the two sources as confirming each other on this specific point.
+- **I, still useful regardless:** cmdset 9 overall is confirmed real and rich - 58 named
+  commands including signal quality, sweep frequency, channel status, MCS (modulation/coding
+  scheme) control, LBT (listen-before-talk), link-mode, image-transmission-mode, reverse-link
+  direction, and raw FPGA/AD9363 register access. This is the concrete, app-facing surface to
+  capture traffic on (via the now-working AOA relay, `docs/aoa-live-test-2026-10-23.md`) to
+  finally find a real scrambler-seed register write, if one exists - still open per
+  `cpu-reversing-proof.md`'s status table.
+
 ## 6. Reproduce
 
 - Clock/bus derivation: `python3 scripts/re/m0900_trace.py dis 0x0800ddc8 40`, `dis 0x0800dd28 60`, `dis 0x0800aca0 400` (uart_init), `dis 0x0800b536 60` (SPI2), `dis 0x0800b31c 60` (CAN).

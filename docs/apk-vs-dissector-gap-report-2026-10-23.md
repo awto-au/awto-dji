@@ -97,6 +97,34 @@ cross-read) and the real stick-command ID. Next step if this is wanted: read
 `dji-dumlv1-flyc.lua`'s payload dissector functions for `0x27`/`0x29`/`0x2A` directly (public,
 no APK/scope concerns) rather than guessing from the APK's enum alone.
 
+## Debug/test/diagnostic surface sweep across all 723 commands
+
+Swept the full extracted set for debug/test/diagnostic/calibration/fault-related names.
+**V, real factory/test-mode surface exists**, beyond what any earlier doc in this repo had
+catalogued:
+
+| cmdset | id | name | note |
+|---|---|---|---|
+| FLYC(3) | 181/182 | `FaultInject` / `GetPushFaultInject` | literal fault-injection test mechanism - simulate failures to test handling |
+| HD Link(9) | 40 | `SetSdrStartLog` | trigger logging on the radio link itself |
+| HD Link(9) | 22 | `GetPushDebugInfo` | generic link debug info push |
+| HD Link(9) | 55 | `GetHdtvPushException` | link-layer exception/fault push |
+| COMMON(0) | 240 | `GetPushLog` | shared cross-device log-push (resolves to per-device names: `1860`/`2100`/`2150`/`Rc` depending on sender devicetype) |
+| EYE(10) | 1/13/14 | `GetEyePushLog`/`GetPushTrackLog`/`GetPushPointLog` | vision-system logs |
+| EYE(10) | 9 | `DebugCtrlParam` | generic vision-system debug control |
+| EYE(10) | 42/47 | `GetPushException`/`GetPushSensorException` | vision-system fault reporting |
+| CAMERA(2) | 163/206 | `SetCalibrationControl`/`GetCalibrationControl` | camera calibration |
+| CAMERA(2) | 193 | `SetLogMode` | camera-side log mode |
+| GIMBAL(4) | 8/48 | `AutoCalibration`/`GetPushAutoCalibrationStatus` | gimbal self-calibration |
+| RC(6) | 3/248 | `SetCalibration`/`GetFDRcCalibrationStatue` | RC stick/control calibration |
+| WIFI(7) | 128 | `GetPushLog` | wifi-module log push |
+
+**I, worth pursuing if more debug surface is wanted:** `FaultInject` is the standout - a real
+factory/QA test mechanism, not a normal flight command, and the kind of thing worth decoding its
+payload for (what fault categories exist, whether it's gated behind an activation/auth check).
+Payload layouts for any of these: not yet examined, same "decode on demand" priority approach as
+the flight-sequence work above.
+
 ## Files
 
 - `docs/data/apk-dynamic-cmdset-ids.tsv` - all 723 (cmdset, cmdid) facts from the dynamic unpack.
