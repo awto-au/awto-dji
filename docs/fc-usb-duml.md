@@ -254,3 +254,64 @@ Reproduce: `python3 scripts/re/mcu_trace.py --img firmware/unpacked/P3X_FW_V01.1
 disasm and the 5-variant comparison were done with ad hoc Python (capstone) reading the `.bin`
 files directly, not checked in; `renode --console --disable-xwt -e "include
 @renode/scripts/m0306_probe_10s.resc"` (log `tmp/logs/m0306_probe_10s_stdout.log`).
+
+## IRQn67 handler (`0x8029f26`): structural match against ST's HAL_PCD_IRQHandler (2026-10-23)
+
+Followed up on `0x8029f26` (the function IRQn67's handler at `0x08087c3a` tail-jumps into).
+Goal: move past "looks like a standard PCD_IRQHandler" (a shape guess) to something checked
+against real reference source. No pre-built matching binary exists anywhere locally to diff
+against byte-for-byte (see below) — fell back to structural/control-flow comparison against
+ST's public `stm32f4xx_hal_pcd.c` (fetched to `tmp/stm32_hal_ref/`, gitignored, not committed
+— DJI/ST copyrighted source, kept local only per this repo's no-binaries-committed rule).
+
+- **V, reference-binary search was exhaustive and came back empty.** Swept every `.elf` under
+  `/mnt/2tb/git` (~150 repos) for `HAL_PCD`/`USB_OTG`/`PCD_IRQHandler` symbols. All hits are
+  Zephyr/ESP-IDF builds (`awto-zephyr-wt-*`, `awto-l8-wt-*`) — unrelated architecture, not
+  STM32F4, not ST's HAL. No STM32F4 reference binary with debug symbols exists in any local
+  repo. Confirms there's no shortcut here; matching has to be done by reading the code.
+- **V, disassembled `0x8029f26` directly** (`firmware/unpacked/P3X_FW_V01.11.0020_m0306.bin`,
+  base `0x08020000`). Shape: `push {r4-r8,sb,sl,lr}`; read a status word via a call
+  (`0x803c298`/`0x803c2b8`); then a long run of independent bit tests, each
+  `lsls r0, r5, #<shift>` / `bpl` (i.e. "if bit N of the status word is set"), each guarding a
+  call to a distinct sub-handler (`0x802a256`, `0x8029e60`, `0x802a168`, `0x802a0ec`,
+  `0x802a06c`, `0x803c474`, `0x803c44e`) whose results get OR-accumulated into `r4`; ends
+  `pop {...,pc}` returning `r4`. This is the canonical shape of a GINTSTS-style "test every
+  pending-interrupt bit, dispatch per bit, return which ones were handled" USB-OTG
+  device-mode ISR — the same shape `HAL_PCD_IRQHandler` has in every ST HAL version checked
+  (confirmed against the fetched `stm32f4xx_hal_pcd.c`: `if (__HAL_PCD_GET_FLAG(...))` per
+  flag, each guarding a handler, same independent-bit-test structure). Upgrades the earlier
+  "looks like PCD_IRQHandler" from a bare guess to a structurally-grounded claim with cited
+  addresses — but it is **not** a byte-exact or version-exact match (see next point).
+- **I, not literally ST's current `HAL_PCD_IRQHandler`.** One dispatch arm (the last couple of
+  bits tested) calls indirectly through a pointer loaded from RAM: literal pool at
+  `0x802a2a4` holds `0x2001cd98` (an SRAM1 address), loaded into r8, then
+  `ldr r0,[r8]` / `ldr r1,[r0,#0xc]` (and `+0x18`, `+0x1c`, `+0x20`) / `blx r1` — i.e. a
+  table of function pointers sitting at small, early offsets inside some global struct
+  reached via `0x2001cd98`. ST's `PCD_HandleTypeDef` (`tmp/stm32_hal_ref/stm32f4xx_hal_pcd.h`)
+  does have a block of callback function pointers (`SOFCallback`, `SetupStageCallback`,
+  `ResetCallback`, ... `MspDeInitCallback`), but they sit well past these small offsets
+  (after `Instance`/`Init`/the USB register-state fields) in every HAL version checked — these
+  offsets (`+0xc/+0x18/+0x1c/+0x20`) land too early to be that block. More consistent with
+  either a much older/leaner `HAL_PCD_IRQHandler` (pre-`USE_HAL_PCD_REGISTER_CALLBACKS`,
+  which only exists from HAL F4 ~v1.7+) or — given the firmware's own strings use a distinct
+  in-house `hal_` naming convention for unrelated peripherals (`hal_compass_add`, seen in the
+  same image) — a DJI-internal thin wrapper struct with its own small callback vtable, not
+  ST's HAL verbatim.
+- **U, not resolved this pass:** exact HAL version/vendor, and whether `0x2001cd98` names a
+  real persistent handle (vs. a relocatable bootloader-copy artifact). Would need either (a) a
+  compiled HAL_PCD_IRQHandler at a specific version to diff bit-shift-order against (started,
+  not finished: `tmp/stm32_hal_ref/` has HAL source only, no build yet), or (b) finding the
+  constructor that populates `0x2001cd98` and checking its struct literal against a specific
+  HAL header's field layout.
+- **Compiler/toolchain fingerprint, I:** `Reset_Handler` (`0x08021964`) is two instructions —
+  indirect call via literal pool (SystemInit-equivalent) then an indirect tail-jump, with no
+  inline `.data`/`.bss` copy loop visible at the reset entry. That's a better fit for
+  ARM Compiler/Keil's `__main` scatter-loader trampoline than for a typical GCC+newlib
+  `Reset_Handler` (which usually inlines the copy/zero loops directly). Not confirmed against
+  an actual ARMCC build — no Keil-built STM32F4 reference binary found locally either.
+
+Reproduce: disasm via ad hoc capstone (same pattern as `scripts/re/fc_usb_xrefs.py`, not
+checked in as its own script); HAL reference source fetched from
+`raw.githubusercontent.com/STMicroelectronics/stm32f4xx_hal_driver/master/{Src,Inc}/...`
+(the HAL driver is a separate submodule repo from the `STM32CubeF4` umbrella — the umbrella
+repo's own raw tree 404s on these paths).
