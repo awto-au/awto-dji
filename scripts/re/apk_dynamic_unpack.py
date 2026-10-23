@@ -163,7 +163,7 @@ def step_frida_server(device, dry_run):
         time.sleep(2)  # let frida-server bind before the client connects
     log("frida-server pushed and started; local pip install for the client:\n"
         f"  python3 -m venv {VENV}\n"
-        f"  {VENV}/bin/pip install frida-tools=={FRIDA_VERSION} frida=={FRIDA_VERSION}")
+        f"  {VENV}/bin/pip install frida=={FRIDA_VERSION} frida-tools")
 
 
 def pip_bin(name):
@@ -171,10 +171,12 @@ def pip_bin(name):
 
 
 def ensure_frida_client(dry_run):
+    # frida-tools is a separate package from frida itself and does NOT share its version
+    # numbering (frida-tools caps out around 14.x on PyPI while frida core is at 17.x+);
+    # only `frida` needs to match the server version, frida-tools just needs frida>=17.10.
     if not (VENV / "bin" / "frida").exists():
         run([sys.executable, "-m", "venv", str(VENV)], dry_run)
-        run([pip_bin("pip"), "install", f"frida-tools=={FRIDA_VERSION}",
-             f"frida=={FRIDA_VERSION}"], dry_run)
+        run([pip_bin("pip"), "install", f"frida=={FRIDA_VERSION}", "frida-tools"], dry_run)
 
 
 def launch_app(device, dry_run):
