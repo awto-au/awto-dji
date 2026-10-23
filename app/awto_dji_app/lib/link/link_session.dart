@@ -97,6 +97,8 @@ class LinkSession extends ChangeNotifier {
 
   void _onBytes(Uint8List chunk) {
     bytesReceived += chunk.length;
+    debugPrint('[link] rx ${chunk.length}B total=$bytesReceived '
+        '${_hex(chunk, 32)}');
     final now = _clock();
     for (final p in _framer.add(chunk)) {
       packetCount++;
@@ -105,6 +107,9 @@ class LinkSession extends ChangeNotifier {
       final key = (p.cmdSet << 8) | p.cmdId;
       messageCounts[key] = (messageCounts[key] ?? 0) + 1;
       _addEntry(PacketLogEntry(now, p.encode(), packet: p));
+      debugPrint('[link] packet set=0x${p.cmdSet.toRadixString(16)} '
+          'id=0x${p.cmdId.toRadixString(16)} sender=${p.senderType} '
+          'receiver=${p.receiverType} ${_hex(p.encode(), 32)}');
       _packets.add(p);
       final osd = OsdGeneral.fromPacket(p);
       if (osd != null) {
@@ -118,7 +123,14 @@ class LinkSession extends ChangeNotifier {
 
   void _onBad(Uint8List frame, String reason) {
     crcErrorCount = _framer.badFrames;
+    debugPrint('[link] bad frame ($reason) ${frame.length}B ${_hex(frame, 32)}');
     _addEntry(PacketLogEntry(_clock(), frame, error: reason));
+  }
+
+  static String _hex(Uint8List b, int max) {
+    final n = b.length > max ? max : b.length;
+    final s = b.sublist(0, n).map((x) => x.toRadixString(16).padLeft(2, '0')).join(' ');
+    return b.length > max ? '$s...' : s;
   }
 
   void _addEntry(PacketLogEntry e) {

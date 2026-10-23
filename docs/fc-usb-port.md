@@ -291,6 +291,67 @@ upgrade/download) or something else.
   may genuinely be nothing on DJI's side to find, because no DJI PC tool ever needed that
   path for this product.
 
+## Replaying the real working Windows request on Linux - still silent (2026-10-23)
+
+A parallel session got a genuine reply from the RC (`2CA3:0008`) on a real Windows 11 VM
+using `o-gs/dji-firmware-tools`' `comm_serialtalk.py` (documented in
+`docs/usb-tools-test-2026-10-23.md`). Replayed the exact same tool/command on Linux against
+the same physical RC to isolate whether the earlier silence was a parameter mistake on this
+side or a real platform difference.
+
+- **V.** First attempt omitted `comm_serialtalk.py`'s `-a` (ack type) flag, which defaults to
+  `No_ACK_Needed` - this produced a packet with ack-byte `0x00` (`...0a 0e 00 00 00 00 01...`),
+  not `0x40`. This is exactly the cmd-type/ack byte the o-gs community thread (`#25`, cited
+  above) says the FC/RC only responds to at `0x20`/`0x40`. Genuinely a parameter mistake, not
+  evidence of anything.
+- **V.** Retried with the Windows doc's exact working flags (`-b 115200 -a 2`, same
+  `-t 1000 -r 1400 -s 0 -i 1`): produced the **byte-identical** request
+  (`55 0d 04 33 0a 0e 00 00 40 00 01 e8 03`) to the one documented as working on Windows,
+  against the same physical device (`/dev/ttyACM11`, re-verified via udev `by-id` immediately
+  before the test, same `2CA3:0008` RC). **Still a timeout - zero bytes back.**
+- **Conclusion: the packet is provably not the problem.** With byte-exact framing ruled out,
+  whatever makes Windows work and Linux silent must be below the DUML layer - CDC control
+  transfers (`SET_LINE_CODING` stop-bits/parity, not just baud; `SET_CONTROL_LINE_STATE`
+  DTR/RTS sequencing/timing) that Windows' `usbser.sys` and Linux's `cdc_acm` may issue
+  differently, or something timing-sensitive the kernel driver doesn't replicate. Asked the
+  parallel session (which has the pcap) for the exact control-transfer parameters to check
+  against what Linux's `cdc_acm` sends - not yet answered.
+
+## Cross-check against the Windows "don't toggle after open" finding (2026-10-23)
+
+The parallel session's `docs/p3-usb-observations-2026-10-23.md` found: the aircraft's one-way
+log stream stops if DTR/RTS are changed *after* `open()`, regardless of the final value - three
+different fixed combos (0/1, 1/1, 1/0) all worked when set once before open; a post-open change
+(even a 0/0 pulse) stopped it. This matched my own earlier Linux test exactly (open, then
+`TIOCMSET` - a post-open edge), so retried cleanly.
+
+- **V.** Re-tested with a single `open()`, line config folded into one `tcsetattr` call, **no**
+  `TIOCMSET` call at all afterward (accepting `cdc_acm`'s default auto-assert, confirmed
+  DTR=1/RTS=1 - one of the three combos the Windows test found working). 15 s listen:
+  **still 0 bytes.**
+- **Confound, not controlled for:** getting `/dev/ttyACM11` back required an explicit
+  unbind/bind of the USB device (its interfaces had been claimed via `usbfs` by something that
+  exited without releasing them - cause not identified) immediately before this test. That
+  rebind is itself a device-level reconfiguration (likely another `SET_LINE_CODING`/line-state
+  equivalent), so this test does not cleanly isolate "clean single open" from "freshly
+  re-enumerated after an unrelated reset."
+- **Also uncontrolled:** the aircraft is stationary on a bench; the log lines seen in the
+  Windows capture (`gimbal pitch/roll/yaw`, `gps init`, `compass stuck`) look like transient
+  boot/state-change events, not a guaranteed continuous stream - silence here may mean "nothing
+  new to log" rather than "stream gated."
+- **V, tried.** Replicated Windows' exact two-stage line-coding sequence (`tcsetattr` to 9600,
+  then to 115200 on the same fd, no close in between): **still 0 bytes**, 10 s listen.
+- **Status: still inconclusive on Linux, but the negative result is now thorough.** Across this
+  port specifically, tried: baud 9600/115200/two-stage, all three DTR/RTS combos the Windows
+  test found working (pre- and post-open), 5 receiver addresses, byte-exact packet replay of
+  the working Windows request, and a clean single-open with no post-open control-line change -
+  silent every time, on the same physical device that answers correctly from Windows on the
+  same host. The real remaining uncontrolled variable is whether the aircraft has anything to
+  spontaneously log *right now* (idle on a bench, not flying) - not something further
+  port/baud/DTR tuning can resolve. Not pursuing further on this specific angle without new
+  information (e.g. a capture confirming the log stream is genuinely continuous/periodic, not
+  event-triggered).
+
 ## What is needed next
 1. Find the VCOM data-out handler in `m0306` and read what gates DUML replies - the m0306 USB-OTG dead-ISR finding (`docs/fc-usb-duml.md`) may mean Assistant would get no reply either, independent of the Wine issues above.
 2. If a live Assistant capture is still wanted: the silent exit is NOT a network/CEF-startup issue (refuted above, with independent host-side confirmation) - every DJI engine binary tried (DJIService.exe standalone included) exits the same voluntary way, pointing at a shared gate in DJI's own startup code (possibly anti-tamper/environment detection, akin to the DJI GO 4 APK's AppGuard packer). Next: x86-disassemble the shared init path in `DJIDevice.dll`/`DJIService.exe` to find the actual gate condition, or try real Windows/a VM instead of Wine to sidestep it entirely.

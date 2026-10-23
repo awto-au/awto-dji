@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'dart:typed_data';
 
+import 'package:flutter/foundation.dart';
+
 enum LinkState { disconnected, connecting, connected, failed }
 
 /// Raw byte pipe to the aircraft link. No protocol logic lives here.
@@ -43,6 +45,7 @@ abstract class BaseTransport implements LinkTransport {
   void setState(LinkState s, {String? error}) {
     _current = s;
     _error = error;
+    debugPrint('[transport:$name] state=$s${error != null ? ' error=$error' : ''}');
     if (!_state.isClosed) _state.add(s);
   }
 

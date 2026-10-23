@@ -1,5 +1,8 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <uses-feature android:name="android.hardware.usb.accessory" android:required="false" />
+    <!-- Diag relay only (lib/debug/tcp_relay.dart): mirrors raw accessory bytes to a
+         dev-machine TCP listener. Never used for aircraft control. -->
+    <uses-permission android:name="android.permission.INTERNET" />
     <application
         android:label="awto_dji_app"
         android:name="${applicationName}"

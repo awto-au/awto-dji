@@ -21,6 +21,7 @@ class ConnectScreen extends StatefulWidget {
 class _ConnectScreenState extends State<ConnectScreen> {
   Source _source = Source.simulated;
   final _path = TextEditingController();
+  final _relay = TextEditingController();
   double _speed = 1.0;
   String? _error;
   bool _busy = false;
@@ -30,6 +31,7 @@ class _ConnectScreenState extends State<ConnectScreen> {
   @override
   void dispose() {
     _path.dispose();
+    _relay.dispose();
     super.dispose();
   }
 
@@ -40,7 +42,10 @@ class _ConnectScreenState extends State<ConnectScreen> {
       case Source.replay:
         return ReplayTransport.fromFile(_path.text.trim(), speed: _speed);
       case Source.accessory:
-        return AoaTransport();
+        final parts = _relay.text.trim().split(':');
+        final host = parts.isNotEmpty && parts[0].isNotEmpty ? parts[0] : null;
+        final port = parts.length > 1 ? int.tryParse(parts[1]) : null;
+        return AoaTransport(relayHost: host, relayPort: port);
     }
   }
 
@@ -102,6 +107,15 @@ class _ConnectScreenState extends State<ConnectScreen> {
               ),
             ]),
           ),
+          if (_source == Source.accessory) ...[
+            TextField(
+              controller: _relay,
+              decoration: const InputDecoration(
+                  labelText: 'Diag relay host:port (optional)',
+                  helperText: 'Mirrors raw bytes to a dev-machine TCP listener',
+                  border: OutlineInputBorder()),
+            ),
+          ],
           if (_source == Source.replay) ...[
             TextField(
               controller: _path,
