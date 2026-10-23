@@ -315,3 +315,29 @@ checked in as its own script); HAL reference source fetched from
 `raw.githubusercontent.com/STMicroelectronics/stm32f4xx_hal_driver/master/{Src,Inc}/...`
 (the HAL driver is a separate submodule repo from the `STM32CubeF4` umbrella — the umbrella
 repo's own raw tree 404s on these paths).
+
+### Follow-up, same day: the two opening calls confirm real ST LL_USB code (not DJI-custom)
+
+Checked the "is it the LL API" angle (DJI may call ST's lower-level `stm32f4xx_ll_usb.c`
+directly rather than going through the full `HAL_PCD` object). Result: it's both, and it's
+genuinely ST's code, not a lookalike.
+
+- **V.** The disassembly's first two `bl` targets, in order, are exactly `USB_GetMode()` then
+  `USB_ReadInterrupts()` — the same two calls, same order, as `HAL_PCD_IRQHandler`'s opening
+  lines (`if (USB_GetMode(...) == USB_OTG_MODE_DEVICE) { if
+  (__HAL_PCD_IS_INVALID_INTERRUPT(hpcd)) return; ...`). Confirmed against ST's own header
+  (`tmp/stm32_hal_ref/stm32f4xx_hal_pcd.h:201`):
+  `__HAL_PCD_IS_INVALID_INTERRUPT(__HANDLE__)` expands to a **real call** to
+  `USB_ReadInterrupts((__HANDLE__)->Instance)`, not an inline register read — so the macro
+  call-site and the disassembled `bl` match at the function-call level, not just
+  coincidentally similar shape. `r5` (the value every subsequent bit test runs against) is
+  this call's return value, exactly matching `USB_ReadInterrupts`'s role (`GINTSTS & GINTMSK`)
+  in the real source.
+  - This retires the earlier "not literally ST's HAL_PCD_IRQHandler" doubt raised by the
+    vtable-offset mismatch — the core dispatcher **is** ST's LL_USB/HAL_PCD code (or
+    byte-identical to it for a HAL version not yet pinned down). The vtable-offset point
+    stands on its own as a separate, narrower open question (struct layout/version, not
+    "is this ST's code at all").
+- **U, still open:** which HAL/LL release (the field-offset mismatch says *not* the current
+  `master` layout — an older pre-`RegisterCallback` version is the leading candidate, not yet
+  confirmed by diffing against a specific tagged release's header).
