@@ -5,6 +5,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
 import '../debug/tcp_relay.dart';
+import '../video/annexb_extractor.dart';
+import '../video/video_decoder.dart';
 import 'aoa_identity.dart';
 import 'link_transport.dart';
 
@@ -14,12 +16,18 @@ import 'link_transport.dart';
 /// [relayHost]/[relayPort], if set, mirror every received chunk to a plain TCP
 /// socket (see lib/debug/tcp_relay.dart) so the real decoder can run natively
 /// on a dev machine instead of being rebuilt into the app each iteration.
+///
+/// [videoDecoder], if set, also runs every chunk through [AnnexBExtractor] and feeds any
+/// H.264 NAL units found to it - the raw AOA stream interleaves DUML and video with no demux
+/// header (docs/aoa-live-test-2026-10-23.md), so this runs alongside normal DUML framing on
+/// the exact same bytes, not instead of it.
 class AoaTransport extends BaseTransport {
   AoaTransport(
       {MethodChannel? method,
       EventChannel? events,
       this.relayHost,
-      this.relayPort})
+      this.relayPort,
+      this.videoDecoder})
       : _method = method ?? const MethodChannel(methodChannelName),
         _events = events ?? const EventChannel(eventChannelName);
 
@@ -28,11 +36,13 @@ class AoaTransport extends BaseTransport {
 
   final String? relayHost;
   final int? relayPort;
+  final VideoDecoder? videoDecoder;
 
   final MethodChannel _method;
   final EventChannel _events;
   StreamSubscription<dynamic>? _sub;
   TcpRelay? _relay;
+  final _nals = AnnexBExtractor();
 
   @override
   String get name => 'android-accessory';
@@ -44,11 +54,17 @@ class AoaTransport extends BaseTransport {
       _relay = TcpRelay(relayHost!, relayPort!);
       await _relay!.connect();
     }
+    if (videoDecoder != null) await videoDecoder!.start();
     try {
       _sub = _events.receiveBroadcastStream().listen(
         (dynamic b) {
           final chunk = b as Uint8List;
           _relay?.send(chunk);
+          if (videoDecoder != null) {
+            for (final nal in _nals.add(chunk)) {
+              videoDecoder!.feedNal(nal);
+            }
+          }
           emit(chunk);
         },
         onError: (Object e) => setState(LinkState.failed, error: '$e'),
@@ -77,6 +93,7 @@ class AoaTransport extends BaseTransport {
     _sub = null;
     await _relay?.close();
     _relay = null;
+    await videoDecoder?.stop();
     try {
       await _method.invokeMethod<void>('disconnect');
     } on PlatformException {

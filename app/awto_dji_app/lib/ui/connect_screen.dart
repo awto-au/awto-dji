@@ -7,6 +7,7 @@ import '../transport/aoa_transport.dart';
 import '../transport/link_transport.dart';
 import '../transport/replay_transport.dart';
 import '../transport/simulated_transport.dart';
+import '../video/video_decoder.dart';
 import 'home_shell.dart';
 
 enum Source { simulated, replay, accessory }
@@ -27,6 +28,7 @@ class _ConnectScreenState extends State<ConnectScreen> {
   bool _busy = false;
 
   bool get _aoaAvailable => Platform.isAndroid;
+  VideoDecoder? _videoDecoder;
 
   @override
   void dispose() {
@@ -45,7 +47,9 @@ class _ConnectScreenState extends State<ConnectScreen> {
         final parts = _relay.text.trim().split(':');
         final host = parts.isNotEmpty && parts[0].isNotEmpty ? parts[0] : null;
         final port = parts.length > 1 ? int.tryParse(parts[1]) : null;
-        return AoaTransport(relayHost: host, relayPort: port);
+        _videoDecoder = VideoDecoder();
+        return AoaTransport(
+            relayHost: host, relayPort: port, videoDecoder: _videoDecoder);
     }
   }
 
@@ -64,7 +68,8 @@ class _ConnectScreenState extends State<ConnectScreen> {
         session.dispose();
       } else if (mounted) {
         await nav.push(MaterialPageRoute<void>(
-            builder: (_) => HomeShell(session: session)));
+            builder: (_) =>
+                HomeShell(session: session, videoDecoder: _videoDecoder)));
         await session.stop();
         session.dispose();
       }
