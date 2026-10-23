@@ -352,6 +352,26 @@ different fixed combos (0/1, 1/1, 1/0) all worked when set once before open; a p
   information (e.g. a capture confirming the log stream is genuinely continuous/periodic, not
   event-triggered).
 
+## Cross-product cmdset fuzz - also silent (2026-10-23)
+
+Per the operator's "a command from another product might be a hint" idea: swept every cmdset
+number the public dissector names (0-23, 28, 33 - including product generations the Phantom 3
+doesn't nominally use, e.g. `FPGA Air`(19), `FPGA Ground`(20), `Automation`(16), `BVision`(18),
+`MavLink`(22), `Watch`(23)) with a Get-Version/Ping probe against the aircraft's port
+(`scripts/re/cmdset_fuzz.py`).
+
+- **V.** All 52 cmdset/id combinations: **silent.** No cmdset from any product generation gets
+  a reply from this port. Thorough, not a sampling - this specific hypothesis is now closed for
+  this port.
+- **Also tried (same session): "Enter Loader" (`RequestUpgrade`, cmdset 0 id 7)**, on the theory
+  that a bootloader-level check might respond even though the application firmware doesn't -
+  **also silent**, no behaviour change observed, device re-enumerated normally afterward.
+- Not yet tried against the RC's own port (`2ca3:0008`) - the RC is known to answer correctly to
+  its own cmdset already, so a parallel fuzz there would show whether *any* other cmdset gets a
+  reply from a device that's proven responsive, vs the aircraft which has never replied to
+  anything all session. Deferred: the RC was actively attached to the parallel session's VM for
+  a live Assistant 2 debug-mode test at the time this was run - not taken away mid-test.
+
 ## What is needed next
 1. Find the VCOM data-out handler in `m0306` and read what gates DUML replies - the m0306 USB-OTG dead-ISR finding (`docs/fc-usb-duml.md`) may mean Assistant would get no reply either, independent of the Wine issues above.
 2. If a live Assistant capture is still wanted: the silent exit is NOT a network/CEF-startup issue (refuted above, with independent host-side confirmation) - every DJI engine binary tried (DJIService.exe standalone included) exits the same voluntary way, pointing at a shared gate in DJI's own startup code (possibly anti-tamper/environment detection, akin to the DJI GO 4 APK's AppGuard packer). Next: x86-disassemble the shared init path in `DJIDevice.dll`/`DJIService.exe` to find the actual gate condition, or try real Windows/a VM instead of Wine to sidestep it entirely.
