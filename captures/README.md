@@ -15,8 +15,8 @@ Raw USB captures (USBPcap via tshark) of vendor tools talking to the aircraft/co
 
 ## 2026-10-23_assistant2-both-connected.pcapng
 - Same host/tool as above, aircraft + controller both connected, Assistant 2 left running across several
-  physical replugs. 760 packets, 248 s, USBPcap1. Files: `.duml.txt` (`scripts/duml_pcap_decode.ps1`,
-  169 DUML frames) and `.cdc-ctrl.txt` (`scripts/cdc_ctrl_decode.ps1`: baud, data format, DTR/RTS).
+  physical replugs. 760 packets, 248 s, USBPcap1. Files: `.duml.txt` (`scripts/pcap_decode.py duml`,
+  167 DUML frames, all CRCs valid) and `.cdc-ctrl.txt` (`scripts/pcap_decode.py cdc`: baud, data format, DTR/RTS).
 - Replugs at 23.6 s, 190.9 s, 216 s (controller) and 223 s (aircraft). USB device addresses swap
   between replugs (1.1/1.2), so read the `dev` column per time, not per address.
 - Serial settings (both ports, Windows `usbser`): enumerates at 9600 8N1, the Assistant then
