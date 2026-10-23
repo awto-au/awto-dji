@@ -125,6 +125,31 @@ payload for (what fault categories exist, whether it's gated behind an activatio
 Payload layouts for any of these: not yet examined, same "decode on demand" priority approach as
 the flight-sequence work above.
 
+## No FPGA die/chip-ID readout found anywhere in the APK (2026-10-23)
+
+Checked whether any command dumps the Lightbridge FPGA's own die/chip ID.
+
+- **V.** `grep -rn "ChipId" tmp/apk/dynamic/decompiled/sources/` finds exactly one DJI hit:
+  `DataCommonGetDeviceSerialNumber.java`'s `DeviceIndex` enum - `BoardNum(1), ChipId(2),
+  ModuleNum(3), FlycNum(4)`. Sent via `GetSerialNum` (`CmdIdCommon` value 81 = `0x51`, COMMON
+  cmdset, already in our 304-command `Get*` catalog) with `receiverType = DeviceType.DM368` -
+  the air-side video SoC, a different chip from the Lightbridge FPGA in this project's own
+  architecture (`control-plane-re.md`'s "Air FPGA" vs the separate DM368 video chip). So at best
+  this is **DM368's own chip ID, not the FPGA's** - the request never targets an FPGA-typed
+  device. Nothing in the file mentions "fpga" (checked directly).
+- **V.** The only other "chip state" command found, `general_encrypt_config`'s
+  `GetChipState`/`GetModuleState` (`dji-dumlv1-general.lua` line ~570, cmd_type 1/2), is the
+  ATSHA204/AT88 component-auth chip (returns "At88 chip state flags", config/data-zone lock
+  bits) - out of this repo's scope anyway (`../CLAUDE.md`: no ATSHA204 key extraction), and
+  still not an FPGA readout.
+- **V.** `DataCameraGetSensorID.java` exists but queries the camera's image sensor, not the
+  Lightbridge FPGA - a different "ID" command entirely, same naming-looks-relevant trap.
+- **Conclusion: no FPGA die/chip-ID command exists in the APK's DUML surface.** Nothing found
+  for "jtag"/"idcode" either (checked earlier in `m0900` firmware strings, also empty). The
+  closest thing to an FPGA identity readout in this protocol is version/build strings
+  (`GetVersion`, already in the safe catalog) - not a silicon die ID. If one exists, it would
+  have to come from actually probing the FPGA's own JTAG port on the PCB, not over DUML.
+
 ## Files
 
 - `docs/data/apk-dynamic-cmdset-ids.tsv` - all 723 (cmdset, cmdid) facts from the dynamic unpack.
