@@ -120,8 +120,63 @@ sequenceDiagram
   FC-->>A: ack (seq matched, I)
 ```
 
+## Runtime unpacking (2026-10-23)
+
+Operator authorized unpacking the AppGuard packer ("we can remove appguard - there is no
+issue"), lifting the restriction noted above for the AppGuard payload specifically. Method,
+device state, findings and remaining scope exclusions below.
+
+**Method**: `scripts/re/apk_dynamic_unpack.py --device <serial>` on a real, dedicated-for-work,
+rooted (Magisk) Android device. frida-server pushed/run; `frida-dexdump` dumped ~62 resident
+dex files on cold start, but those are all stock Android framework classes (`android.*`,
+`dalvik.*`) loaded by the boot classloader — the app's own `dji.*` payload was not yet
+resident. Progressing the app past its first-run consent flow (Terms of Use -> OS
+storage/location permission request, declined -> DJI "Information Authorization" toggles,
+accepted as defaulted -> "DJI Product Improvement Program", declined -> Sign Up/Sign In,
+**stopped here, no login performed**) triggers the real payload to load. **At that point
+`frida-dexdump`/manual classloader-walk both reliably killed the target process**
+(`frida.InvalidOperationError: script has been destroyed`, reproducible, process respawned
+under a new PID each time) **and the process was stable as soon as `frida-server` was
+killed** — confirms the packer's advertised anti-tamper/anti-Frida detection, not incidental
+instability. Fell back to the no-Frida path: raw `/proc/<pid>/mem` reads of `rw-p` regions
+under 64 MB via `adb exec-out su -c dd` (binary-safe; plain `adb shell` text capture would
+corrupt the bytes), scanning each region for the dex magic and carving out every match (a
+region can hold several dex files back to back). 5 regions carved (2 large, 60 MB and 38 MB;
+3 small). `jadx -Pdex-input.verify-checksum=no` (the carved copies' SHA-1/Adler-32 header
+fields are stale relative to the runtime's in-memory patches, as expected for a live-process
+dump; jadx's `verify-checksum=no` option accepts them without needing to recompute those
+fields) decompiled 4 of 5 (one small carve was truncated at its memory-region boundary) to
+2544 classes, 775 of them under real `dji.*`/`com.dji.*` packages — confirms the unpack
+worked.
+
+**What this specific carve contains**: this pass's two large regions hold `dji.data.upgrade`
+/ `dji.dbox.upgrade.p4.*` and a package tree that also includes `dji.flysafe` (present but
+**not examined**, per the standing FlySafe exclusion below — the operator's packer-unpacking
+authorization did not extend scope on that). `DJIUpDeviceType` (upgrade device/model table)
+confirms AOA as a named, general transport strategy (`FileTransferStrategies.APP_AOA_RC`,
+`APP_AOA_RC_WIFI_UAV`, `APP_AOA_RC_SDR_UAV` enum values) but is the **modern DJI SDK Core**
+device table (`wm220`/`wm330`-series, `rc001`-`rc240`, `rm500`, `pm410`, `gl811`...) — no
+`T600`/Phantom-3-era entry in it. The specific legacy-P3 `DataConfig`/`CmdSet`/`CmdId`/
+`UsbAccessoryService`/`DJIAoaActivity` classes the earlier static pass found string
+references to were not in these particular 5 regions; they are almost certainly in one of
+the other ~50 dex files `frida-dexdump` listed at cold start but this session did not carve
+from live memory (would need another memscan pass with a different/larger region-size
+cutoff, done post-consent-flow). **Numeric DUML cmd-set/cmd-id values and the AOA accessory
+identity strings remain unconfirmed** — `docs/data/apk-duml-commands.tsv` and
+`app/awto_dji_app/lib/transport/aoa_identity.dart`'s placeholders are unchanged.
+
+Tooling fixes made getting here (now in `scripts/re/apk_dynamic_unpack.py`, reproducible):
+real installed package is `dji.go.v4` (not `com.dji.go4` as the app's own internal class/dir
+naming suggested) with launcher activity `dji.pilot.main.activity.DJILauncherActivity`;
+`frida-tools` and `frida` are separately-versioned PyPI packages (`frida-tools` caps at
+`14.11.0`, pin only `frida` to match the server); the free-threaded CPython build on this
+machine has no `frida` wheel (stable-ABI only) and fails a from-source build, so the venv
+must use a standard CPython explicitly rather than trusting `sys.executable`.
+
 ## Declined (scope)
-- Unpacking AppGuard payload; `libAppGuard*`.
-- FlySafe / no-fly / unlock classes, libs and URLs (names exist; not examined or catalogued).
-- `libUpgradeVerify` signature logic; `libwaes`, `libdjisqlcipher` (exist only); TEA key material in `libGroudStation`.
-- Activation/login protocols and any API keys in the manifest.
+- FlySafe / no-fly / unlock classes, libs and URLs (now present in decompiled form under
+  `dji.flysafe.*` in the runtime unpack above; still not examined or catalogued).
+- `libUpgradeVerify` signature logic; `libwaes`, `libdjisqlcipher` (exist only); TEA key
+  material in `libGroudStation`.
+- Activation/login protocols (stopped navigation at Sign Up/Sign In, no account login
+  performed) and any API keys in the manifest.

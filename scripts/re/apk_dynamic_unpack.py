@@ -24,6 +24,18 @@ Fallback chain (first that produces a dex wins):
                        and carve it out. Works even if the packer detects Frida, as long as
                        root (su) access to read another process's memory is available.
 
+CONFIRMED 2026-10-23 against this APK: steps 1 and 2 DO work, but only before the app's
+real (post-packer) code executes - attaching frida-dexdump at that point consistently
+killed/respawned the target process ("script has been destroyed"), reproducibly, and the
+process was stable again as soon as frida-server was killed. This is this packer's
+advertised anti-tamper behavior, not a bug here. Step 1 against the cold-start stub (before
+the user taps through the consent flow) successfully dumps ~60 dex files, but they are all
+stock Android framework classes (android.*, java.*, dalvik.*) loaded by the boot
+classloader - the DJI app's own dji.* code is not resident yet at that point. Net result:
+for THIS app, step 3 (memscan) is the one that actually recovers DJI code; 1 and 2 are kept
+because they may work against the stub, a differently-packed build, or a future unpacking
+bypass, but do not assume either will reach the real payload here.
+
 Usage:
     python3 -I scripts/re/apk_dynamic_unpack.py --device <serial> [--step STEP] [--dry-run]
 
@@ -56,7 +68,10 @@ VENV = ROOT / "tmp/venv-frida"
 TOOLS = ROOT / "tmp/tools"
 JADX = ROOT / "tmp/tools/jadx/bin/jadx"
 LOG = ROOT / "tmp/logs/apk_dynamic_unpack.log"
-PKG = "com.dji.go4"
+# Real installed package name (confirmed on-device: `pm list packages`); the APK's own
+# directory/activity names (com.dji.go4, dji.pilot.*) suggested otherwise but are wrong.
+PKG = "dji.go.v4"
+LAUNCHER_ACTIVITY = "dji.pilot.main.activity.DJILauncherActivity"  # confirmed on-device
 FRIDA_VERSION = "17.24.3"  # resolved 2026-10-23 via `gh release list -R frida/frida`
 DEX_MAGIC = bytes.fromhex("6465780a303335")  # "dex\n035"
 
@@ -170,28 +185,54 @@ def pip_bin(name):
     return str(VENV / "bin" / name)
 
 
+def find_standard_cpython():
+    """frida ships only a cp37-abi3 (stable-ABI) wheel. That covers any ordinary CPython
+    3.7+ but NOT a free-threaded (3.1xt / --disable-gil) build, which breaks the stable
+    ABI - pip then falls back to compiling frida from source, which fails without the
+    exact build toolchain frida's setup expects. sys.executable is whatever interpreter
+    happened to run this script, which may be the free-threaded one, so search explicitly
+    for a standard build instead of trusting it."""
+    candidates = ["/usr/bin/python3.11", "/usr/bin/python3.12", "/usr/bin/python3.13",
+                  "/usr/bin/python3", "python3.11", "python3.12", "python3"]
+    for c in candidates:
+        exe = c if c.startswith("/") else (
+            subprocess.run(["which", c], capture_output=True, text=True).stdout.strip())
+        if not exe:
+            continue
+        r = subprocess.run([exe, "-c", "import sys; print(sys._is_gil_enabled())"],
+                            capture_output=True, text=True)
+        if r.returncode == 0 and r.stdout.strip() == "True":
+            return exe
+        if r.returncode != 0 and "_is_gil_enabled" in r.stderr:
+            return exe  # older interpreter with no GIL toggle at all = never free-threaded
+    raise SystemExit("no standard (non-free-threaded) CPython 3.7+ found for the frida venv")
+
+
 def ensure_frida_client(dry_run):
     # frida-tools is a separate package from frida itself and does NOT share its version
     # numbering (frida-tools caps out around 14.x on PyPI while frida core is at 17.x+);
     # only `frida` needs to match the server version, frida-tools just needs frida>=17.10.
     if not (VENV / "bin" / "frida").exists():
-        run([sys.executable, "-m", "venv", str(VENV)], dry_run)
+        python = find_standard_cpython()
+        log(f"using {python} for the frida venv (avoiding any free-threaded build)")
+        run([python, "-m", "venv", str(VENV)], dry_run)
         run([pip_bin("pip"), "install", f"frida=={FRIDA_VERSION}", "frida-tools"], dry_run)
 
 
 def launch_app(device, dry_run):
-    r = adb(device, "shell", "cmd", "package", "resolve-activity", "--brief", PKG,
-            dry_run=False, check=False)
-    activity = None
-    for line in r.stdout.splitlines():
-        if "/" in line and PKG in line:
-            activity = line.strip()
-    if not activity:
-        activity = f"{PKG}/.SplashActivity"  # best-effort guess; corrected by hand if wrong
-        log(f"could not resolve launcher activity, guessing {activity}")
-    adb(device, "shell", "am", "start", "-n", activity, dry_run=dry_run)
+    adb(device, "shell", "am", "start", "-n", f"{PKG}/{LAUNCHER_ACTIVITY}", dry_run=dry_run)
     if not dry_run:
-        time.sleep(4)  # let the packer stub decrypt + load the real dex before dumping
+        time.sleep(4)  # cold-start settle; NOT enough to reach the real (post-packer) dex
+    log("NOTE (confirmed 2026-10-23): this app gates its real init behind a first-run "
+        "consent flow - Terms of Use -> OS permission request -> DJI 'Information "
+        "Authorization' toggles -> Product Improvement Program -> Sign Up/Sign In. The "
+        "packer's real payload does not appear to be loaded (no dji.* classes resident) "
+        "until past that flow. This script does NOT automate tapping through it (screen "
+        "layout/coordinates are not a stable API); drive it manually with "
+        "`adb -s <device> exec-out screencap -p > screen.png` + "
+        "`adb -s <device> shell input tap X Y`, stop at Sign Up/Sign In (do not log in), "
+        "then re-run the dump step. Declining the OS permission request (storage/location) "
+        "and 'Product Improvement Program' is fine and does not block reaching that point.")
 
 
 def step_frida_dexdump(device, dry_run):
