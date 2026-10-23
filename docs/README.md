@@ -50,4 +50,5 @@ aircraft: no geofence defeat, no extraction of secret key values, structural ana
 - [fpga-upgrade-path.md](fpga-upgrade-path.md): m0900 upgrade commands, FPGA update handshake, where the chip UID is sent
 - [air-id-and-stream-survey.md](air-id-and-stream-survey.md): all air modules (+ P3S/P3C/P3SE/P3XW): FPGA-stream contact, chip/die ID reads, update-engine path (FX2LP, DM368, FPGA); symbols in `symbols/air_modules.tsv`
 - [ground-upgrade-path.md](ground-upgrade-path.md): C1 ground m1400 upgrade commands, loader marker, FPGA SPI0 path, LPC IAP chip UID, ground vs air; symbols in `symbols/c1_m1400.tsv`, tool `../scripts/re/mcu_trace.py`
+- [fc-usb-port.md](fc-usb-port.md): aircraft front micro-USB (`fff0:0008`, CDC-ACM) to the STM32F427 flight controller: descriptors, VCOM/MSC modes in `m0306`, probe results (no reply yet), next steps; tools `../scripts/probe_fc_usb.py`, `../scripts/re/fc_usb_xrefs.py`
 - [apk-analysis.md](apk-analysis.md): DJI GO 4 v4.3.64 APK: AOA/T600 link, DUML/cmd-set names, video path, upgrade/activation names; Java is packed (limits stated); data in `data/apk-duml-commands.tsv`, tool `../scripts/re/apk_extract.py`
