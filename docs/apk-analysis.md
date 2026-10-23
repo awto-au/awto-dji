@@ -5,13 +5,24 @@ Reproduce: `python3 -I scripts/re/apk_extract.py` (log `tmp/logs/apk_extract.log
 Tags: **V** verified (seen in APK file) · **I** inferred · **U** unknown / not obtainable here.
 Commands table: `data/apk-duml-commands.tsv`.
 
-## 0. Hard limit: the Java code is packed (V)
+## 0. The Java code is packed - scope decision, revised 2026-10-23 (V)
 - Manifest `application` + `appComponentFactory` = `com.AppGuard.AppGuard.*` (V). Packer/anti-tamper stub.
-- `classes.dex` header defines 1623 classes, all `com.amap`, `com.autonavi`, `com.AppGuard` (V); jadx 1.5.6 output = third-party only.
-- ~37 MB of the 39 MB file is payload outside the dex tables. String pool of that payload is readable (class/resource names, constants); bytecode is not (V).
-- Unpacking it = anti-tamper analysis: **declined** (scope). Consequence: no method bodies, no numeric constants from Java.
-- All "Java layer" answers below come from: manifest, `res/xml`, class names, string constants, native-lib strings/exports.
-- Method-level facts (cmd ids, upgrade order, block size, timeouts) are **U** unless confirmed elsewhere (repo m0900 work, public dissectors, or a live capture).
+- `classes.dex` header defines 1623 classes, all `com.amap`, `com.autonavi`, `com.AppGuard` (V); static jadx 1.5.6 output on the on-disk APK = third-party only.
+- ~37 MB of the 39 MB file is payload outside the dex tables. String pool of that payload is readable (class/resource names, constants); static bytecode is not (V).
+- **Revised scope decision (operator, 2026-10-23):** `scripts/re/apk_dynamic_unpack.py` dumps the
+  real dex from a *running* instance of the app (Frida dexdump, with a manual classloader-walk
+  and `/proc/pid/mem` scan as fallbacks) - this does defeat AppGuard's static packing, since its
+  entire purpose is to hide the real bytecode until runtime. Explicitly authorised, bounded: the
+  dynamically-unpacked source (`tmp/apk/dynamic/decompiled/`, git-ignored, never committed - see
+  `.gitignore`) is read **only to extract protocol facts** (numeric cmdset/cmdid values, field
+  layouts, framing rules) for documentation and for this project's own independently-written code
+  (`app/packages/duml`, docs). DJI's actual code/expression is never copied, derived-from, or
+  committed - standard interoperability clean-room boundary. Supersedes the original "declined"
+  note below, kept for history.
+- Original note (2026-10-23, earlier in the session, now superseded): "Unpacking it = anti-tamper
+  analysis: declined (scope). Consequence: no method bodies, no numeric constants from Java."
+- Method-level facts (cmd ids, upgrade order, block size, timeouts) not yet re-extracted under the
+  revised scope are still **U** below until specifically updated with a V/dynamic-unpack citation.
 
 ## 1. USB / AOA connection
 - Accessory filter `res/xml/accessory_filter.xml`: `manufacturer="DJI" model="T600"` only (V). No version/description/uri/serial in the filter (V).
