@@ -48,13 +48,17 @@ not just from public dissectors:
   playback rather than the live USB link. The codec and its CRC constants are DJI's DUML
   implementation either way.
 
-## CmdSet 0x00 (COMMON) numeric command IDs — new cross-confirmation (V)
+## CmdSet 0x00 (COMMON) numeric command IDs — cross-confirmation (V)
+
+**Correction (2026-10-23):** this section originally labelled 0x0b/0x0c "new". They are not — both are already in the public o-gs/dji-firmware-tools Wireshark dissector (`dji-dumlv1-general.lua`, already cloned on this machine and used elsewhere in this repo's docs), which was not checked before writing that label. What the DLL analysis genuinely adds for 0x0b/0x0c: DJI's own compiled string literals (`reboot_device`, `ActionDoQueryStatus`) corroborate the dissector's names from DJI's own binary, rather than from third-party behavioural inference — a real but smaller claim than "new".
 
 `DJIUavService.dll` and `DJIRcService.dll` (identical in both; `DJIRc2Service.dll` and
 `DJIBsService.dll` share the CRC tables but were not grepped for these specific strings)
 contain literal debug-log strings of the form `ActionName (<cmdset>_0x<cmdid>)` inside a
 `DJIModuleUpgrader` / `DJIFirmUpgrader{1,2,3}` class family (firmware-upgrade state
 machine). These are **plaintext, not reconstructed from disassembly**:
+
+**Note:** the whole 0x00-0x0a range in this table is also already in the public o-gs/dji-firmware-tools dissector (`dji-dumlv1-general.lua`, `/mnt/2tb/git/dji-firmware-tools`) - Ping/Version Inquiry/.../Update Finish are all pre-existing public names. Nothing in this table is new protocol knowledge; what's new is only that DJI's own shipped binary now corroborates those names directly, rather than via third-party behavioural reverse engineering.
 
 | cmdset | cmdid | name (string, verbatim) | cross-check |
 |---|---|---|---|
@@ -63,8 +67,8 @@ machine). These are **plaintext, not reconstructed from disassembly**:
 | 0x00 | 0x08 | tag `(0_0x08)` beside string `upgrade_request_receive` | **confirms firmware**: matches m0900 "Update Confirm" (`docs/fpga-upgrade-path.md`) |
 | 0x00 | 0x09 | string `re-data transmission %1` beside `(0x09`, class `ActionDoDataTransmission` | **confirms firmware naming** ("Update Transmit"); m0900 itself has **no handler** for 0x09 (per `docs/fpga-upgrade-path.md`) — this DLL still names/uses the id, so the handler lives elsewhere (another firmware module, or host-side only) |
 | 0x00 | 0x0a | tag `(0_0x0a)` beside string `firmware_upgrade_finish`, class `ActionDoUpgradeVerify` | **confirms firmware**: matches m0900 "Update Finish" |
-| 0x00 | 0x0b | tag `(0_0xb)` beside string `reboot_device`, class `ActionDoReboot` | **new** — not previously in `apk-duml-commands.tsv` or firmware docs |
-| 0x00 | 0x0c | `[ActionDoQueryStatus] 0_0x0c`, class `ActionDoQueryStatus` | **new** |
+| 0x00 | 0x0b | tag `(0_0xb)` beside string `reboot_device`, class `ActionDoReboot` | **confirms public dissector**: matches o-gs/dji-firmware-tools `dji-dumlv1-general.lua` `[0x0b] = 'Reboot Chip'` (already on disk at `/mnt/2tb/git/dji-firmware-tools`, not previously cross-checked against this DLL work) |
+| 0x00 | 0x0c | `[ActionDoQueryStatus] 0_0x0c`, class `ActionDoQueryStatus` | **confirms public dissector**: matches o-gs/dji-firmware-tools `dji-dumlv1-general.lua` `[0x0c] = 'Get Device State'` |
 
 Evidence form: these are Qt debug-log literal strings (e.g. `"[ActionDoQueryStatus] "` and
 `"0_0x0c"` stored as adjacent/concatenated literals), paired with class method names
