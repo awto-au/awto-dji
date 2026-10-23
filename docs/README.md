@@ -14,6 +14,8 @@ the current state and next steps, and `../CLAUDE.md` for agent onboarding.
 - `what-is-actually-secret.md` — 3-tier secrecy inventory; **LAYER CAVEAT** (MCU-layer
   cleartext is not over-the-air proof).
 
+- `usb-tools-test-2026-10-23.md` — Windows USB tooling test: no DJI PC tool for the P3; Assistant 2 rejects it; dji-firmware-tools reads the controller; capture + decoder.
+
 ## Telemetry & video
 - `video-and-link.md` — what talks to the phone; OSD is client-rendered, not burned at the
   aircraft; video/telemetry mux; data-vs-burned-OSD tests.
