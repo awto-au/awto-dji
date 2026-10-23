@@ -9,14 +9,14 @@ method — honestly separating "shown" from "needs more work / tooling".
 | Claim | Proof target | Status |
 |---|---|---|
 | ID is CPU-placed cleartext data | DUML "Connected Master Id" handler storing + emitting the ID on the data path | **shown** — role path (`0x9bd0`) AND the binding handler itself: Connected Master Id Set `0x2bca` / Get `0x2b10`, cleartext DUML <-> RAM `0x100005e8`, no crypto (below) |
-| FPGA is just the datastream (control via GPIO, data via UART) | MCU GPIO = discrete control strobes; data over UART | **shown on `m1400`** — GPIO routine at 0x1234 does FIOSET/FIOCLR bit toggles; UART ISR present; no SPI (see `id-entry-point.md`) |
+| FPGA is just the datastream (control via GPIO + SPI register file, data via UART) | MCU GPIO strobes; SPI0 register file `[0E/0F reg val]`; UART data | **partly corrected** — GPIO strobes (FIOSET/FIOCLR) and UART ISR present, but the MCU also drives the FPGA over SPI0 (`0x40020000`); the earlier "no SPI" was wrong (see `ground-upgrade-path.md`). "No datastream crypto in the MCU" is unaffected |
 | Whitening is stock / at most a seed | MCU writing (or not) a scrambler-seed/frame-mode register to the FPGA | **not yet** — needs the FPGA bring-up path in `m0900`/`m1400` |
 | PHY is WiMAX-family with standard params | `m0900` AD9363 SPI register sequence decoded vs UG-570 | **mostly recovered** — captured in Renode; base profile is a static record script at `0x08016660` (corrects the earlier "runtime-computed" note); Fref, sample rate and BW partly inferred. See `docs/phy-params.md` |
 
 ## Confirmed so far
 
 - **`m1400` (ground, LPC1765):** GPIO = discrete FPGA control lines (FIOSET/FIOCLR bit
-  set/clear); data path is interrupt-driven UART; **no SPI**. Strings `FpgaErr`, `MASTER`,
+  set/clear); data path is interrupt-driven UART; SPI0 register link to the FPGA exists (earlier "no SPI" corrected). Strings `FpgaErr`, `MASTER`,
   `TestMaster`. => FPGA treated as a configured modem, ID handled in MCU software.
 - **`m0900` (air, STM32F103):** app at `0x08008000` (SP `0x20004cb8`, reset `0x08008201`).
   Uses **both SPI1 (`0x40013000`) and SPI2 (`0x40003800`)** plus USART1/2/3. One SPI is the
@@ -136,8 +136,10 @@ Full dispatch chain, from the DUML frame to the leaf handlers, all on cleartext 
 set 0x06 = RC, cmd 0x0C = Connected Master Id Set, 0x0D = Get).
 
 ```
-1. DUML frame dispatcher  @0x5c76:  ldrb r0,[frame,9]  ; cmd_set (frame byte 9)
-                                    cmp r0,6; (==6) route to RC command handling
+1. DUML frame dispatcher  @0x5c76:  ldrb r0,[frame,9]  ; frame byte 9
+                                    cmp r0,6; (==6) CORRECTED: this is a separate special case
+                                    (receiver 0x19, cmd 0x40); the cmd dispatcher 0x56e4 is reached
+                                    from the set-9 case (TBB index 9 at 0x53d4), per ground-upgrade-path.md
 2. RC cmd_id dispatcher   @0x56e4:  ldrb r1,[frame,0xa] ; cmd_id (frame byte 10)
                                     cmp r1,0xd; beq 0x5762            ; 0x0D Get
                                     TBB [pc,r1] @0x56f0 for id<=0x0C
@@ -178,3 +180,7 @@ key-loaded) which firmware cannot rule out (FPGA datapath unreadable - the decod
 Remaining firmware angle: look for a cipher key/seed being loaded MCU->FPGA at bring-up (same
 place as the scrambler-seed check). Even "none found" would not fully exclude a fixed FPGA
 cipher. **The only definitive test of over-the-air encryption is an SDR capture.**
+
+## Address note (ground, m1400)
+
+- Addresses in the m1400 sections are image offsets. The image is flashed at 0xA000 (flash address = offset + 0xA000); the reset vector `0x23ba9` equals `0xA000 + 0x19ba8` (verified). Earlier text that says "base 0" refers to offsets.

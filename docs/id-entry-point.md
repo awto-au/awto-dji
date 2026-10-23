@@ -22,14 +22,13 @@ valid bare image).
 - **The MCU owns the FPGA comms and the master-ID code.** ASCII strings present in the
   image: `FpgaErr`, `MASTER`, `TestMaster`. So FPGA-interface handling and master-ID logic
   are in this MCU, consistent with the DUML "RC Connected Master Id Set/Get" field.
-- **The MCU<->FPGA link is NOT SPI.** Scanning the image for LPC176x peripheral-base
-  literals: **zero** SSP0/SSP1 references (`0x40088000`/`0x40030000`), and **zero** SSP
-  register-address literals. The heavily used peripherals are **fast GPIO `0x2009c000` (x25)**,
-  SYSCON (x17), PINCON (x14), and UART1 (x2). So the control/data path to the FPGA is a
-  **GPIO-driven parallel/serial bus** (with UART used elsewhere), not a hardware SPI port.
-- Therefore the ID reaches the FPGA as **register/control traffic on that GPIO bus**, or as
-  MCU-assembled MAC-frame header bytes over the same path — either way, through the MCU<->FPGA
-  GPIO interface.
+- **The MCU<->FPGA link IS SPI (corrected).** The earlier scan only looked for SSP0/SSP1; the
+  image uses the legacy SPI0 block at `0x40020000` (CS on P2.9, 4 MHz requested), carrying the
+  same `[0E reg val]` / `[0F reg FF]` register protocol as the air side (`docs/ground-upgrade-path.md`,
+  bit-record table byte-identical to m0900). Fast GPIO `0x2009c000` (x25), SYSCON (x17), PINCON (x14)
+  and UART1 (x2) are also used: GPIO for control strobes (e.g. P1.23), UART elsewhere.
+- Therefore the ID reaches the FPGA as **register/control traffic on the SPI0 register bus** (or
+  GPIO strobes), or as MCU-assembled MAC-frame header bytes over the same path (inferred, not seen).
 
 Reproduce: `scripts/fpga/*` for the FPGA side; the MCU scan is a literal-pool search for the
 peripheral bases above over `c1_m1400.bin`.

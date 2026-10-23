@@ -31,7 +31,7 @@ WiMAX scrambler. Proven in MCU code on the ground side:
 | Claim | Status |
 |---|---|
 | ID is CPU-placed cleartext data | **proven in code** — Connected Master Id Set `m1400:0x2bca` / Get `0x2b10`, cleartext DUML ↔ RAM `0x100005e8`; dispatch `0x5c76`→`0x56e4`; role machine `0x9bd0` |
-| FPGA = just the datastream (GPIO control, UART data, no SPI) | **proven** on `m1400`; corroborated by o-gs teardown |
+| FPGA = just the datastream (control via GPIO + SPI register file, data via UART) | **partly corrected** — `m1400` also drives the FPGA over SPI0 with the same register protocol as the air MCU (`docs/ground-upgrade-path.md`); earlier "no SPI" was wrong. No datastream crypto found in either MCU |
 | "Encrypt" in firmware = ATSHA204 component auth, not link crypto | **proven** — `m1400:0xf880` cluster; no AES/TEA in either MCU |
 | WiMAX link params tracked + emitted as telemetry | **proven** — fmt `0x25abc`, reporter `0x256cc` |
 | PHY params (AD9363 freq/BW/sample-rate) | **mostly recovered, partly inferred** — base profile is a static 2639-record script at `m0900:0x08016660` (not runtime-computed); AD9363 is behind the FPGA on SPI2. Registers verified: BBPLL x17.92, RFPLL N=121.1, 39-entry channel table (2404-2480 MHz, 2 MHz step). **Inferred:** Fref 40 MHz, sample rate 11.2 MHz, RF BW 10 MHz. **Open:** Fref confirmation, why RX BW ends at 0.625 MHz, run-time channel hop. Not yet confirmed by a real DUML session or SDR. Issue [#2](https://github.com/awto-au/awto-dji/issues/2); `docs/phy-params.md`, `docs/symbols/` |
