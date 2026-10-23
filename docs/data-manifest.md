@@ -27,9 +27,13 @@ Unpack with dji-firmware-tools `dji_xv4_fwcon.py` → per-module `.bin`. Key mod
 
 ## App (DJI GO) — DJI copyright, not stored
 
+v4.3.64 (2026-10-23): official DJI download page (dji.com Download Center -> service-adhoc.dji.com) embeds a signed, short-lived CDN link (terra-2-g.djicdn.com, `..._official_sec.apk`); fetch it from that page, the link expires in a day. Saved under `firmware/apk/` (git-ignored). The older `go4.apk` below has no recorded source.
+
+
 | File | SHA-256 | Size |
 |---|---|---|
 | `go4.apk` | `0a2a6b6a79ad2b3e8b6346e37d76da4d9f61c62f997556983576f2bd64d8c612` | 107,504,443 |
+| `dji-go-4_v4.3.64.apk` | `01ab1f16e824c4eecec8dc4637cb5721d44efdd5ff62ae6abd59f83101381e25` | 270,454,045 |
 
 ## Third-party tools (clone + build; pinned commits used here)
 
