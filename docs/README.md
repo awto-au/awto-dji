@@ -25,7 +25,7 @@ the current state and next steps, and `../CLAUDE.md` for agent onboarding.
 - `firmware-overview.md`, `binary-analysis.md`, `kernel-analysis.md`, `code-provenance.md`,
   `license-compliance.md`.
 - `fpga-images.md`, `fpga-interfaces.md`, `fpga-emulation-plan.md`, `bitstream-to-verilog.md`,
-  `m2001-decomp-findings.md` — FPGA bitstream RE (Mistral); the decode gaps.
+  `m2001-decomp-findings.md` — FPGA bitstream RE. The earlier m2001 Mistral decode is void (#114); `fpga-images.md` has the family verdicts, `m1900`/`m2000`/`m2002` appear encrypted.
 
 ## RF / SDR / recovery strategy
 - `minimal-recovery.md` — eliminate the complex FPGA; recover only the small DJI-specific bits.

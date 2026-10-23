@@ -67,13 +67,9 @@ Master-ID is a DUML field ("RC Connected Master Id"). So:
 Still not determinable from firmware alone: **which** UART (0/1/2/3) is the FPGA link vs the
 RC-host / stick links — that needs the PINCON pin-mux trace plus the board schematic.
 
-## Verified from the bitstream (`m2001`)
+## Bitstream evidence: none (earlier `m2001` claims void)
 
-The ground FPGA exposes **~195 true external input pins** and ~55 outputs (counted by edge
-direction in the Mistral `routes` netlist: a `GPIO:DATAIN` that *drives* fabric is a real
-input; a `GPIO:DATAOUT` that fabric drives is a real output — `scripts/fpga/gpio_dir.py`).
-The ID enters on the subset of those inputs wired to the MCU control bus. The RF sample bus
-(to the AD9363) and the FX2LP slave-FIFO are separate pin groups.
+The earlier "~195 input / ~55 output pins" count came from the void `m2001` decode (pluribus #114: `m2001` is not Cyclone V) and is withdrawn. No FPGA pin count exists. The ID path MCU -> GPIO control bus -> framer is from firmware only.
 
 ## What needs the board schematic (honest limit)
 
@@ -82,10 +78,7 @@ The ID enters on the subset of those inputs wired to the MCU control bus. The RF
   Pn.m" requires the GL300/C1 ground-unit schematic, which we do not have. Pin *roles* can
   be *inferred* from bus width/clocking (a ~12-bit clocked group = AD9363 I/Q; a narrow
   group with its own clock = MCU control) but not proven from firmware+bitstream alone.
-- **Exact register location inside the fabric.** Tracing the ID register from the input pins
-  to the framer/address block is blocked by the **~40% unresolved interconnect** in the
-  Mistral decode (`routes2`: 53,889 unresolved active routes — see
-  `m2001-decomp-findings.md`).
+- **Exact register location inside the fabric.** No decoded netlist exists (`fpga-images.md`).
 
 ## Why this is enough for the link goal
 
@@ -99,4 +92,4 @@ pin-level tracing of the ID inside the FPGA:
 So the ID's path into the FPGA is now pinned down architecturally (MCU -> GPIO control bus ->
 MAC framer/address block), and the two things actually needed (value + frame position) come
 from captures, not from resolving the fabric. The internal FPGA trace stays a fallback,
-gated on the same open Cyclone-V model work as the LFSR extraction.
+gated on a decodable FPGA stream (none today).

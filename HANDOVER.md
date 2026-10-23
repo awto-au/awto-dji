@@ -65,8 +65,8 @@ above). To reproduce the rest on Selwyn:
    containers. See `docs/data-manifest.md` for exact sources/hashes, `docs/code-provenance.md`
    / `docs/firmware-overview.md` for background.
 2. Unpack with dji-firmware-tools `dji_xv4_fwcon.py` → per-module `.bin` (m0900 air STM32,
-   m1400 ground LPC1765, m2001 ground Cyclone-V FPGA, etc.).
-3. For FPGA work: de-pack `m2001` and run Mistral (`mistral-cv decomp 5CEBA4U19C8 m2001.depack.bin out.bt`).
+   m1400 ground LPC1765, m2000/m2001/m2002 ground FPGA images, etc.).
+3. FPGA work: do NOT run Mistral on `m2001` (Cyclone III/IV-format, not Cyclone V; the earlier decode was noise, #114). `m1900`/`m2000`/`m2002` are Cyclone V but appear encrypted. See `docs/fpga-images.md`.
 
 All the analysis docs cite exact offsets so you can re-derive against your own unpack.
 
