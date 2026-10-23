@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import 'package:duml/duml.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
 import '../debug/tcp_relay.dart';
@@ -57,6 +59,7 @@ class AoaTransport extends BaseTransport {
         'model': AoaIdentity.model,
       });
       setState(LinkState.connected);
+      if (_relay != null) _sendDiagQueries();
     } on PlatformException catch (e) {
       await _sub?.cancel();
       _sub = null;
@@ -89,4 +92,35 @@ class AoaTransport extends BaseTransport {
   @override
   Future<void> write(Uint8List data) =>
       _method.invokeMethod<void>('write', data);
+
+  /// Diag-relay-only (see [relayHost]): sends a handful of known-safe, read-only
+  /// `Get*` status queries (never `Set*`/control) so their replies show up in the
+  /// capture, matching docs/apk-vs-dissector-gap-report-2026-10-23.md's
+  /// "safe to send" tier. One-shot, fires once right after connect.
+  Future<void> _sendDiagQueries() async {
+    var seq = 0x7000; // high range, won't collide with the real app's own sequence numbers
+    final queries = <(int cmdSet, int cmdId, String label)>[
+      (CmdSet.hdLink, 0x05, 'GetFPGA'),
+      (CmdSet.hdLink, 0x07, 'Get9363'),
+      (CmdSet.general, 0x01, 'GetVersion'),
+    ];
+    for (final (cmdSet, cmdId, label) in queries) {
+      final pkt = DumlPacket(
+        senderType: DeviceType.pc,
+        receiverType: DeviceType.remoteController,
+        sequence: seq++,
+        ackType: AckType.afterExec,
+        cmdSet: cmdSet,
+        cmdId: cmdId,
+      );
+      debugPrint('[aoa-diag] sending $label (set=0x${cmdSet.toRadixString(16)} '
+          'id=0x${cmdId.toRadixString(16)})');
+      try {
+        await write(pkt.encode());
+      } on Object catch (e) {
+        debugPrint('[aoa-diag] $label send failed: $e');
+      }
+      await Future<void>.delayed(const Duration(milliseconds: 200));
+    }
+  }
 }

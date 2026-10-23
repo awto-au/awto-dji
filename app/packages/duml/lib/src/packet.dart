@@ -42,6 +42,7 @@ class CmdSet {
   static const int flightController = 0x03;
   static const int gimbal = 0x04;
   static const int remote = 0x06;
+  static const int hdLink = 0x09; // "OSD" in the app's own naming; radio/FPGA/AD9363 link control
 }
 
 enum PacketType { request, response }
