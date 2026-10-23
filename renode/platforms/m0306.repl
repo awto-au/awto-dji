@@ -1,0 +1,15 @@
+// m0306 — DJI Phantom 3 flight controller (STM32F427IIH6) platform for Renode.
+//
+// Extends Renode's stock STM32F429 description (same F42x/F43x family core: NVIC, GPIO,
+// USART/UART, SPI, CAN, DMA, modeled RCC). Used read/trace-only, per CLAUDE.md: no
+// control-command sending, no geofence work.
+//
+// Firmware facts (docs/air-id-and-stream-survey.md, this session's static trace):
+//   app base 0x08020000, initial SP 0x2002ff00, reset vector 0x08021965 (thumb bit set)
+//   flash 2 MiB (fits stock 0x200000), SRAM 256 KiB (fits stock 0x40000)
+//
+// Unlike m0900 (STM32F103, RCC unmodeled -> needed an RCC_CFGR Tag workaround), the stock
+// stm32f429.repl's `rcc: Miscellaneous.STM32F4_RCC` models clock-switch status, so no
+// RCC_CFGR tag is expected to be needed here. If the clock-switch wait still spins, add the
+// same Tag pattern used in m0900.repl (docs/fpga-bringup.md gotcha).
+using "platforms/cpus/stm32f429.repl"

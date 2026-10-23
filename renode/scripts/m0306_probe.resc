@@ -1,0 +1,66 @@
+:name: m0306 USB-CDC gate probe
+:description: Boot m0306, force-pend OTG_HS, see where the CPU ends up (docs/fc-usb-duml.md).
+
+# Boot the real m0306 (A3 flight controller) firmware, check whether it ever unmasks the USB
+# OTG interrupts at the NVIC, then force-enable + force-pend the OTG_HS interrupt and show
+# where the CPU ends up — testing the static finding that all five USB OTG NVIC vectors
+# (OTG_FS_WKUP, OTG_HS_EP1_OUT/IN, OTG_HS_WKUP, OTG_HS) point to the CPU's infinite-loop
+# Default_Handler at 0x080219a0, not any CDC-receive code.
+
+$fw ?= @firmware/unpacked/P3X_FW_V01.11.0020_m0306.bin
+$appBase ?= 0x08020000
+
+mach create "m0306"
+machine LoadPlatformDescription @renode/platforms/m0306.repl
+
+logFile @m0306-probe.log true
+
+sysbus LoadBinary $fw $appBase
+sysbus.cpu VectorTableOffset $appBase
+
+# --- stepped boot with a stall check -------------------------------------------------------
+# Waits for: firmware to run from reset through clock/RTOS/peripheral init to its main loop.
+# No measured baseline exists for m0306 (unlike m0900's AD9363 bring-up, docs/fpga-bringup.md
+# measured ~500 SPI ops before timeout); by analogy to that firmware's tens-of-ms boot, the
+# first 4x50ms=200ms step budget below is a >=4x margin over the guessed value. Each step is
+# followed by a PC read so a stall (PC parked, same as the two readings) is visible rather
+# than a silent block in one big RunFor, and the probe moves on regardless at 200ms rather
+# than waiting further — this is exploratory, not a hard pass/fail gate.
+emulation RunFor "00:00:00.050"
+echo "t=50ms PC:"
+sysbus.cpu PC
+emulation RunFor "00:00:00.050"
+echo "t=100ms PC:"
+sysbus.cpu PC
+emulation RunFor "00:00:00.050"
+echo "t=150ms PC:"
+sysbus.cpu PC
+emulation RunFor "00:00:00.050"
+echo "t=200ms PC:"
+sysbus.cpu PC
+
+# --- did the firmware itself ever unmask USB OTG at the NVIC? ------------------------------
+# ISER1 (IRQ 32-63) bit10 = OTG_FS_WKUP(42); ISER2 (IRQ 64-95) bits10-13 =
+# OTG_HS_EP1_OUT(74)/EP1_IN(75)/WKUP(76)/OTG_HS(77). ISER1 bit5 = USART1(37) as a positive
+# control (expected set if boot reached normal peripheral init at all).
+echo "NVIC ISER1 (0xE000E104), expect USART1=bit5 set if boot progressed normally:"
+sysbus ReadDoubleWord 0xE000E104
+echo "NVIC ISER2 (0xE000E108), USB OTG bits 10-13 (74-77):"
+sysbus ReadDoubleWord 0xE000E108
+
+# --- force-enable + force-pend OTG_HS (IRQ 77) regardless of what the firmware did ---------
+# This is the same "forced register/RAM state instead of full peripheral emulation" method
+# used for m0900's AD9363 writers: Renode has no STM32 OTG device-controller model, so rather
+# than emulate a real USB transaction we directly set the two NVIC bits a real transaction
+# would eventually set (enable + pending) and watch where the CPU goes.
+sysbus WriteDoubleWord 0xE000E108 0x00002000
+sysbus WriteDoubleWord 0xE000E208 0x00002000
+emulation RunFor "00:00:00.001"
+echo "after forced OTG_HS enable+pend, PC (expect 0x080219a0, the Default_Handler self-loop):"
+sysbus.cpu PC
+emulation RunFor "00:00:00.001"
+echo "PC again, 1ms later (expect unchanged -> permanent hang, not a transient stall):"
+sysbus.cpu PC
+
+echo ""
+echo "Done. Compare PC values above against docs/fc-usb-duml.md."
