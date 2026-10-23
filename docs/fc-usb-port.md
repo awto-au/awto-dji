@@ -211,6 +211,29 @@ ran too early relative to the real board. Retested directly:
   boot. Narrows the real cause back toward the m0306 USB-OTG dead-ISR / CDC-receive-handler
   question in `docs/fc-usb-duml.md`, not a premature-probe timing artifact.
 
+## RC's own micro-USB port, and receiver-address sweep (2026-10-23)
+
+With the RC also connected: `lsusb` shows a second DJI USB device, `2ca3:0008`
+(`/dev/ttyACM4`), distinct from the aircraft's `fff0:0008` (`/dev/ttyACM11`). Noted for the
+VID/PID table: this one's USB serial string is `DJI_CONFIF_DJI_CONTROLLER_0001A0000000` -
+same serial number as the aircraft, with manufacturer string `DJI  CONFIF  ` (likely a
+truncated/garbled "CONFIG") - the lsusb database label "Mavic Mini MR1SD25 Remote
+controller" is almost certainly a generic cached USB-ID-database string DJI reused across
+RC hardware revisions, not evidence this is actually Mavic Mini hardware.
+
+- **V.** `scripts/probe_fc_usb.py` run against `/dev/ttyACM4` (the RC port): same result as
+  the aircraft port - 0 bytes passive, 0 bytes on Get-Version to all four `TARGETS`.
+- **V.** Retried Get-Version addressed to receiver `0x06` (RC devicetype, per this repo's
+  own `app/packages/duml/lib/src/catalog.dart` - `probe_fc_usb.py`'s `TARGETS` dict labels
+  `0x07` "rc/ofdm", which is wrong for "RC"; `0x06` is the correct RC devicetype) on *both*
+  ports: still 0 bytes either way.
+- **Conclusion:** silence is not explained by boot timing (previous section) nor by
+  receiver-address choice - tried `0x01`/`0x03`/`0x04`/`0x06`/`0x07` across both the
+  aircraft's and the RC's own USB ports, all silent. Narrows further toward either (a) a
+  host-side handshake/wake sequence Assistant performs that a bare DUML send doesn't
+  replicate, or (b) the CDC-receive-to-DUML-dispatcher gap already suspected from the
+  m0306 ISR work in `docs/fc-usb-duml.md` being a shared code path across both MCUs.
+
 ## What is needed next
 1. Find the VCOM data-out handler in `m0306` and read what gates DUML replies - the m0306 USB-OTG dead-ISR finding (`docs/fc-usb-duml.md`) may mean Assistant would get no reply either, independent of the Wine issues above.
 2. If a live Assistant capture is still wanted: the silent exit is NOT a network/CEF-startup issue (refuted above, with independent host-side confirmation) - every DJI engine binary tried (DJIService.exe standalone included) exits the same voluntary way, pointing at a shared gate in DJI's own startup code (possibly anti-tamper/environment detection, akin to the DJI GO 4 APK's AppGuard packer). Next: x86-disassemble the shared init path in `DJIDevice.dll`/`DJIService.exe` to find the actual gate condition, or try real Windows/a VM instead of Wine to sidestep it entirely.
