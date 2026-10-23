@@ -79,17 +79,44 @@ position, not just the first few the live framer happened to log:
   Consider: only surface CRC16-valid frames by default, or label non-matches as "resync" rather
   than "error".
 
+## The raw AOA pipe is two interleaved elementary streams, no demux header (2026-10-23)
+
+Checked what the large inter-burst gaps actually carry.
+
+- **V.** The gaps contain H.264 Annex-B video: 262 occurrences of the 4-byte start code
+  (`00 00 00 01`), 265 of the 3-byte form (`00 00 01`), with NAL unit types in the expected real
+  pattern - type 1 (coded slice, non-IDR) repeatedly, type 9 (access unit delimiter) marking
+  frame boundaries, consistent with a genuine encoded stream, not coincidental zero-runs.
+  **Resolves `apk-analysis.md` section 4's "Annex-B vs length-prefixed: U" to Annex-B,
+  confirmed.**
+- **Conclusion - full picture of the raw accessory pipe:** one byte stream, no channel-ID
+  header, carrying two interleaved elementary streams that a receiver disambiguates purely
+  structurally: DUML frames (`55` SOF, length field, CRC8 header + CRC16 full-frame validation)
+  and H.264 Annex-B NAL units (`00 00 01`/`00 00 00 01` start code, NAL header byte). The two
+  framing patterns essentially never collide (a `55` byte starting a real DUML frame is not
+  `00 00 01`), so a single pass - try DUML framing on `55`, try NAL framing on `00 00 (00) 01`,
+  else advance one byte and retry - cleanly separates them without needing any DJI-specific
+  demux logic at all. This matches `apk-analysis.md`'s own "no second USB channel in the
+  manifest/filter" finding exactly - it was correct, just not fully worked through at the byte
+  level until now.
+
 ## What is needed next
 
 1. Cross-check decoded OSD/telemetry fields against the aircraft's real state (it was stationary
    on a bench during this test - expect near-zero velocity/attitude change). Not yet done: these
    cmdset/id values (`0x03/0x1e` etc.) aren't yet named against `app/packages/duml`'s catalog.
-2. Identify what the large inter-burst gaps actually carry (video, most likely) by checking
-   whether their byte patterns match known H.264 start-code patterns, cross-referencing
-   `apk-analysis.md` section 4 (video path, `dataType` 22346).
+2. Implement the dual-framing split (DUML + H.264 NAL) in `app/packages/duml` and/or the relay
+   script, so the app can render both telemetry and a live video preview from one accessory
+   connection.
 3. Make a longer capture (this one was ~500 KB) to see the burst period precisely and confirm it
    lines up with a plausible telemetry push rate (10 Hz typical for OSD per other docs in this
    repo).
+4. Work out what's safe to transmit back (per `../CLAUDE.md` scope: read-only telemetry/status
+   queries only - no flight-control, no geofence-adjacent commands). Candidate safe sends, from
+   already-public framing + this session's own captures: `0x00/0x01` (Get-Version),
+   `0x00/0xff`-equivalent build-string query (confirmed working against the RC's own port in
+   `docs/fc-usb-port.md`), and read-only OSD/status `Get*` messages named in
+   `apk-analysis.md` section 1-3 - never the `Set*`/control message classes also named there.
 
 Reproduce: `flutter build apk --debug` in `app/awto_dji_app/`, install on an Android device
 connected to the RC's USB-A port, select "Android accessory (RC)" with the diag relay field set
