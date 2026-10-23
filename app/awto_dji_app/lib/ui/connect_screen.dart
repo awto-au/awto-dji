@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../link/link_session.dart';
 import '../transport/aoa_transport.dart';
@@ -20,15 +21,37 @@ class ConnectScreen extends StatefulWidget {
 }
 
 class _ConnectScreenState extends State<ConnectScreen> {
-  Source _source = Source.simulated;
+  Source _source = Source.accessory;
   final _path = TextEditingController();
-  final _relay = TextEditingController();
+  // Dev-only hardcoded default (this machine's LAN IP) - saves retyping every run. Overridden
+  // by the --es relay launch arg if given (see MainActivity.kt).
+  final _relay = TextEditingController(text: '192.168.25.114:9900');
   double _speed = 1.0;
   String? _error;
   bool _busy = false;
 
   bool get _aoaAvailable => Platform.isAndroid;
   VideoDecoder? _videoDecoder;
+
+  static const _launchArgs = MethodChannel('au.awto.dji/launchargs');
+
+  @override
+  void initState() {
+    super.initState();
+    _readLaunchArgs();
+  }
+
+  Future<void> _readLaunchArgs() async {
+    try {
+      final args = await _launchArgs.invokeMapMethod<String, Object?>('get');
+      final relay = args?['relay'] as String?;
+      if (relay != null && relay.isNotEmpty) _relay.text = relay;
+      final autoConnect = args?['autoConnect'] as bool? ?? false;
+      if (autoConnect && mounted) await _connect();
+    } on Object {
+      // Not on Android, or no launch args given - use the hardcoded default.
+    }
+  }
 
   @override
   void dispose() {

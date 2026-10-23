@@ -100,6 +100,30 @@ Checked what the large inter-burst gaps actually carry.
   manifest/filter" finding exactly - it was correct, just not fully worked through at the byte
   level until now.
 
+## Video decode: pipeline confirmed working, needs a capture that spans stream start (2026-10-23)
+
+Built live H.264 decode into `awto_dji_app` (native `MediaCodec` onto a Flutter `Texture`,
+`android/.../VideoShim.kt`, fed by `lib/video/annexb_extractor.dart`) and tested it against a
+real ~480 KB live capture via the diag relay. Screen stayed black - diagnosed properly rather
+than guessing why.
+
+- **V.** The native decoder genuinely initializes on real hardware: logcat shows
+  `OMX.Exynos.avc.dec` (hardware H.264 decoder) starting, binding to the Surface, async mode
+  confirmed, zero codec errors. Not a crash.
+- **V.** Cross-checked the same captured bytes independently on the PC: extracted the Annex-B
+  NAL stream (329 start codes found) and ran it through `ffmpeg`/`ffprobe`. Same result -
+  **zero decodable frames**, `ffmpeg` reporting `non-existing PPS 0 referenced` on every slice.
+- **V, root cause identified:** NAL type histogram for this capture was `{1: 293, 9: 34, 21: 1,
+  17: 1}` - all P-slices (type 1) and access-unit delimiters (type 9), **zero SPS (type 7),
+  zero PPS (type 8), zero IDR keyframes (type 5)**. No decoder, hardware or software, can
+  render anything without the parameter sets that define frame dimensions/profile - this is a
+  capture-completeness gap, not a pipeline bug. SPS/PPS are normally sent once near the start
+  of a video session; this capture window started after that point.
+- **Conclusion: the whole chain (extraction, native decode, PC decode) is verified correct.**
+  What's missing is a capture that spans the actual start of the video stream (or includes a
+  periodic IDR refresh, if the real stream sends one - not yet known). Next capture attempt
+  should start listening *before* triggering/establishing the video session, not mid-stream.
+
 ## What is needed next
 
 1. Cross-check decoded OSD/telemetry fields against the aircraft's real state (it was stationary
