@@ -1,0 +1,8 @@
+cmdset	cmdid	name	source	status
+0x00 general	0x01	QueryVersion / GetVersion	DJIUavService.dll, DJIRcService.dll: literal string "[ActionDoQueryVersion] 0_0x01" / "getversion(0_0x01)" (DJIModuleUpgrader::ActionDoQueryVersion)	confirms app (apk-duml-commands.tsv inferred id 0x01 from catalog.dart)
+0x00 general	0x07	EnterUpgradeMode (= "Enter Loader")	DJIUavService.dll, DJIRcService.dll: literal string "[ActionDoEnterUpgradeMode]0x07"	confirms firmware (m0900, docs/fpga-upgrade-path.md)
+0x00 general	0x08	UpgradePrepare (= "Update Confirm")	DJIUavService.dll, DJIRcService.dll: tag "(0_0x08)" beside string "upgrade_request_receive" (DJIModuleUpgrader::ActionDoUpgradePrepare)	confirms firmware (m0900, docs/fpga-upgrade-path.md)
+0x00 general	0x09	DataTransmission (= "Update Transmit")	DJIUavService.dll: string "re-data transmission %1" beside tag "(0x09" (DJIFirmUpgrader1::ActionDoDataTransmission)	confirms firmware naming; m0900 itself has no handler for 0x09 (docs/fpga-upgrade-path.md) - name/id used here, handler location still unknown
+0x00 general	0x0a	UpgradeVerify (= "Update Finish")	DJIUavService.dll, DJIRcService.dll: tag "(0_0x0a)" beside string "firmware_upgrade_finish" (DJIModuleUpgrader::ActionDoUpgradeVerify)	confirms firmware (m0900, docs/fpga-upgrade-path.md)
+0x00 general	0x0b	Reboot	DJIUavService.dll, DJIRcService.dll: tag "(0_0xb)" beside string "reboot_device" (DJIModuleUpgrader::ActionDoReboot)	new
+0x00 general	0x0c	QueryStatus	DJIUavService.dll, DJIRcService.dll: literal string "[ActionDoQueryStatus] 0_0x0c" (DJIModuleUpgrader::ActionDoQueryStatus)	new
