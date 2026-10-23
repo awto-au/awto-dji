@@ -56,12 +56,57 @@ Status of each claim: **V** verified here, **W** from the o-gs wiki / issues (no
   Installed and run under Wine (`tmp/wine-dji/`, git-ignored, not committed) on an
   isolated Xvfb virtual display, never the real desktop.
 
+## Attempted: live capture of DJI Assistant 2 under Wine (2026-10-23)
+
+**V.** `scripts/re/wine_serial_proxy.py` was built and tested working: a transparent
+relay (real `/dev/ttyACM*` <-> a pty) with live DUML (SOF `0x55`) reframing on both
+directions, logging every byte with timestamp/direction regardless of which side
+initiates. Wine's `HKLM\Software\Wine\Ports\COM1` was pointed at the proxy's pty, and
+DJI Assistant 2 For Phantom 2.0.10 was installed cleanly (`/VERYSILENT` — it is an
+InnoSetup installer, not NSIS; `/S` is silently ignored by it) on an isolated Xvfb
+virtual display (`:99`, never the operator's real desktop/`:0`).
+
+**V.** Assistant's own driver (`dji_vcom_driver11.inf`, confirmed DJI-signed) installs
+under Wine as a no-op (`pnputil` is a Wine stub) but is unneeded anyway: our COM1
+registry mapping bypasses Windows driver matching entirely.
+
+**Not achieved: a live capture.** `DJI Assistant 2.exe` launches, runs its startup
+sequence (WLAN/network-interface enumeration, `toolhelp32` snapshots - typical
+Electron/CEF diagnostics), then exits silently with no window ever drawn and no
+Windows exception/crash dialog, reproducibly, with or without `WINEDEBUG=+seh`
+tracing (which showed only normal SEH unwinds, not a crash). No OOM-kill or SIGSEGV
+in `dmesg`/`journalctl`. Likely cause (not confirmed): an Electron/CEF startup
+network/update check against DJI's own servers failing in a way the app doesn't
+handle gracefully under Wine's network/TLS stack - not chased further.
+
+**V, found instead - static analysis of the installed app:**
+- The UI is Electron (`DJIApp/app.asar`, extracted cleanly - unencrypted, standard
+  asar format, `npx @electron/asar extract`); its 1.2 MB main JS bundle has no
+  serial/DUML/VID-PID logic in it (only a couple of generic `WebSocket` feature-
+  detection strings, from a bundled polyfill library, not DJI's own code).
+- The real device layer is native: `DJIEngine/DJIService.exe` (Qt-based; exports
+  `DJIWebSocketHandler` for local IPC to the Electron UI) plus `DJIEngine/
+  Qt5SerialPort.dll` - the actual COM-port access uses Qt's generic serial-port
+  framework, not a custom driver or protocol at the transport level. Consistent
+  with the `usbser.sys` finding above: no vendor USB class anywhere in this stack.
+  `DJIEngine/DJIDevice.dll` (363 KB) is almost certainly the DUML/device-protocol
+  layer by name, but a `strings` pass found no readable VID/PID/cmd-set literals
+  (expected: those compile to numeric immediates, not text, in native code) -
+  reading it would need real x86 disassembly, not attempted this session.
+- `DJIApp/SimTest/` (inside the asar) contains simulator test data/JS, not checked
+  in detail - worth a look before any further live-capture attempt.
+
+All Wine/Xvfb/proxy processes and the virtual display were torn down cleanly; the
+real device was free (`fuser`/`lsof` empty) before and after. Installer and
+extracted app files live under `tmp/` (git-ignored), not committed, per the
+no-DJI-derivative-code convention already used for the Android APK work.
+
 ## Reference tooling (upstream)
 - `comm_serialtalk.py` / `comm_og_service_tool.py` (o-gs/dji-firmware-tools): serial port, default 9600, sender type PC (`0`), receiver `ANY`, packet type Request, ack `No_ACK_Needed`. Phantom 3 listed as supported, so the same framing is expected.
 
 ## What is needed next
-1. Capture the Windows DJI Assistant session with usbmon/Wireshark: shows any init or mode-switch the port needs. Best lead. **In progress**: `scripts/re/wine_serial_proxy.py` relays+logs the real `/dev/ttyACM*` port transparently to a pty Wine's COM1 is mapped at, so a real Assistant session against the real FC can be captured byte-for-byte while it runs under Wine.
-2. Otherwise: find the VCOM data-out handler in `m0306` and read what gates DUML replies.
+1. Find the VCOM data-out handler in `m0306` and read what gates DUML replies - the m0306 USB-OTG dead-ISR finding (`docs/fc-usb-duml.md`) may mean Assistant would get no reply either, independent of the Wine issues above.
+2. If a live Assistant capture is still wanted: debug why it exits silently under Wine (try a newer DJI Assistant build with a possibly-different installer/runtime, or run on real Windows/a VM instead of Wine), or statically disassemble `DJIDevice.dll`/`DJIService.exe` for the protocol constants (x86 PE, different toolchain from the ARM firmware work elsewhere in this repo).
 3. Rule out line-coding/baud dependence with a CDC SET_LINE_CODING sweep.
 
 Scope: owned aircraft, interoperability only (see `../CLAUDE.md`). No key extraction, no geofence or flight-restriction work.
