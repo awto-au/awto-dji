@@ -49,7 +49,7 @@ cable, power, or VM passthrough); it came back by itself.
 ## Capture
 
 `captures/2026-10-23_assistant2-phantom_p3-controller.pcapng` (604 packets, 427 s), decoded to
-`…decoded.txt` by `scripts/duml_pcap_decode.ps1` (91 DUML data frames). Findings:
+`….duml.txt` / `….cdc-ctrl.txt` by `scripts/pcap_decode.py` (90 DUML frames, 0 bad CRCs). Findings:
 
 - Controller (`2CA3`): host sends set `00`, id `0c` (ping), `01` (version), `ff` (build string).
   - `01` reply: `hw_version = GL300C` plus version words.

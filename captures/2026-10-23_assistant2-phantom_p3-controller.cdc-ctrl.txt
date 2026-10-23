@@ -1,0 +1,146 @@
+    7.037  1.2  GET_LINE_CODING  wLength=7
+    7.037  1.2    get line coding: 9600 baud, 8N1
+    7.037  1.2  GET_LINE_CODING  wLength=7
+    7.037  1.2    get line coding: 9600 baud, 8N1
+    7.037  1.2  GET_LINE_CODING  wLength=7
+    7.037  1.2    get line coding: 9600 baud, 8N1
+    7.037  1.2  GET_LINE_CODING  wLength=7
+    7.038  1.2    get line coding: 9600 baud, 8N1
+    7.038  1.2  SET_LINE_CODING  wLength=7
+    7.038  1.2    set line coding: 115200 baud, 8N1
+    7.038  1.2  GET_LINE_CODING  wLength=7
+    7.038  1.2    get line coding: 9600 baud, 8N1
+    7.038  1.2  SET_CONTROL_LINE_STATE  wValue=0x0000  DTR=0 RTS=0
+    7.038  1.2  SET_LINE_CODING  wLength=7
+    7.038  1.2    set line coding: 9600 baud, 8N1
+    7.038  1.2  GET_LINE_CODING  wLength=7
+    7.039  1.2    get line coding: 9600 baud, 8N1
+  264.356  1.2  SET_CONTROL_LINE_STATE  wValue=0x0000  DTR=0 RTS=0
+  331.598  1.1  GET_LINE_CODING  wLength=7
+  331.598  1.1    get line coding: 9600 baud, 8N1
+  331.598  1.1  SET_CONTROL_LINE_STATE  wValue=0x0000  DTR=0 RTS=0
+  331.598  1.1  SET_LINE_CODING  wLength=7
+  331.598  1.1    set line coding: 9600 baud, 8N1
+  331.599  1.1  GET_LINE_CODING  wLength=7
+  331.599  1.1    get line coding: 9600 baud, 8N1
+  331.674  1.2  GET_LINE_CODING  wLength=7
+  331.674  1.2    get line coding: 9600 baud, 8N1
+  331.674  1.2  SET_CONTROL_LINE_STATE  wValue=0x0000  DTR=0 RTS=0
+  331.674  1.2  SET_LINE_CODING  wLength=7
+  331.674  1.2    set line coding: 9600 baud, 8N1
+  331.674  1.2  GET_LINE_CODING  wLength=7
+  331.674  1.2    get line coding: 9600 baud, 8N1
+  331.809  1.1  GET_LINE_CODING  wLength=7
+  331.810  1.1    get line coding: 9600 baud, 8N1
+  331.810  1.1  GET_LINE_CODING  wLength=7
+  331.810  1.1    get line coding: 9600 baud, 8N1
+  331.810  1.1  GET_LINE_CODING  wLength=7
+  331.810  1.1    get line coding: 9600 baud, 8N1
+  331.810  1.1  GET_LINE_CODING  wLength=7
+  331.810  1.1    get line coding: 9600 baud, 8N1
+  331.810  1.1  SET_LINE_CODING  wLength=7
+  331.810  1.1    set line coding: 115200 baud, 8N1
+  331.811  1.1  GET_LINE_CODING  wLength=7
+  331.811  1.1    get line coding: 115200 baud, 8N1
+  331.811  1.1  SET_CONTROL_LINE_STATE  wValue=0x0002  DTR=0 RTS=1
+  331.811  1.1  SET_LINE_CODING  wLength=7
+  331.811  1.1    set line coding: 115200 baud, 8N1
+  331.811  1.1  GET_LINE_CODING  wLength=7
+  331.811  1.1    get line coding: 115200 baud, 8N1
+  332.017  1.2  GET_LINE_CODING  wLength=7
+  332.017  1.2    get line coding: 9600 baud, 8N1
+  332.017  1.2  GET_LINE_CODING  wLength=7
+  332.017  1.2    get line coding: 9600 baud, 8N1
+  332.017  1.2  GET_LINE_CODING  wLength=7
+  332.017  1.2    get line coding: 9600 baud, 8N1
+  332.017  1.2  GET_LINE_CODING  wLength=7
+  332.017  1.2    get line coding: 9600 baud, 8N1
+  332.017  1.2  SET_LINE_CODING  wLength=7
+  332.017  1.2    set line coding: 115200 baud, 8N1
+  332.018  1.2  GET_LINE_CODING  wLength=7
+  332.018  1.2    get line coding: 9600 baud, 8N1
+  332.018  1.2  SET_CONTROL_LINE_STATE  wValue=0x0002  DTR=0 RTS=1
+  332.018  1.2  SET_LINE_CODING  wLength=7
+  332.018  1.2    set line coding: 9600 baud, 8N1
+  332.018  1.2  GET_LINE_CODING  wLength=7
+  332.018  1.2    get line coding: 9600 baud, 8N1
+  337.412  1.1  SET_CONTROL_LINE_STATE  wValue=0x0002  DTR=0 RTS=1
+  338.114  1.1  GET_LINE_CODING  wLength=7
+  338.114  1.1    get line coding: 115200 baud, 8N1
+  338.114  1.1  GET_LINE_CODING  wLength=7
+  338.114  1.1    get line coding: 115200 baud, 8N1
+  338.114  1.1  GET_LINE_CODING  wLength=7
+  338.114  1.1    get line coding: 115200 baud, 8N1
+  338.114  1.1  GET_LINE_CODING  wLength=7
+  338.115  1.1    get line coding: 115200 baud, 8N1
+  338.115  1.1  SET_LINE_CODING  wLength=7
+  338.115  1.1    set line coding: 115200 baud, 8N1
+  338.115  1.1  GET_LINE_CODING  wLength=7
+  338.115  1.1    get line coding: 115200 baud, 8N1
+  338.115  1.1  SET_CONTROL_LINE_STATE  wValue=0x0002  DTR=0 RTS=1
+  338.115  1.1  SET_LINE_CODING  wLength=7
+  338.115  1.1    set line coding: 115200 baud, 8N1
+  338.115  1.1  GET_LINE_CODING  wLength=7
+  338.116  1.1    get line coding: 115200 baud, 8N1
+  343.712  1.1  SET_CONTROL_LINE_STATE  wValue=0x0002  DTR=0 RTS=1
+  344.413  1.1  GET_LINE_CODING  wLength=7
+  344.413  1.1    get line coding: 115200 baud, 8N1
+  344.413  1.1  GET_LINE_CODING  wLength=7
+  344.413  1.1    get line coding: 115200 baud, 8N1
+  344.413  1.1  GET_LINE_CODING  wLength=7
+  344.414  1.1    get line coding: 115200 baud, 8N1
+  344.414  1.1  GET_LINE_CODING  wLength=7
+  344.414  1.1    get line coding: 115200 baud, 8N1
+  344.414  1.1  SET_LINE_CODING  wLength=7
+  344.414  1.1    set line coding: 115200 baud, 8N1
+  344.414  1.1  GET_LINE_CODING  wLength=7
+  344.415  1.1    get line coding: 115200 baud, 8N1
+  344.415  1.1  SET_CONTROL_LINE_STATE  wValue=0x0002  DTR=0 RTS=1
+  344.415  1.1  SET_LINE_CODING  wLength=7
+  344.415  1.1    set line coding: 115200 baud, 8N1
+  344.415  1.1  GET_LINE_CODING  wLength=7
+  344.415  1.1    get line coding: 115200 baud, 8N1
+  350.022  1.1  SET_CONTROL_LINE_STATE  wValue=0x0002  DTR=0 RTS=1
+  350.723  1.1  GET_LINE_CODING  wLength=7
+  350.723  1.1    get line coding: 115200 baud, 8N1
+  350.723  1.1  GET_LINE_CODING  wLength=7
+  350.723  1.1    get line coding: 115200 baud, 8N1
+  350.723  1.1  GET_LINE_CODING  wLength=7
+  350.723  1.1    get line coding: 115200 baud, 8N1
+  350.723  1.1  GET_LINE_CODING  wLength=7
+  350.723  1.1    get line coding: 115200 baud, 8N1
+  350.724  1.1  SET_LINE_CODING  wLength=7
+  350.724  1.1    set line coding: 115200 baud, 8N1
+  350.724  1.1  GET_LINE_CODING  wLength=7
+  350.724  1.1    get line coding: 115200 baud, 8N1
+  350.724  1.1  SET_CONTROL_LINE_STATE  wValue=0x0002  DTR=0 RTS=1
+  350.724  1.1  SET_LINE_CODING  wLength=7
+  350.724  1.1    set line coding: 115200 baud, 8N1
+  350.724  1.1  GET_LINE_CODING  wLength=7
+  350.724  1.1    get line coding: 115200 baud, 8N1
+  356.331  1.1  SET_CONTROL_LINE_STATE  wValue=0x0002  DTR=0 RTS=1
+  391.320  1.2  SET_CONTROL_LINE_STATE  wValue=0x0002  DTR=0 RTS=1
+  426.529  1.2  GET_LINE_CODING  wLength=7
+  426.529  1.2    get line coding: 9600 baud, 8N1
+  426.529  1.2  SET_CONTROL_LINE_STATE  wValue=0x0000  DTR=0 RTS=0
+  426.529  1.2  SET_LINE_CODING  wLength=7
+  426.529  1.2    set line coding: 9600 baud, 8N1
+  426.529  1.2  GET_LINE_CODING  wLength=7
+  426.529  1.2    get line coding: 9600 baud, 8N1
+  426.741  1.2  GET_LINE_CODING  wLength=7
+  426.741  1.2    get line coding: 9600 baud, 8N1
+  426.741  1.2  GET_LINE_CODING  wLength=7
+  426.741  1.2    get line coding: 9600 baud, 8N1
+  426.741  1.2  GET_LINE_CODING  wLength=7
+  426.742  1.2    get line coding: 9600 baud, 8N1
+  426.742  1.2  GET_LINE_CODING  wLength=7
+  426.742  1.2    get line coding: 9600 baud, 8N1
+  426.742  1.2  SET_LINE_CODING  wLength=7
+  426.742  1.2    set line coding: 115200 baud, 8N1
+  426.742  1.2  GET_LINE_CODING  wLength=7
+  426.742  1.2    get line coding: 9600 baud, 8N1
+  426.742  1.2  SET_CONTROL_LINE_STATE  wValue=0x0002  DTR=0 RTS=1
+  426.742  1.2  SET_LINE_CODING  wLength=7
+  426.742  1.2    set line coding: 9600 baud, 8N1
+  426.743  1.2  GET_LINE_CODING  wLength=7
+  426.743  1.2    get line coding: 9600 baud, 8N1

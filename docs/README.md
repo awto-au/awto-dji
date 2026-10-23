@@ -15,6 +15,7 @@ the current state and next steps, and `../CLAUDE.md` for agent onboarding.
   cleartext is not over-the-air proof).
 
 - `usb-tools-test-2026-10-23.md` — Windows USB tooling test: no DJI PC tool for the P3; Assistant 2 rejects it; dji-firmware-tools reads the controller; capture + decoder.
+- `p3-usb-observations-2026-10-23.md` — what the P3 controller and aircraft do on USB: line settings, DUML replies, the aircraft's one-way log stream, DTR/RTS sensitivity.
 
 ## Telemetry & video
 - `video-and-link.md` — what talks to the phone; OSD is client-rendered, not burned at the
