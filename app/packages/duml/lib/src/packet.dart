@@ -158,6 +158,13 @@ class DumlPacket {
 class DumlFramer {
   final List<int> _buf = [];
 
+  /// Frames dropped for a CRC/format failure (approximate: a spurious SOF inside
+  /// a corrupt frame can add extra counts).
+  int badFrames = 0;
+
+  /// Called with the rejected bytes and the reason, for packet logs.
+  void Function(Uint8List frame, String reason)? onBadFrame;
+
   List<DumlPacket> add(List<int> chunk) {
     _buf.addAll(chunk);
     final out = <DumlPacket>[];
@@ -180,12 +187,17 @@ class DumlFramer {
       try {
         out.add(DumlPacket.decode(frame));
         _buf.removeRange(0, len);
-      } on FormatException {
+      } on FormatException catch (e) {
+        badFrames++;
+        onBadFrame?.call(frame, e.message);
         _buf.removeAt(0); // bad CRC: skip and resync
       }
     }
     return out;
   }
 
-  void reset() => _buf.clear();
+  void reset() {
+    _buf.clear();
+    badFrames = 0;
+  }
 }

@@ -6,3 +6,11 @@ pubspec.lock
 
 # Rust
 target/
+
+# Flutter app (awto_dji_app)
+awto_dji_app/build/
+awto_dji_app/.dart_tool/
+awto_dji_app/.flutter-plugins-dependencies
+awto_dji_app/android/.gradle/
+awto_dji_app/android/local.properties
+awto_dji_app/android/captures/

@@ -21,15 +21,37 @@ Phantom 3 / Inspire 1 generation):
 ## Layers
 
 ```
- Flutter UI (Dart)
+ awto_dji_app/lib/ui         Material 3: Connect, Telemetry, Packet log, About
    │
- packages/duml  ── pure Dart, no native code, unit-tested off-device
-   │   framing + CRC8/CRC16 + packet build/parse + telemetry decode
+ lib/safety                  SafetyGate wraps packages/geofence (display only, no override)
+ lib/link                    LinkSession: bytes -> DumlFramer -> packets/OsdGeneral, counters
    │
- AOA transport  ── the ONE small native shim (~60 lines): open the DJI
-   │               accessory, pump bytes to/from Dart. No logic here.
+ lib/transport               LinkTransport: Simulated | Replay | Aoa (Kotlin shim)
+   │
+ packages/duml, geofence     pure Dart, unit-tested off-device
    │
  DJI RC (USB host) ──radio──> Phantom 3 Professional
+```
+
+### `awto_dji_app` — read-only milestone
+- `transport/`: `LinkTransport` (bytes, state, connect/disconnect/write); `SimulatedAircraftTransport`
+  (OSD General circle flight via the duml encoder); `ReplayTransport` (raw or hex-text captures,
+  same as `telemetry_scan.dart`; no timestamps in captures, so paced per frame); `AoaTransport`
+  + `android/.../AoaShim.kt` (raw byte pump, compile-only, untested without the RC).
+- `transport/aoa_identity.dart`: the one place for AOA strings; description/version/uri/serial are
+  PLACEHOLDERs. `res/xml/accessory_filter.xml` must be kept in sync by hand.
+- `link/LinkSession`: receive-only; packet/CRC counters, last-seen, health, 2000-entry packet log.
+- `safety/SafetyGate`: position + altitude checked against the geofence; zones are SAMPLE data.
+- `duml` `DumlFramer` gained `badFrames` / `onBadFrame` (additive) for CRC-error accounting.
+- Nothing in the app sends control; `write` is rejected by the simulated and replay transports.
+
+Run (Flutter at `~/development/flutter/bin`):
+```
+cd app/awto_dji_app && flutter pub get
+flutter run -d linux            # Connect -> "Simulated aircraft"
+                                # or "Replay capture file" + path to a raw/hex capture
+flutter test && flutter analyze
+flutter build apk --debug       # Android; needs the SDK at ~/Android/Sdk
 ```
 
 ### `packages/duml` — done and verified
