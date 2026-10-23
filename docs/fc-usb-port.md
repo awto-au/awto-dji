@@ -234,6 +234,34 @@ RC hardware revisions, not evidence this is actually Mavic Mini hardware.
   replicate, or (b) the CDC-receive-to-DUML-dispatcher gap already suspected from the
   m0306 ISR work in `docs/fc-usb-duml.md` being a shared code path across both MCUs.
 
+## Community cross-check: this is a known, longstanding, still-unsolved symptom (2026-10-23)
+
+Searched for prior reports of the exact symptom (correctly-framed DUML from a PC over
+serial, no reply) before assuming it's specific to this setup or this probe method.
+Found `o-gs/dji-firmware-tools#25` ("P3 Serial Data", 2426 lines, 2017-2021, the main
+community RE thread for this protocol family across Phantom 3/Mavic/Spark).
+
+- **V.** Another researcher (`Mavic129`) reported the **identical symptom** on a Mavic:
+  sending a correctly-framed DUML packet from a PC over serial "didn't get any reply from
+  the drone." This is the same family of firmware/protocol, same symptom, independently
+  observed years before this session, with no fix found in the thread.
+- **V.** The thread's own deciphered cmd-type semantics (`pawelsky`: 9th byte `0x00`=No ack,
+  `0x20`=Push, `0x40`=Ack, `coptersafe`: `0x80`=just return) match what this repo's probes
+  already tried (`cmd type 0x00 and 0x40` - the value documented as eliciting a response).
+  Framing/sender/cmd-type were not the gap.
+- **V.** Across the entire thread, every real protocol decode comes from **passively
+  sniffing** FC<->ESC, FC<->battery, or FC<->GPS UART bus traffic, or from reading DJI
+  Assistant's own extracted `app.asar` - not from a PC successfully injecting a command on
+  the USB "Assistant" port and getting a reply. No one in this thread demonstrates working
+  PC-initiated serial command/response on this specific port, on any aircraft in the
+  product family.
+- **Reframes the open question:** this was never a "did we frame the packet wrong" problem.
+  It's either a per-session/per-device handshake that only DJI's own Assistant software
+  performs (and that no public RE effort has reproduced, in years of community effort), or
+  a firmware-side gap consistent with the m0306 dead-ISR/no-dispatcher findings in
+  `docs/fc-usb-duml.md` - and if it's the latter, it would explain why the community never
+  found a fix either, since there'd be nothing in the firmware to find.
+
 ## What is needed next
 1. Find the VCOM data-out handler in `m0306` and read what gates DUML replies - the m0306 USB-OTG dead-ISR finding (`docs/fc-usb-duml.md`) may mean Assistant would get no reply either, independent of the Wine issues above.
 2. If a live Assistant capture is still wanted: the silent exit is NOT a network/CEF-startup issue (refuted above, with independent host-side confirmation) - every DJI engine binary tried (DJIService.exe standalone included) exits the same voluntary way, pointing at a shared gate in DJI's own startup code (possibly anti-tamper/environment detection, akin to the DJI GO 4 APK's AppGuard packer). Next: x86-disassemble the shared init path in `DJIDevice.dll`/`DJIService.exe` to find the actual gate condition, or try real Windows/a VM instead of Wine to sidestep it entirely.
