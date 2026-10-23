@@ -37,7 +37,7 @@ flowchart LR
     FX2["FX2LP CY7C68013A m1600"]
     DM365["DM365 m1300"]
     M1400["m1400 LPC1765"]
-    GFPGA["Ground FPGA Cyclone V m2001"]
+    GFPGA["Ground FPGA m2000/m2001/m2002"]
     GAD["Ground AD9363"]
   end
   RF(("2.4 GHz OFDM link"))

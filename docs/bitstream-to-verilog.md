@@ -1,7 +1,7 @@
 # Methodology: FPGA bitstream → structural netlist → (toward) Verilog
 
 How to reverse the P3's Lightbridge FPGA from its bitstream, honestly scoped. The target
-is Cyclone V (ground FPGA `5CEFA4`; air FPGA `m1900`, part not yet identified). This is
+is Cyclone V for the air `m1900` (e50f-family by header/PRAM CRC) and ground `m2000`/`m2002`; ground `m2001` is Cyclone III/IV-format (best match EP4CGX150). All of these except m2001 appear ENCRYPTED, so no bitstream has been lifted (see `fpga-images.md`, `m2001-decomp-findings.md`). This is
 interoperability RE of an owned device; it is analysis only.
 
 ## The pipeline
@@ -16,11 +16,7 @@ interoperability RE of an owned device; it is analysis only.
 
 ## 1. De-pack to a plain `.rbf`
 
-The firmware module (`m1900`) is a packed/compressed config image (structured header +
-high-entropy, gzip-incompressible body; **compressed, not encrypted** — chi-square on the
-bulk is far from uniform, ruling out AES). Strip the DJI container/flash header and
-resolve any compression to Altera's plain `.rbf` frame layout. Altera's *on-chip*
-config compression is a nibble-RLE scheme (documented in Mistral's `rbf_load`), not LZMA.
+The firmware module (`m1900`) is a structured header + PRAM (cleartext, valid CRCs) + CRAM. The CRAM is indistinguishable from uniform random (entropy 7.9999, chi-square ~255 +-23): ENCRYPTED, strong circumstantial; option-bit meaning inferred; may be a producer-side keyed scramble rather than Altera AES. The earlier "compressed, not encrypted" call used a chi-square (113,468) computed over the whole container (header, PRAM, 0xFF padding), and is withdrawn. Strip the DJI container/flash header to reach the `.rbf` frame layout; the CRAM cannot be decoded without the key or an oracle. Altera's *on-chip* config compression is a nibble-RLE scheme (documented in Mistral's `rbf_load`), not LZMA.
 
 ## 2. Get / extend the fabric model by fuzzing
 
@@ -92,7 +88,7 @@ Two uses:
 2. **Functional-block templating (the high-value one):** compile a known block (FFT, FIR,
    LFSR scrambler, CP insert, symbol mapper, FEC) and capture its *structural signature* —
    DSP mode/count, M10K count + init, local routing topology, LUT clusters — then
-   graph-match that signature against DJI's decompiled `m2001` netlist. This **gets past
+   graph-match that signature against a decoded DJI netlist (none exists today: the images are encrypted or undecoded). This would **get past
    the DSP/M10K decode gap**: you don't decode DJI's DSP internals, you match the *shape*
    of a known IP whose internals you already have, and transfer them.
 
@@ -103,8 +99,7 @@ OFDM/WiMAX MegaCores**, not hand-rolled gates. Evidence and templates:
   **FFT MegaCore**, FFT sizes 128-2K for 1.25-20 MHz bandwidths, plus OFDMA symbol-level
   blocks (subchannelization, cyclic-prefix insert) and bit-level blocks (symbol mapping,
   FEC MegaCore). It targeted older families but **recompiles to Cyclone V**.
-- `m2001` shows **64 DSP blocks + M10K RAMs + DLLs** — exactly an FFT/FIR MegaCore
-  datapath with twiddle/coefficient tables. The LB2 MCU strings (`mcs`, `harq`, `bw`)
+- (Withdrawn: the earlier "`m2001` shows 64 DSP blocks + M10K + DLLs" was decode noise, pluribus #114.) The LB2 MCU strings (`mcs`, `harq`, `bw`)
   confirm a WiMAX/LTE-family design that would use these IP cores.
 
 So the template library is small and known: **FFT II, FIR II, symbol-mapping + FEC
@@ -130,12 +125,12 @@ identification plus a compiled-IP fingerprint library is the matching engine.
 
 | Goal | Feasible? |
 |---|---|
-| De-pack to plain `.rbf` | Yes |
-| Decode LUT/FF/routing fabric (Mistral) | Yes, on a supported/identified device |
+| De-pack to plain `.rbf` | Container only; CRAM appears encrypted |
+| Decode LUT/FF/routing fabric (Mistral) | Only on an unencrypted Cyclone V stream; the DJI Cyclone V images appear encrypted |
 | Emit gate-level structural Verilog | Yes (a LUT/FF mesh) |
 | Recover DSP/M10K-based datapath (FFT/FEC) | **No** — not decoded by current CV tooling |
 | Recover readable behavioral RTL of the modem | **No** — manual/partial research at best |
-| Clone the bitstream onto the identical part | Plausible (not key-locked) |
+| Clone the bitstream onto the identical part | Unknown: encryption (key-locked?) unresolved |
 
 ## Tooling summary
 
