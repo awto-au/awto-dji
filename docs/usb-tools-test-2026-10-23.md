@@ -91,6 +91,38 @@ Request `55 0d 04 33 0a 0e 00 00 40 00 01 e8 03` (header CRC8 `0x33` equals the 
 returned `GL300C` with the version words. Request id `ff` returned `WM320 A7_LPC1 20170828/00`.
 Same bytes as the Assistant's capture. Only commands 00/01 and 00/ff were sent; nothing that writes.
 
+## Real hidden debug mode found in the Assistant's own code (2026-10-23)
+
+Checked whether DJI technicians/repair centers have a documented way to access more than the
+public consumer UI. Found a real, concrete mechanism in this exact installed app
+(`tmp/dji_app_asar/extracted/main.js`, from `DJIApp/app.asar` in the install under
+`tmp/wine-dji/`), not inference from public forum posts (though the general pattern - editing a
+`debug` flag in `main.js` for older Assistant versions - is independently documented publicly:
+`dji.retroroms.info/howto/assistanddebug`, various forum threads from 2017-2018 for v1.1.x/1.2.x).
+
+- **V, from the file itself.** `var debug = process.argv[2]=='debug'?true:false` - debug mode in
+  this build (2.0.10) is a **plain runtime command-line argument**, not a compiled-in build
+  flag (contrast with the DJI GO 4 Android app's `isFactoryMode()`, hardcoded `false` in the
+  public APK - see `apk-vs-dissector-gap-report-2026-10-23.md`/`apk-analysis.md`). Any copy of
+  this installer can be put into debug mode.
+- **V.** When `debug=true`: the main window loads `index.html#/debug/1` instead of
+  `index.html#/debug/0` - a distinct frontend route built into the app, not just a devtools
+  toggle. Separately, the menu switches to a `template_dev` template whose items are all
+  `visible: false` (so no menu bar appears) **except** the "dev tools" entry keeps
+  `accelerator: "Shift+CmdOrCtrl+I"` and `enabled: true` - in Electron, a registered accelerator
+  still fires even when its menu item is hidden, so Ctrl+Shift+I should open real DevTools
+  (full JS console + network inspector into the running app) with no visible menu ever showing
+  it.
+- **Launch:** `"DJI Assistant 2.exe" debug` (one extra argument). A ready-made
+  `run_assistant_debug.bat` sits next to the existing launcher in the wine prefix.
+- **U, not yet tested against real hardware:** whether `#/debug/1` actually renders something
+  useful for a Phantom 3 (operator's hypothesis: even though Assistant 2 doesn't support P3 for
+  the normal "connect as a product" flow - confirmed earlier, DJI support says Assistant 2 is
+  Phantom-4-era-only - the debug/diagnostic route might work anyway, being a lower-level view
+  than product-specific UI), and whether debug mode changes anything about the earlier
+  "silent exit, never gets past login" problem. Handed to the parallel session (real Windows VM,
+  both devices reattached via `vm_usb.py`) to test live - not yet answered as of this commit.
+
 ## Not done / next
 
 - Wireshark DUML dissector (`dji-firmware-tools/comm_dissector/wireshark`) not installed.
