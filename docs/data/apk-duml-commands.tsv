@@ -1,0 +1,46 @@
+cmdset	cmdid	name	direction	payload	status	evidence
+0x00 general	0x01	Get Version / device info	app->dev (req/ack)	unknown	inferred id; class verified	DataCommonGetVersion, DataCommonGetDeviceInfo present; id from catalog.dart
+0x00 general	?	Get device serial number	app->dev	unknown	class verified; id unknown	DataCommonGetDeviceSerialNumber
+0x00 general	?	Push heartbeat	dev->app	unknown	class verified; id unknown	DataCommonPushHeart
+0x00 general	?	Set date / Restart device	app->dev	unknown	class verified; id unknown	DataCommonSetDate, DataCommonRestartDevice
+0x00 general	?	Get/Set cfg file, Set newest versions	app<->dev	unknown	class verified; id unknown	DataCommonGetCfgFile, DataCommonSetNewestVersions
+0x00 general	?	Request upgrade / Control upgrade	app->dev	unknown	class verified; id unknown	DataCommonRequestUpgrade, DataCommonControlUpgrade
+0x00 general	?	Push upgrade status	dev->app	unknown	class verified; id unknown	DataCommonGetPushUpgradeStatus(+Info)
+0x00 general	?	File transfer request/data/extended/realtime/verify	app<->dev	unknown	class verified; id unknown	DataCommonTransferFile{Request,Data,DataExtended,RealTimeData,Verify}; ITransferFileObject enums TransferCmdType/ErrorCode/VerifyType
+0x00 general	0x07	Enter Loader	app->dev	none	verified m0900 (not in APK)	docs/fpga-upgrade-path.md
+0x00 general	0x08	Update Confirm	app->dev	reply [status, blocksize u16=0x0200] (receiver 0x13)	verified m0900 (not in APK)	docs/fpga-upgrade-path.md
+0x00 general	0x09	Update Transmit	app->dev	unknown	verified m0900 no handler (not in APK)	docs/fpga-upgrade-path.md
+0x00 general	0x0A	Update Finish	app->dev	payload byte1,byte2 compared to FPGA regs	verified m0900 (not in APK)	docs/fpga-upgrade-path.md
+0x00 general	?	Data locker (security code, status, format)	app->dev	unknown	class verified; id unknown	DataCommonDataLocker*
+0x02 camera	?	Push state info	dev->app	unknown	class verified; id unknown	DataCameraGetPushStateInfo
+0x02 camera	?	Push shot params / shot info / storage info / SD params	dev->app	unknown	class verified; id unknown	DataCameraGetPushShotParams, ...ShotInfo, ...StorageInfo
+0x02 camera	?	Take photo / Set record (start/stop video)	app->dev	unknown	class verified; id unknown	DataCameraSetPhoto, DataCameraSetRecord, DataCameraVideoControl
+0x02 camera	?	Set/Get mode, photo mode, ISO, shutter, white balance, video format, image size	app<->dev	unknown	class verified; id unknown	DataCameraSetMode/GetMode, ...Iso, ...ShutterSpeed, ...WhiteBalance, ...VideoFormat, ...ImageSize
+0x02 camera	?	Request I-frame	app->dev	unknown	class verified; id unknown	DataCameraRequestForIFrame (relevant to video start)
+0x02 camera	?	Switch USB / Get USB status	app->dev	unknown	class verified; id unknown	DataCameraSwitchUSB, DataCameraGetUsbStatus
+0x02 camera	?	Set date, camera upgrade control, push request upgrade	app<->dev	unknown	class verified; id unknown	DataCameraSetDate, DataCameraControlUpgrade, DataCameraGetPushRequestUpgrade
+0x03 flyc	0x43	OSD General (telemetry push)	dev->app	position, alt, velocity, attitude (see telemetry.dart)	verified m0900 route; inferred layout	DataOsdGetPushCommon class present; docs/dataflow.md 4b; id per catalog.dart
+0x03 flyc	0x44	OSD Home Point (push)	dev->app	unknown	verified m0900 route	DataOsdGetPushHome class present; docs/dataflow.md
+0x03 flyc	0x42	push re-addressed to gimbal type by m0900	dev->dev	unknown	verified m0900 route; name unknown	docs/dataflow.md
+0x03 flyc	?	Flyc push check status / smart battery / GPS SNR / params	dev->app	unknown	class verified; id unknown	DataFlycGetPushCheckStatus, ...PushSmartBattery, ...PushGpsSnr, ...PushParams
+0x03 flyc	?	Flyc joystick (virtual stick) / JoyStick params	app->dev	unknown	class verified; id unknown	DataFlycJoystick, DataFlycSetJoyStickParams (FlycMode enum) - control, not decoded
+0x03 flyc	?	Get/Set plane name, home point, date, time zone, limits, params	app<->dev	unknown	class verified; id unknown	DataFlycGetPlaneName/SetPlaneName, ...SetHomePoint, ...SetDate, ...SetTimeZone, ...SetLimits
+0x03 flyc	?	Send GPS info to FC (phone GPS)	app->dev	unknown	class verified; id unknown	DataFlycSendGpsInfo, DataFlycSendGpsToFlyc, DataAppPushGpsInfo
+0x03 flyc	?	Active status / push active request / set active result	both	unknown	class verified; id unknown	DataFlycActiveStatus, DataFlycGetPushActiveRequest, DataFlycSetActiveResult (flow only, not analysed)
+0x03 flyc	?	Waypoint / hotpoint / follow-me mission upload+switch	app->dev	unknown	class verified; id unknown	DataFlycUploadWayPointMissionMsg, DataFlycWayPointMissionSwitch, DataFlycStartHotPointMissionWithInfo, DataFlycStartFollowMeWithInfo
+0x04 gimbal	?	Push params	dev->app	unknown	class verified; id unknown	DataGimbalGetPushParams, DataGimbalGetPushType, DataGimbalGetPushUserParams
+0x04 gimbal	?	Angle / absolute angle / speed control	app->dev	unknown	class verified; id unknown	DataGimbalAngleControl, DataGimbalAbsAngleControl, DataGimbalSpeedControl, DataGimbalSetAngle
+0x04 gimbal	?	Auto calibration, roll fine-tune, user params get/set/save	app<->dev	unknown	class verified; id unknown	DataGimbalAutoCalibration, DataGimbalRollFinetune, DataGimbalSetUserParams
+0x05 center (battery)	?	Push battery common / in position / check status	dev->app	unknown	class verified; id unknown	DataCenterGetPushBatteryCommon, ...PushBatteryInPosition, ...PushCheckStatus
+smart battery	?	Static data / dynamic data push / cell voltage push / history / barcode	dev->app	unknown	class verified; id unknown	DataSmartBatteryGetStaticData, ...GetPushDynamicData, ...GetPushCellVoltage, ...GetHistory, ...GetBarCode
+0x06 rc	?	Push params / connect status / battery info / GPS info	dev->app	unknown	class verified; id unknown	DataRcGetPushParams, DataRcGetPushConnectStatus, DataRcGetPushBatteryInfo, DataRcGetPushGpsInfo
+0x06 rc	?	Set/Get connect master (Connected Master ID), master/slave id, search masters, slave list, name, password	app<->dev	unknown	class verified; id unknown	DataRcSetConnectMaster/GetConnectMaster, DataRcMasterSlaveId, DataRcGetSearchMasters, DataRcSetMaster/GetMaster, DataRcSetName/GetName, DataRcSetPassword/GetPassword
+0x06 rc	?	Gimbal control permission request/ack, gimbal speed/control mode	app<->dev	unknown	class verified; id unknown	DataRcRequestGimbalCtrPermission, DataRcAckGimbalCtrPermission, DataRcSetGimbalSpeed
+0x06 rc	?	Calibration, control mode, custom function, RTC, simulation	app->dev	unknown	class verified; id unknown	DataRcSetCalibration, DataRcSetControlMode, DataRcSetCustomFuction, DataRcSetRTC, DataRcSetSimulation
+0x07 wifi	?	Connect master with ID + auth code; set master/slave auth code; get auth code	app<->dev	unknown	class verified; id unknown	DataWifiConnectMasterWithIdAuthCode, DataWifiSetMasterSlaveAuthCode, DataWifiGetAuthCode (names only; no values)
+0x07 wifi	?	Get/Set SSID, password, frequency, power, restart; push signal, master/slave status	app<->dev	unknown	class verified; id unknown	DataWifiGetSSID/SetSSID, DataWifiGetPassword/SetPassword, DataWifiGetPushSignal, DataWifiGetPushMasterSlaveStatus
+0x09 osd/hd-link	?	SDR/link push: signal quality, channel status, config, link mode, sweep freq	dev->app	unknown	class verified; id unknown	DataOsdGetPushSignalQuality, ...PushChannalStatus, ...PushSdrStatusInfo, ...PushSdrLinkMode, ...PushSweepFrequency
+0x09 osd/hd-link	?	Set config / power / LED / SDR config / image transm mode	app->dev	unknown	class verified; id unknown	DataOsdSetConfig, DataOsdSetPower, DataOsdSetSDRConfigInfo, DataOsdSetSDRImageTransmMode
+0x09 osd/hd-link	0x05,06,07,12,13	FPGA/AD9363 access (m0900 handlers)	app->dev	register access	verified m0900 (not in APK)	docs/dataflow.md; CmdIdOsd enum exists in APK
+0x0a eye (vision)	?	Vision/obstacle push, tracking, POI, time-lapse (not P3 hardware)	dev->app	unknown	class verified; id unknown	DataEye* (~80 classes); P3P has downward vision only - relevance unknown
+any	n/a	Cmd-set enums in APK	n/a	n/a	verified	CmdIdADS_B Camera Center Common Dm368 EYE Flyc Gimbal Glass NarrowBand OnBoardSDK Osd PayloadSDK RTK Rc Recognize Simulator SmartBattery Special Wifi; numeric values need a capture or bytecode
