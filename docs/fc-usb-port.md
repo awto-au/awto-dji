@@ -36,11 +36,31 @@ Status of each claim: **V** verified here, **W** from the o-gs wiki / issues (no
 - Matches the 2017 report: silent on Linux, even with `cat`.
 - **?** Not tried: other baud rates / line coding, other command sets, MSC mode, a host-side init.
 
+## DJI's own Windows driver (DJI Assistant 2 For Phantom 2.0.10, `dji_vcom_driver11.inf`)
+- **V** Confirms the port is genuine CDC-ACM with no vendor protocol at the USB-class level:
+  `NTMPDriver=usbser.sys` — DJI's "VCOM" driver is Microsoft's generic CDC-ACM serial
+  driver (`usbser.sys`), wrapped only so Windows auto-selects it for DJI's VID/PID list
+  instead of leaving the device unrecognized. Matches Linux binding `cdc_acm` with no
+  special driver needed, on the same device.
+- **V** VID:PID table across DJI's product line extracted to
+  `docs/data/dji-vcom-vid-pid.tsv` (25 entries). `fff0:0008` (this port, confirmed above)
+  and `2ca3:0008` are the only two entries at interface `MI_00`/whole-device level with
+  the same PID — `2ca3` is DJI's own registered USB VID, `fff0` looks like an earlier
+  unregistered/placeholder VID used before DJI got `2ca3`. A `2ca3:1020` debug VCOM
+  variant exists at `MI_02` ("DJI USB VCOM For Debug") distinct from the normal `MI_00`
+  interface at the same PID — worth checking if the aircraft also exposes this.
+- Installer source: `https://dl.djicdn.com/downloads/dji_assistant/20200721/DJI+Assistant+2+For+Phantom+2.0.10.exe`,
+  genuinely DJI-signed (Authenticode: both a standard and an EV GlobalSign cert name
+  "SZ DJI Technology Co., Ltd."; chain verification fails only on now-expired 2017-2020
+  certs against a modern trust store, not on a digest mismatch - file is unmodified).
+  Installed and run under Wine (`tmp/wine-dji/`, git-ignored, not committed) on an
+  isolated Xvfb virtual display, never the real desktop.
+
 ## Reference tooling (upstream)
 - `comm_serialtalk.py` / `comm_og_service_tool.py` (o-gs/dji-firmware-tools): serial port, default 9600, sender type PC (`0`), receiver `ANY`, packet type Request, ack `No_ACK_Needed`. Phantom 3 listed as supported, so the same framing is expected.
 
 ## What is needed next
-1. Capture the Windows DJI Assistant session with usbmon/Wireshark: shows any init or mode-switch the port needs. Best lead.
+1. Capture the Windows DJI Assistant session with usbmon/Wireshark: shows any init or mode-switch the port needs. Best lead. **In progress**: `scripts/re/wine_serial_proxy.py` relays+logs the real `/dev/ttyACM*` port transparently to a pty Wine's COM1 is mapped at, so a real Assistant session against the real FC can be captured byte-for-byte while it runs under Wine.
 2. Otherwise: find the VCOM data-out handler in `m0306` and read what gates DUML replies.
 3. Rule out line-coding/baud dependence with a CDC SET_LINE_CODING sweep.
 
