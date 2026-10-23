@@ -184,6 +184,30 @@ on the raw `.asar`, since this newer asar format wasn't extractable by `@electro
 - **U, not yet tested against real hardware.** Handed to the parallel session (real Windows VM)
   with the download URL and exact launch command to test live against the real P3 RC/aircraft.
 
+## "HIL" (Hardware-In-the-Loop) - a whole separate raw diagnostic subsystem (2026-10-23)
+
+Traced `hil_addevice`'s real handler, `hil()` (Vue method, calls `add_device_prepare` then
+`add_device` with `DEVICE_TYPE`/`COM`/`BAUD_RATE` or `CAN_INDEX`/`T_ID`/`R_ID` - no product ID,
+so it does not depend on product recognition at all), and what it unlocks once a device is
+added this way.
+
+- **V, found by name:** a family of local WebSocket endpoints served by the native engine,
+  prefixed `/hil/` - `/hil/config/`, `/hil/ping/` (**a literal ping/loopback diagnostic**),
+  `/hil/loop_back/`, `/hil/grap_pack/` (packet capture). Each `init(app)`s against
+  `app.activeDevice` directly - this looks like a raw diagnostic pipe to whatever device is
+  "active," independent of normal per-product DUML message decoding.
+- **U, no UI trigger found for `hil()` by static string search** - unlike `hil_addevice`'s own
+  form (bound via `v-on="submit: hil_addevice"`), the outer `hil()` method that actually opens
+  it has no matching `v-on="click:hil"` anywhere in the bundle. Either a different binding
+  pattern this search missed, a keyboard shortcut, or genuinely unreachable from this build's
+  visible UI.
+- **I, most efficient next step - don't keep guessing statically, use the live DevTools console
+  instead.** We already confirmed `Ctrl+Shift+I` opens real DevTools under `debug` mode (see
+  above). Once there, calling the Vue instance's `hil()` method directly from the JS console
+  (however the root instance is exposed - commonly `window.app`/`__vue__`/similar; worth
+  checking `window` for Vue-looking globals first) sidesteps the whole "find the hidden button"
+  problem entirely. Handed to the parallel session as the concrete next step.
+
 ## Not done / next
 
 - Wireshark DUML dissector (`dji-firmware-tools/comm_dissector/wireshark`) not installed.
