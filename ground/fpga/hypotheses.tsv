@@ -1,0 +1,244 @@
+ball	class	function	conf	evidence	bank	lut_real	hmc_lines
+A10	DDR3	DDR3 CASN via HMC	5	HMC IOINT/PHYDDIO node names on this ball in .bt; bit=n//4 (DOUT/DIN), n//2 (OE)	8A	0	2
+A12	DDR3?	DDR3 bank (unmapped signal)	3	top-edge bank holding the HMC IO; no HMC line names this ball	7A	0	0
+A13	DDR3?	DDR3 bank (unmapped signal)	3	top-edge bank holding the HMC IO; no HMC line names this ball	7A	0	0
+A14	DDR3	DDR3 DQ[7] via HMC	5	HMC IOINT/PHYDDIO node names on this ball in .bt; bit=n//4 (DOUT/DIN), n//2 (OE)	7A	0	4
+A15	DDR3	DDR3 DM[0] via HMC	5	HMC IOINT/PHYDDIO node names on this ball in .bt; bit=n//4 (DOUT/DIN), n//2 (OE)	7A	0	2
+A17	DDR3	DDR3 DQ[12] via HMC	5	HMC IOINT/PHYDDIO node names on this ball in .bt; bit=n//4 (DOUT/DIN), n//2 (OE)	7A	0	4
+A18	DDR3?	DDR3 bank (unmapped signal)	3	top-edge bank holding the HMC IO; no HMC line names this ball	7A	0	0
+A19	DDR3?	DDR3 bank (unmapped signal)	3	top-edge bank holding the HMC IO; no HMC line names this ball	7A	0	0
+A2	CFG	dedicated programming pad 12 (Mistral package table)	10	config/JTAG pin; function by pad index needs Intel pin-out table	9A		
+A20	DDR3	DDR3 DQ[20] via HMC	5	HMC IOINT/PHYDDIO node names on this ball in .bt; bit=n//4 (DOUT/DIN), n//2 (OE)	7A	0	3
+A22	DDR3	DDR3 DQ[21] via HMC	5	HMC IOINT/PHYDDIO node names on this ball in .bt; bit=n//4 (DOUT/DIN), n//2 (OE)	7A	0	6
+A4	CFG	dedicated programming pad 14 (Mistral package table)	10	config/JTAG pin; function by pad index needs Intel pin-out table	9A		
+A7	DDR3	DDR3 ADDR[3] via HMC	5	HMC IOINT/PHYDDIO node names on this ball in .bt; bit=n//4 (DOUT/DIN), n//2 (OE)	8A	0	3
+A8	DDR3	DDR3 ADDR[2] via HMC	5	HMC IOINT/PHYDDIO node names on this ball in .bt; bit=n//4 (DOUT/DIN), n//2 (OE)	8A	0	1
+A9	DDR3?	DDR3 bank (unmapped signal)	3	top-edge bank holding the HMC IO; no HMC line names this ball	8A	0	0
+B11	DDR3?	DDR3 bank (unmapped signal)	3	top-edge bank holding the HMC IO; no HMC line names this ball	8A	0	0
+B12	DDR3	DDR3 DQ[2] via HMC	5	HMC IOINT/PHYDDIO node names on this ball in .bt; bit=n//4 (DOUT/DIN), n//2 (OE)	7A	0	3
+B13	DDR3	DDR3 DQ[3] via HMC	5	HMC IOINT/PHYDDIO node names on this ball in .bt; bit=n//4 (DOUT/DIN), n//2 (OE)	7A	0	5
+B15	DDR3?	DDR3 bank (unmapped signal)	3	top-edge bank holding the HMC IO; no HMC line names this ball	7A	0	0
+B16	DDR3	DDR3 DQ[15] via HMC	5	HMC IOINT/PHYDDIO node names on this ball in .bt; bit=n//4 (DOUT/DIN), n//2 (OE)	7A	0	2
+B17	DDR3?	DDR3 bank (unmapped signal)	3	top-edge bank holding the HMC IO; no HMC line names this ball	7A	0	0
+B18	DDR3	DDR3 DQ[11] via HMC	5	HMC IOINT/PHYDDIO node names on this ball in .bt; bit=n//4 (DOUT/DIN), n//2 (OE)	7A	0	3
+B20	DDR3	DDR3 DQ[24] via HMC	5	HMC IOINT/PHYDDIO node names on this ball in .bt; bit=n//4 (DOUT/DIN), n//2 (OE)	7A	0	2
+B21	DDR3?	DDR3 bank (unmapped signal)	3	top-edge bank holding the HMC IO; no HMC line names this ball	7A	0	0
+B22	DDR3	DDR3 RESETN via HMC	5	HMC IOINT/PHYDDIO node names on this ball in .bt; bit=n//4 (DOUT/DIN), n//2 (OE)	7A	0	1
+B5	DDR3?	DDR3 bank (unmapped signal)	3	top-edge bank holding the HMC IO; no HMC line names this ball	8A	0	0
+B6	DDR3?	DDR3 bank (unmapped signal)	3	top-edge bank holding the HMC IO; no HMC line names this ball	8A	0	0
+B8	DDR3	DDR3 ADDR[13] via HMC	5	HMC IOINT/PHYDDIO node names on this ball in .bt; bit=n//4 (DOUT/DIN), n//2 (OE)	8A	0	4
+C1	?	no evidence	1	fabric arcs unusable (unbonded pads show same arc rate)	2A	0	0
+C10	DDR3	DDR3 BA[1] via HMC	5	HMC IOINT/PHYDDIO node names on this ball in .bt; bit=n//4 (DOUT/DIN), n//2 (OE)	8A	0	3
+C11	DDR3?	DDR3 bank (unmapped signal)	3	top-edge bank holding the HMC IO; no HMC line names this ball	8A	0	0
+C13	DDR3	DDR3 DQ[4] via HMC	5	HMC IOINT/PHYDDIO node names on this ball in .bt; bit=n//4 (DOUT/DIN), n//2 (OE)	7A	0	4
+C14	DDR3	DDR3 DQ[6] via HMC	5	HMC IOINT/PHYDDIO node names on this ball in .bt; bit=n//4 (DOUT/DIN), n//2 (OE)	7A	0	7
+C15	DDR3	DDR3 DQ[13] via HMC	5	HMC IOINT/PHYDDIO node names on this ball in .bt; bit=n//4 (DOUT/DIN), n//2 (OE)	7A	0	2
+C16	DDR3	DDR3 DQ[14] via HMC	5	HMC IOINT/PHYDDIO node names on this ball in .bt; bit=n//4 (DOUT/DIN), n//2 (OE)	7A	0	2
+C18	DDR3	DDR3 DQ[16] via HMC	5	HMC IOINT/PHYDDIO node names on this ball in .bt; bit=n//4 (DOUT/DIN), n//2 (OE)	7A	0	4
+C19	DDR3?	DDR3 bank (unmapped signal)	3	top-edge bank holding the HMC IO; no HMC line names this ball	7A	0	0
+C2	PLLOUT?	clock-output path (PLL_SELECT=PLL)	3	tile setting PLL_SELECT=PLL; setting also present on unbonded pads, may be noise	2A	0	0
+C20	DDR3	DDR3 DQ[25] via HMC	5	HMC IOINT/PHYDDIO node names on this ball in .bt; bit=n//4 (DOUT/DIN), n//2 (OE)	7A	0	6
+C21	DDR3?	DDR3 bank (unmapped signal)	3	top-edge bank holding the HMC IO; no HMC line names this ball	7A	0	0
+C5	CFG	dedicated programming pad 15 (Mistral package table)	10	config/JTAG pin; function by pad index needs Intel pin-out table	9A		
+C6	DDR3	DDR3 BA[0] via HMC	5	HMC IOINT/PHYDDIO node names on this ball in .bt; bit=n//4 (DOUT/DIN), n//2 (OE)	8A	0	1
+C8	DDR3	DDR3 ADDR[12] via HMC	5	HMC IOINT/PHYDDIO node names on this ball in .bt; bit=n//4 (DOUT/DIN), n//2 (OE)	8A	0	3
+C9	DDR3	DDR3 BA[2] via HMC	5	HMC IOINT/PHYDDIO node names on this ball in .bt; bit=n//4 (DOUT/DIN), n//2 (OE)	8A	0	3
+D11	DDR3?	DDR3 bank (unmapped signal)	3	top-edge bank holding the HMC IO; no HMC line names this ball	8A	0	0
+D13	DDR3	DDR3 DQ[5] via HMC	5	HMC IOINT/PHYDDIO node names on this ball in .bt; bit=n//4 (DOUT/DIN), n//2 (OE)	7A	0	5
+D14	DDR3?	DDR3 bank (unmapped signal)	3	top-edge bank holding the HMC IO; no HMC line names this ball	7A	0	1
+D17	DDR3	DDR3 DQ[18] via HMC	5	HMC IOINT/PHYDDIO node names on this ball in .bt; bit=n//4 (DOUT/DIN), n//2 (OE)	7A	0	9
+D18	DDR3	DDR3 DQ[23] via HMC	5	HMC IOINT/PHYDDIO node names on this ball in .bt; bit=n//4 (DOUT/DIN), n//2 (OE)	7A	0	5
+D3	?	no evidence	1	fabric arcs unusable (unbonded pads show same arc rate)	2A	0	0
+D7	DDR3?	DDR3 bank (unmapped signal)	3	top-edge bank holding the HMC IO; no HMC line names this ball	8A	0	0
+D8	DDR3?	DDR3 bank (unmapped signal)	3	top-edge bank holding the HMC IO; no HMC line names this ball	8A	0	0
+D9	DDR3	DDR3 ADDR[8] via HMC	5	HMC IOINT/PHYDDIO node names on this ball in .bt; bit=n//4 (DOUT/DIN), n//2 (OE)	8A	0	1
+E11	DDR3?	DDR3 bank (unmapped signal)	3	top-edge bank holding the HMC IO; no HMC line names this ball	8A	0	0
+E12	DDR3	DDR3 DQ[1] via HMC	5	HMC IOINT/PHYDDIO node names on this ball in .bt; bit=n//4 (DOUT/DIN), n//2 (OE)	7A	0	5
+E14	DDR3	DDR3 DQ[9] via HMC	5	HMC IOINT/PHYDDIO node names on this ball in .bt; bit=n//4 (DOUT/DIN), n//2 (OE)	7A	0	5
+E16	DDR3	DDR3 DQ[19] via HMC	5	HMC IOINT/PHYDDIO node names on this ball in .bt; bit=n//4 (DOUT/DIN), n//2 (OE)	7A	0	8
+E17	DDR3	DDR3 DQ[22] via HMC	5	HMC IOINT/PHYDDIO node names on this ball in .bt; bit=n//4 (DOUT/DIN), n//2 (OE)	7A	0	7
+E2	?	no evidence	1	fabric arcs unusable (unbonded pads show same arc rate)	2A	0	0
+E20	?	no evidence	1	fabric arcs unusable (unbonded pads show same arc rate)	5B	0	0
+E5	CFG	dedicated programming pad 13 (Mistral package table)	10	config/JTAG pin; function by pad index needs Intel pin-out table	9A		
+E6	DDR3?	DDR3 bank (unmapped signal)	3	top-edge bank holding the HMC IO; no HMC line names this ball	8A	0	0
+E7	DDR3	DDR3 ADDR[7] via HMC	5	HMC IOINT/PHYDDIO node names on this ball in .bt; bit=n//4 (DOUT/DIN), n//2 (OE)	8A	0	2
+F10	DDR3?	DDR3 bank (unmapped signal)	3	top-edge bank holding the HMC IO; no HMC line names this ball	8A	0	0
+F12	DDR3	DDR3 DQ[0] via HMC	5	HMC IOINT/PHYDDIO node names on this ball in .bt; bit=n//4 (DOUT/DIN), n//2 (OE)	7A	0	8
+F14	DDR3?	DDR3 bank (unmapped signal)	3	top-edge bank holding the HMC IO; no HMC line names this ball	7A	0	0
+F15	DDR3	DDR3 DQ[10] via HMC	5	HMC IOINT/PHYDDIO node names on this ball in .bt; bit=n//4 (DOUT/DIN), n//2 (OE)	7A	0	3
+F18	?	no evidence	1	fabric arcs unusable (unbonded pads show same arc rate)	5B	0	0
+F19	?	no evidence	1	fabric arcs unusable (unbonded pads show same arc rate)	5B	0	0
+F20	?	no evidence	1	fabric arcs unusable (unbonded pads show same arc rate)	5B	0	0
+F7	DDR3?	DDR3 bank (unmapped signal)	3	top-edge bank holding the HMC IO; no HMC line names this ball	8A	0	0
+F8	DDR3	DDR3 ADDR[6] via HMC	5	HMC IOINT/PHYDDIO node names on this ball in .bt; bit=n//4 (DOUT/DIN), n//2 (OE)	8A	0	3
+G1	?	no evidence	1	fabric arcs unusable (unbonded pads show same arc rate)	2A	0	0
+G10	DDR3?	DDR3 bank (unmapped signal)	3	top-edge bank holding the HMC IO; no HMC line names this ball	8A	0	0
+G11	DDR3?	DDR3 bank (unmapped signal)	3	top-edge bank holding the HMC IO; no HMC line names this ball	7A	0	0
+G12	DDR3	DDR3 DQS[1] via HMC	5	HMC IOINT/PHYDDIO node names on this ball in .bt; bit=n//4 (DOUT/DIN), n//2 (OE)	7A	0	2
+G13	DDR3?	DDR3 bank (unmapped signal)	3	top-edge bank holding the HMC IO; no HMC line names this ball	7A	0	0
+G14	DDR3	DDR3 DQSB[2] via HMC	5	HMC IOINT/PHYDDIO node names on this ball in .bt; bit=n//4 (DOUT/DIN), n//2 (OE)	7A	0	1
+G15	DDR3	DDR3 DQS[2] via HMC	5	HMC IOINT/PHYDDIO node names on this ball in .bt; bit=n//4 (DOUT/DIN), n//2 (OE)	7A	0	2
+G16	DDR3?	DDR3 bank (unmapped signal)	3	top-edge bank holding the HMC IO; no HMC line names this ball	7A	0	0
+G17	?	no evidence	1	fabric arcs unusable (unbonded pads show same arc rate)	5B	0	0
+G18	?	no evidence	1	fabric arcs unusable (unbonded pads show same arc rate)	5B	0	0
+G2	?	no evidence	1	fabric arcs unusable (unbonded pads show same arc rate)	2A	0	0
+G5	CFG	dedicated programming pad 10 (Mistral package table)	10	config/JTAG pin; function by pad index needs Intel pin-out table	9A		
+G6	DDR3?	DDR3 bank (unmapped signal)	3	top-edge bank holding the HMC IO; no HMC line names this ball	8A	0	0
+G7	DDR3	DDR3 CSN[1] via HMC	5	HMC IOINT/PHYDDIO node names on this ball in .bt; bit=n//4 (DOUT/DIN), n//2 (OE)	8A	0	2
+G8	DDR3	DDR3 DQSB[0] via HMC	5	HMC IOINT/PHYDDIO node names on this ball in .bt; bit=n//4 (DOUT/DIN), n//2 (OE)	7A	0	2
+H10	DDR3?	DDR3 bank (unmapped signal)	3	top-edge bank holding the HMC IO; no HMC line names this ball	7A	0	0
+H12	DDR3	DDR3 DQSB[1] via HMC	5	HMC IOINT/PHYDDIO node names on this ball in .bt; bit=n//4 (DOUT/DIN), n//2 (OE)	7A	0	3
+H16	DDR3?	DDR3 bank (unmapped signal)	3	top-edge bank holding the HMC IO; no HMC line names this ball	7A	0	0
+H18	?	no evidence	1	fabric arcs unusable (unbonded pads show same arc rate)	5B	0	0
+H19	?	no evidence	1	fabric arcs unusable (unbonded pads show same arc rate)	5B	0	0
+H20	?	no evidence	1	fabric arcs unusable (unbonded pads show same arc rate)	5B	0	0
+H5	CFG	dedicated programming pad 11 (Mistral package table)	10	config/JTAG pin; function by pad index needs Intel pin-out table	9A		
+H6	DDR3?	DDR3 bank (unmapped signal)	3	top-edge bank holding the HMC IO; no HMC line names this ball	8A	0	0
+H8	DDR3	DDR3 CSN[0] via HMC	5	HMC IOINT/PHYDDIO node names on this ball in .bt; bit=n//4 (DOUT/DIN), n//2 (OE)	8A	0	2
+H9	DDR3?	DDR3 bank (unmapped signal)	3	top-edge bank holding the HMC IO; no HMC line names this ball	7A	0	0
+J16	?	no evidence	1	fabric arcs unusable (unbonded pads show same arc rate)	5B	0	0
+J17	?	no evidence	1	fabric arcs unusable (unbonded pads show same arc rate)	5B	0	0
+J18	?	no evidence	1	fabric arcs unusable (unbonded pads show same arc rate)	5B	0	0
+J19	?	no evidence	1	fabric arcs unusable (unbonded pads show same arc rate)	5B	0	0
+J6	CFG	dedicated programming pad 8 (Mistral package table)	10	config/JTAG pin; function by pad index needs Intel pin-out table	9A		
+J7	DDR3?	DDR3 bank (unmapped signal)	3	top-edge bank holding the HMC IO; no HMC line names this ball	8A	0	0
+J8	DDR3	DDR3 CKN via HMC	5	HMC IOINT/PHYDDIO node names on this ball in .bt; bit=n//4 (DOUT/DIN), n//2 (OE)	8A	0	3
+J9	DDR3	DDR3 CK via HMC	5	HMC IOINT/PHYDDIO node names on this ball in .bt; bit=n//4 (DOUT/DIN), n//2 (OE)	8A	0	4
+K16	?	no evidence	1	fabric arcs unusable (unbonded pads show same arc rate)	5B	0	0
+K17	?	no evidence	1	fabric arcs unusable (unbonded pads show same arc rate)	5B	0	0
+K6	CFG	dedicated programming pad 9 (Mistral package table)	10	config/JTAG pin; function by pad index needs Intel pin-out table	9A		
+K7	DDR3?	DDR3 bank (unmapped signal)	3	top-edge bank holding the HMC IO; no HMC line names this ball	8A	0	0
+L1	?	no evidence	1	fabric arcs unusable (unbonded pads show same arc rate)	2A	0	0
+L17	?	no evidence	1	fabric arcs unusable (unbonded pads show same arc rate)	5B	0	0
+L2	?	no evidence	1	fabric arcs unusable (unbonded pads show same arc rate)	2A	0	0
+L6	CFG	dedicated programming pad 7 (Mistral package table)	10	config/JTAG pin; function by pad index needs Intel pin-out table	9A		
+L7	?	no evidence	1	fabric arcs unusable (unbonded pads show same arc rate)	3A	0	0
+L8	?	no evidence	1	fabric arcs unusable (unbonded pads show same arc rate)	3A	0	0
+L9	?	no evidence	1	fabric arcs unusable (unbonded pads show same arc rate)	3B	0	0
+M10	?	no evidence	1	fabric arcs unusable (unbonded pads show same arc rate)	3B	0	0
+M5	CFG	dedicated programming pad 4 (Mistral package table)	10	config/JTAG pin; function by pad index needs Intel pin-out table	3A		
+M6	?	no evidence	1	fabric arcs unusable (unbonded pads show same arc rate)	3A	0	0
+M7	?	no evidence	1	fabric arcs unusable (unbonded pads show same arc rate)	3A	0	0
+M8	?	no evidence	1	fabric arcs unusable (unbonded pads show same arc rate)	3B	0	0
+N1	?	no evidence	1	fabric arcs unusable (unbonded pads show same arc rate)	2A	0	0
+N10	?	no evidence	1	fabric arcs unusable (unbonded pads show same arc rate)	3B	0	0
+N2	?	no evidence	1	fabric arcs unusable (unbonded pads show same arc rate)	2A	0	0
+N6	?	no evidence	1	fabric arcs unusable (unbonded pads show same arc rate)	3A	0	0
+N8	?	no evidence	1	fabric arcs unusable (unbonded pads show same arc rate)	3B	0	0
+N9	?	no evidence	1	fabric arcs unusable (unbonded pads show same arc rate)	3B	0	0
+P12	?	no evidence	1	fabric arcs unusable (unbonded pads show same arc rate)	3B	0	0
+P14	?	no evidence	1	fabric arcs unusable (unbonded pads show same arc rate)	4A	0	0
+P19	?	no evidence	1	fabric arcs unusable (unbonded pads show same arc rate)	5A	0	0
+P5	UNUSED	GPIO ball with no routing/settings in the bitstream	3	not touched by this design (or tile data absent)	3A		
+P6	?	no evidence	1	fabric arcs unusable (unbonded pads show same arc rate)	3A	0	0
+P7	?	no evidence	1	fabric arcs unusable (unbonded pads show same arc rate)	3A	0	0
+P8	?	no evidence	1	fabric arcs unusable (unbonded pads show same arc rate)	3A	0	0
+P9	?	no evidence	1	fabric arcs unusable (unbonded pads show same arc rate)	3B	0	0
+R10	?	no evidence	1	fabric arcs unusable (unbonded pads show same arc rate)	3B	0	0
+R11	?	no evidence	1	fabric arcs unusable (unbonded pads show same arc rate)	3B	0	0
+R12	?	no evidence	1	fabric arcs unusable (unbonded pads show same arc rate)	4A	0	0
+R14	?	no evidence	1	fabric arcs unusable (unbonded pads show same arc rate)	4A	0	0
+R15	?	no evidence	1	fabric arcs unusable (unbonded pads show same arc rate)	4A	0	0
+R16	?	no evidence	1	fabric arcs unusable (unbonded pads show same arc rate)	5A	0	0
+R17	?	no evidence	1	fabric arcs unusable (unbonded pads show same arc rate)	5A	0	0
+R19	?	no evidence	1	fabric arcs unusable (unbonded pads show same arc rate)	5A	0	0
+R20	?	no evidence	1	fabric arcs unusable (unbonded pads show same arc rate)	5A	0	0
+R21	?	no evidence	1	fabric arcs unusable (unbonded pads show same arc rate)	5A	0	0
+R22	?	no evidence	1	fabric arcs unusable (unbonded pads show same arc rate)	5A	0	0
+R4	UNUSED	GPIO ball with no routing/settings in the bitstream	3	not touched by this design (or tile data absent)	3A		
+R5	?	no evidence	1	fabric arcs unusable (unbonded pads show same arc rate)	3A	0	0
+R6	?	no evidence	1	fabric arcs unusable (unbonded pads show same arc rate)	3A	0	0
+R7	?	no evidence	1	fabric arcs unusable (unbonded pads show same arc rate)	3A	0	0
+R9	?	no evidence	1	fabric arcs unusable (unbonded pads show same arc rate)	3B	0	0
+T10	?	no evidence	1	fabric arcs unusable (unbonded pads show same arc rate)	3B	0	0
+T12	?	no evidence	1	fabric arcs unusable (unbonded pads show same arc rate)	4A	0	0
+T13	?	no evidence	1	fabric arcs unusable (unbonded pads show same arc rate)	4A	0	0
+T14	?	no evidence	1	fabric arcs unusable (unbonded pads show same arc rate)	4A	0	0
+T15	?	no evidence	1	fabric arcs unusable (unbonded pads show same arc rate)	4A	0	0
+T17	?	no evidence	1	fabric arcs unusable (unbonded pads show same arc rate)	5A	0	0
+T18	?	no evidence	1	fabric arcs unusable (unbonded pads show same arc rate)	5A	0	0
+T19	?	no evidence	1	fabric arcs unusable (unbonded pads show same arc rate)	5A	0	0
+T20	?	no evidence	1	fabric arcs unusable (unbonded pads show same arc rate)	5A	0	0
+T22	?	no evidence	1	fabric arcs unusable (unbonded pads show same arc rate)	5A	0	0
+T5	CFG	dedicated programming pad 2 (Mistral package table)	10	config/JTAG pin; function by pad index needs Intel pin-out table	3A		
+T7	?	no evidence	1	fabric arcs unusable (unbonded pads show same arc rate)	3A	0	0
+T8	?	no evidence	1	fabric arcs unusable (unbonded pads show same arc rate)	3A	0	0
+T9	?	no evidence	1	fabric arcs unusable (unbonded pads show same arc rate)	3A	0	0
+U1	?	no evidence	1	fabric arcs unusable (unbonded pads show same arc rate)	2A	0	0
+U10	?	no evidence	1	fabric arcs unusable (unbonded pads show same arc rate)	3B	0	0
+U11	?	no evidence	1	fabric arcs unusable (unbonded pads show same arc rate)	3B	0	0
+U12	?	no evidence	1	fabric arcs unusable (unbonded pads show same arc rate)	4A	0	0
+U13	?	no evidence	1	fabric arcs unusable (unbonded pads show same arc rate)	4A	0	0
+U15	?	no evidence	1	fabric arcs unusable (unbonded pads show same arc rate)	4A	0	0
+U16	?	no evidence	1	fabric arcs unusable (unbonded pads show same arc rate)	4A	0	0
+U17	?	no evidence	1	fabric arcs unusable (unbonded pads show same arc rate)	4A	0	0
+U2	?	no evidence	1	fabric arcs unusable (unbonded pads show same arc rate)	2A	0	0
+U21	?	no evidence	1	fabric arcs unusable (unbonded pads show same arc rate)	5A	0	0
+U22	?	no evidence	1	fabric arcs unusable (unbonded pads show same arc rate)	5A	0	0
+U6	?	no evidence	1	fabric arcs unusable (unbonded pads show same arc rate)	3A	0	0
+U7	?	no evidence	1	fabric arcs unusable (unbonded pads show same arc rate)	3A	0	0
+U8	?	no evidence	1	fabric arcs unusable (unbonded pads show same arc rate)	3B	0	0
+V13	?	no evidence	1	fabric arcs unusable (unbonded pads show same arc rate)	4A	0	0
+V15	?	no evidence	1	fabric arcs unusable (unbonded pads show same arc rate)	4A	0	0
+V18	?	no evidence	1	fabric arcs unusable (unbonded pads show same arc rate)	4A	0	0
+V19	?	no evidence	1	fabric arcs unusable (unbonded pads show same arc rate)	5A	0	0
+V20	?	no evidence	1	fabric arcs unusable (unbonded pads show same arc rate)	5A	0	0
+V3	UNUSED	GPIO ball with no routing/settings in the bitstream	3	not touched by this design (or tile data absent)	3A		
+V5	UNUSED	GPIO ball with no routing/settings in the bitstream	3	not touched by this design (or tile data absent)	3A		
+V8	?	no evidence	1	fabric arcs unusable (unbonded pads show same arc rate)	3B	0	0
+V9	?	no evidence	1	fabric arcs unusable (unbonded pads show same arc rate)	3B	0	0
+W11	?	no evidence	1	fabric arcs unusable (unbonded pads show same arc rate)	3B	0	0
+W12	?	no evidence	1	fabric arcs unusable (unbonded pads show same arc rate)	4A	0	0
+W13	?	no evidence	1	fabric arcs unusable (unbonded pads show same arc rate)	4A	0	0
+W14	PLLOUT?	clock-output path (PLL_SELECT=PLL)	3	tile setting PLL_SELECT=PLL; setting also present on unbonded pads, may be noise	4A	0	0
+W16	?	no evidence	1	fabric arcs unusable (unbonded pads show same arc rate)	4A	0	0
+W17	?	no evidence	1	fabric arcs unusable (unbonded pads show same arc rate)	4A	0	0
+W18	?	no evidence	1	fabric arcs unusable (unbonded pads show same arc rate)	4A	0	0
+W2	?	no evidence	1	fabric arcs unusable (unbonded pads show same arc rate)	2A	0	0
+W21	?	no evidence	1	fabric arcs unusable (unbonded pads show same arc rate)	4A	0	0
+W22	?	no evidence	1	fabric arcs unusable (unbonded pads show same arc rate)	4A	0	0
+W5	CFG	dedicated programming pad 3 (Mistral package table)	10	config/JTAG pin; function by pad index needs Intel pin-out table	3A		
+W7	?	no evidence	1	fabric arcs unusable (unbonded pads show same arc rate)	3B	0	0
+W8	?	no evidence	1	fabric arcs unusable (unbonded pads show same arc rate)	3B	0	0
+Y10	?	no evidence	1	fabric arcs unusable (unbonded pads show same arc rate)	3B	0	0
+Y11	?	no evidence	1	fabric arcs unusable (unbonded pads show same arc rate)	3B	0	0
+Y12	?	no evidence	1	fabric arcs unusable (unbonded pads show same arc rate)	4A	0	0
+Y14	?	no evidence	1	fabric arcs unusable (unbonded pads show same arc rate)	4A	0	0
+Y15	PLLOUT?	clock-output path (PLL_SELECT=PLL)	3	tile setting PLL_SELECT=PLL; setting also present on unbonded pads, may be noise	4A	0	0
+Y16	?	no evidence	1	fabric arcs unusable (unbonded pads show same arc rate)	4A	0	0
+Y17	?	no evidence	1	fabric arcs unusable (unbonded pads show same arc rate)	4A	0	0
+Y19	PLLOUT?	clock-output path (PLL_SELECT=PLL)	3	tile setting PLL_SELECT=PLL; setting also present on unbonded pads, may be noise	4A	0	0
+Y20	?	no evidence	1	fabric arcs unusable (unbonded pads show same arc rate)	4A	0	0
+Y21	?	no evidence	1	fabric arcs unusable (unbonded pads show same arc rate)	4A	0	0
+Y22	?	no evidence	1	fabric arcs unusable (unbonded pads show same arc rate)	4A	0	0
+Y3	?	no evidence	1	fabric arcs unusable (unbonded pads show same arc rate)	2A	0	0
+Y7	?	no evidence	1	fabric arcs unusable (unbonded pads show same arc rate)	3B	0	0
+Y9	?	no evidence	1	fabric arcs unusable (unbonded pads show same arc rate)	3B	0	0
+AA1	?	no evidence	1	fabric arcs unusable (unbonded pads show same arc rate)	2A	0	0
+AA10	?	no evidence	1	fabric arcs unusable (unbonded pads show same arc rate)	3B	0	0
+AA13	?	no evidence	1	fabric arcs unusable (unbonded pads show same arc rate)	4A	0	0
+AA15	PLLOUT?	clock-output path (PLL_SELECT=PLL)	3	tile setting PLL_SELECT=PLL; setting also present on unbonded pads, may be noise	4A	0	0
+AA17	?	no evidence	1	fabric arcs unusable (unbonded pads show same arc rate)	4A	0	0
+AA18	?	no evidence	1	fabric arcs unusable (unbonded pads show same arc rate)	4A	0	0
+AA19	?	no evidence	1	fabric arcs unusable (unbonded pads show same arc rate)	4A	0	0
+AA2	?	no evidence	1	fabric arcs unusable (unbonded pads show same arc rate)	2A	0	0
+AA20	?	no evidence	1	fabric arcs unusable (unbonded pads show same arc rate)	4A	0	0
+AA22	?	no evidence	1	fabric arcs unusable (unbonded pads show same arc rate)	4A	0	0
+AA5	CFG	dedicated programming pad 1 (Mistral package table)	10	config/JTAG pin; function by pad index needs Intel pin-out table	3A		
+AA7	?	no evidence	1	fabric arcs unusable (unbonded pads show same arc rate)	3B	0	0
+AA8	?	no evidence	1	fabric arcs unusable (unbonded pads show same arc rate)	3B	0	0
+AA9	?	no evidence	1	fabric arcs unusable (unbonded pads show same arc rate)	3B	0	0
+AB10	?	no evidence	1	fabric arcs unusable (unbonded pads show same arc rate)	3B	0	0
+AB11	?	no evidence	1	fabric arcs unusable (unbonded pads show same arc rate)	3B	0	0
+AB13	?	no evidence	1	fabric arcs unusable (unbonded pads show same arc rate)	4A	0	0
+AB15	?	no evidence	1	fabric arcs unusable (unbonded pads show same arc rate)	4A	0	0
+AB16	?	no evidence	1	fabric arcs unusable (unbonded pads show same arc rate)	4A	0	0
+AB17	?	no evidence	1	fabric arcs unusable (unbonded pads show same arc rate)	4A	0	0
+AB18	?	no evidence	1	fabric arcs unusable (unbonded pads show same arc rate)	4A	0	0
+AB20	?	no evidence	1	fabric arcs unusable (unbonded pads show same arc rate)	4A	0	0
+AB21	?	no evidence	1	fabric arcs unusable (unbonded pads show same arc rate)	4A	0	0
+AB22	?	no evidence	1	fabric arcs unusable (unbonded pads show same arc rate)	4A	0	0
+AB4	CFG	dedicated programming pad 5 (Mistral package table)	10	config/JTAG pin; function by pad index needs Intel pin-out table	3A		
+AB6	CFG	dedicated programming pad 0 (Mistral package table)	10	config/JTAG pin; function by pad index needs Intel pin-out table	3A		
+AB7	?	no evidence	1	fabric arcs unusable (unbonded pads show same arc rate)	3B	0	0
+AB8	?	no evidence	1	fabric arcs unusable (unbonded pads show same arc rate)	3B	0	0
