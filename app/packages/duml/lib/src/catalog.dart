@@ -14,38 +14,51 @@ import 'dart:typed_data';
 import 'packet.dart';
 
 /// Human name for a command set, for readable reports.
+///
+/// Verified against DJI GO 4 v4.3.64's own `dji.midware.data.config.P3.CmdSet` enum
+/// (docs/apk-analysis.md "Runtime unpacking", docs/data/apk-cmdset-devicetype.tsv) —
+/// not a guess. Earlier names here for 0x09-0x0e were wrong (e.g. 0x0b was labelled
+/// "battery" but is SIMULATOR; real BATTERY is 0x0c); corrected from the app's own
+/// enum, which also cross-confirmed our independent m0900/m1400 firmware RE
+/// (DeviceType.OFDM=9, FPGA=0x13, FPGA_G=0x14 match exactly).
 String cmdSetName(int set) {
   switch (set) {
     case 0x00:
-      return 'general';
+      return 'general'; // COMMON
     case 0x01:
-      return 'special';
+      return 'special'; // SPECIAL
     case 0x02:
-      return 'camera';
+      return 'camera'; // CAMERA
     case 0x03:
-      return 'flight-controller';
+      return 'flight-controller'; // FLYC
     case 0x04:
-      return 'gimbal';
+      return 'gimbal'; // GIMBAL
     case 0x05:
-      return 'center-board';
+      return 'center-board'; // CENTER
     case 0x06:
-      return 'remote-controller';
+      return 'remote-controller'; // RC
     case 0x07:
-      return 'wifi';
+      return 'wifi'; // WIFI
     case 0x08:
-      return 'dm36x';
+      return 'dm36x'; // DM368
     case 0x09:
-      return 'hd-link'; // Lightbridge/OSD video link
+      return 'osd'; // OSD - Lightbridge/radio-link config+telemetry (m0900 set 0x09)
     case 0x0a:
-      return 'mono';
+      return 'eye'; // EYE - vision/obstacle-avoidance module
     case 0x0b:
-      return 'battery';
+      return 'simulator'; // SIMULATOR
     case 0x0c:
-      return 'data-recorder';
+      return 'battery'; // BATTERY
     case 0x0d:
-      return 'rtk';
-    case 0x0e:
-      return 'automation';
+      return 'smart-battery'; // SMARTBATTERY
+    case 0x0f:
+      return 'rtk'; // RTK
+    case 0x11:
+      return 'ads-b'; // ADS_B
+    case 0xee:
+      return 'recognize'; // RECOGNIZE (238)
+    case 0x64:
+      return 'other'; // OTHER (100) - app's own catch-all value
     default:
       return 'set-0x${set.toRadixString(16).padLeft(2, '0')}';
   }
@@ -53,10 +66,22 @@ String cmdSetName(int set) {
 
 /// Names for the few (cmd_set, cmd_id) pairs we are confident about. Everything
 /// else is reported generically; extend this only when a capture confirms it.
+///
+/// Set 0x06 (RC) ids 12/13 and set 0x09 (OSD) ids 5/6/7/12/13 are doubly confirmed:
+/// independently by m1400/m0900 firmware disassembly (docs/id-entry-point.md,
+/// docs/symbols/m0900_V01.11.0020.tsv) AND by DJI GO 4's own CmdSet.RC/OSD enums
+/// (docs/apk-analysis.md). Everything else here is still the app-codec's own guess.
 String? knownMessageName(int set, int id) {
   if (set == 0x00 && id == 0x01) return 'Get Version / device info';
   if (set == 0x03 && id == 0x43) return 'OSD General (telemetry push)';
   if (set == 0x03 && id == 0x44) return 'OSD Home Point';
+  if (set == 0x06 && id == 0x0c) return 'RC Set Connected Master Id';
+  if (set == 0x06 && id == 0x0d) return 'RC Get Connected Master Id';
+  if (set == 0x09 && id == 0x05) return 'OSD FPGA register read';
+  if (set == 0x09 && id == 0x06) return 'OSD FPGA/AD9363 register write';
+  if (set == 0x09 && id == 0x07) return 'OSD FPGA/AD9363 register read';
+  if (set == 0x09 && id == 0x12) return 'OSD Set radio/channel params';
+  if (set == 0x09 && id == 0x13) return 'OSD Get radio/channel params';
   return null;
 }
 

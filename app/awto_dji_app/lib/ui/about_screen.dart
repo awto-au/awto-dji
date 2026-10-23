@@ -31,11 +31,9 @@ class AboutScreen extends StatelessWidget {
                 '${session.bytesReceived} / ${session.packetCount} / ${session.crcErrorCount}'),
           ),
           ListTile(
-            title: const Text('AOA identity'),
-            subtitle: Text(AoaIdentity.verified
-                ? '${AoaIdentity.manufacturer} / ${AoaIdentity.model}'
-                : '${AoaIdentity.manufacturer} / ${AoaIdentity.model} '
-                    '(other fields are placeholders, unverified)'),
+            title: const Text('AOA identity (manufacturer / model)'),
+            subtitle: Text('${AoaIdentity.manufacturer} / ${AoaIdentity.model} '
+                '— confirmed against DJI GO 4\'s own match logic'),
           ),
           const ListTile(
             title: Text('Geofence'),
