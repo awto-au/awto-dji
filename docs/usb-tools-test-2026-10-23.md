@@ -155,6 +155,35 @@ router - no packing/anti-tamper on this app at all, unlike the Android APK).
   earlier "silent exit, never gets past login" problem documented above - not yet confirmed
   live (handed to the parallel session along with the rest of this debug-mode finding).
 
+## tools.html not found, but a much bigger debug-gated surface found in a newer/other variant
+
+Per the operator's "it must be there somewhere" - downloaded a different, newer DJI Assistant 2
+variant (`DJI Assistant 2 (Consumer Drones Series)` 2.1.42, from
+`dl.djicdn.com/downloads/dji_assistant/20260922/`, via `innoextract` on the InnoSetup installer -
+no Wine install needed, just `innoextract -I "app/DJIApp/app.asar" <installer>.exe` then `strings`
+on the raw `.asar`, since this newer asar format wasn't extractable by `@electron/asar` here).
+
+- **V, `tools.html`/the `g.devtools` hidden link do not exist in this variant either** -
+  genuinely removed between whatever version introduced it and 2.1.42, not just a Phantom-build
+  omission as first guessed.
+- **V, but the `debug/:secview` route and `process.argv[2]=='debug'` launch mechanism are
+  identical** - confirmed present, unchanged, in this newer build.
+- **V, much bigger find: `debug==1` is used throughout this UI as a literal OR-bypass alongside
+  per-device support/match checks**, e.g.:
+  - `v-if="activeDeviceConfig['supportSimulatorRelease'] || debug==1"` (simulator menu)
+  - `v-if="canShowCommon || isMatch || debug==1"` (a general operations panel)
+  - `v-if="(isMatch && type === 2) || debug==1"` (Matrice 210 control/gimbal-debug panels)
+  - `v-if="activeDevice.DEVICE_TYPE=='hg330'&&(debug==1 || visionEnable)"` (calibration)
+  - version-read and format panels for several other device-type codes, same pattern
+  - a `hil_addevice` dialog (`DEVICE_TYPE: ['Serial','Can']`, COM port + baud rate fields, or
+    CAN index + T_ID/R_ID) for manually adding a device the normal auto-detect path doesn't
+    recognise - not yet confirmed whether its trigger (not its own visibility) is debug-gated.
+  - This is a real, in-code pattern (not speculation) that **debug mode bypasses per-product
+    support checks across much of the UI**, directly relevant to the operator's hypothesis that
+    debug mode might work for the Phantom 3 even though the normal product flow doesn't.
+- **U, not yet tested against real hardware.** Handed to the parallel session (real Windows VM)
+  with the download URL and exact launch command to test live against the real P3 RC/aircraft.
+
 ## Not done / next
 
 - Wireshark DUML dissector (`dji-firmware-tools/comm_dissector/wireshark`) not installed.
