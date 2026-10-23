@@ -126,6 +126,36 @@ Operator authorized unpacking the AppGuard packer ("we can remove appguard - the
 issue"), lifting the restriction noted above for the AppGuard payload specifically. Method,
 device state, findings and remaining scope exclusions below.
 
+**Second pass, broadened scan**: the first carve (5 regions, `rw-p` only) missed the
+legacy-P3 DUML layer. Scanning `r-xp`/`r--p` regions too (packer mmaps the real payload
+read-only/read-exec from a backing file rather than keeping it in anonymous `rw-p` memory)
+and bounding each carved dex by its own header `file_size` (not "to end of region") found 82
+properly-sized dex files (169 MB total), decompiling to 31,142 classes with only 113
+per-class errors. This recovered the real legacy-P3 DUML package tree:
+`dji.midware.data.config.P3.{CmdSet,DeviceType,DataConfig,...}`,
+`dji.midware.data.model.P3.Data*` (hundreds of per-command classes),
+`dji.midware.data.manager.P3.{DataBase,DJIProductManager,...}`, `dji.midware.usb.P3.*`.
+
+**`CmdSet` and `DeviceType` numeric values - verified, extracted to
+`docs/data/apk-cmdset-devicetype.tsv`**: `CmdSet` 0-8 are COMMON/SPECIAL/CAMERA/FLYC/GIMBAL/
+CENTER/RC/WIFI/DM368 (enum continues past DM368 in the source; not yet fully extracted).
+`DeviceType` (the DUML receiver-type byte) is the standout cross-check: **`OFDM = 9`
+matches exactly** what `docs/symbols/m0900_V01.11.0020.tsv` independently derived from
+disassembly (DUML keys `0x0913`/`0x0914`, receiver type 9) in an earlier session, before
+this APK was ever opened; **`FPGA = 19` (0x13) and `FPGA_G = 20` (0x14) match exactly** the air (m0900,
+`docs/fpga-upgrade-path.md`) and ground (m1400, `docs/ground-upgrade-path.md`) FPGA-upgrade
+receiver types found independently by static firmware RE. This is a real, independent
+cross-validation of the firmware-side DUML receiver-type reverse engineering against DJI's
+own app source - not a coincidence at this specificity.
+
+Each `CmdSet` carries a nested `CmdIdType` enum with real numeric command IDs and payload
+model classes (e.g. `RC.CmdIdType.SetConnectMaster(12)` / `GetConnectMaster(13)` - matches
+`docs/id-entry-point.md`'s "Connected Master Id Set/Get" m1400 proof exactly, including the
++1 Set/Get pairing pattern). `docs/data/apk-duml-commands.tsv`'s "?" numeric ids can now be
+filled from this source class by class; not yet done here (large task, left for a follow-up
+pass - the raw decompiled `.java` is not committed, per the no-DJI-derivative-code
+convention, so re-extraction needs a fresh unpack run against `scripts/re/apk_dynamic_unpack.py`).
+
 **Method**: `scripts/re/apk_dynamic_unpack.py --device <serial>` on a real, dedicated-for-work,
 rooted (Magisk) Android device. frida-server pushed/run; `frida-dexdump` dumped ~62 resident
 dex files on cold start, but those are all stock Android framework classes (`android.*`,

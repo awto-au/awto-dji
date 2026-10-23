@@ -1,0 +1,35 @@
+kind	name	value	source
+CmdSet	COMMON	0	dji.midware.data.config.P3.CmdSet (runtime unpack)
+CmdSet	SPECIAL	1	dji.midware.data.config.P3.CmdSet
+CmdSet	CAMERA	2	dji.midware.data.config.P3.CmdSet
+CmdSet	FLYC	3	dji.midware.data.config.P3.CmdSet
+CmdSet	GIMBAL	4	dji.midware.data.config.P3.CmdSet
+CmdSet	CENTER	5	dji.midware.data.config.P3.CmdSet
+CmdSet	RC	6	dji.midware.data.config.P3.CmdSet
+CmdSet	WIFI	7	dji.midware.data.config.P3.CmdSet
+CmdSet	DM368	8	dji.midware.data.config.P3.CmdSet (enum continues past DM368, not yet extracted - file truncated at token budget, 3004 lines total, read to line 1545)
+DeviceType	WHO	0	dji.midware.data.config.P3.DeviceType
+DeviceType	CAMERA	1	dji.midware.data.config.P3.DeviceType
+DeviceType	APP	2	dji.midware.data.config.P3.DeviceType
+DeviceType	FLYC	3	dji.midware.data.config.P3.DeviceType
+DeviceType	GIMBAL	4	dji.midware.data.config.P3.DeviceType
+DeviceType	CENTER	5	dji.midware.data.config.P3.DeviceType
+DeviceType	RC	6	dji.midware.data.config.P3.DeviceType
+DeviceType	WIFI	7	dji.midware.data.config.P3.DeviceType
+DeviceType	DM368	8	dji.midware.data.config.P3.DeviceType
+DeviceType	OFDM	9	dji.midware.data.config.P3.DeviceType - CROSS-CONFIRMS m0900 DUML keys 0x0913/0x0914 (receiver type 9, docs/symbols/m0900_V01.11.0020.tsv)
+DeviceType	PC	10	dji.midware.data.config.P3.DeviceType
+DeviceType	BATTERY	11	dji.midware.data.config.P3.DeviceType
+DeviceType	DIGITAL	12	dji.midware.data.config.P3.DeviceType
+DeviceType	DM368_G	13	dji.midware.data.config.P3.DeviceType (isRemote=false, ground-side)
+DeviceType	OSD	14	dji.midware.data.config.P3.DeviceType (isRemote=false)
+DeviceType	TRANSFORM	15	dji.midware.data.config.P3.DeviceType
+DeviceType	TRANSFORM_G	16	dji.midware.data.config.P3.DeviceType (isRemote=false)
+DeviceType	SINGLE	17	dji.midware.data.config.P3.DeviceType
+DeviceType	DOUBLE	18	dji.midware.data.config.P3.DeviceType
+DeviceType	FPGA	19	dji.midware.data.config.P3.DeviceType (0x13) - CROSS-CONFIRMS m0900 Enter Loader/Update Confirm/Finish receiver 0x13 (docs/fpga-upgrade-path.md) and m1400 FPGA upgrade receiver 0x13-equivalent
+DeviceType	FPGA_G	20	dji.midware.data.config.P3.DeviceType (0x14, isRemote=false) - CROSS-CONFIRMS m1400 ground-side FPGA upgrade receiver 0x14 (docs/ground-upgrade-path.md)
+DeviceType	WIFI_G	27	dji.midware.data.config.P3.DeviceType (isRemote=false)
+DeviceType	GLASS	28	dji.midware.data.config.P3.DeviceType
+DeviceType	BROADCAST	31	dji.midware.data.config.P3.DeviceType
+DeviceType	OTHER	100	dji.midware.data.config.P3.DeviceType

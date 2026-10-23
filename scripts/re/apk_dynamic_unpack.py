@@ -45,6 +45,7 @@ Log: tmp/logs/apk_dynamic_unpack.log
 """
 import argparse
 import re
+import struct
 import subprocess
 import sys
 import time
@@ -73,7 +74,8 @@ LOG = ROOT / "tmp/logs/apk_dynamic_unpack.log"
 PKG = "dji.go.v4"
 LAUNCHER_ACTIVITY = "dji.pilot.main.activity.DJILauncherActivity"  # confirmed on-device
 FRIDA_VERSION = "17.24.3"  # resolved 2026-10-23 via `gh release list -R frida/frida`
-DEX_MAGIC = bytes.fromhex("6465780a303335")  # "dex\n035"
+DEX_MAGIC = bytes.fromhex("6465780a303335")  # "dex\n035" (kept for reference; see _RE below)
+DEX_MAGIC_RE = re.compile(rb"dex\n0(3[5-9]|4[0-5])\x00")  # dex\nNNN\0, versions seen in the wild
 
 FRIDA_SCRIPT = """
 Java.perform(function () {
@@ -278,7 +280,12 @@ def step_memscan(device, dry_run):
     regions = []
     if not dry_run:
         for line in maps_path.read_text().splitlines():
-            if "rw-p" not in line:
+            perms = line.split()[1] if len(line.split()) > 1 else ""
+            # rw-p: anonymous/private writable (where a packer decrypts into a fresh
+            # buffer). r-xp/r--p: some packers write the decrypted dex to a backing file
+            # and mmap it back read-only/read-exec instead, which rw-p alone misses.
+            if not (perms.startswith("rw-p") or perms.startswith("r-xp")
+                    or perms.startswith("r--p")):
                 continue
             addr_range = line.split()[0]
             start_s, end_s = addr_range.split("-")
@@ -286,8 +293,22 @@ def step_memscan(device, dry_run):
             if end - start > 64 * 1024 * 1024:  # skip huge heaps; dex stub is a few MB
                 continue
             regions.append((start, end))
-    log(f"{len(regions)} candidate rw regions under 64MB to scan")
-    hits = []
+    log(f"{len(regions)} candidate regions (rw-p/r-xp/r--p) under 64MB to scan")
+    def dex_file_size(data, off):
+        """Read the declared file_size from a dex header at `off`, or None if implausible.
+        Pure offset arithmetic (header field read) - no checksum/signature work; jadx is
+        pointed at -Pdex-input.verify-checksum=no separately for that."""
+        if off + 0x70 > len(data):
+            return None
+        header_size, endian = struct.unpack_from("<II", data, off + 36)
+        if header_size != 0x70 or endian != 0x12345678:
+            return None
+        file_size = struct.unpack_from("<I", data, off + 32)[0]
+        if file_size < 0x70 or off + file_size > len(data) + 4096:  # allow a little slack
+            return None
+        return file_size
+
+    carved_count = 0
     for start, end in regions:
         size = end - start
         local = OUT / f"region_{start:x}.bin"
@@ -302,24 +323,25 @@ def step_memscan(device, dry_run):
             log("  (dry-run: not executed)")
             continue
         r = subprocess.run(cmd, capture_output=True, check=False)  # no text=True: binary
-        local.write_bytes(r.stdout)
-        data = local.read_bytes()
-        off = data.find(DEX_MAGIC)
-        if off >= 0:
-            hits.append((local, off, start + off))
-            log(f"dex magic hit in {local.name} at file offset {off:#x} "
-                f"(process addr {start + off:#x})")
-        else:
-            local.unlink(missing_ok=True)  # keep only the hit(s); regions are large
-    if not hits and not dry_run:
-        log("no dex magic found in scanned regions - widen the size cutoff above "
-            "or check maps.txt by hand for anon regions missed by the rw-p filter")
-    for local, off, _ in hits:
-        carved = OUT / f"carved_{local.stem}.dex"
-        data = local.read_bytes()[off:]
-        carved.write_bytes(data)
-        log(f"carved {carved} ({len(data)} bytes, file_size field not fixed up - "
-            "jadx may still refuse it; truncate to the real size if so)")
+        data = r.stdout
+        # every dex-magic occurrence in this region, not just the first - a region can
+        # hold several dex files back to back
+        offs = [m.start() for m in re.finditer(DEX_MAGIC_RE, data)]
+        if not offs:
+            continue
+        local.write_bytes(data)
+        for off in offs:
+            fsize = dex_file_size(data, off)
+            if fsize is None:
+                continue
+            carved = OUT / f"carved_{start:x}_{off:x}.dex"
+            carved.write_bytes(data[off:off + min(fsize, len(data) - off)])
+            carved_count += 1
+            log(f"carved {carved.name} ({fsize} bytes declared) from {local.name} "
+                f"at file offset {off:#x} (process addr {start + off:#x})")
+    if carved_count == 0 and not dry_run:
+        log("no dex magic with a plausible header found in scanned regions - widen the "
+            "size cutoff above or check maps.txt by hand for regions this filter missed")
 
 
 def step_decompile(device, dry_run):
