@@ -187,6 +187,30 @@ confirmed via `ps aux` (no `wine`/`Xvfb` left) and the real FC device
 ## Reference tooling (upstream)
 - `comm_serialtalk.py` / `comm_og_service_tool.py` (o-gs/dji-firmware-tools): serial port, default 9600, sender type PC (`0`), receiver `ANY`, packet type Request, ack `No_ACK_Needed`. Phantom 3 listed as supported, so the same framing is expected.
 
+## Real-hardware re-test after the ~6s boot-to-IRQn67-unmask finding (2026-10-23)
+
+The Renode-simulated boot (`docs/fc-usb-duml.md`) showed the firmware's IRQn67 (OTG_FS)
+interrupt stays masked until ~6s into a simulated boot, raising the possibility that earlier
+probes (which started as soon as `/dev/ttyACM11` existed, with a 3s passive window) simply
+ran too early relative to the real board. Retested directly:
+
+- **V.** Power-cycled the aircraft battery. `lsusb` showed the DJI controller re-enumerate
+  under a new USB device number (103 -> 104); `/dev/ttyACM11`'s ctime jumped accordingly -
+  confirms a genuine reboot happened, not just a stale cached listing.
+- **V.** A passive 60s capture (`scripts/re/capture_fc_boot.py`, no bytes transmitted)
+  started 16s after the confirmed reboot and ran for a further 60s (so covering roughly
+  t+16s to t+76s post-reboot, well past the 6s simulated-boot mark): **0 bytes received.**
+  No unsolicited boot-time log/telemetry output on this port at all, at any point in that
+  window.
+- **V.** Immediately after, `scripts/probe_fc_usb.py` sent DUML Get-Version to all four
+  targets (flight-controller, camera, gimbal, rc/ofdm) against the same now-confirmed-fresh
+  boot: **0 bytes received** for every target, same as the original 2026-10-23 probe and the
+  2017 public report.
+- **Conclusion: the ~6s boot timing was not the explanation for the silence.** The port is
+  silent whether probed right after device-node creation or minutes into a confirmed-fresh
+  boot. Narrows the real cause back toward the m0306 USB-OTG dead-ISR / CDC-receive-handler
+  question in `docs/fc-usb-duml.md`, not a premature-probe timing artifact.
+
 ## What is needed next
 1. Find the VCOM data-out handler in `m0306` and read what gates DUML replies - the m0306 USB-OTG dead-ISR finding (`docs/fc-usb-duml.md`) may mean Assistant would get no reply either, independent of the Wine issues above.
 2. If a live Assistant capture is still wanted: the silent exit is NOT a network/CEF-startup issue (refuted above, with independent host-side confirmation) - every DJI engine binary tried (DJIService.exe standalone included) exits the same voluntary way, pointing at a shared gate in DJI's own startup code (possibly anti-tamper/environment detection, akin to the DJI GO 4 APK's AppGuard packer). Next: x86-disassemble the shared init path in `DJIDevice.dll`/`DJIService.exe` to find the actual gate condition, or try real Windows/a VM instead of Wine to sidestep it entirely.
