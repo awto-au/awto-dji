@@ -101,12 +101,95 @@ real device was free (`fuser`/`lsof` empty) before and after. Installer and
 extracted app files live under `tmp/` (git-ignored), not committed, per the
 no-DJI-derivative-code convention already used for the Android APK work.
 
+## Wine debugging, attempt 2 (2026-10-23)
+
+Same prefix (`tmp/wine-dji/`, wow64, `wine-11.0 (Staging)`), new Xvfb `:99`. Real FC
+at `/dev/ttyACM11` was present but idle (`fuser`/`lsof` empty) throughout - never
+opened, this session was diagnosis-only, no proxy/capture attempt made.
+
+**V. Original "network/update check fails" hypothesis is REFUTED.** Traced with
+`WINEDEBUG=+winsock,+wininet`: the app resolves `mydjiflight.dji.com` (AWS-hosted,
+`13.32.45.x`), connects over TLS on port 443 using the standard nonblocking-connect
+two-call idiom (first call returns "in progress", second confirms), and the
+exchange **succeeds**. Confirmed independently with `curl -v` from the host to the
+same IPv4 address (IPv6 route is unreachable here, but IPv4 completes a full
+TLS 1.3 handshake).
+
+**V. DJIService.exe's own log file proves the login round-trip completes.**
+Electron/Qt-side logging writes to
+`%APPDATA%\DJI Assistant 2\Phantom\log\<timestamp>.log` inside the prefix
+(not found/mentioned in attempt 1). Two independent runs produced byte-identical
+sequences:
+```
+[DJIWebFileGetter] [OnFinish]reply statusCode=201
+[DJIWebFileGetter] [OnFinish]reply statusCode=200
+[DJILogin] Get C############## from server: 6175
+release class DJIIdentifierInterface<class DJISecondIdentifier>
+release class DJIIdentifierInterface<class DJIGeneralIdentifier>
+```
+(DJI's own logger redacts the identifier value with `#`.) HTTP 200, a value
+returned from the server, then clean teardown of the identifier objects - not an
+error path.
+
+**V. `WINEDEBUG=+loaddll,+module` traced the actual process tree** (not captured in
+attempt 1): `DJI Assistant 2.exe` relaunches itself once (single-instance pattern,
+PIDs `0024` -> `0130`), which spawns `DJIEngine/DJIService.exe` (`0138`) and
+`DJIEngine/DJIBrowser/DJIBrowser.exe` (`014c` - the actual CEF render host, not
+mentioned in attempt 1's static analysis). **All four processes exit via a clean,
+voluntary `LdrShutdownProcess()`** - no SEH exception, no fixme/err around the
+exit point, in both the relauncher and the two "worker" processes alike. `0130`
+(the relaunched main exe) reaches `ExitProcess` within a few hundred trace lines of
+loading just `kernel32`/`kernelbase` - it never loads any Electron/CEF-identifying
+module (no `libcef`, `node`, `ffmpeg`), meaning its own entry point barely runs any
+app logic before quitting.
+
+**I. Working theory now: a shared startup/environment gate in DJI's own code, not
+a network or Electron-specific fault.** `DJIService.exe` launched **standalone**
+(bypassing the Electron launcher entirely) reproduces the exact same pattern: runs
+its real startup diagnostics (WLAN enumeration, `toolhelp32` snapshot - identical
+to attempt 1's description), then exits voluntarily on its own, with no parent
+process and nothing to report back to. Every binary in the suite that was tried
+exits the same way independent of launch order or parent/child relationship,
+which points at common gate code (e.g. an environment/signature/anti-tamper check
+shared across the DJI engine binaries) rather than a per-process bug. Not
+confirmed - would need an x86 disassembly pass on the shared startup path to
+pin down (same class of work flagged as outstanding in attempt 1).
+
+**V. `DJISimulatorUI.exe` (a different EXE in the same `DJIEngine/` folder) behaves
+completely differently** - it is not subject to whatever gate stops the other
+three. It runs for real: loads a full OGRE3D scene (flight-sim aircraft models,
+textures, shader compositors), logs normal asset-parsing output, then **crashes**
+with `wine: Unhandled stack overflow at address 7B31E867 (thread 0138)` after a
+`WARNING: ... Fragment program GlowB_fp cannot be used - not supported` (the
+software/llvmpipe GL path lacks a fragment-program feature the Glow compositor
+needs). This is a genuine Wine/GL compatibility crash, unrelated to the other
+exes' silent-exit pattern - interesting confirmation that *some* window-drawing
+DJI code path does run under this Wine setup, but not useful for DUML capture
+(it's the flight simulator, not the device-comms UI).
+
+**Not achieved: a live capture, and no DUML bytes were sent or received this
+session** - no serial proxy was started, since the Electron UI (the one process
+that would open the COM port) never got far enough to try. `glxinfo` on `:99`
+confirms direct rendering/GLX works (SGI GLX 1.4, llvmpipe), so GL itself is not
+the blocker for the Electron/CEF side specifically.
+
+Winetricks already has `dotnet40`/`dotnet48`/`winxp` installed in this prefix
+(from attempt 1 or earlier); `vcrun2013`/corefonts/d3dcompiler (task's approach 3)
+were not tried this session since msvcr120/msvcp120/vcomp120 ship inside
+`DJIEngine/` already (confirmed by directory listing) - no missing-CRT symptom
+was observed, so that avenue looks unlikely to be the cause and wasn't pursued
+further given the gate-pattern evidence above.
+
+All wine processes (`wineserver -k`) and the Xvfb `:99` process were torn down;
+confirmed via `ps aux` (no `wine`/`Xvfb` left) and the real FC device
+(`fuser`/`lsof` on `/dev/ttyACM11`) was empty before, during and after.
+
 ## Reference tooling (upstream)
 - `comm_serialtalk.py` / `comm_og_service_tool.py` (o-gs/dji-firmware-tools): serial port, default 9600, sender type PC (`0`), receiver `ANY`, packet type Request, ack `No_ACK_Needed`. Phantom 3 listed as supported, so the same framing is expected.
 
 ## What is needed next
 1. Find the VCOM data-out handler in `m0306` and read what gates DUML replies - the m0306 USB-OTG dead-ISR finding (`docs/fc-usb-duml.md`) may mean Assistant would get no reply either, independent of the Wine issues above.
-2. If a live Assistant capture is still wanted: debug why it exits silently under Wine (try a newer DJI Assistant build with a possibly-different installer/runtime, or run on real Windows/a VM instead of Wine), or statically disassemble `DJIDevice.dll`/`DJIService.exe` for the protocol constants (x86 PE, different toolchain from the ARM firmware work elsewhere in this repo).
+2. If a live Assistant capture is still wanted: the silent exit is NOT a network/CEF-startup issue (refuted above, with independent host-side confirmation) - every DJI engine binary tried (DJIService.exe standalone included) exits the same voluntary way, pointing at a shared gate in DJI's own startup code (possibly anti-tamper/environment detection, akin to the DJI GO 4 APK's AppGuard packer). Next: x86-disassemble the shared init path in `DJIDevice.dll`/`DJIService.exe` to find the actual gate condition, or try real Windows/a VM instead of Wine to sidestep it entirely.
 3. Rule out line-coding/baud dependence with a CDC SET_LINE_CODING sweep.
 
 Scope: owned aircraft, interoperability only (see `../CLAUDE.md`). No key extraction, no geofence or flight-restriction work.
