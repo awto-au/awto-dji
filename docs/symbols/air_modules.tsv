@@ -1,0 +1,56 @@
+addr	module	name	note	source
+0x0e600000	m0100/sys	load_base	Ambarella sys partition load address (mem_addr in *_part_sys.a9h); runtime addresses below use it	amba_fwpak -x
+0x0e89a564	m0100/sys	DjiUegFwConfigCheck	update-engine (UEG) firmware-table sanity check; reads entry+0x84 receiver type, +0x88 index, +0x00 id	disasm (verified)
+0x0edba638	m0100/sys	ueg_fw_table	33 entries x 0xBC; init image at sys file 0x7ba638; entry+0x42 holds path string P<name>Fw3.bin, transmit-handler cell at path-0x5a	air_survey.py (verified)
+0x0edbad90	m0100/sys	ueg_entry_1765	fw-id 9, receiver type 9 (= m0900), transmit = DUML MsgTransmitSend	air_survey.py (verified)
+0x0edbae4c	m0100/sys	ueg_entry_fpga	fw-id 10, receiver type 19 (0x13, FPGA.A), transmit = DUML MsgTransmitSend (cell sys file 0x7bae34); all handler cells are the generic ones	air_survey.py (verified)
+0x0edbaf08	m0100/sys	ueg_entry_68013	fw-id 11, receiver type 15 (68013.A, FX2LP), transmit = UsbTransmitSend (cell sys file 0x7baef0); only entry using the USB path	air_survey.py (verified)
+0x0edbafc4	m0100/sys	ueg_entry_dm368	fw-id 12, receiver type 8 (DM368.A), transmit = DUML MsgTransmitSend	air_survey.py (verified)
+0x0e89e018	m0100/sys	DjiUegFwMsgTransmitSend	generic Update Transmit over DUML; used by 15 table entries incl. FPGA	disasm (verified)
+0x0e89ec48	m0100/sys	DjiUegFwUsbTransmitSend	firmware image sent over USB; table cell appears once (68013 entry)	disasm (verified)
+0x0e89d824	m0100/sys	DjiUegFwMsgEntrySend	generic Entry step (inferred = DUML Enter Loader)	disasm; mapping inferred
+0x0e89e608	m0100/sys	DjiUegFwMsgFinishSend	generic Finish step	disasm
+0x0e8998a8	m0100/sys	DjiUegFpgaFinishHandle	name says FPGA but sits in the 68013 entry (fw-id 0xb): wrapper passes r0=0xb	disasm (verified)
+0x0e8a00e8	m0100/sys	DjiUegFpgaCleanUpHandle	68013-entry cleanup; cmp id 0xb, GPIO pair write 0x0e80cb18, USB switch 0x0e844980, DM368 stream start retry 20x500 ms ("Start Streaming Fail")	disasm (verified)
+0x0e8423d0	m0100/sys	DjiUegDm368StreamControl	start/stop DM368 stream; used around updates	disasm (verified)
+0x0e844980	m0100/sys	DjiMsgStUsbSwitchStatusSet	USB switch state setter (strings: "connect usb to A9 / DM368" in test help at sys file 0x76fd4)	disasm; role inferred
+0x0e80cb18	m0100/sys	gpio_pair_write	writes A9 GPIO 0x30 and 0x2f to (arg!=0); role not decoded	disasm
+0x0e80cb68	m0100/sys	DjiReset68013	resets FX2LP; also strings "dm368 68013 unlink" (sys file 0x55ac0)	disasm (verified)
+0x0e8dcb34	m0100/sys	MCCTRL_68013Update	68013 firmware update entry (fw path, result)	string xref
+0x0e8dca64	m0100/sys	MCCTRL_68013GetVersion	68013 version query ("68013 not ready yet")	string xref
+0x0e8450f8	m0100/sys	DjiMsgDeviceVersionGet68013	DUML device-version get for 68013	string xref
+0x0e8a3fec	m0100/sys	DjiUegFwUpdateById	per-firmware update state machine; steps: Linux boot, IPC attach, Switch To USB Host, Stop Streaming (fw-id gating not decoded)	disasm
+0x0e8aa468	m0100/sys	DjiUegPktUpdate	packet-level flow: state, packet, version, user confirm, firmware update	string xref
+0x0e8a7dd8	m0100/sys	DjiUegPktHeaderCheck	checks MagicCode, Manufacturer, ProductName, version triple; no chip-unique ID	string xref
+0x0e85f370	m0100/sys	DjiMsgAuthorizedMac	sets list of authorized client MACs (Wi-Fi/UDT client gate)	string xref
+0x0e871e94	m0100/sys	DjiEncryptInit	ATSHA204 init over I2C (config zone lock)	string xref
+0x0e871ae0	m0100/sys	DjiEncryptCheckA9Mac	nonce/MAC check between ATSHA204 and A9-held copy; no key values recorded here	string xref
+0x0e8731cc	m0100/sys	DjiEncryptCheckSN	compares ATSHA204 SN (9 bytes) and board number with A9 NAND copy	string xref
+0x0e872740	m0100/sys	DjiEncryptSaveBothToSha204AndA9	factory provisioning path (write SN/board number to ATSHA204 data/OTP zone and A9 NAND)	string xref
+0x0e871140	m0100/sys	DjiEncryptWriteAllBoardNumToOTP	writes board numbers to the ATSHA204 OTP zone	string xref
+0x0e861988	m0100/sys	DjiMsgChannelInit	camera DUML channels: UART channel config + IPC command channel; route of receiver 19 not traced	disasm
+0x0e6712b4	m0100/sys	duml_receiver_names	table CAMERA,TERMINL,MAINCON,GIMBAL,CENTER,TELECON,WIFI,DM368.A,1765.A,PC,BATTERY,ESC,DM368.G,1765.G,68013.A,68013.G,ONE EYE,TWO EYE,FPGA.A,FPGA.G; type = index+1 (1765.A=9, 68013.A=15, FPGA.A=19 confirmed by ueg_fw_table)	air_survey.py
+dsp_fw+0x23cd82	m0100/dsp_fw	check_sc_chip_id	Ambarella DSP microcode strings "check_sc() - ... chip_id ... efuse": SoC-internal ucode/chip check, not DJI code	strings
+rootfs:/lib/modules/3.8.0/updates/drivers/68013.ko	m0100/rfs	usb_cy7c68013a	USB bulk driver for 0547:1002, netlink message thread; DJI-written	strings/readelf
+rootfs:/lib/modules/3.8.0/updates/drivers/rpmsg_trans.ko	m0100/rfs	rpmsg_trans	RTOS<->Linux rpmsg channels dji_app, dji_sock, dji_usbdrv, dji_test; /tmp/update_data, /tmp/video_data	strings
+rootfs:/lib/modules/3.8.0/updates/drivers/lpc1765_hg310.ko	m0100/rfs	lpc1765_hg310	USB driver for NXP VID 1fc9:2002 (audio path); present in image, P3 role unknown	strings
+rootfs:/usr/bin/cam_server	m0100/rfs	cam_server	H.264 addr handoff via /dev/mem, UDT video server, 68013 version via usb sysfs manufacturer string "enc V%u.%u.%u.%u", fxload of Vend_Ax.iic then SD-card 68013 image, authorized-MAC gate, embedded FTP credential (not recorded here)	strings
+rootfs:/home/Vend_Ax.iic	m0100/rfs	Vend_Ax.iic	Cypress vendor-request loader image used with fxload -t fx2 -d 0547:1002	file list
+0x00a9	m1500	IFCONFIG=0x03	8051 code addr of MOV DPTR,#E601; value 0x03 = synchronous slave FIFO, external IFCLK	air_survey.py (verified)
+0x012f	m1500	EP2CFG=0xA0	EP2 valid, OUT, bulk, 512 B, quad buffer	air_survey.py (verified)
+0x0145	m1500	EP6CFG=0xE0	EP6 valid, IN, bulk, 512 B, quad buffer	air_survey.py (verified)
+0x01f2	m1500	EP2FIFOCFG=0x10	AUTOOUT: USB bulk OUT packets committed straight to the slave FIFO	air_survey.py (verified)
+0x0208	m1500	EP6FIFOCFG=0x08	AUTOIN: slave FIFO data committed straight to USB bulk IN	air_survey.py (verified)
+0x0800	m1500	device_descriptor	VID 0x0547 PID 0x1002 bcdDevice 0 iManufacturer 1 iProduct 2 iSerialNumber 0 (no serial string)	air_survey.py (verified)
+0x0862	m1500	manufacturer_string	UTF-16 "enc V1.1.2.0" (read by cam_server as the 68013 version)	air_survey.py (verified)
+0x0808527a	m0306	uid96_read	copies 3 words from 0x1FFF7A10/+4/+8 (STM32F4 UID) to buffer r0; pool 0x080852cc	air_survey.py (verified)
+0x080596ea	m0306	id10_build	10-byte record = halfword 0x6b66 + 4-byte hash of a 10-byte RAM block (0x2001dc5e) + UID word 0; callers 0x08059798 and 0x08059b3e; consumer of the record not decoded	disasm (structure verified, use unknown)
+0x0802867b	m0306	str_m8_uid	string "<GPS ERROR>m8 uid not received!" (u-blox M8 unique id expected from the GPS receiver)	strings
+0x08024f34	m0306	str_imu_sn	string "IMU SN ERROR"	strings
+0x08044648	m0306	str_set_uuid	user/activation UUID store ("[set uuid]", "save uuid to flash")	strings
+0x20007d0c	m0305	option_byte_read	reads FLASH option byte at 0x1FFFC001 into RAM (protection state, not an ID); base 0x20000000 assumed	air_survey.py (verified)
+0x08016254	m0400	general_cmd_0x01_handler	reply built from flash page 0x080C0000 via helper 0x0800da3e (outside image; meaning unknown); table 0x0801d4ac ids 1,7,8	disasm
+0x080127be	m0900	uid96_read	STM32F1 UID 0x1FFFF7E8 -> reply id 0x0954; documented in fpga-upgrade-path.md	air_survey.py (verified)
+0x080127d4	m0900	uid_pool	literal 0x1FFFF7E8	air_survey.py
+0x0800c75b	m1700	str_camera_id	"Hardware version / Camera ID / Factory: sunny|chicony|foxconn / EFL read error": camera-module identification, not MCU UID (base 0x0800c000 assumed)	strings
+n/a	m1900	CLOCK_CHIPID_route	Mistral routes: TCLK.000.002.0000 -> CTRL.000.004:CLOCK_CHIPID, identical in ground m2001 (valid die decode) and both air images; baseline CTRL clock set, no SHIFTNLD/REG_OUT_CHIPID route	mistral-cv routes (air_survey.py)

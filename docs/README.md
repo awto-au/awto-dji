@@ -48,5 +48,6 @@ See `../CLAUDE.md` → "Scope & safety constraints". This is interoperability fo
 aircraft: no geofence defeat, no extraction of secret key values, structural analysis only.
 - [fpga-bringup.md](fpga-bringup.md): m0900 boot flow, board straps, FPGA GPIO lines, FPGA boot handshake
 - [fpga-upgrade-path.md](fpga-upgrade-path.md): m0900 upgrade commands, FPGA update handshake, where the chip UID is sent
+- [air-id-and-stream-survey.md](air-id-and-stream-survey.md): all air modules (+ P3S/P3C/P3SE/P3XW): FPGA-stream contact, chip/die ID reads, update-engine path (FX2LP, DM368, FPGA); symbols in `symbols/air_modules.tsv`
 - [ground-upgrade-path.md](ground-upgrade-path.md): C1 ground m1400 upgrade commands, loader marker, FPGA SPI0 path, LPC IAP chip UID, ground vs air; symbols in `symbols/c1_m1400.tsv`, tool `../scripts/re/mcu_trace.py`
 - [apk-analysis.md](apk-analysis.md): DJI GO 4 v4.3.64 APK: AOA/T600 link, DUML/cmd-set names, video path, upgrade/activation names; Java is packed (limits stated); data in `data/apk-duml-commands.tsv`, tool `../scripts/re/apk_extract.py`
