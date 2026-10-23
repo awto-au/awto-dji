@@ -262,6 +262,35 @@ community RE thread for this protocol family across Phantom 3/Mavic/Spark).
   `docs/fc-usb-duml.md` - and if it's the latter, it would explain why the community never
   found a fix either, since there'd be nothing in the firmware to find.
 
+## Why Assistant 2 says "device not supported" (2026-10-23)
+
+A real-Windows-VM capture (parallel session, `win11` VM, genuine DJI Assistant 2 For
+Phantom 2.0.10) showed the RC (`2ca3:0008`) correctly answering Get-Version
+(`GL300C`, build `WM320_A7_LPC1 20170828/00`), then Assistant reporting the device as
+unsupported. Checked whether this is a firmware-version problem (fixable by an
+upgrade/download) or something else.
+
+- **W, from DJI's own support forum threads** (`forum.dji.com` and `sdk-forum.dji.net`,
+  multiple independent threads): **DJI Assistant 2 does not support the Phantom 3 series
+  at all** - this is DJI support's own stated answer to other users hitting the same
+  "device not supported" message on Phantom 3/GL300-family controllers. DJI support's own
+  suggested fix in these threads is to use **DJI GO** (the mobile app), not Assistant 2, for
+  Phantom 3 firmware/controller updates - matching the official Phantom 3 Pro support
+  page's own tutorial list ("Upgrading the aircraft firmware on the Phantom 3", "Upgrading
+  the firmware of remote controller" - both app/USB-SD-card based, no PC "Assistant" tool
+  listed).
+- **Conclusion: not a version mismatch, no firmware upgrade fixes this.** Assistant 2 (built
+  for the Phantom 4 Pro V2 / newer GL300L-style controller generation) was never the right
+  tool for a Phantom 3 Professional + GL300C pairing, regardless of firmware version on
+  either side. `WM320`/`20170828` are consistent, correctly-paired, in-era firmware/RC
+  builds - there is nothing stale to upgrade.
+- **Also explains the FC USB-DUML silence findings above**: the "PC app talks DUML directly
+  over USB to the aircraft" workflow was introduced for later DJI product generations.
+  Phantom 3 was never designed to be driven that way, consistent with (not necessarily
+  caused by) the m0306 dead-ISR/no-PC-dispatch findings in `docs/fc-usb-duml.md` - there
+  may genuinely be nothing on DJI's side to find, because no DJI PC tool ever needed that
+  path for this product.
+
 ## What is needed next
 1. Find the VCOM data-out handler in `m0306` and read what gates DUML replies - the m0306 USB-OTG dead-ISR finding (`docs/fc-usb-duml.md`) may mean Assistant would get no reply either, independent of the Wine issues above.
 2. If a live Assistant capture is still wanted: the silent exit is NOT a network/CEF-startup issue (refuted above, with independent host-side confirmation) - every DJI engine binary tried (DJIService.exe standalone included) exits the same voluntary way, pointing at a shared gate in DJI's own startup code (possibly anti-tamper/environment detection, akin to the DJI GO 4 APK's AppGuard packer). Next: x86-disassemble the shared init path in `DJIDevice.dll`/`DJIService.exe` to find the actual gate condition, or try real Windows/a VM instead of Wine to sidestep it entirely.
