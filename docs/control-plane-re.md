@@ -49,8 +49,11 @@ Load base: the image begins with a Cortex-M vector table at `0x08000000` (SP
   dji-firmware-tools can wrap the raw image as ELF with the right base for analysis.
 - The **AD9361/AD9363 register map (UG-570)** and the **STM32F103 reference manual
   (RM0008)** for peripheral addresses — both public — are the decode keys.
-- Do this for **both ends**: `m0900` on the aircraft and the radio MCU in the remote
-  (same STM32F103 family), to see both sides of the pairing/config.
+- Scope: `m0900` (aircraft, STM32F103) only. The remote radio MCU is **not** STM32:
+  `m1400` is NXP LPC1765 (`docs/ground-upgrade-path.md`, "Chip identity"). `m1401` is LPC1549.
+- Debug-info check on `m0900` (2026-10-24): no ELF, no DWARF (`.debug_*`), no `.symtab`/`.strtab`,
+  no map-file or source-path strings. Only format strings survive (e.g. `Fpga Cfg : OK`,
+  `Error: ad9363 reg17 - %.2X`, `WM32X A4_FPGA 20150902`). Nothing to recover; manual RE only.
 
 ## How it combines with the SDR work
 

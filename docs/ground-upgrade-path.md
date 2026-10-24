@@ -5,6 +5,34 @@ Source: static disassembly of `C1_FW_V01.06.0000_m1400.bin` (LPC1765, Cortex-M3)
 geofence work (CLAUDE.md). Tags: **verified** (read from code/data), **inferred**, **unknown**.
 Air-side counterpart: `docs/fpga-upgrade-path.md`, `docs/fpga-bringup.md`.
 
+## Chip identity (m1400 = LPC1765, not STM32) [fw+spec]
+
+Settles the conflict with `docs/control-plane-re.md` (which said the remote MCU is STM32F103; now corrected).
+- Vector word 0 = `0x10007F60`, word 1 = `0x00023BA9` (reset, flash `0x23BA8`). SP is inside the LPC176x
+  32 KB local SRAM (`0x10000000-0x10007FFF`); STM32 would be `0x2000xxxx`. (verified, image vector table)
+- Header: `LPC1765 GROUND LB2`; source path `@LPC17xx_LIB\lpc17xx_rtc.c`; IAP entry `0x1FFF1FF1` (see Q3). (verified)
+- Other C1 modules, none STM32: `m1401` LPC1549 (SP `0x02008F60`); `m1600` FX2 header; `m1601` "CY" FX3 header;
+  `m1300` starts `Salted__` (encrypted, not checked for STM32 inside); `m2000-m2002` FPGA images. (verified by header)
+- Mechanical peripheral scan (`scripts/re/lpc17xx_periph_scan.py`, log `tmp/logs/lpc17xx_periph_scan.log`,
+  input `firmware/unpacked/C1_FW_V01.06.0000/C1_FW_V01.06.0000_m1400.bin`, 2026-10-24). Counts are aligned words
+  whose value falls in a block window. Block bases are from prior art, not yet checked against UM10360 `[oss]`:
+
+  | block | base | words | note |
+  |---|---|---|---|
+  | GPIO FIO (fast) | `0x2009C000` | 29 | FIO pins used by the FPGA/control strobes (see Q2) |
+  | UART0 | `0x4000C000` | 27 | most-referenced serial block; role `[?]` |
+  | SYSCTL | `0x400FC000` | 18 | clock/power setup |
+  | PINCONNECT | `0x4002C000` | 17 | pin mux |
+  | USB device | `0x2008C000` | 12 | role `[?]`; not in the Q1-Q4 analysis |
+  | UART1 | `0x40010000` | 12 | role `[?]` |
+  | RTC | `0x40024000` | 8 | role `[?]` |
+  | ADC / UART3 / DAC / TIMER1 / WDT / PWM1 / TIMER2 / UART2 / GPIO-INT / BOOTROM | various | 1-4 each | WDT used by reset path (Q1) |
+  | SSP0 `0x40088000`, SSP1 `0x40030000` | - | 0 | no SSP use; supports the legacy-SPI correction in Q2 `[fw]` |
+  | legacy SPI `0x40020000` | - | 5 | only `0xDDF8` is the base pointer (used by the Q2 S0SPDR writer); `0x40022302`/`0x40022502` are data values, not pointers |
+
+  Hits are candidates only. Confirm each with `scripts/re/mcu_trace.py lit VALUE` / `who ADDR` before naming a register.
+- No SVD exists for LPC176x in `docs/embedded/reversing/`. Needed before a Ghidra pass that labels registers.
+
 ## Addressing (correction)
 
 - Addresses in this doc and the TSV are **image offsets** (file offset, same as earlier radare2 `-m 0` notes).
@@ -84,7 +112,7 @@ Air-side counterpart: `docs/fpga-upgrade-path.md`, `docs/fpga-bringup.md`.
 
 ## Q3: chip / die ID
 
-- LPC1765 serial number: IAP command 58 (`0x3a`) in `0x15774`, via the only IAP entry reference (`0x1fff1ff1` at `0x15a04`). (verified)
+- LPC1765 serial number: IAP command 58 (`0x3a`) in `0x15774`, via the only IAP entry reference (literal `0x1fff1ff1` at `0x15a50`, loaded by `ldr r2; bx r2` at `0x15a04`). (verified)
 - Two callers: `0x396` (init) stores the 16 bytes at RAM `0x100005d8` and derives CRC16 / CRC8 / XOR bytes at `0x1000001c..`;
   `0xd6c8` (inside `0xd55c`, radio start) retries until IAP succeeds, then CRC8 (seed 0x99) into a state byte. (verified)
 - DUML reply carrying it: set 9 (TBB idx 9 -> `0x56e4`), cmd_id 0x2C -> `0xba1c`; u16 key at `frame+0xd` = **0x0904** ->
