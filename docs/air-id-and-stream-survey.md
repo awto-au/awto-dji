@@ -21,7 +21,7 @@ Addresses: Cortex-M modules = runtime address; m0100 sys = runtime address (base
 | m0900 | Lightbridge MCU, STM32F103 | Cortex-M3 base `0x08008000` | **yes**: SPI2 FPGA regs, USART3 DUML, upgrade handshake (fpga-bringup.md, fpga-upgrade-path.md) | **yes**: STM32 UID `0x080127be`, DUML request `0x0904` -> reply `0x0954`. No FPGA ID read | handles Enter Loader/Confirm/Finish for receiver 0x13; no Update Transmit handler | existing docs; const scan agrees |
 | m1100 / m1101 | battery 1 / 2 | non-ARM; m1100 likely TI MSP430 (I: `31 40` = `mov #imm,SP`) | no | unknown (not disassembled) | DUML target | arch scan |
 | m1200-m1203 | ESC 0-3 (identical bytes, sha256 `940e4dd1c38f`) | not identified (U) | no | unknown | DUML target | arch scan |
-| m1500 | **FX2LP firmware** "IG810 LB2_68013_TX" (2.7 KB) | Cypress FX2LP 8051 `.iic` (V) | **yes, direct**: synchronous slave-FIFO bridge, see "m1500" | **no**: no REVID (`0xE60A`) or I2C/EEPROM regs; descriptor `iSerialNumber=0` | loaded into RAM by A9 Linux via `fxload`; UEG fw-id 11, USB transfer | 8051 image decode |
+| m1500 | **FX2LP firmware** "IG810 LB2_68013_TX" (2.7 KB) | Cypress FX2LP 8051 `.iic` (V) | **yes, direct, full-disassembly verified (issue #31)**: synchronous slave-FIFO bridge, core never touches FIFO payload memory, see "m1500" | **no**: no REVID (`0xE60A`) or I2C/EEPROM regs; descriptor `iSerialNumber=0` | loaded into RAM by A9 Linux via `fxload`; UEG fw-id 11, USB transfer | full Ghidra 8051 disassembly (32 funcs, 1353 instrs) |
 | m1700 | vision module, camera MCU | Cortex-M base `0x0800C000` (I: best string-pointer fit) | no | camera-module ID only (`Camera ID`, `Factory: sunny/chicony/foxconn`, `EFL`), not MCU UID | DUML target | strings `0x75b-0x7f9` |
 | m1701 | vision module, sonar | Cortex-M base 0 | no | no | DUML target | const scan |
 | m1900 | air FPGA container (4 MiB, 2.06 MB used) | FPGA bitstream, compressed, no MCU code | is the stream engine (I) | see "m1900" | target of UEG fw-id 10 | mistral-cv |
@@ -54,11 +54,65 @@ Addresses: Cortex-M modules = runtime address; m0100 sys = runtime address (base
 - Not found: any `fpga`/`altera`/`cyclone`/`jtag`/`idcode`/`spidev`/`uio` string in the Linux kernel partition or rootfs; no FPGA config or `.rbf`/`.sof` handling in m0100.
 
 ## m1500 (FX2LP, 8051)
-- V: load records at `0x80`, `0x47f`, `0x87e` (2620 B), 5 vector stubs, final `CPUCS` write releasing reset.
-- V register writes (immediates at 8051 `0x00a9`, `0x012f`, `0x0145`, `0x01f2`, `0x0208`): `IFCONFIG=0x03` (slave FIFO, synchronous, external IFCLK); `EP2CFG=0xA0` (bulk OUT 512 B quad); `EP6CFG=0xE0` (bulk IN 512 B quad); `EP2FIFOCFG=0x10` (AUTOOUT); `EP6FIFOCFG=0x08` (AUTOIN). EP1/EP4/EP8 invalidated.
-- Meaning (V decode, I for peer): USB bulk OUT on EP2 lands in the slave FIFO for an external master; the external master's data written to EP6 goes out as bulk IN. A transparent USB<->FIFO bridge. The FIFO master is the FPGA per the wiki-sourced pads in fpga-interfaces.md (I).
-- V: no ID content: descriptor has no serial string, no REVID read, no I2C/EEPROM register use. Device descriptor VID 0x0547 PID 0x1002.
+
+Full Ghidra disassembly pass (issue #31), not just the literal-byte scan below.
+Reproduce: `python3 scripts/re/m1500_fx2_disasm.py` (log `tmp/logs/m1500_fx2_disasm.log`,
+~4 s). Loads the `.iic` code records (addresses `0x0`,`0xb`,`0x33`,`0x43`,`0x53`,`0x80`,
+`0x47f`,`0x87e`, 2748 B total) as a flat binary into Ghidra's native `8051:BE:16:default`
+processor (`support/analyzeHeadless`; 8051 scripting needs PyGhidra, not present in this
+Ghidra 12.2 DEV build, so the post-script is Java: `scripts/re/ghidra/Dump8051.java`),
+recursively disassembles from the 5 vectors, and creates functions at every `LCALL`
+target: 32 functions, 1353 instructions, covering the full 2748 B image (no dead code
+found by flow-following from the entry points).
+
+- V: load records at `0x80`, `0x47f`, `0x87e` (2620 B contiguous, `0x80..0xabc`), 5 vector
+  stubs (`0x0`,`0xb`,`0x33`,`0x43`,`0x53` — each a 3-byte `LJMP`, matching FX2's reset +
+  T0 + RESUME + USB + I2C/INT4 autovector slots), final `CPUCS` (`0xE600`) 1-byte write
+  releasing reset (the one `.iic` record at `0xE600`, outside CODE space — a post-load
+  boot-ROM poke, not 8051-executed code).
+- V register writes (immediates at 8051 `0x00a9`, `0x012f`, `0x0145`, `0x01f2`, `0x0208`,
+  confirmed by Ghidra disassembly, not just byte literals): `IFCONFIG=0x03` (slave FIFO,
+  synchronous, external IFCLK); `EP2CFG=0xA0` (bulk OUT 512 B quad); `EP6CFG=0xE0` (bulk
+  IN 512 B quad); `EP2FIFOCFG=0x10` (AUTOOUT); `EP6FIFOCFG=0x08` (AUTOIN). EP1/EP4/EP8
+  invalidated (`EP1OUTCFG`/`EP1INCFG`/`EP4CFG`/`EP8CFG` cleared at `0xe610/e611/e613/e615`).
+- **V, settles the stream-translation question**: of 118 `MOVX @DPTR` instructions in the
+  whole image, every one with a literal DPTR (109/118) targets `0xE5xx`-`0xE7xx` (CPU/USB
+  config+status registers, GPIF/autopointer registers, `SUDPTR`, `EP0BUF`) — none targets
+  `0xF000`-`0xFFFF`, the EP2FIFOBUF/EP6FIFOBUF address range where AUTOOUT/AUTOIN land the
+  actual bulk payload. The remaining 9 (computed DPTR, built from register arithmetic)
+  were traced by hand: all resolve to either the same `0xE6xx` status-register bank (fixed
+  high byte `0xE6`, low byte = a small table index) or the compiler's far-data-segment
+  initializer copying C globals into general-purpose XDATA `<0x0900` (unrelated on-chip
+  scratch RAM, not FIFO memory) — never `0xF000`+. The only `MOVX @Ri` (8-bit indirect,
+  1 instance, part of that same far-data-init loop) is architecturally incapable of
+  addressing above `0xFF`. One `MOV DPTR,#0xfda5` exists (`0x09bc`) but is a pure
+  `INC DPTR`-and-compare delay-loop counter — DPTR is never dereferenced there, it's used
+  purely as a 16-bit down-counter (~5*65536 iterations) for a fixed post-FIFORESET/init
+  delay.
+  - Conclusion: the 8051 core only does USB-side housekeeping — enumeration (standard
+    `GET_DESCRIPTOR`/`SET_CONFIGURATION` via EP0, descriptor table at the device-descriptor
+    offset below), endpoint/GPIF configuration at init, and EPxCS flag polling. It never
+    reads or writes a single byte of the EP2/EP6 bulk-endpoint FIFO memory. All streamed
+    bytes move through the FX2's dedicated AUTOOUT/AUTOIN hardware FIFO path, untouched by
+    code. This upgrades "transparent FIFO bridge" from the earlier register-literal
+    inference to a verified (V), full-disassembly-exhaustive result.
+  - Corollary (I, structural match not byte-diffed against a specific SDK release): the
+    USB ISR (`0x0043`/`0x0053` both `LJMP 0x0700`->`0x09c9`, 24 B: ack one flag bit, RETI)
+    has no autovector jump table — request dispatch (the 567 B function at `0x02d7`,
+    decodes `bRequest` off `0xE6B9`/`SETUPDAT`-style registers into `GET_STATUS`/
+    `SET_FEATURE`/`GET_DESCRIPTOR`/etc. branches) runs from the main poll loop
+    (`FUN_CODE_0892`, reached from reset), not interrupt-driven. Shape matches Cypress's
+    published slave-FIFO "framework" (`fw.c`/`TD_Poll`+`DR_VendorCmnd`) structurally; only
+    the init register values and USB descriptors look customized, not the control flow —
+    consistent with this being the stock example firmware with config/descriptor changes,
+    not custom protocol logic.
+- V: no ID content: descriptor has no serial string, no REVID read, no I2C/EEPROM register
+  use (confirmed: no `MOVX` anywhere touches `0xE678`-`0xE67A`). Device descriptor VID
+  0x0547 PID 0x1002.
 - The `.iic` header carries PID 0x2131 (boot-time ID); runtime ID is 0x1002 (descriptor).
+- Full disassembly + decompilation + function list: `tmp/m1500_ghidra/m1500_dump.txt`
+  (not committed — regenerate with the script above; `tmp/` is ephemeral scratch per
+  HANDOVER.md).
 
 ## m1900 (air FPGA)
 - V: 4 MiB container, `0xFF` padding, used span `0x80..0x1f6ec9`, entropy 7.98; no readable strings.
@@ -80,7 +134,7 @@ UID-read summary across variants: STM32 UID literals exist only in P3X V01.11.00
 ## Summary
 
 ### (a) Code touching the FPGA data stream (video/telemetry/control through the air FPGA and radio)
-- **m1500 (FX2LP)**: yes, V. Slave-FIFO bridge with bulk EP2 OUT / EP6 IN, auto-commit. Strongest evidence of a payload path. FIFO peer = FPGA is I.
+- **m1500 (FX2LP)**: yes, V, full-disassembly verified (issue #31). Slave-FIFO bridge with bulk EP2 OUT / EP6 IN, auto-commit; the 8051 core configures/polls control registers only and never addresses the EP2/EP6 FIFO buffer memory (0xF000-0xFFFF) — no byte reordering, buffering, checksum or protocol translation on the 8051 side. Strongest evidence of a payload path. FIFO peer = FPGA is I.
 - **m0100**: yes. `68013.ko` + `rpmsg_trans.ko` + `cam_server` carry data/commands to the FX2LP over USB; RTOS controls DM368 streaming around updates (V).
 - **m0900**: yes (existing docs): SPI2 register/AD9363 access, USART3 DUML, FPGA handshakes.
 - **m0800 (DM368)**: unknown (encrypted); name `encode_usb` in dji-firmware-tools suggests USB video output (I, external).

@@ -13,8 +13,11 @@ third-party RTOS (µC/OS)**.
   the RTOS context-switch handlers. (Load raw image with `-a arm -b 16 -m <base>`; bases
   from the dji-firmware-tools README: FC `0x08020000`, radio MCU `0x08008000`.)
 - `binwalk` — signature/entropy scan of the big camera image.
-- (Ghidra would give full decompilation but isn't installed; radare2 + the vector-table
-  method is enough to establish provenance.)
+- **Ghidra 12.2 DEV is installed** (`/home/dan/tools/ghidra_12.2_DEV`, shim at
+  `~/.local/bin/ghidra`), with native 8051 and ARM support; `support/analyzeHeadless` for
+  headless runs (used for `m1500`, `scripts/re/m1500_fx2_disasm.py`). radare2 + the
+  vector-table method remains enough for Cortex-M provenance checks that don't need full
+  decompilation.
 
 ## Compiler provenance
 

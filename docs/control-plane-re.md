@@ -41,9 +41,12 @@ Load base: the image begins with a Cortex-M vector table at `0x08000000` (SP
 
 ## Tooling
 
-- **Ghidra** (best for Thumb-2 decompilation; not installed here) or **radare2 5.5.0**
-  (installed). `arm_bin2elf.py` from dji-firmware-tools can wrap the raw image as ELF with
-  the right base for analysis.
+- **Ghidra 12.2 DEV is installed** (`/home/dan/tools/ghidra_12.2_DEV`, shim
+  `~/.local/bin/ghidra`) — best for Thumb-2 decompilation, headless via
+  `support/analyzeHeadless` (see `scripts/re/m1500_fx2_disasm.py` for a worked headless
+  8051 example; same pattern applies with `-processor ARM:LE:32:Cortex` for `m0900`).
+  **radare2 5.5.0** (installed) is also available. `arm_bin2elf.py` from
+  dji-firmware-tools can wrap the raw image as ELF with the right base for analysis.
 - The **AD9361/AD9363 register map (UG-570)** and the **STM32F103 reference manual
   (RM0008)** for peripheral addresses — both public — are the decode keys.
 - Do this for **both ends**: `m0900` on the aircraft and the radio MCU in the remote

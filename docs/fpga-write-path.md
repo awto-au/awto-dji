@@ -125,7 +125,12 @@ sequenceDiagram
 - U. Candidates and evidence:
   - m0900: V no data path (no Transmit handler, type 19 dropped, SPI2 register-only helpers, too small). Excluded as data writer; it only gates and checks the FPGA.
   - m0100 / A9: V sends bytes over USB only; no SPI/JTAG/config-pin driver referenced (survey doc: no `fpga/jtag/spidev/uio` strings in kernel or rootfs).
-  - m1500 FX2LP: V transparent FIFO bridge (EP2 AUTOOUT), no flash logic.
+  - m1500 FX2LP: V transparent FIFO bridge (EP2 AUTOOUT), no flash logic. Full Ghidra
+    disassembly (issue #31, `scripts/re/m1500_fx2_disasm.py`, `docs/air-id-and-stream-survey.md`
+    "m1500" section): of 118 `MOVX` instructions in the whole 2748 B image, none addresses
+    the EP2/EP6 FIFO buffer range (`0xF000`-`0xFFFF`); the core only configures/polls
+    `0xE5xx`-`0xE7xx` control/status registers. Confirms the FX2 has no data path to touch —
+    it cannot be the writer, and cannot be reordering/translating the stream either.
   - FPGA-resident logic receiving the FIFO and writing its configuration flash: I, the only remaining sink. Needs confirmation.
 
 ## Not determined, and what would settle it
