@@ -17,7 +17,7 @@ Addresses: Cortex-M modules = runtime address; m0100 sys = runtime address (base
 | m0305 | A3 FC loader | Cortex-M (STM32F4 by option-byte address) linked at `0x20000000` (I: base), SP `0x1000e4e8` | no | no UID/IDCODE. Reads option byte `0x1FFFC001` into RAM (`0x20007d0c`): protection state (V) | loader for m0306 | const scan |
 | m0306 | A3 flight controller | Cortex-M4 STM32F4, base `0x08020000` | no (reaches m0900 over CAN per dataflow.md) | **yes**: STM32F4 UID read `0x0808527a`; word 0 used in a 10-byte record built at `0x080596ea` (callers `0x08059798`, `0x08059b3e`). Strings: `m8 uid not received` (`0x0802867b`), `IMU SN ERROR`, `[set uuid]` | updated via DUML | disasm (V structure, U consumer) |
 | m0400 | gimbal | Cortex-M STM32 base `0x08008000` | no | no UID literal. Get-Version-like handler `0x08016254` reads flash page `0x080C0000` (outside image) | updated via DUML | table `0x0801d4ac` ids 1,7,8 |
-| m0800 | video encoder, DaVinci DM368 Linux | `Salted__` openssl blob (V); not decrypted (no key work) | **unknown** (strongly suspected: stream source, see "Stream path") | unknown | target of UEG fw-id 12 (DUML Update Transmit) | header bytes |
+| m0800 | video encoder, DaVinci DM368 Linux | `Salted__` openssl 3DES blob with the publicly documented packaging password, **decrypted 2026-10-24** (`m0800-dm368-provenance.md`) | **unknown** (strongly suspected: stream source, see "Stream path") | unknown | target of UEG fw-id 12 (DUML Update Transmit) | header bytes |
 | m0900 | Lightbridge MCU, STM32F103 | Cortex-M3 base `0x08008000` | **yes**: SPI2 FPGA regs, USART3 DUML, upgrade handshake (fpga-bringup.md, fpga-upgrade-path.md) | **yes**: STM32 UID `0x080127be`, DUML request `0x0904` -> reply `0x0954`. No FPGA ID read | handles Enter Loader/Confirm/Finish for receiver 0x13; no Update Transmit handler | existing docs; const scan agrees |
 | m1100 / m1101 | battery 1 / 2 | non-ARM; m1100 likely TI MSP430 (I: `31 40` = `mov #imm,SP`) | no | unknown (not disassembled) | DUML target | arch scan |
 | m1200-m1203 | ESC 0-3 (identical bytes, sha256 `940e4dd1c38f`) | not identified (U) | no | unknown | DUML target | arch scan |
@@ -81,7 +81,7 @@ UID-read summary across variants: STM32 UID literals exist only in P3X V01.11.00
 - **m1500 (FX2LP)**: yes, V. Slave-FIFO bridge with bulk EP2 OUT / EP6 IN, auto-commit. Strongest evidence of a payload path. FIFO peer = FPGA is I.
 - **m0100**: yes. `68013.ko` + `rpmsg_trans.ko` + `cam_server` carry data/commands to the FX2LP over USB; RTOS controls DM368 streaming around updates (V).
 - **m0900**: yes (existing docs): SPI2 register/AD9363 access, USART3 DUML, FPGA handshakes.
-- **m0800 (DM368)**: unknown (encrypted); name `encode_usb` in dji-firmware-tools suggests USB video output (I, external).
+- **m0800 (DM368)**: now decrypted (`m0800-dm368-provenance.md`). V: TI DVSDK 4.02 DM368 stack plus DJI `encode_usb`, which runs as USB host to a CY7C68013A (`usb_68013.ko`, USB `0547:1002`). I: H.264 leaves over USB into the FX2.
 - m0306, m0400, m1100/m1101, m1200-m1203, m1700/m1701, m0101, m0305: no FPGA contact found.
 - I: aircraft video chain is DM368 -> USB -> FX2LP (m1500) -> slave FIFO -> FPGA -> AD9363. Not proven end to end.
 
@@ -101,7 +101,7 @@ UID-read summary across variants: STM32 UID literals exist only in P3X V01.11.00
 - V: the FX2LP image is loaded into RAM with `fxload` (Vend_Ax loader, then the SD-card image) by `cam_server`; no persistent copy needed.
 
 ## Not checkable here
-- **m0800** (DM368 Linux): encrypted; decrypting would need key material (out of scope). Stream source, ID checks and its half of the "encrypt query" with the camera are therefore unknown. Reference only: `dm3xx_encode_usb_hardcoder.py` docstring says the binary sends an encrypt request to the camera and compares the result.
+- **m0800** (DM368 Linux): decrypted with the static packaging password documented by dji-firmware-tools; provenance and DJI changes are in `m0800-dm368-provenance.md`. The component-auth parts (`setsecurity`, `at88.c`, `/etc/key.bin`) were inventoried, not analysed (no keys). Earlier note: encrypted; decrypting was thought to need key material. Stream source, ID checks and its half of the "encrypt query" with the camera are therefore unknown. Reference only: `dm3xx_encode_usb_hardcoder.py` docstring says the binary sends an encrypt request to the camera and compares the result.
 - **m1900** content: no MCU code; decode quality too low (unidentified die) to prove absence of chip-ID logic or locate the DUML/FIFO ports.
 - **m0900 bootloader** (`0x08000000-0x08007FFF`), A3 and camera bootloaders: not in the modules.
 - **Camera DUML route** for receiver 19 (`DjiMsgChannelInit` `0x0e861988` onwards) and fw-id gating in `DjiUegFwUpdateById` (`0x0e8a3fec`): not decompiled.

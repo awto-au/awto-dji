@@ -92,6 +92,11 @@ All the analysis docs cite exact offsets so you can re-derive against your own u
    is CAN StdId 0x414 (TX), paired with RX 0x415. Only DUML receiver type 30 is routed to it.
    FC-type traffic goes out **USART1** (CENTER), not CAN; this corrects `dataflow.md`. Open:
    whether 0x414/0x415 is live on the bus (passive 1 Mbit/s CAN sniff) and which board type 30 is.
+6. **m0800 DM368 provenance (2026-10-24, `docs/m0800-dm368-provenance.md`).** It is TI DVSDK
+   4.02.00.06 (DM368), mostly unchanged; DJI changes are U-Boot env/boot defaults, UBL clock
+   tables, a few kernel drivers (ADV761x HDMI receiver, I2C recovery), FX2 USB drivers, and the
+   `encode_usb` app (TI encode demo reworked; `AddSerialDataToFrame`). Next: extract TI's
+   DM368 DVSDK installer for the PSP 03.21 kernel and the encode demo, then diff at function level.
 5. Build out the Flutter app-to-bird UI on top of `app/packages/duml` + `rust/awto_dji_core`.
 
 ## Reproduce the key MCU proofs (with your own `c1_m1400.bin`)
