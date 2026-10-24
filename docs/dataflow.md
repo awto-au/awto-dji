@@ -450,14 +450,47 @@ new open question, not previously tracked anywhere in this repo.
 
 ### Q2: is {0x412, 0x413, 0x414, 0x415} the complete CAN-ID set across all three chips? (mixed - NOT fully closed)
 
-- **`m0900`: exhaustive, CLOSED.** The only function that creates a CAN endpoint object is
-  `can_endpoint_register` (`0x080033ec`); grepping every `bl 0x080033ec` in the full
-  322-function disassembly finds **exactly 4 call sites** (2 inside `FUN_080093a8` for
-  0x412/0x413, 2 inside `FUN_08009828` for 0x414/0x415). `CAN_Transmit` (`0x080008a0`) has
-  exactly 2 callers (`can_tx_pump`, `can_send_bytes`) and `CAN_FilterInit` (`0x0800072e`) has
-  exactly 1 (`can_endpoint_register`) - both fully inside the same generic plumbing, no
-  hardcoded/bypass CAN send anywhere else in the image. **Confirmed: {0x412, 0x413, 0x414,
-  0x415} is `m0900`'s complete set, no more, no hidden fifth ID.**
+- **`m0900`: CLOSED - but the prior justification here was flawed, now redone (2026-10-24,
+  issue #36).** The earlier text in this bullet argued closure from "the only function that
+  creates a CAN endpoint object is `can_endpoint_register`, 4 call sites, `CAN_Transmit` has
+  exactly 2 callers" - i.e. it enumerated every call site of ONE software helper. That's
+  circular: it proves exhaustiveness only for sends that go through that helper, and says
+  nothing about a direct/inline write to a bxCAN mailbox register placed anywhere else in the
+  image, bypassing the helper entirely - which the hardware has no requirement to avoid
+  (STM32 bxCAN has independent TX mailboxes addressable by direct register write). Redone
+  below with two methods that don't share that assumption
+  (`scripts/re/m0900_can_closure_check.py`, output `tmp/m0900_can_ghidra/can_closure_check.txt`,
+  log `tmp/logs/m0900_can_closure_check.log`, against the same archived project/dump,
+  `re/ghidra-projects/m0900_can.tar.gz` / `tmp/m0900_can_ghidra/m0900_dump.txt`):
+  - **RX filter-bank check (requested as the more reliable method): turned out NOT
+    independent.** `CAN_FilterInit` (`0x0800072e`) has **exactly one call site anywhere in the
+    image** (`0x08003456`, inside `can_endpoint_register`) - so walking the filter banks finds
+    nothing the call-site search didn't already know. The two filters programmed are for
+    0x413 and 0x415 (the two RX endpoints; TX endpoints never touch `CAN_FilterInit`),
+    matching the existing set. This check doesn't add evidence, it restates the same one.
+  - **Register-range literal-pool scan (the method that actually closes the gap): V,
+    genuinely exhaustive.** On this ISA a 32-bit peripheral address can only enter a register
+    two ways - a literal-pool `LDR`, or a `movw`/`movt` immediate pair. Scanned **every
+    4-byte-aligned word in the raw firmware image** (not scoped to any function or helper) for
+    a value inside CAN1's full register block (`0x40006400`-`0x400067ff`, covering control,
+    status, filter-bank and mailbox registers alike) or CAN2's (`0x40006800`-`0x40006bff`).
+    Result: **CAN2's block has zero literal occurrences anywhere in the image** - `m0900`
+    never touches CAN2 at all. **CAN1's block has exactly 3 literal occurrences in the entire
+    image**, used by exactly 4 functions: `can_rcc_enable` (clock gating only), `CAN_FilterInit`
+    (filter banks, covered above), and the driver trio `can_bus_init`/`can_tx_pump`/
+    `can_send_bytes` - all already-named, all already accounted for in §7.3. Separately
+    scanned the full disassembly for `movw`/`movt`: **54 `movw` instructions exist in the whole
+    322-function image, but zero `movt`** - and `movt` is required to build the upper half
+    (`0x4000`) of any address into either CAN block, so that construction path is unused
+    anywhere in this firmware, full stop. Between the two scans, every possible origin of a
+    pointer into the CAN1 or CAN2 register space - not just calls to `can_endpoint_register` -
+    is accounted for.
+  - **Net: {0x412, 0x413, 0x414, 0x415} is still `m0900`'s complete CAN-ID set, no more, no
+    hidden fifth ID - but now for a reason that survives the "what if something bypasses the
+    helper" objection, not because nobody looked for a bypass.** The previous "CLOSED" wasn't
+    wrong on its conclusion, it was wrong on its method; this redo supplies the method the
+    conclusion actually needed. Not yet re-applied to `m1400`/`m0306` (still open below) -
+    out of scope for this pass, flagged as the same gap if picked up later.
 - **`m1400`: NOT closed - same gap as before, real attempt made.** `control-plane-re.md`'s own
   two-method survey (literal scan + Ghidra xref scan) already found CAN1(10)/CAN2(3)
   *peripheral-base* literal hits and traced the `duml_route` TBB (offset `0x5C8C`) to receiver
