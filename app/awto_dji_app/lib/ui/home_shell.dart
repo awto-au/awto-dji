@@ -29,7 +29,7 @@ class _HomeShellState extends State<HomeShell> {
   Widget build(BuildContext context) {
     final pages = [
       TelemetryScreen(session: widget.session, gate: _gate),
-      VideoScreen(decoder: widget.videoDecoder),
+      VideoScreen(decoder: widget.videoDecoder, session: widget.session),
       PacketLogScreen(session: widget.session),
       CommandTestScreen(session: widget.session),
       GimbalScreen(session: widget.session),
@@ -45,15 +45,6 @@ class _HomeShellState extends State<HomeShell> {
           'Gimbal',
           'About'
         ][_index]),
-        actions: [
-          Padding(
-            padding: const EdgeInsets.only(right: 12),
-            child: Chip(
-              avatar: const Icon(Icons.visibility, size: 16),
-              label: const Text('READ-ONLY'),
-            ),
-          ),
-        ],
       ),
       body: pages[_index],
       bottomNavigationBar: NavigationBar(

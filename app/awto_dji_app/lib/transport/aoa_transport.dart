@@ -51,7 +51,10 @@ class AoaTransport extends BaseTransport {
   Future<void> connect() async {
     setState(LinkState.connecting);
     if (relayHost != null && relayPort != null) {
-      _relay = TcpRelay(relayHost!, relayPort!);
+      _relay = TcpRelay(relayHost!, relayPort!, onCommand: (bytes) {
+        debugPrint('[aoa-proxy] relaying ${bytes.length}B command from PC to accessory');
+        write(bytes);
+      });
       await _relay!.connect();
     }
     if (videoDecoder != null) await videoDecoder!.start();
@@ -62,6 +65,7 @@ class AoaTransport extends BaseTransport {
           _relay?.send(chunk);
           if (videoDecoder != null) {
             for (final nal in _nals.add(chunk)) {
+              videoBytes += nal.length;
               videoDecoder!.feedNal(nal);
             }
           }
@@ -76,6 +80,7 @@ class AoaTransport extends BaseTransport {
       });
       setState(LinkState.connected);
       if (_relay != null) _sendDiagQueries();
+      if (videoDecoder != null) await requestIFrame();
     } on PlatformException catch (e) {
       await _sub?.cancel();
       _sub = null;
@@ -110,10 +115,32 @@ class AoaTransport extends BaseTransport {
   Future<void> write(Uint8List data) =>
       _method.invokeMethod<void>('write', data);
 
-  /// Diag-relay-only (see [relayHost]): sends a handful of known-safe, read-only
-  /// `Get*` status queries (never `Set*`/control) so their replies show up in the
-  /// capture, matching docs/apk-vs-dissector-gap-report-2026-10-23.md's
-  /// "safe to send" tier. One-shot, fires once right after connect.
+  var _ifrSeq = 0x7100;
+
+  /// `RequestIFrame` (CmdSet.camera/0xb3, docs/data/apk-dynamic-cmdset-ids.tsv:182) - asks the
+  /// camera encoder to emit a fresh SPS/PPS/IDR now, instead of waiting for one. Needed because
+  /// a capture/decode session that starts mid-GOP never sees parameter sets
+  /// (docs/aoa-live-test-2026-10-23.md "Video decode... needs a capture that spans stream
+  /// start"). Only affects the video encoder's own GOP timing.
+  Future<void> requestIFrame() async {
+    final pkt = DumlPacket(
+      senderType: DeviceType.pc,
+      receiverType: DeviceType.camera,
+      sequence: _ifrSeq++,
+      ackType: AckType.afterExec,
+      cmdSet: CmdSet.camera,
+      cmdId: 0xb3,
+    );
+    debugPrint('[aoa-video] requesting I-frame (set=0x2 id=0xb3)');
+    try {
+      await write(pkt.encode());
+    } on Object catch (e) {
+      debugPrint('[aoa-video] I-frame request failed: $e');
+    }
+  }
+
+  /// Diag-relay-only (see [relayHost]): sends a handful of `Get*` status queries so their
+  /// replies show up in the capture. One-shot, fires once right after connect.
   Future<void> _sendDiagQueries() async {
     var seq = 0x7000; // high range, won't collide with the real app's own sequence numbers
     final queries = <(int cmdSet, int cmdId, String label)>[

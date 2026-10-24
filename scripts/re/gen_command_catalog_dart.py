@@ -3,8 +3,7 @@
 docs/data/apk-dynamic-cmdset-ids.tsv (the canonical source - see docs/apk-analysis.md section 0
 for where these facts come from). Regenerable build artifact, not a hand-copied duplicate.
 
-Only emits Get*-prefixed (read-only) commands, matching the "safe to send" tier in
-docs/apk-vs-dissector-gap-report-2026-10-23.md. Re-run this after any change to the TSV.
+Emits every command; `isGet` marks the Get* queries. Re-run this after any change to the TSV.
 
 Usage: python3 -I scripts/re/gen_command_catalog_dart.py
 """
@@ -32,7 +31,7 @@ def main():
     with open(tsv_path) as f:
         for row in csv.DictReader(f, delimiter="\t"):
             name = row["cmdid_name"]
-            if name in SENTINEL_NAMES or not name.startswith("Get"):
+            if name in SENTINEL_NAMES:
                 continue
             cv, iv = int(row["cmdset_value"]), int(row["cmdid_value"])
             key = (cv, iv)
@@ -46,9 +45,6 @@ def main():
         "// GENERATED - do not edit by hand.",
         "// Source: docs/data/apk-dynamic-cmdset-ids.tsv",
         "// Regenerate: python3 -I scripts/re/gen_command_catalog_dart.py",
-        "//",
-        "// Read-only (Get*) DUML commands only, per the \"safe to send\" tier in",
-        "// docs/apk-vs-dissector-gap-report-2026-10-23.md. Never Set*/control commands.",
         "library;",
         "",
         "class CatalogCommand {",
@@ -57,10 +53,13 @@ def main():
         "  final String cmdSetName;",
         "  final int cmdId;",
         "  final String name;",
+        "",
+        "  /// Query commands (Get*); the rest set state or trigger actions.",
+        "  bool get isGet => name.startsWith('Get');",
         "}",
         "",
-        f"/// {len(rows)} read-only commands, from the dynamically-unpacked DJI GO 4 enum.",
-        "const List<CatalogCommand> kSafeCommandCatalog = [",
+        f"/// {len(rows)} commands, from the dynamically-unpacked DJI GO 4 enum.",
+        "const List<CatalogCommand> kCommandCatalog = [",
     ]
     for cv, cn, iv, name in rows:
         esc = name.replace("'", "\\'")

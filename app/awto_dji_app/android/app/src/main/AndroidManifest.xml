@@ -4,7 +4,7 @@
          dev-machine TCP listener. Never used for aircraft control. -->
     <uses-permission android:name="android.permission.INTERNET" />
     <application
-        android:label="awto_dji_app"
+        android:label="AWTO DJI"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity

@@ -15,11 +15,11 @@ class AboutScreen extends StatelessWidget {
         padding: const EdgeInsets.all(16),
         children: [
           const ListTile(
-            leading: Icon(Icons.lock_outline),
-            title: Text('Read-only mode'),
+            leading: Icon(Icons.tune),
+            title: Text('Control enabled'),
             subtitle: Text(
-                'This build only receives and decodes. It has no control, takeoff or '
-                'stick commands, and the transport write path is never used.'),
+                'The gimbal screen and the CONNECT / DISCONNECT / GIMBAL intents write to '
+                'the link. Simulated and replay transports reject writes.'),
           ),
           ListTile(
             title: const Text('Transport'),

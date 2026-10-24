@@ -5,6 +5,7 @@ directly, for a device the operator owns). Grouped by topic; start with `../HAND
 the current state and next steps, and `../CLAUDE.md` for agent onboarding.
 
 ## Protocol & control plane (the practical path)
+- [duml-protection.md](duml-protection.md) — separates APK SIMPLE XOR, ATSHA204 component authentication, RC master/slave connection and unresolved aircraft-radio protection; traces the XOR inputs.
 - `protocol-verification.md` — DUML wire format verified byte-exact against a real packet.
 - `control-plane-re.md` — reverse the MCU control plane, not the FPGA; external corroboration.
 - `cpu-reversing-proof.md` — **the proofs in MCU code** (binding-ID handler, role machine,

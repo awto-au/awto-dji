@@ -1,5 +1,5 @@
 name: awto_dji_app
-description: "Read-only monitor for an owned DJI Phantom 3 Professional (direct DUML, no DJI SDK)."
+description: "Monitor and control app for an owned DJI Phantom 3 Professional (direct DUML, no DJI SDK)."
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev

@@ -30,6 +30,8 @@ class VideoShim(
     private var handler: Handler? = null
     private val pending = ArrayDeque<ByteArray>()
     private var configured = false
+    private var fedCount = 0L
+    private var droppedCount = 0L
 
     init {
         MethodChannel(messenger, "au.awto.dji/video").setMethodCallHandler(this)
@@ -51,6 +53,7 @@ class VideoShim(
                 release()
                 result.success(null)
             }
+            "stats" -> result.success(mapOf("fed" to fedCount, "dropped" to droppedCount))
             else -> result.notImplemented()
         }
     }
@@ -103,12 +106,16 @@ class VideoShim(
 
     private fun feedNal(nal: ByteArray) {
         if (!configured) return
+        fedCount++
         val withStartCode = startCode + nal
         synchronized(pending) {
             pending.add(withStartCode)
             // Bound memory if Dart feeds faster than the decoder drains (shouldn't happen in
             // steady state, but a stalled decoder must not grow this unboundedly).
-            while (pending.size > 300) pending.poll()
+            while (pending.size > 300) {
+                pending.poll()
+                droppedCount++
+            }
         }
     }
 

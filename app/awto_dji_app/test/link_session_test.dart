@@ -101,11 +101,38 @@ void main() {
       expect(states.last, LinkState.disconnected);
     });
 
-    test('write is rejected (read-only)', () {
+    test('write is rejected on transports with no device', () {
       expect(ReplayTransport(captured).write(Uint8List(1)),
           throwsA(isA<UnsupportedError>()));
       expect(SimulatedAircraftTransport().write(Uint8List(1)),
           throwsA(isA<UnsupportedError>()));
+    });
+
+    test('rolling gap and byte-rate stats follow the injected clock', () async {
+      var now = DateTime(2026, 1, 1);
+      final sim = SimulatedAircraftTransport(tickInterval: null);
+      final s = LinkSession(sim, clock: () => now);
+      await s.start();
+      for (var i = 0; i < 6; i++) {
+        sim.emitTick();
+        await settle();
+        now = now.add(const Duration(milliseconds: 100));
+      }
+      final g = s.gapStats(const Duration(seconds: 1), now);
+      // Tick 0 sends two chunks at the same instant (version reply + OSD): one 0 ms gap, then
+      // five 100 ms gaps.
+      expect(g.count, 6);
+      expect(g.maxMs, closeTo(100, 1));
+      expect(g.meanMs, closeTo(500 / 6, 0.5));
+      expect(g.jitterMs, closeTo(37.3, 0.5));
+      final r = s.byteRates(const Duration(seconds: 1), now);
+      expect(r.duml, greaterThan(0));
+      expect(r.video, 0);
+      // Three seconds after the last packet the 1 s window has decayed to zero.
+      final later = now.add(const Duration(seconds: 3));
+      expect(s.byteRates(const Duration(seconds: 1), later).duml, 0);
+      await s.stop();
+      s.dispose();
     });
 
     test('hex text captures load like telemetry_scan --hex', () {
