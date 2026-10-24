@@ -108,13 +108,16 @@ below was created or executed on the camera during this search.
 
 ### Linux side: expanded search
 
-**Not reproducible as stated.** This section previously claimed the UBIFS walker
-reconstructed 335 regular files and 415 symlinks and found no occurrence of the marker
-names in them. `tmp/air/rfs_P3X0020/` on disk holds **22 regular files and 0
-symlinks** (matches section 2's "only 22 files pulled" below) - no saved walker output
-for a 335/415-file run exists, so that negative result can't be re-run or checked.
-Treat the 335/415 claim as unverified until someone reruns the walker and saves its
-output; until then, assume only the 22 known files have been searched.
+**2026-10-24, resolved:** `scripts/re/rfs_full_extract.py` reruns the same UBI/UBIFS
+walker (`scripts/re/air_survey.py`'s `ubi_volumes`/`ubifs_tree`, read-only) against
+`tmp/air/amba_P3X0020/P3X_FW_V01.11.0020_m0100_part_rfs.a9s` (26 MB UBI image, 2
+volumes: vol 0 = 190 LEBs/rootfs, vol 1 = 14 LEBs/empty) and writes every
+reconstructed file, not a hand-picked subset. **V, reproduced:** 335 regular files +
+415 symlinks, matching the previously-unverified claim exactly. Output under
+`tmp/air/rfs_P3X0020_full/` (gitignored `tmp/`, not committed), log at
+`tmp/logs/rfs_full_extract.log`. The earlier 22-file dir (`tmp/air/rfs_P3X0020/`,
+written by `scripts/re/fpga_write_path.py` for the `rpmsg_trans.ko`/`68013.ko`
+disassembly task) is unaffected and still has its own narrower purpose.
 
 There are other file-driven Linux behaviors:
 
@@ -168,18 +171,86 @@ what produced it, versus some other trigger) is still not independently proven; 
 
 ## 2. Two more default-on access paths, same rootfs
 
-- **V** `etc/init.d/S50service` runs bare `telnetd` unconditionally at boot (no `-l`
-  flag seen). Whether it falls back to `/bin/login` (needs `/etc/passwd`, not yet
-  extracted) or spawns a shell directly: **U**.
-- **V** `etc/init.d/S50sshd` starts `sshd` every boot, generating RSA1/RSA/DSA/ECDSA
-  host keys on first run if missing. Auth config (`sshd_config`, not yet extracted): **U**.
-- **V** `etc/init.d/S40network` runs `ifup -a` - some network interface is configured.
-  Which one (likely the FX2LP/rpmsg USB-net path the phone uses for video, per
-  `air-id-and-stream-survey.md`'s "phone-over-Wi-Fi/USB-net path") and whether it's
-  reachable without the phone already linked: **U**.
+**2026-10-24, resolved** (full UBIFS extraction, `tmp/air/rfs_P3X0020_full/`,
+`scripts/re/rfs_full_extract.py` - issue #35):
+
+- **V** `etc/init.d/S50service` runs bare `telnetd` (busybox applet, `BusyBox v1.21.1`
+  string in `bin/busybox`; `/usr/sbin/telnetd` is a symlink to it) with no `-l` flag.
+  Busybox telnetd's compiled-in default when `-l` is omitted is `/bin/login`
+  (confirmed by the literal string `/bin/login` present in the same `busybox` binary
+  next to the `telnetd`/`syslogd` applet strings) - `/bin/login` is itself a busybox
+  applet symlink. **So telnetd falls back to `/bin/login`, which checks `/etc/passwd`
+  + `/etc/shadow`**, not a bare unauthenticated shell.
+  - **V** `/etc/passwd`: `root:x:0:0:root:/root:/bin/sh` (shell is `/bin/sh`, not
+    `/bin/false` - login is not blocked at the passwd level). Two other accounts of
+    note: `default:x:1000:1000:...:/bin/sh` and `a8sdk:x:1001:1001:...:/bin/sh`.
+  - **V** `/etc/shadow`: `root` has a real `$6$...` (SHA-512 crypt) hash - not blank,
+    not a known default (not reproduced here per this repo's secret-handling
+    convention). `a8sdk` is listed in `/etc/passwd` as uid/gid 1001/1001 but its
+    **`/etc/shadow` entry is `a8sdk:HHTiH8SGMjHoM:0:0:99999:7:::`** - note the shadow
+    line's own uid/gid-like fields are `0:0`, and the hash is an old 13-char
+    DES-crypt, i.e. a second, weaker-hashed, higher-privilege-looking credential
+    distinct from `root`'s. `ftp` also has a `$6$` hash. **`default`'s shadow password
+    field is empty** (`default::10933:0:99999:7:::`) - an empty hash field, not `*`/`!`
+    (locked). **I** (standard BusyBox/Unix login semantics, not independently
+    exercised against this exact binary): an empty shadow hash means `/bin/login`
+    accepts **any input, including no password at all**, for `default`. If so,
+    telnet-as-`default` needs no real credential once the interface is reachable.
+- **V** `etc/init.d/S50sshd` starts `sshd -f /etc/ssh/sshd_config` every boot,
+  generating RSA1/RSA/DSA/ECDSA host keys on first run if missing.
+  - **V** `/etc/ssh/sshd_config` (stock-looking OpenSSH 6.x-era file, header cites
+    `$OpenBSD: sshd_config,v 1.89 2013/02/06`): `PermitRootLogin yes`,
+    `PasswordAuthentication yes`, `PermitEmptyPasswords no`, `RSAAuthentication yes`,
+    `PubkeyAuthentication yes`. So **ssh requires a real password (or key) for every
+    account** - `PermitEmptyPasswords no` specifically blocks the `default` account's
+    empty-hash shortcut over ssh (unlike telnet/login above). Root login over ssh is
+    permitted, gated on root's real `$6$` password.
+- **V** `etc/init.d/S40network` runs `/sbin/ifup -a`.
+  - **V** `/etc/network/interfaces` configures **only `lo` (loopback)** -
+    `auto lo` / `iface lo inet loopback` is the only active stanza; an `eth0` static
+    block (`172.168.1.11/16`) is present but **entirely commented out**. So
+    `ifup -a` at boot brings up **no interface but loopback** - telnetd/sshd (which
+    bind all addresses by default - `sshd_config`'s `#ListenAddress 0.0.0.0`/`::` are
+    commented defaults, not restrictions) are not reachable from outside the camera
+    at the moment `S40network` finishes.
+  - **V, no physical Ethernet PHY**: `/lib/modules/3.8.0/kernel/` has no Ethernet MAC
+    driver of any kind (checked every `.ko` under `kernel/drivers/net/` - only
+    `mii.ko` and `libphy.ko`, generic PHY-framework modules with nothing to attach to,
+    plus six **USB-net class drivers**: `asix`, `cdc_ether`, `cdc_ncm`, `cdc_subset`,
+    `net1080`, `usbnet`, `zaurus` - all Linux host-side USB-to-Ethernet/tethering
+    drivers, not a wired MAC). A `strings` pass over the Linux kernel partition
+    (`*_part_lnx.a9s`) finds only generic `mdio_bus`/`mdiobus_*` framework strings, no
+    named Ethernet driver (no `davinci_emac`, no SoC-specific MAC string). Combined
+    with no device tree/schematic (next section), there is **no evidence of a wired
+    Ethernet PHY on this board at the Linux level** - stated plainly, not just implied.
+  - **V, the actual USB-net path**: `/usr/bin/cam_server` contains the literal format
+    string `/usr/local/share/script/add_usb_net.sh %s` plus the literal string
+    `usb0` - i.e. **`cam_server` itself calls `add_usb_net.sh usb0` at runtime**, not
+    `ifup`/`/etc/network/interfaces`. `add_usb_net.sh` (`tmp/air/rfs_P3X0020_full/
+    usr/local/share/script/add_usb_net.sh`) runs `ifconfig $1 192.168.1.3` and, for
+    `usb0` specifically, `arping -I usb0 -A -c 10 -s 192.168.1.3 192.168.1.2` - i.e.
+    the camera takes `.3` and announces/expects a peer at `.2`. **I**: this is the
+    FX2LP/rpmsg USB-net path `air-id-and-stream-survey.md` already flagged as the
+    phone's likely video channel - the custom `rpmsg_trans.ko`/`68013.ko` drivers
+    carry no `register_netdev`/`alloc_etherdev`/`usb0` strings themselves (checked),
+    so the `usb0` netdev is not created by DJI's own modules; which of the
+    asix/cdc_ether/cdc_ncm/usbnet host drivers (or the Ambarella UDC gadget stack)
+    actually instantiates it, and the exact trigger inside `cam_server`, is **U**
+    (would need `cam_server` disassembly, out of scope here).
+  - **Answering "reachable without the phone already linked"**: **V** at boot, only
+    `lo` is up (telnetd/sshd unreachable externally). **I** `usb0` (the only other
+    interface anything brings up, and the only one with a real IP assignment) is
+    brought up by `cam_server` itself, not by a static boot script - so on the
+    static evidence here, reachability depends on whatever `cam_server` is waiting
+    on before it calls `add_usb_net.sh`, consistent with (but not proof of) "needs
+    the phone/companion link first." Not contradicted by anything found, not
+    independently proven either.
+- `cam_server` also contains a hard-coded `ftpput` credential pushing to `192.168.1.2`
+  (the same peer IP `add_usb_net.sh` ARPs for) - noted here as evidence of what talks
+  to `192.168.1.2`, credential itself not reproduced (consistent with this repo's
+  existing redaction in `fpga_write_path.py`'s own scan of the same string).
 - **Practical gap**: physical UART pads for `ttyS2` have not been located on this
-  board (no schematic, no device tree extracted - see "Open" below). telnet/ssh need
-  network reachability, which likely depends on the same AOA/rpmsg link already in use.
+  board (no schematic, no device tree extracted - see "Open" below).
 
 ## 3. A factory/repair UART<->USB-CDC-ACM bridge exists in firmware
 
@@ -259,9 +330,22 @@ access. Candidate paths, none tested yet:
   machine - `ttyS2`'s physical pin location is unknown. The 2016 community thread
   (`o-gs/dji-firmware-tools` issue #3) speculated about enabling USB-side UART but
   never confirmed it; this firmware trace is more specific but still not pin-level.
-- `/etc/passwd`, `/etc/network/interfaces`, `sshd_config` not yet extracted from the
-  rootfs (only 22 files pulled so far, by a script scoped to a different task) - a full
-  UBIFS extraction would answer telnet/ssh auth and the network interface question.
+- **Resolved 2026-10-24 (issue #35):** `/etc/passwd`, `/etc/shadow`, `/etc/network/
+  interfaces`, `/etc/ssh/sshd_config` extracted via a full UBIFS pull
+  (`scripts/re/rfs_full_extract.py` -> `tmp/air/rfs_P3X0020_full/`, 335 files/415
+  symlinks). See section 2 above for the findings: telnetd falls back to
+  `/bin/login` (not a bare shell) and `default` has an empty shadow hash (likely
+  passwordless over telnet - I, standard busybox semantics, not hardware-tested);
+  sshd requires a real password/key for every account (`PermitEmptyPasswords no`);
+  `ifup -a` brings up only `lo` - no physical Ethernet PHY exists on this board at
+  the Linux level (no MAC driver anywhere in `/lib/modules` or kernel strings); the
+  only other interface, `usb0`, is brought up at runtime by `cam_server` itself
+  (`add_usb_net.sh usb0`, static IP 192.168.1.3, ARPs for 192.168.1.2), not by any
+  static boot script - consistent with, but not proof of, the "needs the phone link
+  first" hypothesis. **Still open:** exactly what gates `cam_server`'s call to
+  `add_usb_net.sh`, and which kernel driver actually instantiates the `usb0`
+  netdev (not DJI's own `rpmsg_trans.ko`/`68013.ko` - no netdev-registration
+  strings in either) - both need `cam_server` disassembly, not done here.
 - `AppCdcAcm` trigger condition (strap pin? a `t dji` command? automatic on a specific
   USB enumeration?) is not established from strings alone - would need to disassemble
   its call sites, or test on real hardware via the camera's own micro-USB port.
