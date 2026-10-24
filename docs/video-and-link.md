@@ -128,13 +128,19 @@ Summary: **DM368 → FPGA** (air), **AD9363 → FPGA → FX2LP** (ground).
 hardware **H.264 video coprocessor** (HDVICP/MJCP), built for IP cameras/camcorders. DJI
 uses two across the link:
 
-- **DM368** — `m0800`, "video encoder in air": compresses the camera feed to H.264 for
-  transmission.
+- **DM368 on WM610 (Inspire) / DM365 on P3X** — `m0800`, "video encoder in air":
+  compresses the camera feed to H.264 for transmission. **Correction, 2026-10-25
+  (issue #20, `docs/camera-linux-console-access.md` "m0800 decrypted"):** the air-side
+  chip number is product-specific, not a fixed "DM368" — `m0800`'s own decrypted
+  firmware and the `o-gs/dji-firmware-tools` wiki both say **P3X uses TMS320DM365**; only
+  WM610 (Inspire 1) uses TMS320DM368. The generic "DM368" label below and elsewhere in
+  this doc comes from `dji_xv4_fwcon.py`'s per-module-number string, reused across the
+  whole product family regardless of actual chip.
 - **DM365** — `m1300`, "video decoder" on the ground/RC side.
 
-They bracket the radio: DM368 encodes on the aircraft, the Lightbridge link carries it,
-and the live stream is decoded on the phone (`libdjivideo`); the RC's DM365 is the
-ground-side DaVinci.
+They bracket the radio: the air-side DaVinci (DM368 or DM365, per product) encodes on
+the aircraft, the Lightbridge link carries it, and the live stream is decoded on the
+phone (`libdjivideo`); the RC's DM365 is the ground-side DaVinci.
 
 ## Relevance to the app
 

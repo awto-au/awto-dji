@@ -24,7 +24,7 @@ third-party RTOS (µC/OS)**.
 | Module | Toolchain evidence | Compiler |
 |---|---|---|
 | `m0100` camera (Linux) | `GCC: (`, `__gnu_`×1142, `__aeabi_`×482, `libgcc`×93 | **GNU GCC** |
-| `m0800` video encoder (Linux) | **correction 2026-10-24 (issue #20):** no string evidence exists — the extracted `.bin` (both `P3X_FW_V01.11.0020` and `P3X_FW_V01.01.0006`) is a `Salted__` OpenSSL-encrypted blob, measured entropy 7.99995 bits/byte (fully random). The `GNU`/`GPL` entry previously here was wrong — likely inferred from the module's declared role ("DaVinci Dm368 Linux") rather than from scanning the actual bytes. See `docs/camera-linux-console-access.md` "m0800 investigation". | **unknown — ciphertext, no key** |
+| `m0800` video encoder (Linux) | **resolved 2026-10-25 (issue #20):** `Salted__` blob decrypts with `openssl enc -d -des3 -md md5 -k Dji123456` — password published by the `o-gs/dji-firmware-tools` wiki, independently re-found and reproduced here (`scripts/re/m0800_decrypt.py`). Decrypted `encode_usb` binary's own build paths name **TI DaVinci DVSDK `dm368_4_02_00_06`** (Codec Engine, XDAIS, LinuxUtils/CMEM/EDMA3, TI's own h264enc/mpeg2enc codecs, Ittiam AAC). Kernel modules `cmemk.ko`/`edmak.ko` declare `author=Texas Instruments`, `license=GPL`. See `docs/camera-linux-console-access.md` "m0800 decrypted". | **GNU GCC (TI DVSDK toolchain) + DJI app code (`encode_usb`) on top** |
 | `m0101` camera loader | `IAR` | **IAR** (with ThreadX) |
 | `m0306` FC, `m0900` radio, `m0400` gimbal | stripped raw `.bin`, no compiler comment | ARM EABI (Cortex-M); not identifiable from strings |
 

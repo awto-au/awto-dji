@@ -13,7 +13,7 @@ match frequency, i.e. a strong/weak presence signal.
 |---|---|---|---|
 | `m0100` | Camera SoC (Linux core) | Linux kernel, glibc, **busybox**, OpenSSL, wpa_supplicant, zlib, libjpeg, dropbear, + ThreadX | GPLv2 / LGPL / permissive / (ThreadX = commercial) |
 | `m0101` | Camera loader | ThreadX (Express Logic) | commercial RTOS — no OSS obligation |
-| `m0800` | DM368 video encoder | **correction 2026-10-24 (issue #20):** not observable — file is `Salted__` OpenSSL ciphertext (entropy 7.99995 bits/byte), no plaintext strings at all. Previous "GNU/GPL present" was unsupported by the actual bytes. See `docs/camera-linux-console-access.md`. | unknown (ciphertext) |
+| `m0800` | DM365 video encoder (P3X) | **resolved 2026-10-25 (issue #20):** decrypted (`openssl enc -d -des3 -md md5 -k Dji123456`, password published by `o-gs/dji-firmware-tools` wiki). Linux kernel modules `cmemk.ko`/`edmak.ko` carry `license=GPL`, `author=Texas Instruments` module-info verbatim; TI's own DVSDK Codec Engine/XDAIS/LinuxUtils plus a U-Boot 2010.12-based bootloader (open-source U-Boot UBL/uImage container, unmodified). See `docs/camera-linux-console-access.md`. | **GPLv2 (TI's own kernel modules) + U-Boot (GPL/varies) — DJI's `encode_usb` app is proprietary on top** |
 | `m1900` | Lightbridge air FPGA | one stray BSD string | negligible |
 | `m0900` | Lightbridge MCU (STM32) | **none** — bare-metal Thumb-2 | proprietary |
 | `m0306`/`m0305` | A3 flight controller | **µC/OS** (Micrium RTOS) — see code-provenance.md | commercial RTOS — no OSS obligation |

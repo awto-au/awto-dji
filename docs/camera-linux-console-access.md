@@ -130,6 +130,173 @@ blob (V); not decrypted (no key work)").
   real MII/RMII Ethernet PHY or something narrower DJI calls "internal Ethernet"
   loosely (e.g. a point-to-point packet link over a non-standard bus).
 
+## m0800 decrypted (2026-10-25, issue #20 research pass)
+
+The "blocking finding" above is resolved: `m0800` is not an unbreakable blob, and this
+was never a secret - the key is published. Both repo review questions (does TI document
+the DaVinci firmware format, and is this TI-SDK or DJI-custom) are answered directly from
+the plaintext, which is a much stronger source than the datasheet search either question
+asked for.
+
+**W, primary source:** `o-gs/dji-firmware-tools` wiki, ["Firmware
+m0800"](https://github.com/o-gs/dji-firmware-tools/wiki/Firmware-m0800) (edited 2021,
+48 revisions) already documents the exact decryption command, the NAND partition map, the
+boot process (citing TI's own `sprs457e.pdf` TMS320DM365 datasheet by name), and the
+chip's identity per-product. This was missed by earlier passes in this repo (which called
+the cipher "unknown" and mislabeled the chip - see corrections below). **Independently
+re-found** via `gh search code "0xA1ACED66"`, which turned up a third party
+([`quaddama9e/dji-technical-stuff`](https://github.com/quaddama9e/dji-technical-stuff),
+a Phantom-3-gimbal NAND repair writeup) quoting the same wiki page and the same command,
+before the wiki itself was fetched to confirm.
+
+**V, reproduced against both local `m0800` images:**
+```
+openssl enc -d -des3 -md md5 -k Dji123456 -in <file>_m0800.bin -out decrypted.tar.gz
+```
+Password `Dji123456`, cipher 3DES, legacy MD5-based `EVP_BytesToKey` (needs `-md md5`
+with OpenSSL >=3.0, which defaults that flag to SHA-256). Both
+`P3X_FW_V01.11.0020_m0800.bin` and `P3X_FW_V01.01.0006_m0800.bin` decrypt cleanly to a
+valid gzip/tar. Reproduce: `python3 -I scripts/re/m0800_decrypt.py
+firmware/unpacked/P3X_FW_V01.11.0020_m0800.bin` -> `tmp/air/*_m0800_decrypted/dji/...`
+(gitignored `tmp/`, log at `tmp/logs/m0800_decrypt.log`). This same `Dji123456` 3DES
+wrapper is also how the device re-encrypts the self-update it stages at runtime - the
+decrypted `dji/etc/rcS` contains `dd if=/opt/tmp/update.tar.gz | openssl des3 -d -k
+Dji123456 | tar zxf - -C /opt`, i.e. DJI's own boot script documents its own key in
+cleartext. This is **not DJI's main firmware-package encryption** (the per-module AES
+layer `dji_fwcon.py`/UEG handles); it is a second, separate, much weaker DES3 wrapper
+specific to this one module.
+
+**V, contents (40 files in V01.11.0020, 35 in V01.01.0006 - diff is extra UBL clock
+variants, see below):**
+- `dji/data/`: `uImage` (kernel), `u-boot.img`, `ubl_<freq>m_<n>.img` (bootloader
+  stages; V01.11.0020 ships three clock variants x 2 redundant copies -
+  `ubl_297m`/`432m`/`486m`; V01.01.0006 only has unnumbered `ubl1.img`/`ubl2.img`,
+  i.e. earlier firmware didn't yet support all board revisions).
+- `dji/etc/`: `version` (`0.13.0.7` / `0.11.0.4` - independent of the outer
+  `P3X_FW_V0x.xx.xxxx` version), `rcS`, `boot.sh`, `updatestart`/`updatefinish`
+  (NAND-partition flash-writer scripts, select which `ubl_<freq>m` variant to use
+  per board).
+- `dji/lib/libcommon.so`, `dji/bin/*` (`encode_usb`, `monitor`, `usbupdate`,
+  `setsecurity`, `update68013`, `eth0config`, `fxload`, `mtdwritefile`, `mtderase`, ...),
+  `dji/modules/*.ko` (`cmemk.ko`, `edmak.ko`, `irqk.ko`, `dm365mmap.ko`,
+  `usb_cy7c68013a.ko`/`usb_68013.ko`).
+- **Not** included (per the wiki's "Structure" section, confirmed empty here): root
+  filesystem (`dm365_root_ubifs.ubi`) and the hardware-encrypted secret partition
+  (`dm365_secret.bin`) - those ship once on the board, not in every firmware update.
+
+### Correction: the chip is DM365 on P3X, DM368 only on WM610 (Inspire)
+
+**W:** the wiki's "Target" section states plainly: *"in WM610, TMS320DM368 is on WM610
+X5 Camera Live View Encoder board; in P3X, TMS320DM365 is on WM320 Gimbal top board."*
+**W, independent corroboration:** `quaddama9e/dji-technical-stuff`'s
+["davinci-replace-nand-dji-phantom-3-gimbal.md"](https://github.com/quaddama9e/dji-technical-stuff/blob/main/davinci-replace-nand-dji-phantom-3-gimbal.md)
+physically opened a P3 Pro gimbal top board, cross-referenced the schematic
+(`o-gs/dji-hardware-schematics`), and identified the chip as **DM365**, not DM368.
+
+This means `docs/video-and-link.md`, `docs/air-id-and-stream-survey.md` and
+`docs/code-provenance.md` (and this task's own prompt) calling the P3X part "DM368" are
+**wrong for this product** - that name comes from `dji_xv4_fwcon.py`'s
+`DjiModuleTarget(8, 0, "DM368", ...)` string in `o-gs/dji-firmware-tools`, which is a
+generic per-module label reused across the whole DM36x-based module-8 family (WM610,
+P2VP, P2V, P3X all use module number `0800` for this role, on three different actual
+chips - "DM36x", "DM368" and "DM365" depending on product). **V, consistent with DM365
+specifically:** the decrypted boot/kernel strings in *this* firmware use `dm365`
+pervasively - `dji/modules/dm365mmap.ko`, and (from the wiki's quoted boot log, matching
+the community writeup's own capture byte-for-byte) `DM365 IPIPE initialized`,
+partition names `dm365_root_ubifs.ubi`/`dm365_secret.bin`. **I:** the firmware's own
+*build path* strings (next section) say `dvsdk_dm368_...` - DJI built the P3X image from
+a DM368-targeted source tree (shared with WM610) rather than a DM365-specific one; TI
+markets DM368 as a pin/software-compatible successor to DM365, which plausibly explains
+why one DVSDK tree with "368" in its path still emits `dm365`-named kernel modules
+unchanged. Not independently verified against a TI compatibility matrix - flagging as
+inference, not re-deriving the DM368/DM365 codec-level compatibility claim from TI docs.
+
+### Q1: does TI document the firmware/boot container format? Yes, and the bytes match it exactly
+
+**V:** `dji/data/uImage` header starts `27 05 19 56` = `0x27051956` - the standard
+open-source **U-Boot "Legacy Image" format** magic, unmodified. `file` confirms:
+`u-boot legacy uImage, Linux-2.6.32.17-davinci1, Linux/ARM, OS Kernel Image
+(Not compressed) ... Load Address: 0x80008000, Entry Point: 0x80008000`.
+
+**V:** `dji/data/ubl_297m_1.img` and `u-boot.img` start `00 ed ac a1` / `66 ed ac a1`
+(little-endian `0xA1ACED00` / `0xA1ACED66`). **W:** these are exactly
+`UBL_MAGIC_BASE`/`UBL_MAGIC_BIN_IMG` from U-Boot mainline's own `tools/ublimage.h`
+(found via `gh search code "0xA1ACED66"` across dozens of repos carrying mainline
+U-Boot, e.g. `umanovskis/baremetal-arm:src/common_uboot/tools/ublimage.h`) - TI's
+**U**ser **B**oot **L**oader header format for DaVinci/DM644x/DM35x/DM36x parts, now
+part of upstream open-source U-Boot, not merely internal TI documentation. So: **yes**,
+TI's (now-open-source) UBL/uImage container format is publicly documented, and the
+`m0800` partition bytes match it byte-for-byte once decrypted - there was never a
+DJI-custom container wrapping the TI one.
+
+**W, further confirmation from the wiki's "Boot process" section** (citing TI's own
+*TMS320DM365 Digital Media System-on-Chip (DMSoC)* datasheet, `sprs457e.pdf`, by part
+number): ROM bootloader (TI, mask-programmed) reads `BTSEL[2:0]` pins -> default is NAND
+boot -> copies UBL to ARM internal RAM -> UBL loads U-Boot ("the default bootloader
+proposed by TI in their DaVinci Linux") -> U-Boot loads the `uImage` kernel -> kernel
+brings up an **AT88/ATSHA204** crypto module that decrypts a *separate* hidden NAND
+partition (`0x0d60000`, "Encrypted data" in the wiki's flash map) - this is the
+hardware-authentication partition tied to the ATSHA204 chip CLAUDE.md's one-paragraph
+model already names as "the only real crypto" on this aircraft, distinct from the
+`Dji123456` DES3 transport wrapper above.
+
+### Q2: TI DVSDK base + thin DJI glue - confirmed directly from the binary's own debug paths
+
+**V, decisive:** `strings` on the decrypted `dji/bin/encode_usb` contains dozens of
+absolute build-tree paths, e.g.:
+```
+/home/DJI2/Project/enc_nohdmi_wm610/src/dvsdk/dvsdk_dm368_4_02_00_06/codec-engine_2_26_02_11/packages/ti/sdo/ce
+/home/DJI2/Project/enc_nohdmi_wm610/src/dvsdk/dvsdk_dm368_4_02_00_06/codecs-dm365_4_02_00_00/packages/ti/sdo/codecs/h264enc
+/home/DJI2/Project/enc_nohdmi_wm610/src/dvsdk/dvsdk_dm368_4_02_00_06/linuxutils_2_26_01_02/packages/ti/sdo/linuxutils/cmem
+/home/DJI2/Project/enc_nohdmi_wm610/src/dvsdk/dvsdk_dm368_4_02_00_06/codecs-dm365_4_02_00_00/packages/ittiam/codecs/aaclc_enc
+```
+This is a developer's (`DJI2`) build machine path naming the exact TI package:
+**DVSDK `dm368_4_02_00_06`** (TI's public DaVinci Software Development Kit release
+4.02.00.06 for DM368/DM365), with stock TI components - Codec Engine `2.26.02.11`,
+XDAIS `6.26.01.03`, Framework Components `2.26.00.01`, LinuxUtils `2.26.01.02`
+(CMEM/EDMA3), `ti.sdo.codecs.h264enc`/`mpeg2enc` - plus one third-party codec,
+**Ittiam Systems'** `aaclc_enc` (a well-known TI DVSDK ecosystem AAC vendor). DJI's own
+code lives in a separate, much shorter path in the same tree,
+`.../src/app/src/common`, exporting `DJI_Frame_Cap`, `DJI_ProStruct_Init`,
+`DjiCrc8Table`, `T_DJIProtocolHeaderStruct` - DJI's own protocol glue around TI's codec
+engine, not a reimplementation of it.
+
+**V:** `dji/modules/cmemk.ko` and `edmak.ko` carry their own unmodified module info:
+`author=Texas Instruments`, `license=GPL`, `vermagic=2.6.32.17-davinci1 ...` - these are
+literally TI's own GPL kernel modules, shipped as-is.
+
+**V:** the kernel's own boot banner keeps TI's unmodified EVM board-support string -
+`Machine: DaVinci DM36x EVM` - DJI never defined a custom machine type for this board;
+only the three version strings around it were rebranded:
+`UBL Product Vesion : DJI-297M-UBL-1.0-rc0(2015-10-30)`,
+`U-Boot Product Vesion : DJI-ENC-Uboot-1.0-rc0(2015-11-02)` (itself
+`U-Boot 2010.12-rc2-svn3205-Dji`, i.e. a lightly patched upstream U-Boot 2010.12),
+`Kernel Product Vesion : DJI-NOHDMI-WM610-Kernel-1.0-rc6(2015-03-30)`.
+
+**Conclusion for Q2:** same pattern already established for the Ambarella A9 side
+(`sys` = DJI RTOS code, `lnx`/`rfs` = "a simple Linux distribution provided within
+Ambarella SDK") holds here too, and is now directly confirmed rather than inferred:
+TI's DVSDK 4.02.00.06 (bootloader, kernel, codec engine, GPL kernel modules) is used
+**unmodified** as the base; DJI's own code is a thin application (`encode_usb`) plus a
+handful of rebranded version strings. No evidence of DJI rewriting any TI-owned layer.
+
+### Bonus, incidental: the wiki's "connect via internal Ethernet" claim, partially checked
+
+Not this pass's assigned question, but free from the same decrypted tree: `dji/bin/eth0config` is
+```
+ifconfig eth0 down
+ifconfig eth0 192.168.1.10 netmask 255.255.255.0
+route add default gw 192.168.1.2
+ifconfig eth0 up
+```
+**V:** `m0800` does have a configurable Ethernet interface and a script to bring it up
+at a fixed internal IP, consistent with the wiki's "Ethernet interface" section (DaVinci
+has a real EMAC; normally unconfigured in Lightbridge products, but the script exists).
+**Still open:** nothing here identifies what `192.168.1.2` is (Ambarella core? OFDM
+board? never used at all?) - the script isn't referenced from `rcS`/`boot.sh` in either
+decrypted copy, so it is not run automatically on this hardware's current firmware.
+Doesn't resolve the earlier "cannot be verified or refuted" conclusion on its own.
+
 ## Firmware trace of the logging gate and related filenames
 
 All addresses in this section refer to `P3X_FW_V01.11.0020_m0100_part_sys.a9s`,
