@@ -22,6 +22,36 @@ void main() {
     });
   });
 
+  group('cross-model validation', () {
+    // Real DUML packets from OTHER DJI aircraft (not this project's own Phantom 3
+    // captures) - embedded as dissector test vectors in o-gs/dji-firmware-tools'
+    // tests/test_comm_dissector.py (pckt_mavic_air_fcc/pckt_mini_2_fcc), found
+    // 2026-10-24. Independent confirmation that this codec's CRC8/CRC16/framing is
+    // correct across models, not just tuned to our own one aircraft's traffic.
+    final mavicAir = Uint8List.fromList([
+      0x55, 0x17, 0x04, 0x38, 0x02, 0x0e, 0x1d, 0x00, 0x40, 0x07, 0x30, 0x55, 0x53,
+      0x00, 0x00, 0x55, 0x53, 0x00, 0x00, 0x01, 0x00, 0xfe, 0x5d,
+    ]);
+    final mini2 = Uint8List.fromList([
+      0x55, 0x18, 0x04, 0x20, 0x02, 0x09, 0x00, 0x00, 0x40, 0x09, 0x27, 0x00, 0x02,
+      0x48, 0x00, 0xff, 0xff, 0x02, 0x00, 0x00, 0x00, 0x00, 0x81, 0x1f,
+    ]);
+
+    test('Mavic Air packet (SetWiFiCountryCode, cmdset 0x07/0x30) passes our CRC', () {
+      expect(headerCrc8(mavicAir), equals(mavicAir[3]));
+      final crc = packetCrc16(mavicAir, mavicAir.length);
+      expect(crc & 0xFF, equals(mavicAir[mavicAir.length - 2]));
+      expect((crc >> 8) & 0xFF, equals(mavicAir[mavicAir.length - 1]));
+    });
+
+    test('Mini 2 packet (SetSdrAssitantWrite, cmdset 0x09/0x27) passes our CRC', () {
+      expect(headerCrc8(mini2), equals(mini2[3]));
+      final crc = packetCrc16(mini2, mini2.length);
+      expect(crc & 0xFF, equals(mini2[mini2.length - 2]));
+      expect((crc >> 8) & 0xFF, equals(mini2[mini2.length - 1]));
+    });
+  });
+
   group('packet build', () {
     test('reproduces the captured RC stick-request packet byte-for-byte', () {
       final p = DumlPacket(
