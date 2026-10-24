@@ -88,6 +88,10 @@ All the analysis docs cite exact offsets so you can re-derive against your own u
 4. **Over-the-air SDR capture** → (a) settle the air-encryption question, (b) run
    Berlekamp-Massey on an all-0s / repetitive-telemetry capture to recover the scrambler
    (`known-plaintext-plan.md`, `alternative-approaches.md`).
+5. **m0900 CAN channels (traced 2026-10-24, `docs/m0900-can-channels.md`).** The 0x20002538 queue
+   is CAN StdId 0x414 (TX), paired with RX 0x415. Only DUML receiver type 30 is routed to it.
+   FC-type traffic goes out **USART1** (CENTER), not CAN; this corrects `dataflow.md`. Open:
+   whether 0x414/0x415 is live on the bus (passive 1 Mbit/s CAN sniff) and which board type 30 is.
 5. Build out the Flutter app-to-bird UI on top of `app/packages/duml` + `rust/awto_dji_core`.
 
 ## Reproduce the key MCU proofs (with your own `c1_m1400.bin`)
