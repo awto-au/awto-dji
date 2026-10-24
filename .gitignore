@@ -26,3 +26,6 @@ m0900-capture.log
 *-capture.txt
 *-raw.txt
 firmware/
+
+# Downloaded APKs - DATA NOT IN THE REPO, see sources/README.md manifest
+sources/**/*.apk
