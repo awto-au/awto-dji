@@ -14,3 +14,4 @@ export 'src/telemetry.dart';
 export 'src/rc_signal.dart';
 export 'src/motor_status.dart';
 export 'src/version.dart';
+export 'src/camera_exposure.dart';
