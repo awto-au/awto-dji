@@ -50,6 +50,7 @@ the current state and next steps, and `../CLAUDE.md` for agent onboarding.
 ## Provenance
 - `code-provenance.md`, `license-compliance.md`, `data-manifest.md` — the downloaded inputs (firmware/APK/tools) with SHA-256s; **none of the bytes are stored here** (copyright/size) — re-fetch + verify.
 - `firmware-upgrade-log-review.md` — camera SD-card upgrade-log review (41 boot sessions); downgrade/equal-version-policy caveat for any "latest version" claim.
+- [m0101-threadx-reversing.md](m0101-threadx-reversing.md) — `m0101` camera loader reversed from scratch: ARM Cortex-A9/ThreadX confirmed, full Ghidra pass, NAND partition map, SD-card firmware-update flow, cross-module link to `m0100`'s UEG layer, FPGA/switch-mux negative findings.
 - `firmware-reference-versions.md` — per-module "latest known-good" table for `fw_version_check.py` (awto-dji#32): local firmware archive vs SD-log vs online sources, V/I confidence per module.
 
 ## Safety / scope
