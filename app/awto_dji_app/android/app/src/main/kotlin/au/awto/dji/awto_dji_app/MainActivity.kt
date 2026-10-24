@@ -26,7 +26,7 @@ class MainActivity : FlutterActivity() {
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
         shim = AoaShim(this, flutterEngine.dartExecutor.binaryMessenger)
-        videoShim = VideoShim(flutterEngine.renderer, flutterEngine.dartExecutor.binaryMessenger)
+        videoShim = VideoShim(this, flutterEngine.renderer, flutterEngine.dartExecutor.binaryMessenger)
 
         intentChannel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "au.awto.dji/intents")
         intentChannel?.setMethodCallHandler { call, result ->

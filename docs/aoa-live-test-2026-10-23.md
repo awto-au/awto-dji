@@ -1,5 +1,14 @@
 # First real-hardware AOA test: `awto_dji_app` vs the RC's USB-A port (2026-10-23)
 
+> **Correction, 2026-10-24:** the later sections below claiming there is no demux
+> header and that the entire decoding chain is verified are superseded. The saved
+> stream and APK both establish an 8-byte `55 cc` envelope with channel/type and
+> length. Camera video is channel `0x574a`; commands use `0x5749`. Raw start-code
+> scanning contaminates video with wrappers/other traffic. Android also has an
+> input-buffer scheduling defect. See [pc-video-preview.md](pc-video-preview.md)
+> for the corrected parser, replay tools and exact validation limits. Historical
+> capture observations below remain useful; the old architectural conclusions do not.
+
 Status tags: **V** verified here, **I** inferred, **U** unknown. Hardware: owner's P3 Pro RC,
 Samsung S9 (LineageOS) connected to the RC's USB-A (phone) port via a plain cable - no OTG
 adapter needed, the RC is the USB host on this port (see `docs/fc-usb-port.md` for the

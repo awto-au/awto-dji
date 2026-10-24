@@ -5,31 +5,40 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
 import '../debug/tcp_relay.dart';
+import '../debug/relay_record.dart';
+import '../link/duml_protection.dart';
 import '../video/annexb_extractor.dart';
 import '../video/video_decoder.dart';
 import 'aoa_identity.dart';
+import 'aoa_mux.dart';
 import 'link_transport.dart';
 
 /// Android Open Accessory link via the Kotlin shim (MainActivity). The phone is
-/// the accessory, the RC is the USB host. Raw bytes only; no protocol logic.
+/// the accessory, the RC is the USB host. Demultiplexes AOA envelopes and applies the
+/// configured DUML protection policy to outgoing command frames.
 ///
-/// [relayHost]/[relayPort], if set, mirror every received chunk to a plain TCP
+/// [relayHost]/[relayPort], if set, forward framed records to a plain TCP
 /// socket (see lib/debug/tcp_relay.dart) so the real decoder can run natively
 /// on a dev machine instead of being rebuilt into the app each iteration.
 ///
-/// [videoDecoder], if set, also runs every chunk through [AnnexBExtractor] and feeds any
-/// H.264 NAL units found to it - the raw AOA stream interleaves DUML and video with no demux
-/// header (docs/aoa-live-test-2026-10-23.md), so this runs alongside normal DUML framing on
-/// the exact same bytes, not instead of it.
+/// Only command payloads reach LinkSession/protection; only camera video reaches
+/// [AnnexBExtractor]. Unknown channels remain visible in the diagnostic relay.
 class AoaTransport extends BaseTransport {
-  AoaTransport(
-      {MethodChannel? method,
-      EventChannel? events,
-      this.relayHost,
-      this.relayPort,
-      this.videoDecoder})
-      : _method = method ?? const MethodChannel(methodChannelName),
-        _events = events ?? const EventChannel(eventChannelName);
+  AoaTransport({
+    MethodChannel? method,
+    EventChannel? events,
+    this.relayHost,
+    this.relayPort,
+    this.videoDecoder,
+    this.relayVideo = true,
+    DumlProtectionMode protectionMode = DumlProtectionMode.auto,
+  }) : _method = method ?? const MethodChannel(methodChannelName),
+       _events = events ?? const EventChannel(eventChannelName),
+       _protection = DumlProtection(mode: protectionMode) {
+    _mux.onPacket = _onPacket;
+    _mux.onDiscard = (bytes) =>
+        _relay?.sendRecord(RelayRecord.discarded, 0, bytes);
+  }
 
   static const methodChannelName = 'au.awto.dji/aoa';
   static const eventChannelName = 'au.awto.dji/aoa/bytes';
@@ -38,56 +47,110 @@ class AoaTransport extends BaseTransport {
   final int? relayPort;
   final VideoDecoder? videoDecoder;
 
+  /// Suppress camera/FPV records on WiFi only; local decoding is unaffected.
+  final bool relayVideo;
+
   final MethodChannel _method;
   final EventChannel _events;
   StreamSubscription<dynamic>? _sub;
   TcpRelay? _relay;
   final _nals = AnnexBExtractor();
+  final DumlProtection _protection;
+  final _mux = AoaMux();
+
+  void _onPacket(AoaPacket packet) {
+    final video =
+        packet.channel == AoaMux.cameraVideo ||
+        packet.channel == AoaMux.fpvVideo;
+    if (!video || relayVideo) {
+      _relay?.sendRecord(RelayRecord.envelope, packet.channel, packet.encode());
+    }
+    if (packet.channel == AoaMux.command) {
+      _protection.observe(packet.payload);
+      emit(packet.payload);
+    } else if (packet.channel == AoaMux.cameraVideo) {
+      videoBytes += packet.payload.length;
+      if (videoDecoder != null) {
+        for (final nal in _nals.add(packet.payload)) {
+          videoDecoder!.feedNal(nal);
+        }
+      }
+    }
+  }
 
   @override
   String get name => 'android-accessory';
 
   @override
   Future<void> connect() async {
+    _protection.reset();
+    _mux.reset();
+    _nals.reset();
+    videoBytes = 0;
     setState(LinkState.connecting);
+    Future<void>? relayConnecting;
     if (relayHost != null && relayPort != null) {
-      _relay = TcpRelay(relayHost!, relayPort!, onCommand: (bytes) {
-        debugPrint('[aoa-proxy] relaying ${bytes.length}B command from PC to accessory');
-        write(bytes);
-      });
-      await _relay!.connect();
+      _relay = TcpRelay(
+        relayHost!,
+        relayPort!,
+        onCommand: (bytes) {
+          debugPrint(
+            '[aoa-proxy] relaying ${bytes.length}B command from PC to accessory',
+          );
+          for (final frame in _protection.prepareProxyBytes(bytes)) {
+            write(frame).catchError((Object error) {
+              debugPrint('[aoa-proxy] write failed: $error');
+            });
+          }
+        },
+      );
+      relayConnecting = _relay!.connect();
     }
-    if (videoDecoder != null) await videoDecoder!.start();
     try {
       _sub = _events.receiveBroadcastStream().listen(
         (dynamic b) {
           final chunk = b as Uint8List;
-          _relay?.send(chunk);
-          if (videoDecoder != null) {
-            for (final nal in _nals.add(chunk)) {
-              videoBytes += nal.length;
-              videoDecoder!.feedNal(nal);
-            }
-          }
-          emit(chunk);
+          _mux.add(chunk);
         },
-        onError: (Object e) => setState(LinkState.failed, error: '$e'),
-        onDone: () => setState(LinkState.disconnected),
+        onError: (Object e) {
+          _mux.finish();
+          _protection.reset();
+          _nals.reset();
+          setState(LinkState.failed, error: '$e');
+        },
+        onDone: () {
+          _mux.finish();
+          _protection.reset();
+          _nals.reset();
+          setState(LinkState.disconnected);
+        },
       );
       await _method.invokeMethod<void>('connect', <String, String>{
         'manufacturer': AoaIdentity.manufacturer,
         'model': AoaIdentity.model,
       });
+      // Claim the accessory inside Android's handshake window. Decoder startup
+      // and a slow/absent debug relay must not delay openAccessory().
+      if (videoDecoder != null) await videoDecoder!.start();
+      await relayConnecting;
       setState(LinkState.connected);
       if (_relay != null) _sendDiagQueries();
       if (videoDecoder != null) await requestIFrame();
     } on PlatformException catch (e) {
       await _sub?.cancel();
       _sub = null;
+      await relayConnecting;
       await _relay?.close();
       _relay = null;
+      await videoDecoder?.stop();
       setState(LinkState.failed, error: '${e.code}: ${e.message}');
     } on MissingPluginException {
+      await _sub?.cancel();
+      _sub = null;
+      await relayConnecting;
+      await _relay?.close();
+      _relay = null;
+      await videoDecoder?.stop();
       setState(LinkState.failed, error: 'not available on this platform');
     }
   }
@@ -96,6 +159,9 @@ class AoaTransport extends BaseTransport {
   Future<void> disconnect() async {
     await _sub?.cancel();
     _sub = null;
+    _mux.finish();
+    _protection.reset();
+    _nals.reset();
     await _relay?.close();
     _relay = null;
     await videoDecoder?.stop();
@@ -112,8 +178,14 @@ class AoaTransport extends BaseTransport {
   }
 
   @override
-  Future<void> write(Uint8List data) =>
-      _method.invokeMethod<void>('write', data);
+  Future<void> write(Uint8List data) {
+    final wire = _protection.prepare(data);
+    debugPrint(
+      '[aoa-tx] ${wire.length}B '
+      '${wire.map((v) => v.toRadixString(16).padLeft(2, '0')).join()}',
+    );
+    return _method.invokeMethod<void>('write', wire);
+  }
 
   var _ifrSeq = 0x7100;
 
@@ -124,7 +196,7 @@ class AoaTransport extends BaseTransport {
   /// start"). Only affects the video encoder's own GOP timing.
   Future<void> requestIFrame() async {
     final pkt = DumlPacket(
-      senderType: DeviceType.pc,
+      senderType: DeviceType.app,
       receiverType: DeviceType.camera,
       sequence: _ifrSeq++,
       ackType: AckType.afterExec,
@@ -149,6 +221,7 @@ class AoaTransport extends BaseTransport {
       (CmdSet.general, 0x01, 'GetVersion'),
     ];
     for (final (cmdSet, cmdId, label) in queries) {
+      if (currentState != LinkState.connected) return;
       final pkt = DumlPacket(
         senderType: DeviceType.pc,
         receiverType: DeviceType.remoteController,
@@ -157,8 +230,10 @@ class AoaTransport extends BaseTransport {
         cmdSet: cmdSet,
         cmdId: cmdId,
       );
-      debugPrint('[aoa-diag] sending $label (set=0x${cmdSet.toRadixString(16)} '
-          'id=0x${cmdId.toRadixString(16)})');
+      debugPrint(
+        '[aoa-diag] sending $label (set=0x${cmdSet.toRadixString(16)} '
+        'id=0x${cmdId.toRadixString(16)})',
+      );
       try {
         await write(pkt.encode());
       } on Object catch (e) {

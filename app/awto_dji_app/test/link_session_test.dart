@@ -9,8 +9,21 @@ import 'package:duml/duml.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 // Byte-exact RC packet captured from the real controller (duml tests).
-final captured = Uint8List.fromList(
-    [0x55, 0x0d, 0x04, 0x33, 0x0a, 0x06, 0xeb, 0x34, 0x40, 0x06, 0x01, 0x74, 0x24]);
+final captured = Uint8List.fromList([
+  0x55,
+  0x0d,
+  0x04,
+  0x33,
+  0x0a,
+  0x06,
+  0xeb,
+  0x34,
+  0x40,
+  0x06,
+  0x01,
+  0x74,
+  0x24,
+]);
 
 Future<void> settle() => Future<void>.delayed(Duration.zero);
 
@@ -39,7 +52,10 @@ void main() {
     });
 
     test('counts CRC errors and logs the bad frame', () async {
-      final sim = SimulatedAircraftTransport(tickInterval: null, corruptEvery: 3);
+      final sim = SimulatedAircraftTransport(
+        tickInterval: null,
+        corruptEvery: 3,
+      );
       final s = LinkSession(sim);
       await s.start();
       for (var i = 0; i < 6; i++) {
@@ -70,6 +86,34 @@ void main() {
   });
 
   group('byte-exact captured packet', () {
+    test(
+      'SIMPLE replies expose decoded fields and retain protected wire logging',
+      () async {
+        final original = DumlPacket(
+          senderType: DeviceType.gimbal,
+          receiverType: DeviceType.app,
+          sequence: 0x1234,
+          packetType: PacketType.response,
+          encryptType: EncryptType.simple,
+          cmdSet: CmdSet.gimbal,
+          cmdId: 0x0a,
+          payload: Uint8List.fromList([0x55, 0xcc, 1, 2, 3]),
+        );
+        final wire = original.encode();
+        final s = LinkSession(ReplayTransport(wire, speed: 0));
+        await s.start();
+        await settle();
+        expect(s.packetCount, 1);
+        expect(s.crcErrorCount, 0);
+        expect(s.log.single.packet!.cmdSet, original.cmdSet);
+        expect(s.log.single.packet!.cmdId, original.cmdId);
+        expect(s.log.single.packet!.payload, original.payload);
+        expect(s.log.single.raw, wire);
+        await s.stop();
+        s.dispose();
+      },
+    );
+
     test('framer path decodes it, split across chunks', () async {
       final t = ReplayTransport(captured, speed: 0);
       final s = LinkSession(t);
@@ -102,10 +146,14 @@ void main() {
     });
 
     test('write is rejected on transports with no device', () {
-      expect(ReplayTransport(captured).write(Uint8List(1)),
-          throwsA(isA<UnsupportedError>()));
-      expect(SimulatedAircraftTransport().write(Uint8List(1)),
-          throwsA(isA<UnsupportedError>()));
+      expect(
+        ReplayTransport(captured).write(Uint8List(1)),
+        throwsA(isA<UnsupportedError>()),
+      );
+      expect(
+        SimulatedAircraftTransport().write(Uint8List(1)),
+        throwsA(isA<UnsupportedError>()),
+      );
     });
 
     test('rolling gap and byte-rate stats follow the injected clock', () async {

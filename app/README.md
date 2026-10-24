@@ -15,8 +15,10 @@ Phantom 3 / Inspire 1 generation):
 
 - The link is **Android Open Accessory (AOA)**: the **controller is the USB host**,
   the **phone is the accessory**. Not USB-serial — the `usb_serial` plugins do not apply.
-- Data is a **raw byte stream** over the accessory file descriptor.
-- **DUML** frames ride on that stream (SOF `0x55`, header CRC-8, body CRC-16).
+- The accessory file descriptor carries AOA envelopes (`55 cc`, channel u16 LE,
+  payload length u32 LE). The phone routes command payloads from `0x5749` to DUML
+  and camera payloads from `0x574a` to H.264 extraction.
+- **DUML** frames use SOF `0x55`, header CRC-8 and body CRC-16.
 
 ## Layers
 
@@ -38,6 +40,10 @@ Phantom 3 / Inspire 1 generation):
   (OSD General circle flight via the duml encoder); `ReplayTransport` (raw or hex-text captures,
   same as `telemetry_scan.dart`; no timestamps in captures, so paced per frame); `AoaTransport`
   + `android/.../AoaShim.kt` (raw byte pump, compile-only, untested without the RC).
+- `transport/aoa_mux.dart`: incremental channel demux. The diagnostic TCP relay
+  forwards versioned records; CONNECT `relayVideo=false` skips camera/FPV forwarding.
+  Unknown channels and discarded bytes remain visible. See the operator guide
+  for record format and older-app compatibility.
 - `transport/aoa_identity.dart`: the one place for AOA strings; description/version/uri/serial are
   PLACEHOLDERs. `res/xml/accessory_filter.xml` must be kept in sync by hand.
 - `link/LinkSession`: receive-only; packet/CRC counters, last-seen, health, 2000-entry packet log.
@@ -48,11 +54,15 @@ Phantom 3 / Inspire 1 generation):
 Run (Flutter at `~/development/flutter/bin`):
 ```
 cd app/awto_dji_app && flutter pub get
-flutter run -d linux            # Connect -> "Simulated aircraft"
-                                # or "Replay capture file" + path to a raw/hex capture
 flutter test && flutter analyze
 flutter build apk --debug       # Android; needs the SDK at ~/Android/Sdk
 ```
+
+**There is no on-screen connect form** - the app is driven by Android intents
+(CONNECT/DISCONNECT/GIMBAL/SEND), not a UI. See
+[`../docs/phone-bridge-operator-guide.md`](../docs/phone-bridge-operator-guide.md) for
+driving it end to end: phone/ADB setup, intents and their extras, the PC-side relay
+and command proxy, and known gotchas.
 
 ### `packages/duml` — done and verified
 Pure Dart. `dart test` passes, including byte-for-byte reproduction of a real

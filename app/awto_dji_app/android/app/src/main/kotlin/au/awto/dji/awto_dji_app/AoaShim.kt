@@ -34,6 +34,7 @@ class AoaShim(private val ctx: Context, messenger: BinaryMessenger) :
     private var output: FileOutputStream? = null
     private var reader: Thread? = null
     private var permReceiver: BroadcastReceiver? = null
+    @Volatile private var generation = 0L
 
     init {
         MethodChannel(messenger, "au.awto.dji/aoa").setMethodCallHandler(this)
@@ -116,24 +117,27 @@ class AoaShim(private val ctx: Context, messenger: BinaryMessenger) :
         pfd = fd
         input = FileInputStream(fd.fileDescriptor)
         output = FileOutputStream(fd.fileDescriptor)
+        val stream = input!!
+        val readerGeneration = generation
         reader = Thread {
             val buf = ByteArray(16384)
             try {
                 while (true) {
-                    val n = input?.read(buf) ?: break
+                    val n = stream.read(buf)
                     if (n < 0) break
                     val chunk = buf.copyOf(n)
-                    main.post { sink?.success(chunk) }
+                    main.post { if (generation == readerGeneration) sink?.success(chunk) }
                 }
             } catch (e: java.io.IOException) {
-                main.post { sink?.error("io", e.message, null) }
+                main.post { if (generation == readerGeneration) sink?.error("io", e.message, null) }
             }
-            main.post { sink?.endOfStream() }
+            main.post { if (generation == readerGeneration) sink?.endOfStream() }
         }.also { it.isDaemon = true; it.start() }
         result.success(null)
     }
 
     private fun closeAccessory() {
+        generation++
         try { pfd?.close() } catch (_: java.io.IOException) {}
         pfd = null; input = null; output = null
         reader = null

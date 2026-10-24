@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """TCP listener for the app's diag relay (app/awto_dji_app/lib/debug/tcp_relay.dart):
-accepts the phone's AOA accessory byte stream over WiFi and decodes it here, natively,
+accepts the phone's channel-tagged v1 records over WiFi and independently decodes them,
 so protocol changes don't need an APK rebuild+install cycle. Bidirectional: also reads
 hex-encoded DUML frames (one per line) from a command FIFO and forwards them to the phone,
 which writes them straight to the accessory - a PC-side command proxy with no app UI
@@ -21,6 +21,9 @@ import time
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from duml_proto import repo_root, session_log_dir  # noqa: E402
+from aoa_mux import AoaMux, CAMERA_VIDEO, COMMAND  # noqa: E402
+from relay_records import (RecordParser, command_verdict,
+                           ENVELOPE, DISCARDED)  # noqa: E402
 
 
 def crc8(seed, data):
@@ -40,35 +43,41 @@ def crc16(seed, data):
 
 
 class StreamDemuxer:
-    """Properly splits the raw AOA byte stream into DUML frames and H.264 Annex-B video,
-    the two things actually sharing this pipe with no demux header (confirmed in
-    docs/aoa-live-test-2026-10-23.md: DUML's `55`-SOF+length+CRC8+CRC16 framing and
-    Annex-B's `00 00 01`/`00 00 00 01` start codes essentially never collide).
+    """Remove the 8-byte AOA envelope before parsing commands or exporting video.
 
-    At each position: try a full DUML frame (length field + both CRCs must pass); else
-    try a NAL start code and skip straight to the next one (we don't need to decode video
-    here, just not waste a scan byte-by-byte through it); else advance one byte. This
-    replaces the old DUML-only scanner, which re-scanned every byte of every video region
-    looking for stray `55`s and logged each miss as a "bad frame" - correct, but noisy and
-    O(n) slower than recognizing and skipping whole video runs at once.
+    Command channel 0x5749 contains DUML; camera channel 0x574a contains video.
+    H.264 start codes and NALs can span multiple AOA envelopes and TCP chunks.
     """
 
-    def __init__(self):
+    def __init__(self, on_video=None):
+        self.mux = AoaMux()
+        self.on_video = on_video
         self.buf = bytearray()
         self.duml_bytes = 0
         self.video_bytes = 0
 
     def feed(self, data, log_fn):
-        self.buf.extend(data)
+        for packet in self.mux.feed(data):
+            if packet.channel == CAMERA_VIDEO:
+                self.video_bytes += len(packet.payload)
+                if self.on_video is not None:
+                    self.on_video(packet.payload)
+            elif packet.channel == COMMAND:
+                self.buf.extend(packet.payload)
+                self._commands(log_fn)
+
+    def _commands(self, log_fn):
         i = 0
         n = len(self.buf)
         while i < n:
             b = self.buf[i]
-            if b == 0x55 and i + 3 <= n:
+            if b == 0x55:
+                if i + 4 > n:
+                    break
                 length = self.buf[i + 1] | ((self.buf[i + 2] & 0x03) << 8)
-                if 13 <= length <= 1023:
+                if length >= 13 and crc8(0x77, self.buf[i:i + 3]) == self.buf[i + 3]:
                     if i + length > n:
-                        break  # frame not fully buffered yet
+                        break
                     frame = bytes(self.buf[i:i + length])
                     if (crc8(0x77, frame[:3]) == frame[3]
                             and crc16(0x3692, frame[:-2]) == int.from_bytes(frame[-2:], "little")):
@@ -76,39 +85,33 @@ class StreamDemuxer:
                         self.duml_bytes += length
                         i += length
                         continue
-            if b == 0 and i + 3 <= n and self.buf[i + 1] == 0 and self.buf[i + 2] == 1:
-                i += 3  # 3-byte NAL start code, skip past it
-                self.video_bytes += 3
-                continue
-            if b == 0 and i + 4 <= n and self.buf[i + 1] == 0 and self.buf[i + 2] == 0 and self.buf[i + 3] == 1:
-                i += 4  # 4-byte form
-                self.video_bytes += 4
-                continue
             i += 1
-            self.video_bytes += 1
         del self.buf[:i]
-        if len(self.buf) > 2048:
-            # Should only happen if genuinely stuck mid-video with no start code for a
-            # long stretch; cap growth rather than buffer unboundedly.
-            drop = len(self.buf) - 2048
-            del self.buf[:drop]
-            self.video_bytes += drop
 
     def _decode(self, frame, log_fn):
         sender, receiver = frame[4], frame[5]
         seq = frame[6] | (frame[7] << 8)
         ctype = frame[8]
-        cset, cid = frame[9], frame[10]
-        payload = frame[11:-2]
+        verdict = command_verdict(frame)
+        if not verdict['accepted']:
+            log_fn(f"seq={seq} type={ctype:#04x} unsupported DUML semantics wire={frame.hex()}")
+            return
+        cset, cid = verdict['cmdSet'], verdict['cmdId']
+        payload = verdict['payload']
         log_fn(f"sender={sender:#04x} receiver={receiver:#04x} seq={seq} type={ctype:#04x} "
-               f"set={cset:#04x} id={cid:#04x} payload={payload.hex()}")
+               f"set={cset:#04x} id={cid:#04x} protection={verdict['protection']} payload={payload}")
 
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__,
                                   formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--port", type=int, default=9900)
+    ap.add_argument("--video-out", help="save only demultiplexed camera H.264 payloads to this file")
+    ap.add_argument("--input-format", choices=['records', 'raw'], default='records',
+                    help='v1 phone records (default); raw for older apps only')
     args = ap.parse_args()
+
+    video_out = open(args.video_out, 'wb', buffering=0) if args.video_out else None
 
     log_dir = session_log_dir()
     rawf = open(os.path.join(log_dir, "aoa_relay_server.log"), "a", buffering=1)
@@ -170,18 +173,46 @@ def main():
     while True:
         conn, addr = srv.accept()
         log(f"=== connection from {addr} ===")
+        # Telemetry pushes arrive every tens of ms while the phone is actually streaming
+        # (duml_telemetry.py's own observed rate) - 30s is a "something is wrong, not just
+        # a brief lull" threshold (~1000x that rate), not a tight bound on normal traffic.
+        # Without this, a connection that goes silent without closing (seen 2026-10-24:
+        # the phone reconnected, the server logged it, then nothing for 14+ minutes with
+        # no exception and no exit - recv() was just blocked forever) wedges the single-
+        # connection accept loop permanently, since nothing else is waiting on srv.accept().
+        conn.settimeout(30)
         with lock:
             state["conn"] = conn
-        framer = StreamDemuxer()
+        records = RecordParser()
+        discarded_bytes = 0
+        framer = StreamDemuxer(on_video=video_out.write if video_out else None)
+        def received(raw):
+            ts = time.strftime("%Y-%m-%dT%H:%M:%S")
+            log(f"{ts} +{len(raw)}B {raw.hex()}")
+            framer.feed(raw, logframe)
         try:
             while True:
                 data = conn.recv(4096)
                 if not data:
                     break
-                ts = time.strftime("%Y-%m-%dT%H:%M:%S")
-                log(f"{ts} +{len(data)}B {data.hex()}")
-                framer.feed(data, logframe)
+                if args.input_format == 'raw':
+                    received(data)
+                    continue
+                for kind, channel, payload in records.feed(data):
+                    if kind in (ENVELOPE, DISCARDED):
+                        received(payload)
+                        if kind == DISCARDED:
+                            discarded_bytes += len(payload)
+                            log(f'=== phone discarded {len(payload)} USB bytes ===')
+            if args.input_format == 'records':
+                records.finish()
+        except TimeoutError:
+            log(f'=== no data for 30s from {addr}, assuming stalled - dropping connection '
+                f'(waiting for a fresh one to accept) ===')
+        except (OSError, ValueError, KeyError, TypeError) as error:
+            log(f'=== relay protocol error: {error} ===')
         finally:
+            log(f'=== phone discarded total={discarded_bytes}B ===')
             with lock:
                 if state["conn"] is conn:
                     state["conn"] = None

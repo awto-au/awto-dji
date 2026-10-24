@@ -1,12 +1,12 @@
 import 'dart:async';
 import 'dart:io';
-import 'dart:typed_data';
 
 import 'package:flutter/foundation.dart';
 
-/// Debug-only raw byte mirror, now bidirectional: forwards every chunk received from a
-/// transport to a plain TCP socket (so the real decoder can run natively on a dev machine
-/// instead of being rebuilt into the app for every protocol change), AND forwards any bytes
+import 'relay_record.dart';
+
+/// Debug-only bidirectional relay: forwards versioned channel-tagged records to a
+/// plain TCP socket for independent PC decoding, AND forwards any bytes
 /// the dev machine sends back on that same socket to [onCommand] - a command proxy, so a PC
 /// script can inject arbitrary DUML frames straight onto the AOA link with no UI involved
 /// (see scripts/re/aoa_send.py / aoa_relay_server.py's control FIFO).
@@ -21,9 +21,24 @@ class TcpRelay {
 
   Future<void> connect() async {
     try {
-      final s = await Socket.connect(host, port,
-          timeout: const Duration(seconds: 3));
+      final s = await Socket.connect(
+        host,
+        port,
+        timeout: const Duration(seconds: 3),
+      );
       _socket = s;
+      // Socket.add can fail asynchronously through the IOSink.done future.
+      // Handling only listen(onError:) leaves that second error unhandled.
+      s.done.then<void>(
+        (_) {
+          if (identical(_socket, s)) _socket = null;
+        },
+        onError: (Object error, StackTrace stack) {
+          debugPrint('[relay] tx error: $error');
+          if (identical(_socket, s)) _socket = null;
+          s.destroy();
+        },
+      );
       debugPrint('[relay] connected to $host:$port');
       _sub = s.listen(
         (chunk) => onCommand?.call(chunk),
@@ -35,11 +50,11 @@ class TcpRelay {
     }
   }
 
-  void send(Uint8List chunk) {
+  void sendRecord(int kind, int channel, Uint8List payload) {
     final s = _socket;
     if (s == null) return;
     try {
-      s.add(chunk);
+      s.add(RelayRecord.encode(kind, channel, payload));
     } on Object catch (e) {
       debugPrint('[relay] send failed: $e');
     }

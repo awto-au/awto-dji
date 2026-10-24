@@ -16,6 +16,7 @@ class LinkHostScreen extends StatefulWidget {
 }
 
 class _LinkHostScreenState extends State<LinkHostScreen> {
+  int _intentRevision = 0;
   @override
   void initState() {
     super.initState();
@@ -30,17 +31,19 @@ class _LinkHostScreenState extends State<LinkHostScreen> {
   }
 
   Future<void> _startup() async {
+    final revision = _intentRevision;
     Map<Object?, Object?>? initial;
     try {
       initial = await _intents.invokeMapMethod<Object?, Object?>('get');
     } on Object {
       // Not on Android: no launch intent, so fall through to a plain connect.
     }
-    await _dispatch(initial);
+    if (revision == _intentRevision) await _dispatch(initial);
   }
 
   Future<void> _onNative(MethodCall call) async {
     if (call.method == 'onIntent') {
+      _intentRevision++;
       await _dispatch(call.arguments as Map<Object?, Object?>?);
     }
   }
