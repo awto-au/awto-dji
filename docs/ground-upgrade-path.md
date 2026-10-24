@@ -23,21 +23,33 @@ Settles the conflict with `docs/control-plane-re.md` (which said the remote MCU 
 
   | block | base | words | note |
   |---|---|---|---|
-  | GPIO FIO (fast) | `0x2009C000` | 29 | FIO pins used by the FPGA/control strobes (see Q2) |
-  | UART0 | `0x4000C000` | 27 | most-referenced serial block; role `[?]` |
+  | GPIO FIO (fast) | `0x2009C000` | 29 | FIO pins used by the FPGA/control strobes (see Q2); **GPIO1 bits 21/24/27 are the board-strap input (see "Board-strap" below)** |
+  | UART0 | `0x4000C000` | 27 | most-referenced serial block; **role resolved: `port_send` port 3** (frame-forward dispatch target, `control-plane-re.md` "Full GPIO/bus survey") |
   | SYSCTL | `0x400FC000` | 18 | clock/power setup |
   | PINCONNECT | `0x4002C000` | 17 | pin mux |
   | AHB-SRAM | `0x2007C000` | 47 | RAM data pointers (corrects the earlier wrong "USB" bucket above) |
-  | UART1 | `0x40010000` | 12 | role `[?]` |
+  | UART1 | `0x40010000` | 12 | **role resolved: `port_send` port 4** |
   | RTC | `0x40024000` | 8 | role `[?]` |
-  | CAN1 | `0x40044000` | 10 | role `[?]`; not in the Q1-Q4 analysis (not wired into any Q here) |
-  | ADC / CAN2/CANAF/CANAFRAM / UART2/UART3 / DAC / TIMER1/TIMER2 / WDT / RITIMER / MCPWM / GPIO-INT / BOOTROM | various | 1-5 each | WDT used by reset path (Q1) |
-  | SSP0 `0x40088000`, SSP1 `0x40030000`, I2C0/I2C1/I2C2, USB `0x50008000`, EMAC, GPDMA, I2S, QEI, PWM1 | - | 0 | genuinely unused by this firmware (SVD-confirmed bases, not a guess landing on the wrong block) |
+  | CAN1 | `0x40044000` | 10 | **role resolved: `port_send` port 5** — ground-side DUML relay bus (CAN1/CAN2 together), same architectural role as air-side `m0900`/`m0306` CAN relay (`dataflow.md` §7.10); payload content not decoded |
+  | ADC / CAN2/CANAF/CANAFRAM / UART2/UART3 / DAC / TIMER1/TIMER2 / WDT / RITIMER / MCPWM / GPIO-INT / BOOTROM | various | 1-5 each | WDT used by reset path (Q1); **UART3 role resolved: `port_send` port 2; UART2 is clocked/configured at boot but does NOT appear in the port_send table — role still open, candidate: a dedicated link to `m1300`** |
+  | SSP0 `0x40088000`, SSP1 `0x40030000`, I2C0/I2C1/I2C2, USB `0x50008000`, EMAC, GPDMA, I2S, QEI, PWM1 | - | 0 | genuinely unused by this firmware (SVD-confirmed bases, not a guess landing on the wrong block); **confirmed by a second, independent method — Ghidra's own base-address xref scan over the full disassembly also finds 0 hits on I2C0/I2C1/SSP0/SSP1, so this is not a literal-scan undercount artifact. No I2C bus, no second SPI/SSP bus on this chip.** |
   | legacy SPI `0x40020000` | - | 5 | only `0xDDF8` is the base pointer (used by the Q2 S0SPDR writer); `0x40022302`/`0x40022502` are data values, not pointers |
 
   Hits are candidates only. Confirm each with `scripts/re/mcu_trace.py lit VALUE` / `who ADDR` before naming a register.
 - Full Ghidra pass (789 functions, 38,426 instructions, all 511 SVD register labels applied) done:
   `control-plane-re.md` "`m1400` ... Ghidra pass"; project archived at `re/ghidra-projects/m1400_radio.tar.gz`.
+- **Board-strap mechanism (issue #39 follow-up):** `m1400` DOES read a GPIO board/variant
+  code at boot (`boot_init`, offset `0x05B0`) — `(GPIO1.27<<2)|(GPIO1.21<<1)|GPIO1.24` into
+  RAM `0x10000006` — the ground-side analogue of `m0900`'s `(PA0<<2)|(PC15<<1)|PC14`. Gates
+  4 separate things (DUML version-query reply, `cmd_set0`/cmd `0x30`, two periodic
+  radio-telemetry builders, and the RF profile selected inside `radio_start` itself). Full
+  detail, consumers and addresses: `control-plane-re.md` "Board-strap mechanism found on
+  `m1400`". Not yet tied to which specific `m200N` FPGA image gets selected — that step is
+  still inside the undecoded Q2 record scripts below.
+- **`cmd_set 9` dispatch table is now fully decoded** (all 13 low entries, not just `0x0C`);
+  **`cmd_set 6`/`0x40` resolves the "set 6" open item below**; **`m1400` runs µC/OS-III, not
+  bare-metal** (PendSV/SysTick disassembly + RTOS string fingerprint). All three:
+  `control-plane-re.md`, same section group.
 
 ## Addressing (correction)
 
@@ -53,6 +65,12 @@ Settles the conflict with `docs/control-plane-re.md` (which said the remote MCU 
 - Local dispatch `0x53c8` switches on `frame[9]` (cmd_set) via TBB at `0x53d4`; set 0 sub-switch on `frame[10]`.
 - Receiver 0x0E = this MCU (inferred: self-update and reboot handlers only accept it). Receiver 0x14 = ground FPGA
   (inferred: every 0x14 handler runs FPGA register code; mirrors air 0x13 on m0900). Names from the dissector not checked.
+- **The `0x5c8c` TBB and its ports are now resolved** (issue #39 follow-up; full table in
+  `control-plane-re.md` "Full GPIO/bus survey"): it maps the 32 receiver-type values to a
+  `port_send(port, frame)` switch — port 0 = host/ACK ring buffer, port 1 = chunked radio-TX
+  queue (the Lightbridge link itself, and the default for most receiver types), ports 2/3/4
+  = UART3/UART0/UART1, port 5 = CAN1/CAN2. `0x0E`/`0x14` resolve to a no-op in this table
+  (already intercepted earlier as local, per the bullet above).
 
 ## Q1: upgrade commands (DUML set 0x00)
 
@@ -277,14 +295,24 @@ by reading the 5 section records straight off the original file (same record for
 | Chip UID | STM32 96-bit at `0x1FFFF7E8`, reply 0x0954 | LPC IAP 58 128-bit, reply 0x0954 | verified |
 | UID used in upgrade handlers | no | no | verified |
 | Reboot | not decoded | watchdog expiry after save-config | verified |
+| Board/variant strap | `(PA0<<2)\|(PC15<<1)\|PC14`, gates whole FPGA/radio bring-up | `(GPIO1.27<<2)\|(GPIO1.21<<1)\|GPIO1.24` -> RAM `0x10000006`, gates version-reply, cmd `0x30`, telemetry records, and the `radio_start` RF profile (not a single on/off gate) | verified (issue #39) |
+| RTOS | bare-metal, ST StdPeriph, no RTOS | **µC/OS-III** (PendSV/SysTick disassembly + string fingerprint) | verified (issue #39) |
 
 ## Open
 
 - Data path of the FPGA image on both sides (neither MCU handles Update Transmit).
 - Consumer of the `0x55AA66CC` marker and the `0x10007f70/74` pair; bootloader contents.
-- Role of P1.23; scripts at `0x20310`, `0x1d1d4`, `0x23d68`.
-- Re-check `docs/id-entry-point.md` and the "set 6" statement in `docs/cpu-reversing-proof.md` (code routes `0x56e4` from set **9**; the `frame[9]==6`
-  test at `0x5c76` is a separate special case for receiver 0x19, cmd 0x40).
+- Role of P1.23; scripts at `0x20310`, `0x1d1d4`, `0x23d68` (now tied to the board-strap
+  finding — these almost certainly contain the actual `m200N` FPGA-image/RF-profile select,
+  per `control-plane-re.md` "Board-strap mechanism" — still not decoded).
+- ~~Re-check `docs/id-entry-point.md` and the "set 6" statement in `docs/cpu-reversing-proof.md`~~
+  **resolved (issue #39):** `frame[9]==6`/cmd `0x40` at `0x5c76` is a genuinely separate,
+  small dispatch (`control-plane-re.md` `duml_set6_cmd40`, offset `0x579a`) — not part of the
+  set-9 table, not further decoded past "stores a payload value + a flag".
+- New from this pass: role of `UART2` (clocked but not in the `port_send` table); payload
+  content of the CAN1/CAN2 relay (port 5); bodies of `0xdb60`/`0xdc30`'s indexed param table
+  (candidate RF/link-config fields); `cmd_set0`/`0x30` sub-handler bodies beyond the
+  board-strap branch point; which GPIO straps load which `m200N` image.
 
 ```mermaid
 sequenceDiagram

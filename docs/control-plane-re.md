@@ -414,6 +414,175 @@ record-script mechanism (`fpga_script_exec_record` / the undecoded scripts at of
 pair. Open for a follow-up pass; not chased further here (scope: issue #39 asked for the
 decode, and the decode's answer is "not present").
 
-Reproduce: `python3 scripts/re/svd_to_labels.py --svd <path> --out docs/data/lpc176x5x-register-map.tsv`;
+### Board-strap mechanism found on `m1400` — the ground-side equivalent of `m0900`'s board code
+
+`m0900` (air) has a fully-traced 3-pin GPIO board-strap code gating FPGA/radio bring-up
+(`fpga-bringup.md`). The ground-side firmware ships **three** FPGA images in one package
+(`m2000`/`m2001`/`m2002`, "ground model 00/01/02" per their own `.ini` labels, all three
+bundled alongside `m1400` in `C1_FW_V01.06.0000`) but had **no traced equivalent on `m1400`
+at all** going into this pass. A real one exists — found by disassembling `boot_init`
+(flash `0xA5B0` = offset `0x05B0`, called early from the reset chain, also runs
+`init_chip_uid` and the 4 UART inits below):
+
+- Clears `GPIO1_DIR` bits 21 and 24 (`0x2009C020`, sets them input; bit 27 is left at its
+  reset-default input state, not explicitly cleared — **inferred**, not provably
+  intentional).
+- Reads `GPIO1_PIN` (`0x2009C034`) and packs **`board_strap_code = (P1.27<<2) | (P1.21<<1) |
+  P1.24`** into RAM `0x10000006` — the same "3 arbitrary GPIO input bits -> 3-bit code"
+  shape as `m0900`'s `(PA0<<2)|(PC15<<1)|PC14`. (verified, disassembly + raw binary
+  byte-level confirmation of the pool constants)
+
+`board_strap_code` is read back in at least 4 places (not just one FPGA-bringup gate like
+the air side — the ground MCU threads it through more of the stack):
+
+1. **`duml_get_device_version`** (`0x52EA`/offset, rx non-`0x14` path): if `board_strap_code
+   == 3` and a readiness flag (RAM `0x10000000`) is set, the reply packs a fixed `0x03,0x03`
+   pair instead of the live strap/neighbour-byte pair — **the strap value is echoed back to
+   the host app over DUML.**
+2. **`duml_set0_cmd30`** (`0x4FD2`/offset, previously logged as "not decoded" — now is):
+   sub-command 1 picks between handlers `0x4E3E`/`0x4F02` and sub-command 3 between
+   `0x4924`/`0x4B7C` based on `board_strap_code == 3` (ANDed with the same readiness flag);
+   subs 2 and 4 are not strap-gated.
+3. **Two periodic radio-telemetry-record builders** (`0x2C7C`, TIMER0-IRQ-driven, and its
+   twin `0x93F0`): both special-case `board_strap_code == 1` when packing one field of the
+   outgoing status record (sent via the port dispatcher below, DUML cmd `0xB0`).
+4. **`radio_start`** itself (`0xD55C`, the chain already named in this doc as the radio
+   bring-up path): sets a config-word nibble to `0x100` by default, `0x300` if
+   `board_strap_code == 1`, or `0x200` if a separate ready/mode flag is set — **this is the
+   direct ground-side analogue of `m0900`'s board-code-gated FPGA bring-up**: the strap
+   selects one of (at least) 3 RF/link profiles at the point the radio link actually starts.
+
+So: **yes, `m1400` reads GPIO straps at boot and gates behaviour on them**, across version
+reporting, a general DUML command, periodic telemetry, and the radio bring-up profile
+itself — a broader footprint than the single FPGA-image-select gate on `m0900`. What
+concretely differs between strap values 0/1/2/3 (e.g. whether strap value N maps to loading
+`m200N`'s FPGA image) was **not traced this pass** — the FPGA-image-select step itself still
+lives in the undecoded record scripts (`fpga_script_exec_record`, Q2 below); open for a
+follow-up.
+
+### Full GPIO/bus survey — what else is (and isn't) wired
+
+Checked by **two independent methods** (the original word-window literal scan +
+`lpc17xx_periph_scan.py`, and Ghidra's own base-address xref scan over the full disassembly,
+`m1400_ghidra_disasm.py`'s dump) — both agree:
+
+- **No I2C.** `I2C0` (`0x4001C000`) and `I2C1` (`0x4005C000`): **0 hits, both methods.** No
+  EEPROM, sensor, or any other I2C device on this chip.
+- **No second SPI/SSP bus.** `SSP0` (`0x40088000`) and `SSP1` (`0x40030000`): **0 hits, both
+  methods.** The only SPI on this chip remains the already-documented legacy `SPI0`
+  (`0x40020000`, the FPGA bridge, CS P2.9).
+- **All 4 UARTs are genuinely live** (not dead code like `m0900`'s `SPI1`, issue #18):
+  `UART0`-`UART3` are each independently clocked (`SYSCON PCLKSEL`, `scripts` 0x0798/0a5a/
+  0d02/0fa6 inside `boot_init`) and baud/LCR/FCR-configured at boot. Resolved their actual
+  roles via the frame-forward dispatcher below rather than the (undercounting) literal scan.
+- **CAN1 (10 hits) / CAN2 (3 hits) are genuinely wired**, via a shared generic LPC17xx CAN
+  mailbox TX/RX driver (`0x1B6AC`+, parameterised on the CAN1/CAN2 base). Ground-side use was
+  previously unexamined (the existing CAN1/CAN2-as-DUML-relay finding in `dataflow.md` §7.10
+  is air-side, `m0900`/`m0306` only).
+
+**Frame-forward dispatcher resolves the UART/CAN roles** (`duml_route`'s TBB at offset
+`0x5C8C`, already cited in this doc as "forwarded... to a port" but not resolved): 32
+receiver-type entries map to a `port_send(port, frame)` switch (`0x25D8`):
+
+| port | peripheral | evidence |
+|---|---|---|
+| 0 | host/ACK ring buffer, OS-critical-section wrapped (`0x1F5E0`) | likely the primary app/host DUML link |
+| 1 | chunked queue (23/40/21-byte records into a ring buffer) | almost certainly the Lightbridge radio TX path, not a UART |
+| 2 | UART3 (`0x21126`) | |
+| 3 | UART0 (`0x2091C`) | |
+| 4 | UART1 (`0x20BEC`) | |
+| 5 | CAN1/CAN2 (`0x1BC08`) | ground-side DUML relay bus — same architectural role as `m0900`'s air-side CAN1/CAN2 relay |
+
+Receiver types `0x0A`->port0, `0x02/0x0D/0x10/0x16`->port2, `0x18`->port4, `0x19/0x1C`->port5,
+`0x00`->local (rewritten `0x0E`), `0x1F`->local+conditional port0, `0x06/0x0E/0x14/0x1A/0x1B/
+0x1D/0x1E`->no-op (`0x0E`/`0x14` are already intercepted earlier as local, per the existing
+`duml_route` entry in `ground-upgrade-path.md`); **everything else (the majority of the 32
+entries) defaults to port 1** — consistent with a ground remote whose main job is "relay to
+the aircraft."
+
+**`UART2` is configured but never appears in this port table** — it's genuinely clocked at
+boot but its role is a separate, unresolved open item (candidate: a dedicated link to
+`m1300`, the ground's own video decoder, not DUML frame relay). CAN's actual payload content
+(DUML relay vs something else) also wasn't decoded past "it's a live, generic mailbox
+driver" this pass.
+
+**Bonus — resolves an existing "Open" item:** the `frame[9]==6, cmd 0x40` special case at
+`duml_route` offset `0x5C76` (flagged open in `ground-upgrade-path.md`, "Re-check... the 'set
+6' statement in `cpu-reversing-proof.md`") is a genuinely separate, smaller dispatch
+(`0x579A`): stores a payload value to RAM and a 1-byte flag (`payload[0x12]==0x0A -> 1`,
+`==0xFF -> no-op`, else `-> 0`); the flag's role wasn't traced further.
+
+### `cmd_set 9` dispatch table — now fully decoded (all 13 low entries resolved)
+
+The earlier pass decoded the `0x0C`-`0x15`/`0x2C` entries but never resolved what the `tbb`
+at offset `0x56E4` actually does for cmd_id `0x00`-`0x0C` (13 entries, indices 0-0xC) — it
+only reported the one entry (`0x0C`) that happened to also appear in the explicit chain.
+Recovered the real jump-table bytes from the raw binary (table at offset `0x56F4`, base =
+`tbb`-instruction-address + 4) and matched every index against the APK's real
+`CmdSet.RC.CmdIdType` enum (`tmp/apk/.../CmdSet.java`, the same source used for the earlier
+decode):
+
+| cmd_id | APK name | Handler | Role |
+|---|---|---|---|
+| 0x00 | (no APK entry — DJI-internal, like `0x2C`) | `0x4E94` | Copies a 0x43 B payload into a struct; compares 5 fields against a reference, and **on match overwrites them with new values from the same payload** — a password/credential check-then-replace shape. |
+| 0x01 | GetChannelParams | *(default, no-op)* | **Unimplemented on this build.** |
+| 0x02 | SetChannelParams | *(default, no-op)* | **Unimplemented.** |
+| 0x03 | SetCalibration | *(default, no-op)* | **Unimplemented.** |
+| 0x04 | GetHardwareParams | `0x4D0A` | Despite the name, a **setter**: calls a generic indexed param store (`0xDB60`) with fixed index `0x0E`. Same Set/Get-inversion pattern already proven for `0x0C`/`0x0D`. |
+| 0x05 | GetPushParams | `0x4CD0` | Reads the same generic indexed param store (`0xDC30`), fixed index `0x0F`; returns 1 B. |
+| 0x06 | SetMaster | `0x4C94` | Generic indexed param setter (`0xDB60`), index = a payload `u16` (small values, or a `0xFE00-0xFEFF`/`0xFFF6-0xFFFE` sentinel range selecting bit-packed RF/link-config fields). |
+| 0x07 | GetMaster | `0x4C54` | Paired getter (`0xDC30`) over the same index space. |
+| 0x08 | SetName | *(default, no-op)* | **Unimplemented.** |
+| 0x09 | GetName | `0x4C22` | Despite the name, **only writes** `payload[0]` into RAM and acks — no name is ever returned. Another Set/Get-inversion instance. |
+| 0x0A | SetPassword | *(default, no-op)* | **Unimplemented.** |
+| 0x0B | GetPassword | *(default, no-op)* | **Unimplemented.** |
+| 0x0C | SetConnectMaster | `0xCBCA` | Already documented above. |
+
+So the "`SetFrequency` absent" finding above is one instance of a **broader pattern**:
+`GetChannelParams`/`SetChannelParams`/`SetCalibration`/`SetName`/`SetPassword`/
+`GetPassword` (6 more `CmdIdType` entries) are *also* genuinely unimplemented on this
+firmware build — they all fall through the same `tbb` default to the no-op path. `0x00`,
+`0x04`-`0x07` and `0x09` were previously **entirely undocumented** (the earlier pass only
+reported `0x0C` from this range); all now have real handlers identified. `0xDB60`/`0xDC30`
+(the shared indexed-param store/get pair) look like the project's best lead yet for a
+runtime-computed RF/link parameter table — not traced to named fields this pass, flagged
+for follow-up.
+
+### RTOS correction: `m1400` runs µC/OS-III, not bare-metal
+
+Issue #39 asked to verify this properly rather than inherit an assumption. It does **not**
+hold: `m1400` runs **µC/OS-III**, the same RTOS already identified on `m0306`
+(`m0101-threadx-reversing.md`'s sibling finding) — proven two independent ways:
+
+1. **String fingerprint** (same method used to ID `m0306`): `"uC/OS-III Idle Task"`
+   (offset `0x1238C`), `"uC/OS-III Tick Task"` (`0x13AE0`), `"Task Q"`/`"Task Sem"`
+   (`0x123E4`/`0x123EC`) are all present in the image.
+2. **Disassembly of the PendSV vector** (vector 14, flash `0x23B46` — **not** the dead `b .`
+   stub every other unused vector gets): disables IRQs, reads `PSP`, saves `r4-r11` to the
+   current-TCB's stack pointer field, calls a task-switch-hook function pointer, swaps the
+   current/high-ready TCB-pointer and priority-byte pairs (RAM `0x100004E0`/`0x100004E4` and
+   `0x100004B0`/`0x100004B1`), restores `r4-r11` from the new task's stack, `msr psp`, `orr
+   lr,lr,#4`, `bx lr` — this is the µC/OS-III Cortex-M3 port's `OS_CPU_PendSVHandler`
+   instruction-for-instruction, not a hand-rolled one-off. The SysTick vector (`0x1C914`,
+   also not a stub) calls a critical-section-enter/exit pair around a second call, matching
+   the standard `OSIntEnter(); OSTimeTick(); OSIntExit();` tick-ISR template. `SVCall`
+   (vector 11) is the only kernel-adjacent vector left as a dead stub — consistent, since
+   this port doesn't use `SVC` for anything.
+
+Practical effect: the DUML command handlers, the frame-forward dispatcher, and the periodic
+radio-record builders documented above all run as µC/OS-III tasks/ISRs, not a bare
+super-loop — relevant context for any future timing or re-entrancy analysis of this MCU.
+
+Reproduce (board-strap/port-map/dispatch-table/RTOS findings): derived from the existing
+`tmp/m1400_ghidra/m1400_dump.txt` dump (no new Ghidra run needed) plus direct byte-level
+reads of `firmware/unpacked/C1_FW_V01.06.0000/C1_FW_V01.06.0000_m1400.bin` to resolve literal
+pool constants and the two `tbb` jump tables (not committed; one-off Python, not elevated to
+`scripts/re/` — the resolved addresses are all captured in `docs/symbols/c1_m1400.tsv`).
+These findings are not yet reflected as renamed functions/comments inside the archived
+Ghidra project (`re/ghidra-projects/m1400_radio.tar.gz`) — applying them there is a
+follow-up, not done this pass.
+
+Reproduce (existing SVD/peripheral-scan/Ghidra-pass pipeline):
+`python3 scripts/re/svd_to_labels.py --svd <path> --out docs/data/lpc176x5x-register-map.tsv`;
 `python3 scripts/re/lpc17xx_periph_scan.py`; `python3 scripts/re/m1400_ghidra_disasm.py`
 (full dump `tmp/m1400_ghidra/m1400_dump.txt`, log `tmp/logs/m1400_ghidra_disasm.log`).
