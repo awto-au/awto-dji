@@ -76,6 +76,13 @@ class LinkSession extends ChangeNotifier {
   final Map<int, CommonVersion> latestVersions = {};
   LinkState linkState = LinkState.disconnected;
 
+  /// Most recent decoded `GetAELock`/`GetExposureCompensation`/`GetExposureMode`
+  /// replies (camera cmdset 0x02) - see `link/camera_commands.dart` and `package:
+  /// duml`'s `camera_exposure.dart` for the request builders and decoders.
+  CameraAeLock? latestAeLock;
+  CameraExposureCompensation? latestExposureCompensation;
+  CameraExposureModeState? latestExposureMode;
+
   Stream<DumlPacket> get packets => _packets.stream;
   Stream<OsdGeneral> get telemetry => _telemetry.stream;
   Stream<PacketLogEntry> get entries => _entries.stream;
@@ -153,6 +160,12 @@ class LinkSession extends ChangeNotifier {
       if (version != null) {
         latestVersions[p.senderType] = version;
       }
+      final aeLock = CameraAeLock.fromPacket(p);
+      if (aeLock != null) latestAeLock = aeLock;
+      final exposureCompensation = CameraExposureCompensation.fromPacket(p);
+      if (exposureCompensation != null) latestExposureCompensation = exposureCompensation;
+      final exposureMode = CameraExposureModeState.fromPacket(p);
+      if (exposureMode != null) latestExposureMode = exposureMode;
     }
     if (gotPacket && prev != null) {
       _gaps.add((now, now.difference(prev).inMilliseconds));
