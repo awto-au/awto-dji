@@ -527,3 +527,66 @@ and `FUN_08035484`/`FUN_080353b2` (CAN2 init) anywhere in the 2745-function disa
 found for either** - both are evidently reached only through an indirect call (a function-pointer
 table, consistent with this chip's other init code), which applies equally to CAN1 and CAN2 and
 so doesn't help distinguish CAN2's role from CAN1's. §7.10's open item stands: **U, still open.**
+
+### Q4: direct trace of "0x414 writes 0x20002538", the RX ISR, and the "two logical links" theory (2026-10-24 follow-up)
+
+Operator-specified addresses, traced directly rather than inferred from the existing tables.
+Same script as Q2, extended: `scripts/re/m0900_can_closure_check.py`, output
+`tmp/m0900_can_ghidra/can_closure_check.txt`.
+
+**A genuinely new finding first, because it's needed to even interpret the operator's addresses
+correctly (V):** `0x0800b31c`/`0x0800b3ec`/`0x0800b468` (`m0900-buses.tsv`'s CAN1 row: "can_init",
+"ring init", "can_enqueue_and_tx") are **not addresses in this section's project** - they're from
+`tmp/m0900_ghidra` (`scripts/re/m0900_ghidra_disasm.py`, `BASE_ADDR = "0x08008000"`), a *different,
+earlier* Ghidra load of the same binary. Checked which project's base is the real one: file offset
+`0x0` decodes as a textbook Cortex-M vector table (SP `0x20004cb8`, Reset `0x08008201`, four more
+odd/Thumb exception handlers); file offset `0x8000` (where `m0900_ghidra_disasm.py` tells Ghidra
+code begins) is mid-instruction garbage. **True link base is `0x08000000`.** This project
+(`m0900_can_ghidra`, all of §7-7.11) used it correctly throughout. `m0900_ghidra` is off by
+**+0x8000 on every function address it reports** - `0x0800b31c`/`0x0800b3ec`/`0x0800b468` minus
+`0x8000` land exactly on this project's `can_bus_init` (`0x0800331c`)/`can_endpoint_register`
+(`0x080033ec`)/`can_send_bytes` (`0x08003468`), confirming the translation. **`m0900-buses.tsv`'s
+CAN1 row addresses (and almost certainly its other rows, same project) are all +0x8000 off true -
+not corrected here (out of this pass's scope), flagging for whoever next touches that file.**
+
+- **"Queue init: is 0x414 written into the object at 0x20002538?" - V, yes, directly.**
+  `FUN_080033ec(DAT_080098c4 + 0x80, 0x414, 1, 0x40, DAT_080098c4)` - `DAT_080098c4` =
+  `0x200024b8`, so the object address is `0x200024b8+0x80` = `0x20002538` exactly. Inside
+  `can_endpoint_register`: `*(undefined4 *)param_1 = param_2;` - the first 4 bytes of that
+  object are set to `param_2` = `0x414`. Confirmed, no inference needed.
+- **Qualification ("registration doesn't prove active") - already answered, V:** the `1` in that
+  same call is the direction field (`param_3`); `1` = TX. §7.5/Q1 already established TX actually
+  firing is board-gated (2/4/5/6) at the point of use in `packet_send`, separately from this
+  unconditional registration - consistent with the operator's caveat, nothing new needed.
+- **Receive dispatch: does 0x414/0x415 share 0x413's processing? - split answer (V where traceable,
+  honestly U where not).** `0x414`'s direction field is `1` (TX): `can_endpoint_register`'s
+  `if (param_3 == 0) {...}` branch (the only branch that calls `CAN_FilterInit` and inserts into the
+  RX-match table `DAT_080034f4`) is **not taken** for it - structurally, `0x414` can never be
+  matched by an inbound frame, regardless of how the RX ISR itself works. `0x415`'s direction is
+  `0`: it takes the **exact same branch** as `0x413`, with **zero ID-specific code anywhere in the
+  function** - both land in the identical 13-slot RX table via the identical `CAN_FilterInit` call.
+  This is a structural guarantee from `can_endpoint_register`'s own (cleanly-decompiled) logic, not
+  dependent on resolving the ISR. The RX ISR itself: IRQ20's vector-table entry (`0x0800b23d`, read
+  directly from the file, base-independent) matches this project's own `vec_36 @ 0800b23c` exactly
+  - so this project's ISR address is correct - but **its decompilation is still unreliable**
+  (register-pair confusion, §7.7's existing finding stands, not re-resolved this pass).
+- **Routing: already fully answered in Q1, no new work needed.** Receiver types {1,4,8,15} ->
+  `0x412`; type {30} -> `0x414`; types `{3,5,10,11,12,18,21,23}` (FLYC included) -> USART1, never
+  CAN.
+- **Packet handling: same 0x55 framing/CRC? - already answered in Q1, no new work needed.** CAN
+  and USART1/2/3 share the identical framer (`FUN_08009a8e`)/dispatch (`FUN_0800998a`) - one DUML
+  codec, not two.
+- **`can_endpoint_register`'s callers - already exhaustive from Q2 (4 call sites), re-confirmed
+  here under the correct addressing.**
+- **TX pump traced cleanly as a bonus (V, no ambiguity at all - clean decompilation):**
+  `can_tx_pump` (`FUN_08003298`) scans all 13 TX slots generically; for whichever slot has pending
+  bytes it reads the CAN ID straight back out of that endpoint's own first word (`local_30 =
+  **(ptr)` - literally the value written at registration) and calls `CAN_Transmit` with it. Zero
+  ID-specific branching - `0x412` and `0x414` go through byte-identical code.
+- **Net: the "two logical links, FC vs camera/gimbal" theory is refuted on two independent
+  grounds.** (1) FLYC (device type 3, the FC) never touches CAN at all - USART1 unconditionally
+  (Q1). (2) There is no "link" abstraction in the driver to multiplex in the first place: one
+  generic 13-slot TX table + one generic 13-slot RX table, serviced by ID-agnostic code (proven
+  above for TX, structurally guaranteed for RX). `0x412`/`0x413` and `0x414`/`0x415` differ only in
+  which upstream DUML receiver-type `packet_send` maps to which TX slot - not in any distinct
+  processing mechanism, protocol, or "channel."

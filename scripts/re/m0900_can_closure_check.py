@@ -25,6 +25,19 @@ re/ghidra-projects/m0900_can.tar.gz):
    none targets the CAN1/CAN2 upper half (0x4000) with a matching lower half - rules out
    the only other address-construction technique this ISA offers.
 
+Follow-up trace (operator-specified addresses, 2026-10-24), appended to the same report:
+
+4. Base-address sanity check: dumps the raw words at file offset 0x0 (true Cortex-M vector
+   table location) and 0x8000 (the base `scripts/re/m0900_ghidra_disasm.py` loads at) so a
+   human can see which one is a real vector table (valid SRAM stack pointer + odd/Thumb
+   handler addresses) and which is instruction garbage - settles which of this repo's two
+   m0900 Ghidra projects uses the true link base.
+5. IRQ20 (CAN1_RX0, vector word index 36) raw handler address, read directly from the file -
+   base-independent fact, cross-checked against `vec_36` in this (can_ghidra) project.
+6. Endpoint-registration trace for std ID 0x414's object at SRAM 0x20002538: confirms the ID
+   value written into it and its direction field, straight from `can_endpoint_register`'s own
+   decompilation (no disassembly ambiguity here - this function decompiles cleanly).
+
 Output: tmp/m0900_can_ghidra/can_closure_check.txt
 Log:    tmp/logs/m0900_can_closure_check.log
 """
@@ -111,6 +124,49 @@ def main() -> int:
     lines.append(f"movt instructions (needed to build any 0x4000xxxx address): {movt_count}")
     for l in mm:
         lines.append("  " + l)
+
+    lines.append("")
+    lines.append("### 5. Base-address sanity check (true link base vs m0900_ghidra_disasm.py's base)")
+    for off, label in ((0x0, "file offset 0x0 (true Cortex-M vector table location)"),
+                       (0x8000, "file offset 0x8000 (m0900_ghidra_disasm.py's BASE_ADDR)")):
+        words = [struct.unpack_from("<I", data, off + 4 * i)[0] for i in range(6)]
+        lines.append(f"  {label}: {[f'{w:#010x}' for w in words]}")
+    lines.append("  -> offset 0x0 is a valid vector table (plausible SRAM initial SP, odd/Thumb "
+                 "handler addresses); offset 0x8000 is not. True link base is 0x08000000: "
+                 "m0900_can_ghidra (this project, all of docs/dataflow.md sec. 7-7.11) used it "
+                 "correctly. m0900_ghidra (BASE_ADDR 0x08008000, used for docs/data/m0900-buses.tsv's "
+                 "CAN1 row) is off by +0x8000 on every function address it reports - "
+                 "its can_init/ring-init/can_enqueue_and_tx addresses (0x0800b31c/0x0800b3ec/0x0800b468) "
+                 "translate to this project's can_bus_init/can_endpoint_register/can_send_bytes "
+                 "(0x0800331c/0x080033ec/0x08003468) by subtracting 0x8000 - exact match, confirming "
+                 "the translation. Raw vector-table VALUES (read straight from the file, independent "
+                 "of either project's base) are correct in both; only Ghidra-computed function "
+                 "addresses in the wrongly-based project need the -0x8000 correction.")
+
+    irq20_off = 0x40 + 4 * 20
+    irq20_val = struct.unpack_from("<I", data, irq20_off)[0]
+    lines.append("")
+    lines.append(f"### 6. IRQ20 (CAN1_RX0) vector table entry, file offset {irq20_off:#x}: "
+                 f"{irq20_val:#010x} (Thumb-stripped: {irq20_val & ~1:#010x})")
+    vec36 = re.search(r"FUNCTION vec_36 @ (\S+) size=(\d+)", text)
+    lines.append(f"  vec_36 in this project's function list: {vec36.group(0) if vec36 else 'not found'}"
+                 " -> matches the raw vector entry; this project's CAN1_RX0 ISR address is correct. "
+                 "Its own decompilation remains unreliable (register-pair confusion, per sec. 7.7) - "
+                 "not re-resolved this pass.")
+
+    lines.append("")
+    lines.append("### 7. Endpoint-registration trace for SRAM object 0x20002538 (std ID 0x414)")
+    call414 = [l for l in text.splitlines() if "0x414,1,0x40" in l.replace(" ", "")]
+    lines.append(f"  can_endpoint_register call site: {call414}")
+    lines.append("  -> param_2 (CAN ID) = 0x414 is stored as *(undefined4*)param_1 = param_2, i.e. "
+                 "the first 4 bytes of the object at 0x200024b8+0x80 = 0x20002538. CONFIRMED: 0x414 "
+                 "is the ID written there. param_3 (direction) = 1 = TX: the function's `if "
+                 "(param_3==0) {...filter+RX-table...}` branch is NOT taken, so 0x414 never gets a "
+                 "CAN_FilterInit call and is never inserted into the RX-match table (DAT_080034f4) - "
+                 "structurally cannot be matched by an inbound CAN frame, independent of how the "
+                 "RX ISR itself works. 0x415's registration (param_3=0) takes the SAME branch 0x413's "
+                 "does, with no ID-specific code anywhere in the function - both go into the exact "
+                 "same 13-slot RX table and get the exact same filter-bank call.")
 
     out_text = "\n".join(lines) + "\n"
     out_path.write_text(out_text)
