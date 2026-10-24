@@ -265,10 +265,62 @@ independent switch:
 - **V**: `usbmod.sh`/`usbsw.sh` are also reachable manually at a shell (`t_gpio.sh`-
   style direct scripts, no auth beyond the shell itself).
 
+## 7. `rpc_trans` full disassembly - settles the `GetUSB`/`SwitchUSB` candidate (issue #37 follow-up)
+
+Resolves the section 2 open item. Repro: `python3 scripts/re/cam_server_ghidra_disasm.py
+rpc_trans` (dump `tmp/rpc_trans_ghidra/rpc_trans_dump.txt`; project archived
+`re/ghidra-projects/rpc_trans_m0100.tar.gz`). 51 instructions, 3 real functions (rest
+PLT thunks) - small enough to read in full, not sampled.
+
+- **V**: `FUN_00008cd0` is the service bring-up routine - calls the `/dev/mem` mmap
+  helper (`FUN_00008d8c`, two regions: `0x20000000` and `0x10000000` bytes, matching the
+  "Dump Buffer"/"mmap phy addr" strings - unrelated to USB, a shared-memory frame/data
+  region), then `bl 0x000088b0` with the literal string `"linux_rpcsvr_ctrl"` (vaddr
+  `0x927c`) as the service name and a callback-table entry pointing at `FUN_00008acc` -
+  i.e. `ambaipc_svc_register("linux_rpcsvr_ctrl", 1, {FUN_00008acc}, 1)` (symbol name
+  `ambaipc_svc_register` confirmed from the dynsym table). After registering, it loops
+  `sleep(10)` forever (`0x8d70`-`0x8d78`) - a keepalive loop, not polling.
+- **V**: `FUN_00008acc` *is* `RPC_Ctrl_Svr_ProcRecv` (vaddr `0x9290`, used as the
+  function's own self-identifying string in its entry debug `printf`, xref `0x8b14`) -
+  the ambaipc message callback. Dispatches on `msg->+0x8` (a "Control Message Type"
+  field, not a DUML cmdset/cmdid byte):
+  - `== 1` (`0x8b38`-`0x8b88`): **TimeSync** - stores a value into a global via a
+    1-instruction identity helper (`FUN_00008ff8`), then logs `"Recv TimeSync Message,
+    Set TimeSync addr to 0x%x, Curr Time %u\n"` (vaddr `0x91d8`). Unrelated to USB.
+  - `== 2` (`0x8b8c`-`0x8c48`): **the USB-query handler.** `system("lsusb >
+    /tmp/usbtmp")` (`0x8b98`) -> `fopen("/tmp/usbtmp","r")` (`0x8ba4`) -> a
+    `fgetc`/`feof` loop counting `'\n'` bytes (`0x8bb0`-`0x8be8`, i.e. **counts lines
+    of `lsusb` output = number of enumerated USB devices**) -> `fclose` (`0x8c00`) ->
+    `memcpy(response->+0x4, &count, 4)` (`0x8c1c`) -> `response->+0x0 = 4` (reply
+    length) -> `response->+0xc = 0` (status/success) -> logs `"Recv usb query, return
+    %u\n"` (vaddr `0x923c`, matches the strings-pass finding exactly).
+  - default: logs `"Unknow Control Message Type(0x%x)\n"` (`0x8c4c`-`0x8c60`) with
+    `msg->+0x8`.
+  - No FPGA, CAN, or other issue #18/#19/#36-relevant content in this function or
+    binary - the mmap'd regions are a generic shared-memory buffer, not a config/FPGA
+    path.
+- **V, settles `SwitchUSB`: NOT the backend.** The entire handler has exactly two valid
+  message types (TimeSync, USB-query-count) and a reject-all default. There is no
+  write/mode-change branch anywhere in `rpc_trans` - no call to anything resembling
+  `usbsw.sh`/`usbmod.sh`. Those live exclusively in `cam_server`'s `FUN_0000b1c8`
+  dispatcher (section 1a), a different process entirely. `rpc_trans` cannot implement
+  `SwitchUSB` (cmdset `0x02`/cmdid `0x04`) - ruled out.
+- **I, `GetUSB` plausible but still unconfirmed end-to-end.** The USB-query case's
+  *behaviour* (report a USB device count on request) matches what a `GetUSB`
+  (`0x02`/`0x06`) backend would need to do, and it is the only Linux-side code found
+  that answers an on-demand USB query (vs. `cam_server`'s own 5 s poll, section 1b,
+  which is unrelated - different consumer, feeds `add_usb_net.sh`). **But**: the
+  dispatch key here is `rpc_trans`'s own internal `linux_rpcsvr_ctrl` "Control Message
+  Type" enum (1/2), not a literal DUML cmdset/cmdid byte, and no RTOS-side caller that
+  sends type-`2` into this `ambaipc` service was traced in this pass - confirming the
+  wire from RTOS `GetUSB` through to here still needs an RTOS-side (or `rpmsg_trans.ko`/
+  IPC-port) cross-reference, same class of gap as section 1a's untraced IPC producer.
+  Reported to the issue as: evidence is suggestive, not proof.
+
 ## Not done / open
 
-- `rpc_trans`'s "Recv usb query" handler: not disassembled - would settle whether it's
-  the Linux-side `GetUSB`/`SwitchUSB` DUML backend (section 2).
+- `rpc_trans`'s RTOS-side caller for `linux_rpcsvr_ctrl` message type 2 (USB query):
+  not traced - would fully confirm or refute the `GetUSB` link (section 7).
 - `FUN_0000b1c8`'s caller / the IPC message producer for its `+0x10` type field: not
   traced (needs `libambaipc.so` or an RTOS-side cross-reference).
 - `viz_tracking`'s trigger (what starts it - no static reference found in any init
