@@ -136,14 +136,16 @@ in this area too).
   No special unlock/handshake byte sequence for *this* port (the FC's front USB) is
   documented anywhere public found this session (wiki, forums, GitHub issues) — the
   wiki states it should just work.
-  **Unresolved conflict, flagged not resolved:** a concurrent edit to
-  `camera-linux-console-access.md` (a *different* port, the camera's Ambarella Linux)
-  asserts an empty `0x40003000.dji` file in that SD card's root is “already documented”
-  to trigger Ambarella engineering-shell logging. No source for that claim was found or
-  cited in this session, and `0x40003000` only appeared here as the example *argument*
-  to a shell command typed at an already-open prompt (`t dji console [addr]`), not as a
-  filename convention — see that doc's own flag on this. Treat as unverified until a
-  source or a confirmed independent test is given.
+  **Update (2026-10-24, later same day):** `camera-linux-console-access.md` (a
+  *different* port, the camera's Ambarella Linux) has since added a firmware-side
+  trace of a matching RTOS file-gate (specific disassembled addresses, see that doc's
+  “SD-card diagnostic logging marker” section) and a card-side result —
+  `MISC/LOG/CameraLogCur.log` now exists, 42,466 bytes. This is real evidence, not
+  nothing, but it doesn't establish that the marker *specifically* caused that file —
+  causation is still unproven, per that doc's own “Update” note. `0x40003000` itself
+  is still only confirmed as the example argument to the `t dji console [addr]` shell
+  command, not as an established filename convention. Still worth corroborating
+  independently rather than treating either doc's framing as settled.
 - This is independent confirmation the port is *supposed* to answer DUML, which makes
   this repo's total silence the anomaly to explain, not evidence the port is DUML-dead
   by design. Strengthens the "Assistant window" / boot-timing hypothesis below over the
