@@ -45,6 +45,7 @@ the current state and next steps, and `../CLAUDE.md` for agent onboarding.
 ## System data flow and buses (m0900-derived)
 - `dataflow.md` — video / telemetry / control planes as Mermaid; where DUML is injected, forwarded, consumed in `m0900`; control + telemetry sequences; unknowns list. Every edge tagged verified / inferred / unknown.
 - `board-connections.md` — P01007.06 connection diagram from firmware + wiki (**not a schematic**); what a real schematic would confirm.
+- `ground-fx3-m1601.md` — GL300C ground USB (Cypress FX3, `m1601`): iPhone iAP2 and Android AOA roles, DMA channels, the UART DUML session, and the `55 CC <type> <len>` RC->phone chunk header (`0x5749` DUML, `0x574A` video); tools `scripts/re/fx3_m1601.py`, `scripts/re/aoa_chunk_decode.py`.
 - `m0800-dm368-provenance.md` — m0800 (air DM368) decrypted and compared with public TI DVSDK 4.02 / linuxutils / U-Boot / UBL / mainline 2.6.32.17 sources; what is unchanged TI code and what DJI modified (`scripts/re/ref_string_diff.py`).
 - `m0900-can-channels.md` — the two CAN DUML links (0x412/0x413 camera/gimbal, 0x414/0x415 receiver type 30 only) and the correction that FC-type traffic goes out USART1, not CAN; `scripts/re/m0900_can_channels.py` asserts it.
 - `data/m0900-buses.tsv` — clock tree, SPI2, USART1/2/3, CAN1 rates with arithmetic and code addresses; unused buses listed.

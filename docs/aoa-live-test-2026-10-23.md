@@ -44,6 +44,12 @@ separate micro-USB/PC-facing port, which is a different physical connector).
   on a DUML-channel byte run.
 ## Correction (same day): no demux header exists - the CRC-failing frames are expected resync noise
 
+> **Superseded 2026-10-24 (`ground-fx3-m1601.md` §4).** A demux header **does** exist. The ground
+> FX3 frames every RC->phone USB chunk as `55 CC <u16 type> <u32 len>`, with type `0x5749` = DUML
+> and `0x574A` = video. This session's own `aoa_relay_server.log` contains it: 211 video and 11
+> DUML chunks, 116 CRC-valid DUML frames, 0 in video chunks (`scripts/re/aoa_chunk_decode.py`).
+> The leading `0x55` of each header is what the SOF scanner kept tripping on.
+
 Checked DJI's public Mobile SDK (`dji-sdk/Mobile-SDK-Android`) first, before digging further
 into the APK: **dead end, not useful here.** MSDK doesn't support Phantom 3 at all (starts at
 the Phantom 4 era; v5 only lists Enterprise/Matrice/Mavic 3E products); even where it does apply
@@ -80,6 +86,9 @@ position, not just the first few the live framer happened to log:
   than "error".
 
 ## The raw AOA pipe is two interleaved elementary streams, no demux header (2026-10-23)
+
+> **Superseded 2026-10-24:** chunked with a `55 CC` type/length header, see the note above and
+> `ground-fx3-m1601.md`.
 
 Checked what the large inter-burst gaps actually carry.
 
