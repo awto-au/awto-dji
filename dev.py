@@ -311,6 +311,38 @@ def _register_steps() -> None:
 _register_steps()
 
 
+def _tool(script: str, summary: str) -> dict:
+    """Command that runs one repo script with the user's extra args."""
+    def fn(extra: list[str]) -> int:
+        cmd = [sys.executable, str(REPO / script), *extra]
+        log(f"tool: {script} {' '.join(extra)}".rstrip())
+        rc = subprocess.call(cmd, cwd=REPO)
+        log(f"rc={rc}: {script}", "INFO" if rc == 0 else "ERROR")
+        return rc
+    return {"summary": summary, "args": "[args passed to the script]",
+            "kind": "action", "fn": fn}
+
+
+# Diagnostics and bench tools a human reaches for (see docs/known-telemetry-and-commands.md).
+# Each runs the script as-is; `./dev.py <cmd> --help` shows its own options.
+COMMANDS.update({
+    "duml-probe":     _tool("scripts/duml_probe.py", "probe the aircraft over DUML (identity/version)"),
+    "probe-fc-usb":   _tool("scripts/probe_fc_usb.py", "probe the flight controller USB port"),
+    "pcap-decode":    _tool("scripts/pcap_decode.py", "decode a USB pcap capture"),
+    "fetch-firmware": _tool("scripts/fetch_firmware.py", "fetch DJI firmware images from a tools CSV"),
+    "duml-pretty":    _tool("scripts/re/duml_pretty.py", "pretty-print live DUML frames"),
+    "duml-watch":     _tool("scripts/re/duml_watch.py", "watch and log live DUML traffic"),
+    "duml-cli":       _tool("scripts/re/duml_cli.py", "send a named DUML command from the catalog"),
+    "verify":         _tool("scripts/re/verify.py", "closed-loop command verify via telemetry push"),
+    "gimbal":         _tool("scripts/re/gimbal.py", "one-shot gimbal angle move via AOA proxy"),
+    "gimbal-sweep":   _tool("scripts/re/gimbal_sweep.py", "gimbal left/right sweep via AOA proxy"),
+    "aoa-relay":      _tool("scripts/re/aoa_relay_server.py", "run the phone AOA relay server"),
+    "aoa-send":       _tool("scripts/re/aoa_send.py", "send one raw DUML frame via the AOA relay"),
+    "get-identity":   _tool("scripts/re/get_identity.py", "query aircraft identity fields"),
+    "usb-inventory":  _tool("scripts/re/usb_inventory.py", "snapshot DJI and USB-UART devices from sysfs"),
+})
+
+
 def usage() -> int:
     print(__doc__.split("Scaffold usage:")[0].rstrip())
     print(f"\nUsage: ./dev.py <command> [args]\n")

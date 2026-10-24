@@ -45,9 +45,8 @@ skipped. The original `apk_dynamic_unpack.py` documented this flag as intended b
 never actually passed it to jadx - that gap is why this generalized script passes it
 explicitly.
 
-`scripts/re/pilot_memscan.py` is now a thin wrapper over this (`--package dji.pilot`,
-output path unchanged for backward compat) - new apps should call `apk_memscan.py`
-directly.
+dji.pilot runs use `apk_memscan.py --package dji.pilot` (the former `pilot_memscan.py`
+wrapper was removed; its output path is unchanged).
 
 ### 2. `scripts/re/extract_duml_classes.py` - decompiled source to a comparable table
 
