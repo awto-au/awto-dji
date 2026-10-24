@@ -20,10 +20,10 @@ falls back to hex for everything else).
 
 | Name | cmdset/id | Notes |
 |---|---|---|
-| `gimbal.angle` | 0x04/0x0a | AngleControl - relative, has duration field |
-| `gimbal.absAngle` | 0x04/0x14 | AbsAngleControl - absolute, explicit axis-invalid flags |
-| `gimbal.control` | 0x04/0x01 | Mode set (YawNoFollow/FPV/YawFollow) |
-| `gimbal.requestCtrPermission` | 0x06/0x22 | **Reply must be checked** - `scripts/re/verify.py`'s `wait_for_permission_reply` decodes it (1=Refused, 2=TimeOut, 3=Getted); `duml_cli.py` alone does not |
+| `gimbal.angle` | 0x04/0x0a | AngleControl - relative, has duration field. Payload layout V - confirmed byte-for-byte 2026-10-24 against real `dji.pilot` decompile (`DataGimbalAngleControl.java`); the "opaque flags byte" claim is also V now (hand-traced the real bit-packing, confirmed all-defaults really does produce exactly 0x24) |
+| `gimbal.absAngle` | 0x04/0x14 | AbsAngleControl - absolute, explicit axis-invalid flags. Payload layout V - same confirmation pass (`DataGimbalAbsAngleControl.java`) |
+| `gimbal.control` | 0x04/0x01 | Mode set (YawNoFollow/FPV/YawFollow). Payload layout V - same pass (`DataGimbalControl.java`) |
+| `gimbal.requestCtrPermission` | 0x06/0x22 | **Reply must be checked** - `scripts/re/verify.py`'s `wait_for_permission_reply` decodes it (1=Refused, 2=TimeOut, 3=Getted); `duml_cli.py` alone does not. Cmdid and the 1/2/3 mapping are V (confirmed in `DataRcRequestGimbalCtrPermission.java`/`RcGimbalError`, dji.pilot); the exact wire byte offset the raw status comes from is still **I** - it passes through a generic wrapper class whose own source (where it reads the wire) wasn't read this pass |
 | `camera.requestIFrame` | 0x02/0xb3 | Forces an IDR-adjacent re-sync; does not fix the no-true-IDR issue (awto-dji#26) |
 
 Send any of these: `python3 -I scripts/re/duml_cli.py send <name> [--field value...]`.

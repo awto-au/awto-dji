@@ -15,11 +15,15 @@ DEFAULT_FLAGS = 0x24  # see GimbalAngleControl docstring
 
 
 class GimbalAngleControl(C.LittleEndianStructure):
-    """CmdSet.GIMBAL/0x04 id=0x0a (AngleControl). Source: DataGimbalAngleControl.java.
-    flags byte: the real doPack() bit-packs permission/mode flags here via a shift chain
-    that (by direct calculation) discards everything except one bit from byte truncation -
-    treated as an opaque byte, not decoded further; 0x24 is the all-class-defaults value
-    (permission=False, the three APK-default-True flags) and is what we've tested with.
+    """CmdSet.GIMBAL/0x04 id=0x0a (AngleControl). Source: DataGimbalAngleControl.java,
+    confirmed 2026-10-24 against real dji.pilot decompile (dynamic/memscan unpack, not
+    just the earlier dji.go.v4 static pass).
+    flags byte: doPack() bit-packs permission/mode flags via a shift chain where each step
+    re-casts to byte and shifts left again, so most of the earlier bits are destroyed by
+    the later shifts - verified by hand-tracing doPack() with all-class-defaults
+    (permission=False, the three APK-default-True flags), which gives exactly 0x24,
+    confirming this isn't a decode gap - the byte genuinely only carries ~1 surviving bit
+    of information. Treated as opaque; 0x24 is what we've tested with.
     """
     _pack_ = 1
     _fields_ = [
@@ -38,9 +42,11 @@ class GimbalAbsAngleControl(C.LittleEndianStructure):
     AngleControl (0x0a) above, not a variant of it: no duration field, and the flags
     byte is explicit here (not opaque): bit0 controlMode, bit1 yawInvalid,
     bit2 rollInvalid, bit3 pitchInvalid ("invalid" = ignore this axis, hold current
-    position). Defaults below (yaw/roll invalid, pitch only) match the one real-
-    hardware test seen so far (2026-10-24, Codex session) and the class's own
-    overtime default (10); not yet confirmed these defaults are required.
+    position). Field layout confirmed byte-for-byte 2026-10-24 against real dji.pilot
+    decompile. Defaults below (yaw/roll invalid, pitch only) match a real-hardware
+    test (2026-10-24, Codex session) and the class's own overtime default (10); the
+    app's own un-set default is flags=0 (all axes valid) - not yet confirmed our
+    pitch-only default is required for this to work, only that it's what was tested.
     """
     _pack_ = 1
     _fields_ = [
@@ -57,7 +63,10 @@ ABS_ANGLE_FLAGS = {"controlMode": 1, "yawInvalid": 2, "rollInvalid": 4, "pitchIn
 
 class GimbalControl(C.LittleEndianStructure):
     """CmdSet.GIMBAL/0x04 id=0x01 (Control) - simpler mode-based control.
-    Source: DataGimbalControl.java. mode: 0=YawNoFollow 1=FPV 2=YawFollow."""
+    Source: DataGimbalControl.java, field order (pitch/roll/yaw/mode_byte) and
+    mode_byte=(mode<<6)|(isReset<<5) confirmed byte-for-byte 2026-10-24 against real
+    dji.pilot decompile. mode: 0=YawNoFollow 1=FPV 2=YawFollow (enum also has
+    OTHER=100, not used)."""
     _pack_ = 1
     _fields_ = [
         ("pitch", C.c_int16),
