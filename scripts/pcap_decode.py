@@ -27,6 +27,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from duml_probe import parse_stream  # noqa: E402
+from _log import log  # noqa: E402
 
 
 def find_tshark():
@@ -75,7 +76,7 @@ def cmd_duml(pcap):
         if sum(1 for c in pl if 32 <= c < 127) >= 6:
             s += f"  | {txt}"
         print(s)
-    print(f"# {len(rows)} DUML frames", file=sys.stderr)
+    log(f"{len(rows)} DUML frames")
 
 
 NAMES = {0x20: 'SET_LINE_CODING', 0x21: 'GET_LINE_CODING', 0x22: 'SET_CONTROL_LINE_STATE', 0x23: 'SEND_BREAK'}
@@ -119,7 +120,9 @@ def main():
     ap.add_argument('what', choices=['duml', 'cdc'])
     ap.add_argument('pcap')
     a = ap.parse_args()
+    log(f"decode {a.what} {a.pcap}")
     {'duml': cmd_duml, 'cdc': cmd_cdc}[a.what](a.pcap)
+    log("done")
 
 
 if __name__ == '__main__':

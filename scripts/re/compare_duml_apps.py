@@ -9,7 +9,11 @@ Usage:
 """
 import argparse
 import json
+import sys
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from _log import log  # noqa: E402
 
 
 def load(path: Path) -> dict:
@@ -56,16 +60,15 @@ def main() -> None:
         else:
             diverge.append({"class": cls, "by_app": {name: present[name] for name in have}})
 
-    print(f"apps compared: {names}")
-    print(f"classes in exactly one app: " +
-          ", ".join(f"{name}={len(v)}" for name, v in only_in.items()))
-    print(f"classes in >1 app, both V-confidence, fully agree: {len(agree)}")
-    print(f"classes in >1 app, both V-confidence, DIVERGE: {len(diverge)}")
+    log(f"apps compared: {names}")
+    log("classes in exactly one app: " + ", ".join(f"{name}={len(v)}" for name, v in only_in.items()))
+    log(f"classes in >1 app, both V-confidence, fully agree: {len(agree)}")
+    log(f"classes in >1 app, both V-confidence, DIVERGE: {len(diverge)}")
     for d in diverge:
-        print(f"\n--- {d['class']} ---")
+        log(f"--- {d['class']} ---")
         for name, r in d["by_app"].items():
-            print(f"  {name}: cmdset={r['cmdset']} cmdid={r['cmdid']} "
-                  f"fields={[(f['offset'], f['length']) for f in r['fields']]}")
+            log(f"  {name}: cmdset={r['cmdset']} cmdid={r['cmdid']} "
+                f"fields={[(f['offset'], f['length']) for f in r['fields']]}")
 
 
 if __name__ == "__main__":

@@ -6,7 +6,11 @@ Requires pyelftools. No device access or protocol transmission.
 import argparse
 import hashlib
 import json
+import sys
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from _log import log  # noqa: E402
 
 from elftools.elf.elffile import ELFFile
 from elftools.elf.relocation import RelocationSection
@@ -84,6 +88,7 @@ def main():
                 result['matches'].append({'path': str(path), 'offsets': offsets,
                                           'sha256': hashlib.sha256(data).hexdigest()})
     print(json.dumps(result, indent=2))
+    log(f"{len(result['matches'])} matches, {len(result['errors'])} errors")
     return 1 if result['errors'] else 0
 
 

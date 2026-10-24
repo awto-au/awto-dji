@@ -9,6 +9,11 @@ Run after apk-dynamic-cmdset-ids.tsv changes: python3 -I scripts/re/gen_duml_cat
 import csv
 import os
 import subprocess
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from _log import log  # noqa: E402
 
 
 def repo_root():
@@ -51,7 +56,7 @@ def main():
             f.write(f"    {key!r}: ({cmdset:#04x}, {cmdid:#04x}, {cmdset_name!r}),\n")
         f.write("}\n")
 
-    print(f"wrote {len(rows)} commands to {out_path}")
+    log(f"wrote {len(rows)} commands to {out_path}")
 
 
 if __name__ == "__main__":

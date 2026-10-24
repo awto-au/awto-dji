@@ -10,6 +10,11 @@ Usage: python3 -I scripts/re/gen_command_catalog_dart.py
 import csv
 import os
 import subprocess
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from _log import log  # noqa: E402
 
 
 def repo_root():
@@ -69,7 +74,7 @@ def main():
     os.makedirs(os.path.dirname(out_path), exist_ok=True)
     with open(out_path, "w") as f:
         f.write("\n".join(lines) + "\n")
-    print(f"wrote {len(rows)} commands to {out_path}")
+    log(f"wrote {len(rows)} commands to {out_path}")
 
 
 if __name__ == "__main__":

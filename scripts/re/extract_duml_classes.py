@@ -23,7 +23,11 @@ trees); records are deduped by class name, first occurrence wins.
 import argparse
 import json
 import re
+import sys
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from _log import log  # noqa: E402
 
 CLASS_RE = re.compile(r"\bclass\s+(\w+)\b")
 DOPACK_RE = re.compile(r"protected\s+void\s+doPack\(\)\s*\{(.*?)\n\s{4}\}", re.DOTALL)
@@ -152,7 +156,7 @@ def main() -> None:
     records = sorted(merged.values(), key=lambda r: r["class"])
     args.out.write_text(json.dumps(records, indent=2))
     n_v = sum(1 for r in records if r["confidence"] == "V")
-    print(f"{len(records)} classes ({n_v} V, {len(records) - n_v} U) -> {args.out}")
+    log(f"{len(records)} classes ({n_v} V, {len(records) - n_v} U) -> {args.out}")
 
 
 if __name__ == "__main__":

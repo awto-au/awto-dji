@@ -12,6 +12,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from match_duml_table import apk_table
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from _log import log  # noqa: E402
 
 
 def main():
@@ -42,6 +44,7 @@ def main():
     result = {'reference': 'Native disassembly: APK 0x3438 and C1 m1601 0x400042e4; independently computed vectors, not live captures',
               'table_sha256': hashlib.sha256(table[:-1]).hexdigest(), 'vectors': vectors}
     args.output.write_text(json.dumps(result, indent=2) + '\n')
+    log(f"wrote vectors to {args.output}")
 
 
 if __name__ == '__main__':

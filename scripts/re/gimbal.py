@@ -14,6 +14,8 @@ import os
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from _log import log  # noqa: E402
 from duml_commands import REGISTRY  # noqa: E402
 from duml_proto import build_frame, send_via_proxy  # noqa: E402
 
@@ -48,8 +50,8 @@ def main():
     seq += 1
     frame = send("gimbal.angle", seq, pitch=args.pitch, roll=args.roll, yaw=args.yaw,
                  duration=args.duration, overtime=args.overtime)
-    print(f"pitch={args.pitch} roll={args.roll} yaw={args.yaw} -> {frame.hex()}")
-    print("sent (see captures/sessions/<today>/aoa_relay_frames.log for any reply)")
+    log(f"pitch={args.pitch} roll={args.roll} yaw={args.yaw} -> {frame.hex()}")
+    log("sent (see captures/sessions/<today>/aoa_relay_frames.log for any reply)")
 
 
 if __name__ == "__main__":

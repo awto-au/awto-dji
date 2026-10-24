@@ -14,6 +14,8 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from _log import log  # noqa: E402
 from fx3_trace import sections
 from elftools.elf.elffile import ELFFile
 from elftools.elf.relocation import RelocationSection
@@ -92,6 +94,7 @@ def main():
         assert native32(fw_output, seq) == plain
         vectors.append({'sequence': seq, 'plain': plain.hex(), 'protected': apk_output.hex()})
     args.vectors.write_text(json.dumps({'vectors': vectors}, indent=2) + '\n')
+    log(f"{len(vectors)} vectors -> {args.vectors}")
     print(json.dumps({'unicorn_version': unicorn.__version__, 'cases': len(vectors),
                       'apk_entry': '0x3438', 'firmware_entry': '0x400042e4',
                       'apk_sha256': hashlib.sha256(apk.read_bytes()).hexdigest(),

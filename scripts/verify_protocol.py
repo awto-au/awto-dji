@@ -13,6 +13,8 @@ import os
 import struct
 import sys
 
+from _log import log
+
 # A real captured DJI packet: PC -> Remote Controller, cmd_set 0x06 / cmd_id 0x01.
 CAPTURED = bytes.fromhex("550d04330a06eb344006017424")
 
@@ -78,9 +80,9 @@ def main():
     width = max(len(n) for n, _, _ in checks)
     failed = 0
     for name, ok, detail in checks:
-        print(f"{name:{width}}  {'PASS' if ok else 'FAIL'}  {detail}")
+        log(f"{name:{width}}  {'PASS' if ok else 'FAIL'}  {detail}", "INFO" if ok else "ERROR")
         failed += not ok
-    print(f"\n{len(checks)} checks, {failed} failed")
+    log(f"{len(checks)} checks, {failed} failed", "ERROR" if failed else "ALERT")
     return 1 if failed else 0
 
 
