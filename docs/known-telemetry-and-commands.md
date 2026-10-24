@@ -16,6 +16,27 @@ Python-side pretty-printer for all of the above plus named-but-undecoded frames:
 `scripts/re/duml_pretty.py` (device+command names, decodes what's in `PUSH_DECODERS`,
 falls back to hex for everything else).
 
+## Capturing the REAL vendor app's own traffic (not just our own app's)
+
+`scripts/re/phone_kprobe_sniff.py` - non-invasive kernel-level capture of a connected
+phone's outgoing DUML commands (app -> RC), via `ftrace`/`kprobes` on the AOA gadget
+driver's `acc_write()`. Confirmed working 2026-10-24 against live `dji.pilot` traffic:
+CRC-valid, SIMPLE-decrypted, catalog-matched real commands (`GetBoardNumber`,
+`GetParams`/DM368, `GetParamsByHash`/FLYC, `GetPushConfig`/OSD) logged into the same
+`aoa_relay_frames.log` format everything else here reads.
+
+Why kprobes and not `strace`/`usbmon`: `strace` (ptrace-based) reliably crashes
+`dji.pilot`/`dji.go.v4` once past their consent flow (AppGuard anti-tamper, confirmed
+this session); this phone's kernel has no `usbmon` module at all. `ftrace`/`kprobes`
+use neither mechanism.
+
+**Incoming direction (RC -> app) not solved.** Tried hooking `acc_complete_out` (the
+USB-OUT completion callback, chosen because the kernel buffer is already populated at
+function entry, unlike `acc_read` where the buffer is empty until the syscall
+returns) - captured values were static/unchanging across many hits, inconsistent with
+real telemetry. Likely an ARM DMA cache-coherency stale read, not a real capture. Open
+for a future pass.
+
 ## Confirmed structured send (payload layout known, `duml_commands.py` REGISTRY)
 
 | Name | cmdset/id | Notes |
