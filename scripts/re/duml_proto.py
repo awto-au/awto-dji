@@ -47,6 +47,8 @@ class DeviceType:
     remote_controller = 6
     pc = 10
     osd = 14  # DJI's own "OSD" naming for this id; RequestGimbalCtrPermission targets it
+    ofdm = 9  # air radio MCU (m0900, STM32F103) - gap noted at
+    # docs/app-upgrade-sequence.md:332, value per M/data/config/P3/DeviceType.java
 
 
 def build_frame(sender, receiver, seq, ack_type, cmd_set, cmd_id, payload):

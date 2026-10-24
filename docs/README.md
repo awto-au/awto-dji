@@ -49,6 +49,8 @@ the current state and next steps, and `../CLAUDE.md` for agent onboarding.
 
 ## Provenance
 - `code-provenance.md`, `license-compliance.md`, `data-manifest.md` — the downloaded inputs (firmware/APK/tools) with SHA-256s; **none of the bytes are stored here** (copyright/size) — re-fetch + verify.
+- `firmware-upgrade-log-review.md` — camera SD-card upgrade-log review (41 boot sessions); downgrade/equal-version-policy caveat for any "latest version" claim.
+- `firmware-reference-versions.md` — per-module "latest known-good" table for `fw_version_check.py` (awto-dji#32): local firmware archive vs SD-log vs online sources, V/I confidence per module.
 
 ## Safety / scope
 See `../CLAUDE.md` → "Scope & safety constraints". This is interoperability for an owned

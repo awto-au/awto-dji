@@ -334,6 +334,7 @@ COMMANDS.update({
     "duml-watch":     _tool("scripts/re/duml_watch.py", "watch and log live DUML traffic"),
     "duml-cli":       _tool("scripts/re/duml_cli.py", "send a named DUML command from the catalog"),
     "verify":         _tool("scripts/re/verify.py", "closed-loop command verify via telemetry push"),
+    "fw-check":       _tool("scripts/re/fw_version_check.py", "GetVersion every board, flag vs latest known"),
     "gimbal":         _tool("scripts/re/gimbal.py", "one-shot gimbal angle move via AOA proxy"),
     "gimbal-sweep":   _tool("scripts/re/gimbal_sweep.py", "gimbal left/right sweep via AOA proxy"),
     "aoa-relay":      _tool("scripts/re/aoa_relay_server.py", "run the phone AOA relay server"),
