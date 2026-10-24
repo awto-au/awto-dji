@@ -80,6 +80,65 @@ table** (decode vs UG-570 -> frequency/bandwidth/sample rate) and to find where 
 **Master-ID is written into the outgoing frame header** (the addressing/"tagging" the
 hypothesis describes). That tracing wasn't completed this session.
 
+## SPI1 resolved: dead code, not a second config path (issue #18)
+
+`SPI1` (`0x40013000`) and `SPI2` (`0x40003800`) were previously lumped together as an
+untested "AD9363 + FPGA config" guess (only `SPI2` was ever actually traced — register-only
+3-byte frames to the FPGA, `docs/board-connections.md`). `SPI1` is now independently
+resolved, by **two separate disassembly methods** on `firmware/P3X_FW_V01.11.0020_m0900.bin`:
+
+1. **`scripts/re/m0900_trace.py`** — capstone linear sweep, resyncing over literal pools,
+   31,035 instructions across the whole 75,796 B image.
+2. **`scripts/re/m0900_ghidra_disasm.py`** + **`scripts/re/ghidra/DumpARM.java`** — Ghidra
+   12.2 headless (`ARM:LE:32:Cortex`, base `0x08008000`), flow-directed auto-analysis from
+   the reset vector, 328 functions / 15,119 instructions reached.
+
+**Result (V, both tools agree):** the *only* place the bare `SPI1` base literal
+(`0x40013000`) appears anywhere in the image is one `ldr` at `0x08009998`, inside the
+generic ST StdPeriph-library `SPI_DeInit()` dispatcher (`push {r4,lr}`; `cmp r0,SPI1_BASE`
+-> branch; `cmp r0,SPI2_BASE` -> branch; else return) — and that function has **zero
+callers**. Ghidra's flow-directed analyzer, seeded from the reset vector and every real
+call/branch target, never disassembles `0x08009998-0x080099de` at all: nothing in the
+firmware reaches it. The bare `SPI2` base literal appears in the *same* dead dispatcher
+and nowhere else — every live `SPI2` access folds the offset into the pool constant at
+compile time (e.g. `0x40003808` = `SPI2_BASE+8`, loaded directly at `0x0800b604`), which is
+why a naive literal search for the pure base undercounts real `SPI2` use.
+
+No other `SPI1` evidence exists in the firmware: no `RCC_APB2ENR` bit for `SPI1EN` is ever
+set (every `RCC_*PeriphClockCmd` call site targets `GPIOA/B/C`, `CAN1`, or `SPI2`'s `APB1`
+bit — never `SPI1`'s `APB2` bit); no GPIO alternate-function config of `PA4-7` (`SPI1`'s
+standard `NSS/SCK/MISO/MOSI` pins on this part) — every `PA` pin configured in this image is
+`PA0` (board-strap input), `PA1` (single GPIO output strobe), `PA2/PA9-12` (USART/CAN), never
+`PA4-7`; no `CR1/CR2/DR` access at `SPI1`'s base anywhere.
+
+**Conclusion (V):** `SPI1` is completely inert in this firmware build — not initialized, not
+clocked, not wired to GPIO, never read or written. It is not a second register bus to the
+FPGA, and it rules out `m0900`'s `SPI1` as the FPGA config-flash writer the issue is
+tracking. It does **not** identify who *does* write the flash — combined with the existing
+eliminations (`SPI2` too small/register-only, `m0100`/A9 has no SPI driver, `m1500`/FX2LP is
+a verified pure USB pipe), the issue's open question stands: no traced chip on this board
+writes the `ATH520` config flash. One possibility not yet checked: the flash may not be
+field-updated by any in-system MCU at all (e.g. factory-programmed only) — **U, not checked
+this pass**.
+
+**Secondary check — no byte-wide parallel bus from `m0900` to the FX2LP:** every `GPIOA/B/C`
+literal-pool reference in the image (14/9/4 by Ghidra's count, matching the capstone sweep)
+was reviewed. All are single-pin or 2-pin groups: `PA0` board-strap in (`fn 0x0800c0bc`,
+feeds `get_board_version`'s RAM word `0x200000d8`, alongside `PC14/15`), `PA1` single output
+strobe (`fn 0x0800b79c`), `PA2`/`PA11`/`PC13` board-version-dependent strap in
+(`fn 0x0800b60c`/`0x0800b6ac`), `PB8/PB9` 2-pin output (`fn 0x0800b70c`), plus the already-known
+`PB12` (SPI2 CS), `PB13-15` (SPI2 AF), USART and CAN AF pins. No 8- or 16-bit contiguous GPIO
+group exists anywhere in `m0900`'s code (also checked Ghidra's full disassembly for
+byte-mask immediates like `#0xff00` near these functions — none are GPIO-register operands).
+**V (by absence, two tools):** if `m0900` has any path to the FX2LP, it is not a direct
+byte-wide parallel link off its own GPIO; this is consistent with `board-connections.md`'s
+existing framing of FX2LP sitting downstream of the FPGA's slave FIFO, not wired to the air
+MCU directly.
+
+Reproduce: `python3 scripts/re/m0900_trace.py` (SPI1/SPI2 section);
+`python3 scripts/re/m0900_ghidra_disasm.py` (full dump at `tmp/m0900_ghidra/m0900_dump.txt`,
+log `tmp/logs/m0900_ghidra_disasm.log`).
+
 ## MCU emulation attempt (Unicorn) + debug interfaces
 
 Attempted to extract the AD9363 config by running `m0900` in a Unicorn Cortex-M harness

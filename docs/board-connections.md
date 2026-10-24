@@ -76,12 +76,17 @@ flowchart LR
 | FX2LP to CAMERA | USB 2.0 | DP/DM | U | W |
 | Config flash to FPGA | serial NOR | U | U | W |
 | MCU clock | HSE 12 MHz x6 PLL | n/a | 72 MHz SYSCLK, 36 MHz PCLK1 | V code, crystal I |
-| MCU I2C, USB, SPI1 | not used by firmware | n/a | n/a | V |
+| MCU I2C, USB, SPI1 | not used by firmware | n/a | n/a | V (two tools: `control-plane-re.md` "SPI1 resolved", issue #18) |
 
 ## Gaps in the model
 
 - Two CAN-related facts conflict: wiki lists CAN pads, but `CENTER` pins in the only pin table are GND/5V/TX/RX, so which connector carries CANH/CANL (CAMERA?) is U.
 - FX2LP is shown on this board because `fpga-interfaces.md` places it here; whether the FX2LP is the aircraft's or the RC's is tied to the unresolved board role above.
+- `m0900`'s `SPI1` was checked as a candidate second register/config bus (issue #18, who
+  writes the FPGA's `ATH520` config flash) — V, dead code, not used at all (see table above).
+  Also checked whether `m0900` drives the FX2LP directly over a byte-wide parallel GPIO
+  group: no such group exists in its code (`control-plane-re.md` "SPI1 resolved"). Neither
+  finding identifies the actual flash writer; both only narrow the elimination list.
 
 ## What a real schematic or boardview would confirm
 

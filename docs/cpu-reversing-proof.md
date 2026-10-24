@@ -19,8 +19,10 @@ method — honestly separating "shown" from "needs more work / tooling".
   set/clear); data path is interrupt-driven UART; SPI0 register link to the FPGA exists (earlier "no SPI" corrected). Strings `FpgaErr`, `MASTER`,
   `TestMaster`. => FPGA treated as a configured modem, ID handled in MCU software.
 - **`m0900` (air, STM32F103):** app at `0x08008000` (SP `0x20004cb8`, reset `0x08008201`).
-  Uses **both SPI1 (`0x40013000`) and SPI2 (`0x40003800`)** plus USART1/2/3. One SPI is the
-  **AD9363 control bus** (control-plane-re.md); USARTs carry DUML.
+  Uses **SPI2 only** (`0x40003800`, the AD9363/FPGA control bus) plus USART1/2/3 for DUML;
+  **SPI1** (`0x40013000`) is dead code — two independent disassembly passes (capstone +
+  Ghidra headless) confirm it is never initialized, clocked, or accessed
+  (`control-plane-re.md` "SPI1 resolved", issue #18).
 - **The AD9363 config is runtime-computed, not a static table.** A static scan for an
   AD9361/3 register table found only `(start,end,index)` descriptor arrays (regular 0x14-wide
   ranges), not register/value pairs. So DJI's driver computes registers from a profile (as
