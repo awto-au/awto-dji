@@ -27,7 +27,23 @@ from duml_catalog import CATALOG  # noqa: E402
 from duml_cli import CMDSET_DEFAULT_RECEIVER  # noqa: E402
 from duml_commands import REGISTRY  # noqa: E402
 from duml_proto import DeviceType, build_frame, send_via_proxy, session_log_dir  # noqa: E402
-from duml_telemetry import PUSH_DECODERS, tail_pushes  # noqa: E402
+from duml_telemetry import PUSH_DECODERS, tail_frames, tail_pushes  # noqa: E402
+
+# DataRcRequestGimbalCtrPermission.java's RcGimbalError enum - the real app's own
+# decode of this reply, which this tool never checked before (found 2026-10-24: zero
+# reply frames for RC/0x22 in the whole session's capture - permission may simply
+# never have been granted, silently, the entire time).
+GIMBAL_PERMISSION_REPLY = {0: "GRANTED", 1: "Refused", 2: "TimeOut", 3: "Getted(held by other)"}
+
+
+def wait_for_permission_reply(log_path, offset, seconds):
+    """-> (status_int_or_None, label). None = no reply frame arrived at all."""
+    for sender, receiver, cset, cid, payload in tail_frames(log_path, seconds,
+                                                              start_offset=offset):
+        if cset == 0x06 and cid == 0x22 and payload:
+            status = payload[0]
+            return status, GIMBAL_PERMISSION_REPLY.get(status, f"unknown({status})")
+    return None, "NO REPLY"
 
 
 def send(name, seq, sender_override=None, receiver_override=None, payload_hex=None,
@@ -110,6 +126,14 @@ def main():
 
         if "gimbal" in args.command:  # gimbal ignores angle commands without this first
             send("gimbal.requestCtrPermission", args.seq + i * 2)
+            perm_offset = os.path.getsize(log_path)
+            # DataRcRequestGimbalCtrPermission.java waits up to 10s; 2s here because on
+            # this link any reply at all arrives near-instantly - raise if real replies
+            # turn out to need longer and get missed.
+            status, label = wait_for_permission_reply(log_path, perm_offset, 2.0)
+            offset = os.path.getsize(log_path)
+            tee(f"[{i}] gimbal.requestCtrPermission reply: {label} "
+                f"(status={status}) - {'proceeding' if status == 0 else 'PROCEEDING ANYWAY, not granted'}")
         frame = send(args.command, args.seq + i * 2 + 1, **overrides)
         tee(f"[{i}] sent {args.command} {overrides} -> {frame.hex()}")
 
