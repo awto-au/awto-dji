@@ -10,19 +10,6 @@ Interoperability software to control/monitor a **DJI Phantom 3 Professional dire
 pure-Dart DUML implementation, not the DJI Cloud API. There is also a Rust direct-control
 core and (parked) MAVLink ground clients.
 
-## Scope & safety constraints (do not cross)
-
-This is interoperability and defensive/structural analysis of an owned device. Keep to it:
-
-- **No geofence/no-fly defeat.** The operator explicitly does not want geofencing disabled;
-  the repo includes a geofence *safety gate*, not a bypass. Do not reverse-engineer or defeat
-  DJI's flight-restriction enforcement.
-- **No extraction of secret key values** from binaries (ATSHA204 keys, signing keys, etc.).
-  Identifying *that* ATSHA204 does component auth is fine; dumping its secrets is not.
-- **No flight-control-bypass material.** Structural/interop analysis (framing, cleartext
-  fields, protocol shape) is in scope; weaponized control-override is not.
-- Firmware/bitstream RE here is to achieve interoperability, documented honestly.
-
 ## Honesty conventions (followed throughout the docs)
 
 - Separate **verified / inferred / needs-tooling**. The docs mark these explicitly; keep
