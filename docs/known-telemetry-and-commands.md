@@ -10,7 +10,7 @@ decoders are added/confirmed, don't let it go stale.
 |---|---|---|---|---|
 | OSD General | 0x03/0x43 | `app/packages/duml/lib/src/telemetry.dart` `OsdGeneral` | lat, lon, relative height, vgx/vgy/vgz, pitch/roll/yaw | V - offsets from public dissector |
 | Gimbal GetPushParams | 0x04/0x05 | `scripts/re/duml_telemetry.py` `_gimbal_push` | pitch, roll, yaw, err, mode | V - cross-checked live, byte6 mode confirmed via AutoCalibration test (awto-dji#16) |
-| RC/OSD signal quality | 0x09/0x08 | `app/packages/duml/lib/src/rc_signal.dart` `RcSignalQuality` | antenna1Dbm, antenna2Dbm | **I** - inferred from value-range only, not decompiled source. Pending verification (background decompile of `dji.pilot` running 2026-10-24, see awto-dji#16/#26 threads) |
+| RC/OSD signal quality | 0x09/0x08 | `app/packages/duml/lib/src/rc_signal.dart` `RcSignalQuality` | aggregateQuality (0-127), isUplink, antenna1Dbm, antenna2Dbm | V - confirmed against decompiled `DataOsdGetPushSignalQuality.java` (dji.go.v4) 2026-10-24. An earlier version of this decoder read only the secondary per-antenna dBm bytes and wrongly concluded the link was strong while the real quality byte (aggregateQuality) was reporting a mediocre ~42% the whole time - see awto-dji#16 |
 
 Python-side pretty-printer for all of the above plus named-but-undecoded frames:
 `scripts/re/duml_pretty.py` (device+command names, decodes what's in `PUSH_DECODERS`,

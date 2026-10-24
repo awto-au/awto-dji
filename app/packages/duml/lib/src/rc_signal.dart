@@ -1,16 +1,17 @@
 /// Decoder for the RC/OSD link signal-quality push (`cmd_set = 0x09` "hdLink",
 /// `cmd_id = 0x08`), sent by the OSD device (sender type 14) at ~a few Hz.
 ///
-/// I (inferred, not confirmed against decompiled source): byte 0 is a constant
-/// tag (0x35 in every capture so far); bytes 1-2 are signed int8 dBm readings,
-/// one per antenna/diversity path. Basis: live capture 2026-10-24 with RC and
-/// aircraft ~1m apart showed a stable, narrow range (-33 to -27 dBm as signed
-/// bytes) for ~2.5 hours - consistent with two strong dBm readings, not with a
-/// 0-255 percentage (which this range would read as a flatly maxed-out ~87-90%,
-/// an odd thing for a push to bother sending continuously). DJI GO's own UI
-/// called this link "weak" at the same time, which this decode contradicts -
-/// see awto-dji#16. Re-check against decompiled dji.pilot/dji.go.v4 source if
-/// that class is ever found, and update this docstring, not just the code.
+/// V (confirmed 2026-10-24 against decompiled `DataOsdGetPushSignalQuality.java`,
+/// dji.go.v4 - dji.pilot's own copy could not be recovered, see awto-dji#16, but this
+/// struct is aircraft/OSD-side protocol, not app-specific):
+/// - byte 0 bit 7: direction (set = Up/uplink, clear = Down/downlink).
+/// - byte 0 bits 0-6 (`& 0x7F`): the aggregate link quality, 0-127 - this is what
+///   `getDownSignalQuality()`/`getUpSignalQuality()` return, almost certainly what
+///   drives the app's own "weak"/"strong" UI label.
+/// - bytes 1-2: per-antenna signed dBm readings (secondary breakdown, not the
+///   headline metric - a prior version of this file wrongly treated these two as
+///   the primary signal and concluded the link was strong while byte 0 - the real
+///   quality field - was reporting a mediocre ~42% the whole time).
 library;
 
 import 'dart:typed_data';
@@ -18,10 +19,18 @@ import 'dart:typed_data';
 import 'packet.dart';
 
 class RcSignalQuality {
+  /// 0-127.
+  final int aggregateQuality;
+  final bool isUplink;
   final int antenna1Dbm;
   final int antenna2Dbm;
 
-  const RcSignalQuality({required this.antenna1Dbm, required this.antenna2Dbm});
+  const RcSignalQuality({
+    required this.aggregateQuality,
+    required this.isUplink,
+    required this.antenna1Dbm,
+    required this.antenna2Dbm,
+  });
 
   static const int cmdSet = CmdSet.hdLink;
   static const int cmdId = 0x08;
@@ -36,15 +45,19 @@ class RcSignalQuality {
 
   static RcSignalQuality fromPayload(Uint8List payload) {
     int signed8(int byte) => byte >= 128 ? byte - 256 : byte;
+    final byte0 = payload[0];
     return RcSignalQuality(
+      aggregateQuality: byte0 & 0x7F,
+      isUplink: (byte0 & 0x80) != 0,
       antenna1Dbm: signed8(payload[1]),
       antenna2Dbm: signed8(payload[2]),
     );
   }
 
-  /// The stronger (less negative) of the two antenna readings.
-  int get bestDbm => antenna1Dbm > antenna2Dbm ? antenna1Dbm : antenna2Dbm;
+  /// 0-100, matching the scale a UI percentage/bar would use.
+  double get qualityPercent => aggregateQuality / 127 * 100;
 
   @override
-  String toString() => 'RcSignal(ant1=${antenna1Dbm}dBm ant2=${antenna2Dbm}dBm)';
+  String toString() => 'RcSignal(${isUplink ? "up" : "down"} '
+      'quality=$aggregateQuality/127 ant1=${antenna1Dbm}dBm ant2=${antenna2Dbm}dBm)';
 }
