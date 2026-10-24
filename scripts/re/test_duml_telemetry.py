@@ -6,7 +6,7 @@ import os
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from duml_telemetry import PUSH_DECODERS, parse_line  # noqa: E402
+from duml_telemetry import PUSH_DECODERS, format_frame, parse_line  # noqa: E402
 
 FAILURES = []
 
@@ -38,9 +38,17 @@ check("non-matching line", parse_line("not a frame line at all"), None)
 
 cset, cid, decode = PUSH_DECODERS["gimbal"]
 check("gimbal decoder cmdset/cmdid", (cset, cid), (0x04, 0x05))
-check("gimbal decode -10.0/0.1/22.9",
+check("gimbal decode -37.0/0.1/22.9 mode/err from byte6=0x80",
       decode(bytes.fromhex("8efe0100e50080ff00002001")),
-      {"pitch": -37.0, "roll": 0.1, "yaw": 22.9})
+      {"pitch": -37.0, "roll": 0.1, "yaw": 22.9, "err": 0, "mode": "YawFollow"})
+
+check("format_frame names device+cmd, decodes gimbal push instead of hex",
+      format_frame(0x04, 0x02, 0x04, 0x05, bytes.fromhex("8efe0100e50080ff00002001")),
+      "gimbal->app GIMBAL/GetPushParams pitch=-37.0 roll=0.1 yaw=22.9 err=0 mode=YawFollow")
+
+check("format_frame falls back to hex for an unstructured command",
+      format_frame(0x02, 0x0e, 0x06, 0x22, b""),
+      "app->osd RC/RequestGimbalCtrPermission payload=")
 
 if FAILURES:
     print(f"{len(FAILURES)} failure(s):")

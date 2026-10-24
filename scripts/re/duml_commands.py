@@ -32,6 +32,29 @@ class GimbalAngleControl(C.LittleEndianStructure):
     ]
 
 
+class GimbalAbsAngleControl(C.LittleEndianStructure):
+    """CmdSet.GIMBAL/0x04 id=0x14 (AbsAngleControl). Source:
+    DataGimbalAbsAngleControl.java - a distinct, separately-documented command from
+    AngleControl (0x0a) above, not a variant of it: no duration field, and the flags
+    byte is explicit here (not opaque): bit0 controlMode, bit1 yawInvalid,
+    bit2 rollInvalid, bit3 pitchInvalid ("invalid" = ignore this axis, hold current
+    position). Defaults below (yaw/roll invalid, pitch only) match the one real-
+    hardware test seen so far (2026-10-24, Codex session) and the class's own
+    overtime default (10); not yet confirmed these defaults are required.
+    """
+    _pack_ = 1
+    _fields_ = [
+        ("yaw", C.c_int16),      # degrees * 10
+        ("roll", C.c_int16),     # degrees * 10
+        ("pitch", C.c_int16),    # degrees * 10
+        ("flags", C.c_uint8),
+        ("overtime", C.c_uint8),
+    ]
+
+
+ABS_ANGLE_FLAGS = {"controlMode": 1, "yawInvalid": 2, "rollInvalid": 4, "pitchInvalid": 8}
+
+
 class GimbalControl(C.LittleEndianStructure):
     """CmdSet.GIMBAL/0x04 id=0x01 (Control) - simpler mode-based control.
     Source: DataGimbalControl.java. mode: 0=YawNoFollow 1=FPV 2=YawFollow."""
@@ -74,8 +97,15 @@ REGISTRY = {
     "gimbal.control": (
         0x04, 0x01, DeviceType.app, DeviceType.gimbal, GimbalControl, {}, {},
     ),
+    "gimbal.absAngle": (
+        0x04, 0x14, DeviceType.app, DeviceType.gimbal, GimbalAbsAngleControl,
+        {"yaw": 10, "roll": 10, "pitch": 10},
+        # flags=6: yawInvalid|rollInvalid (pitch-only) - the one config with real-
+        # hardware precedent so far; override with --flags for other axis combos.
+        {"flags": 6, "overtime": 10},
+    ),
     "camera.requestIFrame": (
-        0x02, 0xB3, DeviceType.pc, DeviceType.camera, CameraRequestIFrame, {}, {},
+        0x02, 0xB3, DeviceType.app, DeviceType.camera, CameraRequestIFrame, {}, {},
     ),
     "gimbal.requestCtrPermission": (
         0x06, 0x22, DeviceType.app, DeviceType.osd, RcRequestGimbalCtrPermission, {}, {},
