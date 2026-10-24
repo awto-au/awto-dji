@@ -126,6 +126,111 @@ in this area too).
 - **U**: whether the exact firmware on the operator's aircraft matches this image byte-for-
   byte.
 
+## Public corroboration (2026-10-24)
+
+- **W** (`o-gs/dji-firmware-tools` wiki, "Firmware m0306" page, "Interfaces" section,
+  <https://github.com/o-gs/dji-firmware-tools/wiki/Firmware-m0306>, by the project's
+  maintainer): "Hooking a PC to the micro-USB connector in front of the drone gives
+  access to an UART interface... The interface also allow injecting commands to the
+  drone, as long as they meet the DUML binary packet format.” Same 115200 8N1 as we use.
+  No special unlock/handshake byte sequence for *this* port (the FC's front USB) is
+  documented anywhere public found this session (wiki, forums, GitHub issues) — the
+  wiki states it should just work.
+  **Unresolved conflict, flagged not resolved:** a concurrent edit to
+  `camera-linux-console-access.md` (a *different* port, the camera's Ambarella Linux)
+  asserts an empty `0x40003000.dji` file in that SD card's root is “already documented”
+  to trigger Ambarella engineering-shell logging. No source for that claim was found or
+  cited in this session, and `0x40003000` only appeared here as the example *argument*
+  to a shell command typed at an already-open prompt (`t dji console [addr]`), not as a
+  filename convention — see that doc's own flag on this. Treat as unverified until a
+  source or a confirmed independent test is given.
+- This is independent confirmation the port is *supposed* to answer DUML, which makes
+  this repo's total silence the anomaly to explain, not evidence the port is DUML-dead
+  by design. Strengthens the "Assistant window" / boot-timing hypothesis below over the
+  "dead ISR, nothing ever reads this" one — though both remain open.
+- **W**, same source: the "Firmware m0306" page's repair companion,
+  <https://github.com/o-gs/dji-firmware-tools/wiki/P3-Flight-Controller-aka-MC-repair>,
+  independently describes this same port as the basic alive-check for the FC MCU ("it
+  will provide a serial interface with startup logs on the USB output"), consistent with
+  what we see, but does not mention commands failing to get a reply as a known issue.
+
+## Breakthrough, live hardware (2026-10-24): the port answers, reliably, once caught
+
+Prior sessions concluded this port never replies. That conclusion was an artifact of
+probing with a tool that gives up the moment the USB device drops — which is exactly
+what happens around a power-cycle, the one time a reply might appear. Built
+`scripts/re/duml_watch.py` (reopens the port in a loop instead of exiting on
+disconnect, sends the heartbeat ping continuously, logs everything to
+`captures/sessions/2026-10-24/duml_watch.log`) and ran it across an operator-triggered
+power-cycle of the aircraft.
+
+- **V**: at 12:03:50, within the watch window, the port answered a bare ping
+  (General `0x00/0x0c`, receiver `0x0e` / "OSD") with a clean CRC-valid ACK, and kept
+  answering every ~0.5 s for the full remaining ~4.75 minutes of the run (574 pings
+  sent, 574 clean ACKs, zero drops) — not a brief window, a sustained link once caught.
+- **V**: GetVersion (`00/01`) and GetDeviceInfo (`00/ff`) at receiver `0x0e` returned
+  **`GL300C`** / **`WM320 A7_LPC1 20170828/00`** — byte-identical to what the RC itself
+  reports at the same receiver over its own port (`docs/identity-queries.md`).
+  **Correction to the architecture model**: receiver `0x0e` on this port is not the
+  flight controller - it is the aircraft's own OFDM/radio MCU (an m0900-family chip,
+  same firmware build as the RC's), reached the same way DUML reaches the RC's radio
+  MCU. The "front USB port = flight controller" framing in this doc's title and earlier
+  sections needs qualifying: USB on this port reaches the radio MCU by default; the FC
+  itself may sit behind it, not be it.
+- **V**: a receiver sweep (camera `0x01`, FLYC `0x03`, gimbal `0x04`, center board
+  `0x05`, remote controller `0x06`, and indexed variants) against the *same live,
+  confirmed-responsive* port got **no reply from anything except `0x0e`** - bracketed
+  by two more `0x0e` pings that both succeeded, so the silence on other receivers isn't
+  the link dying mid-sweep. Whether that's because this port's DUML only routes to the
+  radio MCU (not relayed onward to FLYC/camera/gimbal), or those other receiver
+  addresses are simply wrong for this bus, is **U**.
+- **U**: GetSerialNum (`00/51`, payload `04`/FlycNum) at `0x0e` got no reply - consistent
+  with `0x0e` being the radio MCU, which (like the RC) doesn't implement that query.
+  The aircraft's own serial/FlycNum still needs a receiver that reaches the FC, which
+  this port hasn't shown yet.
+- Reproduce: `python3 -I scripts/re/duml_watch.py /dev/ttyACM11 --minutes 10`, then
+  power-cycle the aircraft while it runs; once connected, additional one-shot queries
+  can be sent concurrently with `scripts/duml_probe.py` against the same port/receiver.
+
+### Follow-up probing on the same live session (2026-10-24, continued)
+
+All against the confirmed-responsive port, receiver `0x0e` unless stated. Sender kept
+at PC (`0x0a`) throughout except one explicit check.
+
+- **V**: `GetSerialNum` (`00/51`) at `0x0e` got no reply for payload `01`/`02`/`03`/`04`
+  (BoardNum/ChipId/ModuleNum/FlycNum) - confirms, doesn't just repeat, the earlier
+  single-payload result: `0x0e` implements none of the four index variants.
+- **V**: RC-cmdset `GetMaster` (`06/07`) at `0x0e` replied `00` - "not connected to a
+  master", same bit pattern the RC itself reports on its own port
+  (`docs/identity-queries.md`). Read with caution: this is RC role/pairing-role state
+  (`cpu-reversing-proof.md`'s dual-remote state machine), not aircraft-ID binding, and
+  we're on a USB cable, not the RF link, so "no master" here may just mean "no RF
+  session active over USB", not that the aircraft is unpaired. `RcGetName` (`06/09`) and
+  `RcGetConnectMaster` (`06/0d`) at `0x0e` both got no reply.
+- **V**: sender spoofed to `0x0e` (OSD) instead of PC, receiver still `0x0e` - no reply.
+  Not evidence of anything specific (self-addressed self-sender is an odd combination
+  generally), logged so it isn't retried.
+- **V, new**: a receiver sweep extended to decimal-TTII type values beyond the known
+  `DeviceType` table (camera 1, app 2, flightController 3, gimbal 4, centerBoard 5,
+  remoteController 6, pc 10, osd 14) turned up **wire address `0x14` (type 20, index 0,
+  not in any catalog here)** also answering `GetDeviceState` (`00/0c`) with
+  `e30000000000` - same payload style the RC gave on its very first reply after a fresh
+  port open (`docs/p3-usb-observations-2026-10-23.md`). `GetVersion` (`00/01`) at `0x14`
+  replied but with an unpopulated-looking record (`00100000...` then a run of
+  `fe ff ff ff fe ff ff ff 01 00 00 00 00`, no readable hardware-name string like
+  `GL300C`) - **I**: looks like a default/placeholder responder for an unclaimed
+  dispatch slot rather than a genuinely distinct identified chip, not a confirmed real
+  device. `GetDeviceInfo` (`00/ff`) at `0x14` got no reply. **U, not resolved:** whether
+  `0x14` is a real third component or an artifact of how the dispatcher answers
+  addresses nobody explicitly claimed; worth one more pass with a wider
+  `GetDeviceState` payload decode and a couple of neighbouring type values (19, 21) to
+  see if the pattern is "every unclaimed slot answers identically" or specific to 20.
+  Every type value actually tried this session is in
+  `captures/sessions/2026-10-24/duml_watch.log` and the shell history above - re-run
+  rather than re-guess.
+- Everything above ran on a single sustained connection (no further disconnects),
+  confirmed live before and after each batch.
+
 ## Suggestion for the operator (not an instruction — their hardware, their call)
 
 If DJI Assistant-style access over this port is wanted, the one thing worth trying on real
