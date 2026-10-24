@@ -23,6 +23,36 @@ class GimbalCommands {
         payload: Uint8List(0),
       ).encode();
 
+  /// Gimbal cmdset 0x04 / 0x0c (SpeedControl) - confirmed 2026-10-24 against real
+  /// dji.pilot decompile (DJIFpvGimbalPitchView.java) as the command the app's own FPV
+  /// gimbal UI actually sends, continuously on a 40ms timer while a control button is
+  /// held. Permission is embedded in this same packet (byte6 bit7), not a separate
+  /// request/ack handshake - [permissionRequest]/[angle] above are for a different
+  /// scenario (RC master/slave handoff, third-party SDK), not this control path.
+  /// speedDegPerSec: I (inferred) - deg/s, not independently confirmed as a unit; the
+  /// real UI's own speed constant is a raw 270.
+  Uint8List speedControl({
+    double pitchDegPerSec = 0,
+    double rollDegPerSec = 0,
+    double yawDegPerSec = 0,
+    bool takeControl = true,
+  }) {
+    final payload = ByteData(7)
+      ..setInt16(0, (yawDegPerSec * 10).round(), Endian.little)
+      ..setInt16(2, (rollDegPerSec * 10).round(), Endian.little)
+      ..setInt16(4, (pitchDegPerSec * 10).round(), Endian.little)
+      ..setUint8(6, takeControl ? 0x80 : 0x00);
+    return DumlPacket(
+      senderType: DeviceType.app,
+      receiverType: DeviceType.gimbal,
+      sequence: _seq++,
+      ackType: AckType.afterExec,
+      cmdSet: CmdSet.gimbal,
+      cmdId: 0x0c,
+      payload: payload.buffer.asUint8List(),
+    ).encode();
+  }
+
   /// Gimbal cmdset 0x04 / 0x0a, angles in degrees.
   Uint8List angle({
     double pitch = 0,

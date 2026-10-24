@@ -1,10 +1,14 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../link/gimbal_commands.dart';
 import '../link/link_session.dart';
 
-/// Gimbal pitch/roll/yaw control, cmdset 0x04 / 0x0a. Frames come from [GimbalCommands]
-/// (payload layout from the vendor app's own packing code). Sends immediately.
+/// Gimbal speed control (cmdset 0x04 / 0x0c), confirmed 2026-10-24 against real
+/// dji.pilot decompile as the command the app's own FPV gimbal UI actually sends -
+/// continuously on a 40ms timer while a direction button is held, permission bit
+/// embedded in the same packet. Not yet tested against hardware.
 class GimbalScreen extends StatefulWidget {
   const GimbalScreen({super.key, required this.session});
   final LinkSession session;
@@ -14,39 +18,61 @@ class GimbalScreen extends StatefulWidget {
 }
 
 class _GimbalScreenState extends State<GimbalScreen> {
-  double _pitch = 0, _roll = 0, _yaw = 0;
-  String? _lastResult;
   final _gimbal = GimbalCommands(0x6800);
+  Timer? _holdTimer;
+  String? _lastError;
 
-  static String _hex(List<int> b) => b.map((x) => x.toRadixString(16).padLeft(2, '0')).join(' ');
+  // Real UI's own speed constant is a raw 270; our encode is deg/s*10, so 27 deg/s.
+  static const _speedDegPerSec = 27.0;
+  static const _holdPeriod = Duration(milliseconds: 40); // matches the real app's Timer
 
-  Future<void> _send() async {
-    final permission = _gimbal.permissionRequest();
-    final move = _gimbal.angle(pitch: _pitch, roll: _roll, yaw: _yaw);
-    try {
-      await widget.session.transport.write(permission);
-      await widget.session.transport.write(move);
-      setState(() => _lastResult = 'Sent.\n${_hex(permission)}\n${_hex(move)}');
-    } on Object catch (e) {
-      setState(() => _lastResult = 'Send failed: $e');
+  void _startHold({double pitch = 0, double yaw = 0}) {
+    _holdTimer?.cancel();
+    void send() {
+      final frame = _gimbal.speedControl(
+        pitchDegPerSec: pitch,
+        yawDegPerSec: yaw,
+        takeControl: true,
+      );
+      widget.session.transport.write(frame).catchError((Object e) {
+        setState(() => _lastError = 'Send failed: $e');
+      });
     }
+
+    send(); // one immediately, then every 40ms while held
+    _holdTimer = Timer.periodic(_holdPeriod, (_) => send());
   }
 
-  Widget _slider(String label, double value, ValueChanged<double> onChanged) {
-    return Row(children: [
-      SizedBox(width: 56, child: Text(label)),
-      Expanded(
-        child: Slider(
-          value: value,
-          min: -45,
-          max: 45,
-          divisions: 180,
-          label: '${value.toStringAsFixed(1)}°',
-          onChanged: onChanged,
+  void _endHold() {
+    _holdTimer?.cancel();
+    _holdTimer = null;
+    final frame = _gimbal.speedControl(takeControl: false); // release, matches real app
+    widget.session.transport.write(frame).catchError((Object e) {
+      setState(() => _lastError = 'Release send failed: $e');
+    });
+  }
+
+  @override
+  void dispose() {
+    _holdTimer?.cancel();
+    super.dispose();
+  }
+
+  Widget _holdButton(IconData icon, {double pitch = 0, double yaw = 0}) {
+    return GestureDetector(
+      onTapDown: (_) => _startHold(pitch: pitch, yaw: yaw),
+      onTapUp: (_) => _endHold(),
+      onTapCancel: _endHold,
+      child: Container(
+        width: 64,
+        height: 64,
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.surfaceContainerHighest,
+          shape: BoxShape.circle,
         ),
+        child: Icon(icon, size: 32),
       ),
-      SizedBox(width: 56, child: Text('${value.toStringAsFixed(1)}°')),
-    ]);
+    );
   }
 
   @override
@@ -56,29 +82,36 @@ class _GimbalScreenState extends State<GimbalScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _slider('Pitch', _pitch, (v) => setState(() => _pitch = v)),
-          _slider('Roll', _roll, (v) => setState(() => _roll = v)),
-          _slider('Yaw', _yaw, (v) => setState(() => _yaw = v)),
+          Text('Pitch', style: Theme.of(context).textTheme.labelLarge),
+          const SizedBox(height: 8),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              _holdButton(Icons.keyboard_arrow_up, pitch: _speedDegPerSec),
+              const SizedBox(width: 24),
+              _holdButton(Icons.keyboard_arrow_down, pitch: -_speedDegPerSec),
+            ],
+          ),
+          const SizedBox(height: 24),
+          Text('Yaw', style: Theme.of(context).textTheme.labelLarge),
+          const SizedBox(height: 8),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              _holdButton(Icons.keyboard_arrow_left, yaw: -_speedDegPerSec),
+              const SizedBox(width: 24),
+              _holdButton(Icons.keyboard_arrow_right, yaw: _speedDegPerSec),
+            ],
+          ),
           const SizedBox(height: 16),
-          Row(children: [
-            FilledButton.icon(
-              onPressed: _send,
-              icon: const Icon(Icons.send),
-              label: const Text('Send'),
-            ),
-            const SizedBox(width: 12),
-            OutlinedButton(
-              onPressed: () => setState(() {
-                _pitch = 0;
-                _roll = 0;
-                _yaw = 0;
-              }),
-              child: const Text('Reset to 0'),
-            ),
-          ]),
-          if (_lastResult != null) ...[
+          Text(
+            'Hold a button to move the gimbal; release to stop. Roll is not '
+            'interactively controlled on the Phantom 3.',
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+          if (_lastError != null) ...[
             const SizedBox(height: 12),
-            Text(_lastResult!),
+            Text(_lastError!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
           ],
         ],
       ),
