@@ -165,6 +165,12 @@ model. This closes the one item left open in the role-path trace above.
 Reproduce: `r2 -a arm -b 16 -m 0 -qq -c 'pd 48 @ 0x56d8' c1_m1400.bin` (dispatcher);
 `... -c 'pd 40 @ 0x2bca'` (Set); `... -c 'pd 36 @ 0x2b10'` (Get).
 
+**Correction (Ghidra full-decompile pass, issue #39):** the cleartext/no-crypto conclusion
+above stands, but the Set/Get *data direction* was mis-read here — 0x0D (Get) is the one
+that writes RAM state from the payload, 0x0C (Set) is the one that reads state and replies.
+Full case table (including the sibling join/pairing cmd_ids 0x10/0x12/0x13/0x14/0x15):
+`docs/control-plane-re.md` "`m1400` ... master-id/join/pairing decode".
+
 ## Scope limit: MCU-layer cleartext is NOT over-the-air proof
 
 Everything proven above is at the **MCU / DUML layer** (the bytes at USB/UART, after DJI's

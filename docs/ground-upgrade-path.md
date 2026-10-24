@@ -14,8 +14,12 @@ Settles the conflict with `docs/control-plane-re.md` (which said the remote MCU 
 - Other C1 modules, none STM32: `m1401` LPC1549 (SP `0x02008F60`); `m1600` FX2 header; `m1601` "CY" FX3 header;
   `m1300` starts `Salted__` (encrypted, not checked for STM32 inside); `m2000-m2002` FPGA images. (verified by header)
 - Mechanical peripheral scan (`scripts/re/lpc17xx_periph_scan.py`, log `tmp/logs/lpc17xx_periph_scan.log`,
-  input `firmware/unpacked/C1_FW_V01.06.0000/C1_FW_V01.06.0000_m1400.bin`, 2026-10-24). Counts are aligned words
-  whose value falls in a block window. Block bases are from prior art, not yet checked against UM10360 `[oss]`:
+  input `firmware/unpacked/C1_FW_V01.06.0000/C1_FW_V01.06.0000_m1400.bin`). Counts are aligned words
+  whose value falls in a block window. **Bases below are `[spec]`** (NXP LPC176x5x CMSIS-SVD,
+  `awto-dan/docs/embedded/reversing/lpc17xx/svd/LPC176x5x.svd`) — the original pass used `[oss]`
+  guessed bases; two were wrong (see `control-plane-re.md` "SVD + peripheral-map corrections"):
+  **USB's real base is `0x5000_8000`** with **zero** hits (unused) — the old "USB @ `0x2008C000`,
+  12 hits" bucket was actually AHB SRAM (data, not MMIO); PWM1/I2C0 were both one slot low.
 
   | block | base | words | note |
   |---|---|---|---|
@@ -23,15 +27,17 @@ Settles the conflict with `docs/control-plane-re.md` (which said the remote MCU 
   | UART0 | `0x4000C000` | 27 | most-referenced serial block; role `[?]` |
   | SYSCTL | `0x400FC000` | 18 | clock/power setup |
   | PINCONNECT | `0x4002C000` | 17 | pin mux |
-  | USB device | `0x2008C000` | 12 | role `[?]`; not in the Q1-Q4 analysis |
+  | AHB-SRAM | `0x2007C000` | 47 | RAM data pointers (corrects the earlier wrong "USB" bucket above) |
   | UART1 | `0x40010000` | 12 | role `[?]` |
   | RTC | `0x40024000` | 8 | role `[?]` |
-  | ADC / UART3 / DAC / TIMER1 / WDT / PWM1 / TIMER2 / UART2 / GPIO-INT / BOOTROM | various | 1-4 each | WDT used by reset path (Q1) |
-  | SSP0 `0x40088000`, SSP1 `0x40030000` | - | 0 | no SSP use; supports the legacy-SPI correction in Q2 `[fw]` |
+  | CAN1 | `0x40044000` | 10 | role `[?]`; not in the Q1-Q4 analysis (not wired into any Q here) |
+  | ADC / CAN2/CANAF/CANAFRAM / UART2/UART3 / DAC / TIMER1/TIMER2 / WDT / RITIMER / MCPWM / GPIO-INT / BOOTROM | various | 1-5 each | WDT used by reset path (Q1) |
+  | SSP0 `0x40088000`, SSP1 `0x40030000`, I2C0/I2C1/I2C2, USB `0x50008000`, EMAC, GPDMA, I2S, QEI, PWM1 | - | 0 | genuinely unused by this firmware (SVD-confirmed bases, not a guess landing on the wrong block) |
   | legacy SPI `0x40020000` | - | 5 | only `0xDDF8` is the base pointer (used by the Q2 S0SPDR writer); `0x40022302`/`0x40022502` are data values, not pointers |
 
   Hits are candidates only. Confirm each with `scripts/re/mcu_trace.py lit VALUE` / `who ADDR` before naming a register.
-- No SVD exists for LPC176x in `docs/embedded/reversing/`. Needed before a Ghidra pass that labels registers.
+- Full Ghidra pass (789 functions, 38,426 instructions, all 511 SVD register labels applied) done:
+  `control-plane-re.md` "`m1400` ... Ghidra pass"; project archived at `re/ghidra-projects/m1400_radio.tar.gz`.
 
 ## Addressing (correction)
 

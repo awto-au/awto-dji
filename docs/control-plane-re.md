@@ -323,3 +323,97 @@ check, RTOS/library fingerprint) and `docs/dataflow.md` §7.10 (CAN1/CAN2). Summ
 - **Full Ghidra pass:** 2745 functions / 122,341 instructions; project archived to
   `re/ghidra-projects/m0306_flight_controller.tar.gz` (not discarded, per this project's
   earlier Ghidra-project-loss lesson).
+
+## `m1400` (ground/RC radio MCU, LPC1765) — SVD import, Ghidra pass, master-id/join/pairing decode (issue #39)
+
+`m1400` was wrongly documented earlier as "same STM32F103 family" as `m0900` (fixed:
+LPC1765, `docs/ground-upgrade-path.md` "Chip identity"). This closes out the first Ghidra
+pass on the *correct* chip, with a real NXP SVD instead of guessed peripheral bases, and
+decodes the RC master/slave-join and Connected-Master-Id command handling that
+`docs/cpu-reversing-proof.md`'s radare2 pass had only partly isolated.
+
+### SVD + peripheral-map corrections (`[spec]`, supersedes `[oss]`)
+
+Added `awto-dan/docs/embedded/reversing/lpc17xx/svd/LPC176x5x.svd` (NXP's real CMSIS-SVD,
+via the `cmsis-svd/cmsis-svd-data` public aggregation — same sourcing as the STM32 SVDs
+already collected). Cross-checked against it, two of the earlier `[oss]` "prior art" guesses
+in `scripts/re/lpc17xx_periph_scan.py` were wrong (now fixed, re-run, log unchanged in shape
+but corrected bases — `tmp/logs/lpc17xx_periph_scan.log`):
+
+- **USB was a completely wrong region.** The real USB controller is AHB peripheral
+  `0x5000_8000` (0 word hits in `m1400` — USB is simply not used by this firmware). The old
+  "USB @ `0x2008C000`, 12 hits" bucket was `0x2008xxxx` **AHB SRAM** (RAM, not MMIO) — those
+  12 literal words are ordinary data/buffer pointers, not USB register accesses.
+- **PWM1/I2C0 were both one slot low** (`0x40014000`/`0x40018000` guessed vs real
+  `0x40018000`/`0x4001C000`) — a reserved gap in the real map was mistaken for PWM1.
+- `GPIOINT`'s real base is `0x4002_8080` (+0x80 from the guess; the old window still
+  happened to catch the real hits).
+- Everything else in the original scan (WDT, TIMER1, UART0-3, legacy SPI, RTC, PINCONNECT,
+  SSP0/1, ADC, DAC, TIMER2/3, SYSCON, fast GPIO, I2C1) matched the SVD exactly.
+- Flattened the SVD into 511 `address -> PERIPH_REGISTER` labels
+  (`scripts/re/svd_to_labels.py`, output `docs/data/lpc176x5x-register-map.tsv`) and applied
+  all 511 inside Ghidra (`scripts/re/ghidra/DumpLPC17xx.java`) — 0 skipped, confirming
+  Ghidra's flat address space accepts MMIO labels outside the loaded flash image with no
+  extra memory-block setup needed.
+
+### Ghidra pass (full)
+
+`scripts/re/m1400_ghidra_disasm.py`: `ARM:LE:32:Cortex`, `BinaryLoader` base `0xA000` (LPC17xx
+flash starts at `0x0`, unlike STM32's `0x08000000` — flash address = file offset + `0xA000`,
+per `docs/ground-upgrade-path.md` "Addressing"). **789 functions, 38,426 instructions**, full
+decompile of every function. Project archived (not discarded) to
+`re/ghidra-projects/m1400_radio.tar.gz`.
+
+### `duml_local_dispatch` (flash `0xF3C8`, = offset `0x53C8`) confirmed byte-for-byte
+
+`ldrb r0,[frame,9]` (cmd_set); `cmp r0,#0xA; bcs <return>`; `tbb [pc,r0]` — a flat 10-entry
+jump table **indexed directly by the cmd_set byte value** (0-9), settling the earlier
+"set 6 vs set 9" confusion in `cpu-reversing-proof.md`: the RC/master-id dispatcher really is
+reached for on-wire **cmd_set byte value 9**, not the Java `CmdSet.Rc` enum's declaration
+position (6) — DJI's app-side `CmdSet` enum order and the wire byte are not the same number.
+Case 0 (general/upgrade, flash `0xF3E2`) matches `docs/ground-upgrade-path.md`'s Q1 table
+exactly (cmd 0x07 Enter Loader -> `0xF266`=offset `0x5266`, cmd 0x0A Update Finish ->
+`0xF18A`=offset `0x518A`, etc. — same handlers, same addresses). **[fw], both tools agree.**
+
+### cmd_set 9 sub-dispatch (flash `0xF6E4` = offset `0x56E4`) — full case table recovered
+
+`ldrb r1,[frame,0xA]` (cmd_id); `cmp r1,#0xD; beq <cb10>`; `tbb` for id 0-0xC; explicit chain
+for id 0x10/0x12/0x13/0x14/0x15/0x2C. Matched against the APK's real `CmdSet.Rc.CmdIdType`
+numeric values (`tmp/apk/dynamic/decompiled/.../CmdSet.java`, extracted 2026-10-23):
+
+| cmd_id | APK name | Handler (flash) | Role (Ghidra decompile, `[fw]`) |
+|---|---|---|---|
+| 0x0C (12) | SetConnectMaster | `0xCBCA` | **Reports** 6 stored RC-state fields (RAM `0x100005E8`+`0x62`/`0x63`(99)/`0x64`(100)/`0x70`/`0x71`-1/`0x79`) in a 15-byte reply. Despite the "Set" name, this handler only *reads* state and replies — it does not accept new values. |
+| 0x0D (13) | GetConnectMaster | `0xCB10` | **Writes** state: parses the payload as a run of `(field_id, value)` byte pairs (count from the DUML 10-bit length field), stores each into the same `0x62`/0x63/0x64/0x70/0x71/0x79 offsets; field id 1 additionally sets a flag byte (RAM `0x100000C8`+0xc = 1) when the frame's receiver-type nibble (`frame[4]&0x1F`) == 9. Unknown field id -> status `0xE0`. Despite the "Get" name, this is the one that *writes* fields. |
+| 0x10 (16) | GetSearchMode | `0xCADC` | Writes 1 byte (payload[0]) to RAM `0x100000C8`+`0xd`; 1-byte status reply. |
+| 0x12 (18) | GetToggle | `0xCA6C` | Multi-field setter: calls 5 small helper setters (`0x17A94/178F0/17906/1791C/17978/17942`) from payload bytes 0xb-0xe (bit7 of byte 0xb selects a branch) — role of each helper not traced further this pass. |
+| 0x13 (19) | RequestSlaveJoin | `0xC9B4` | **No RAM state write** — builds and sends an 8-byte status/capability reply: a flag bit (from helper `0x16848`), a 14-bit field (`0x179EC`), two bytes (`0x179FC`), one byte (`0x17980`), and RAM `0x1000000C` (a version/counter word) `* 10`. Reads as "can this RC accept a slave join" + capability snapshot, not a state mutation. |
+| 0x14 (20) | GetSlaveList | `0xC8C2` | Dual-mode accessor on a mode byte at rc_state (`0x100005E8`)+`0xF`: mode 0 and mode 1 each read/write one byte between the payload and two RAM pointers (`0x10000311`/`0x10000310`) selected by the frame's receiver-type nibble (2 or 0xE), clamped against a third pointer (`0x10000272`). Mode-1 path also runs the same slave-id-match-and-decrement as `DeleteSlave` below. |
+| 0x15 (21) | DeleteSlave | `0xC7C2` | If payload[0]==0 and the frame's slave-id field (`frame[6:8]`, u16) matches RAM `0x100000C8`+`0x9E`, decrements a slave-count byte at `+0x9C` (floored at 0). Matches the RC-to-RC "multi-controller" model in `docs/duml-protection.md` ("a second/subordinate RC joining the primary RC"), not aircraft binding. |
+| 0x2C (44) | (not in `CmdIdType`; DJI-internal) | `0x15A1C` | Keyed sub-dispatch on u16 `frame+0xD` (0x901-0x914) — already documented in `docs/ground-upgrade-path.md` Q3 (chip-UID reply at key 0x904). |
+
+**Correction to `cpu-reversing-proof.md`'s "ISOLATED" section:** that pass (radare2,
+2026-10-24 earlier) got the handler addresses right (`0xCBCA`/`0xCB10`, i.e. offsets
+`0x2BCA`/`0x2B10`) but mis-described the data direction of 0x0D ("GET... return stored
+values from RAM state") — Ghidra's full decompile shows 0x0D is the one that *writes*
+fields and 0x0C is the one that *reports* them, i.e. the Set/Get naming and the actual
+read/write direction are swapped. `cpu-reversing-proof.md` should be read with this
+correction; not re-edited line-by-line here to avoid duplicating the addresses in two
+places.
+
+### `SetFrequency` (RC `CmdIdType.SetFrequency` = 0x2F/47) — not implemented on this chip/build
+
+Searched the full `m1400` disassembly for any `cmp`-style test against cmd_id `0x2F`
+(the pattern every other case above uses): **zero hits.** The cmd_set-9 dispatcher's highest
+handled id is `0x2C` (44); `0x2F` falls through to the default (no-op) path. So **this
+firmware build (`04.10.0006`) has no DUML handler for "RC Pairing"/`SetFrequency` at all** —
+it is not merely unlabelled, it is absent. The air/ground **frequency-hopping config is
+therefore not DUML-command-driven on this MCU**; the likelier owner is the FPGA bring-up
+record-script mechanism (`fpga_script_exec_record` / the undecoded scripts at offsets
+`0x20310`/`0x1D1D4`/`0x23D68`, `docs/ground-upgrade-path.md` Q2) rather than a Set/Get DUML
+pair. Open for a follow-up pass; not chased further here (scope: issue #39 asked for the
+decode, and the decode's answer is "not present").
+
+Reproduce: `python3 scripts/re/svd_to_labels.py --svd <path> --out docs/data/lpc176x5x-register-map.tsv`;
+`python3 scripts/re/lpc17xx_periph_scan.py`; `python3 scripts/re/m1400_ghidra_disasm.py`
+(full dump `tmp/m1400_ghidra/m1400_dump.txt`, log `tmp/logs/m1400_ghidra_disasm.log`).

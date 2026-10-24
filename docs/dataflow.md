@@ -147,7 +147,7 @@ Notes (all V unless marked):
 | Telemetry (link params ch/mcs/bw/snr/rssi) | m1400 tracks (`cpu-reversing-proof.md`) | n/a | n/a | V on m1400 string path; route to app U |
 | Control (app to aircraft DUML) | App via FX2LP (I) | ground MCU/FPGA (I), air FPGA to m0900 USART3 (I) | m0900 consumes set 0x09 (radio) via dispatch; other sets forwarded by type, FC reached over CAN (I) | m0900 V, rest I |
 | Video | DM368 (I) into air FPGA | air FPGA modem, ground FPGA, DM365, FX2LP | phone decoder (`libdjivideo`, docs) | I |
-| Master-ID | owned by m1400, written to ground FPGA over GPIO/UART (`id-entry-point.md`) | n/a | n/a | V on m1400 |
+| Master-ID | owned by m1400, written to ground FPGA over GPIO/UART (`id-entry-point.md`); full DUML cmd_set-9 handler table (Connected-Master-Id + RC-to-RC slave join/list/delete, flash `0xC7C2`-`0xCBCA`) Ghidra-decoded in `control-plane-re.md` | n/a | n/a | V on m1400 |
 
 - **Where DUML meets the video stream** (the physical mux of DUML bytes with H.264 inside OFDM frames) is **not visible from m0900**; m0900 only has a UART (USART3) into the FPGA. The mux is in the FPGA fabric (U).
 
