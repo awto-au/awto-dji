@@ -40,6 +40,12 @@ class TelemetryScreen extends StatelessWidget {
               _row('Roll', osd == null ? '-' : '${osd.roll.toStringAsFixed(1)} deg'),
               _row('Yaw', osd == null ? '-' : '${osd.yaw.toStringAsFixed(1)} deg'),
             ]),
+            _card('RC signal (I - inferred decode, see rc_signal.dart)', [
+              _row('Antenna 1', session.latestSignal == null
+                  ? '-' : '${session.latestSignal!.antenna1Dbm} dBm'),
+              _row('Antenna 2', session.latestSignal == null
+                  ? '-' : '${session.latestSignal!.antenna2Dbm} dBm'),
+            ]),
             _LinkCard(session: session),
           ],
         );

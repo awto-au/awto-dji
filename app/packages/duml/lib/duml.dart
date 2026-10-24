@@ -11,3 +11,4 @@ export 'src/packet.dart';
 export 'src/simple.dart';
 export 'src/catalog.dart';
 export 'src/telemetry.dart';
+export 'src/rc_signal.dart';

@@ -5,6 +5,8 @@ directly, for a device the operator owns). Grouped by topic; start with `../HAND
 the current state and next steps, and `../CLAUDE.md` for agent onboarding.
 
 ## Protocol & control plane (the practical path)
+- [usb-test-matrix.md](usb-test-matrix.md) — per-port bench evidence, open USB tests, and a cached-descriptor watcher for cable/power correlation.
+- [fx3-usb-modes.md](fx3-usb-modes.md) — ground USB firmware's alternate bulk interfaces, GPIO/configuration mode selection, and the currently verified PC serial path; PC bulk access remains unverified.
 - [duml-protection.md](duml-protection.md) — separates APK SIMPLE XOR, ATSHA204 component authentication, RC master/slave connection and unresolved aircraft-radio protection; traces the XOR inputs.
 - `protocol-verification.md` — DUML wire format verified byte-exact against a real packet.
 - `control-plane-re.md` — reverse the MCU control plane, not the FPGA; external corroboration.
@@ -19,6 +21,7 @@ the current state and next steps, and `../CLAUDE.md` for agent onboarding.
 - `p3-usb-observations-2026-10-23.md` — what the P3 controller and aircraft do on USB: line settings, DUML replies, the aircraft's one-way log stream, DTR/RTS sensitivity.
 
 ## Telemetry & video
+- [pc-video-preview.md](pc-video-preview.md) — corrected AOA envelope parsing, PC extraction/FFmpeg checks and saved-capture limitations; supersedes the earlier no-demux-header claim.
 - `video-and-link.md` — what talks to the phone; OSD is client-rendered, not burned at the
   aircraft; video/telemetry mux; data-vs-burned-OSD tests.
 
@@ -59,3 +62,4 @@ aircraft: no geofence defeat, no extraction of secret key values, structural ana
 - [fc-device-dll.md](fc-device-dll.md): DJI Assistant 2 For Phantom Windows native layer (`DJIDevice.dll`/`dataManager.dll`/`DJIServices/*.dll`): DUML CRC8/CRC16 constants confirmed byte-for-byte, cmdset-0 firmware-upgrade command IDs confirmed/new; data in `data/dll-duml-commands.tsv`
 - [aoa-live-test-2026-10-23.md](aoa-live-test-2026-10-23.md): first real-hardware test of `awto_dji_app` against the RC's USB-A (phone) port via genuine AOA - real bytes flow, some frames pass CRC outright, confirms the raw stream is multiplexed (DUML + video/other); new debug TCP relay (`../app/awto_dji_app/lib/debug/tcp_relay.dart`, `../scripts/re/aoa_relay_server.py`) for fast native-Python decoder iteration
 - [apk-vs-dissector-gap-report-2026-10-23.md](apk-vs-dissector-gap-report-2026-10-23.md): 723 real cmdset/cmdid facts from the dynamically-unpacked DJI GO 4 enum vs the public dissector - cmdset 10 (vision/EYE) badly under-documented upstream (49 missing IDs), a real JoyStick command-ID mismatch caught, firmware-upgrade and flight command sequences named; data in `data/apk-dynamic-cmdset-ids.tsv`, `data/cmdset-gap-report.tsv`, tools `../scripts/re/extract_apk_cmdset.py`, `../scripts/re/compare_cmdset_gaps.py`
+- [known-telemetry-and-commands.md](known-telemetry-and-commands.md): current-state reference - which of the 723 catalogued commands actually have a working decoder/send-struct today vs name-only; keep this updated, don't let it go stale

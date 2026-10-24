@@ -67,6 +67,7 @@ class LinkSession extends ChangeNotifier {
   DateTime? lastPacketAt;
   DateTime? lastTelemetryAt;
   OsdGeneral? latestOsd;
+  RcSignalQuality? latestSignal;
   LinkState linkState = LinkState.disconnected;
 
   Stream<DumlPacket> get packets => _packets.stream;
@@ -137,6 +138,10 @@ class LinkSession extends ChangeNotifier {
         latestOsd = osd;
         lastTelemetryAt = now;
         _telemetry.add(osd);
+      }
+      final signal = RcSignalQuality.fromPacket(p);
+      if (signal != null) {
+        latestSignal = signal;
       }
     }
     if (gotPacket && prev != null) {
