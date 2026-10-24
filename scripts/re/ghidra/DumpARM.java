@@ -26,10 +26,58 @@ public class DumpARM extends GhidraScript {
     public void run() throws Exception {
         String[] args = getScriptArgs();
         String outPath = args.length > 0 ? args[0] : "/tmp/m0900_ghidra_dump.txt";
+        // Optional arg 1: TSV of "0xADDR<TAB>NAME" peripheral bases, replacing the F1 default.
+        if (args.length > 1) {
+            NAMED.clear();
+            for (String line : java.nio.file.Files.readAllLines(java.nio.file.Paths.get(args[1]))) {
+                String[] f = line.trim().split("\\s+");
+                if (f.length == 2 && f[0].startsWith("0x")) NAMED.put(Long.parseLong(f[0].substring(2), 16), f[1]);
+            }
+        }
+        FunctionManager fm = currentProgram.getFunctionManager();
+        // Optional arg 2 "vectors": make a function at every Thumb handler in the vector
+        // table. Raw-binary import has no entry points, so ISRs never reached by a call
+        // (e.g. USART1 handler at 0x08011725) otherwise have no function and no body.
+        if (args.length > 2 && args[2].equals("vectors")) {
+            Address imgBase = currentProgram.getMinAddress();
+            int made = 0;
+            for (int i = 1; i < 98; i++) {
+                long v = Integer.toUnsignedLong(getInt(imgBase.add(4L * i)));
+                if ((v & 1) == 0) continue;
+                Address h = toAddr(v & ~1L);
+                if (currentProgram.getMemory().contains(h) && fm.getFunctionAt(h) == null) {
+                    disassemble(h);
+                    if (createFunction(h, "vec_" + i) != null) made++;
+                }
+            }
+            println("vector-table functions created: " + made);
+        }
+        // Optional arg 3 "0xBASE:N": N {handler, id} pairs (8-byte stride), e.g. the DUML
+        // command table. Stops at the first entry that is not a Thumb address in the image.
+        if (args.length > 3) {
+            String[] p = args[3].split(":");
+            Address tb = toAddr(Long.parseLong(p[0].substring(2), 16));
+            int n = Integer.parseInt(p[1]);
+            for (int i = 0; i < n; i++) {
+                Address e = tb.add(8L * i);
+                long h = Integer.toUnsignedLong(getInt(e));
+                long id = Integer.toUnsignedLong(getInt(e.add(4)));
+                if ((h & 1) == 0 || !currentProgram.getMemory().contains(toAddr(h & ~1L))) {
+                    println("table stop at entry " + i + " (" + e + ")");
+                    break;
+                }
+                Address ha = toAddr(h & ~1L);
+                if (fm.getFunctionAt(ha) == null) {
+                    disassemble(ha);
+                    createFunction(ha, "cmd_" + Long.toHexString(id));
+                }
+                println("table entry " + i + ": id=0x" + Long.toHexString(id) + " handler=" + ha);
+            }
+        }
+
         PrintWriter w = new PrintWriter(outPath);
 
         Listing listing = currentProgram.getListing();
-        FunctionManager fm = currentProgram.getFunctionManager();
 
         w.println("=== FUNCTIONS (" + fm.getFunctionCount() + ") ===");
         for (Function f : fm.getFunctions(true)) {

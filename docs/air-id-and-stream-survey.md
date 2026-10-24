@@ -16,7 +16,7 @@ Addresses: Cortex-M modules = runtime address; m0100 sys = runtime address (base
 | m0101 | camera loader (SD updater) | ARM Cortex-A9, ThreadX/IAR (V: string `0x64be4`) | no | no | SD-card updater: CRC32 check, model-name check (`0x4ce4`), NAND program, reboot | strings `0x4c5c-0x5fe4` |
 | m0305 | A3 FC loader | Cortex-M (STM32F4 by option-byte address) linked at `0x20000000` (I: base), SP `0x1000e4e8` | no | no UID/IDCODE. Reads option byte `0x1FFFC001` into RAM (`0x20007d0c`): protection state (V) | loader for m0306 | const scan |
 | m0306 | A3 flight controller | Cortex-M4 STM32F4, base `0x08020000` | no (reaches m0900 over CAN per dataflow.md) | **yes**: STM32F4 UID read `0x0808527a`; word 0 used in a 10-byte record built at `0x080596ea` (callers `0x08059798`, `0x08059b3e`). Strings: `m8 uid not received` (`0x0802867b`), `IMU SN ERROR`, `[set uuid]` | updated via DUML | disasm (V structure, U consumer) |
-| m0400 | gimbal | Cortex-M STM32 base `0x08008000` | no | no UID literal. Get-Version-like handler `0x08016254` reads flash page `0x080C0000` (outside image) | updated via DUML | table `0x0801d4ac` ids 1,7,8 |
+| m0400 | gimbal | STM32F4 family (V), base `0x08008000` | no | no UID or DBGMCU read. Set 0x00 id 0x01 handler `0x08016254` reads 2 words at flash `0x080C0000` (code V, contents U, outside image) | updated via DUML | DUML table `0x0801d46c`, 27 entries, see "m0400 gimbal" |
 | m0800 | video encoder, DaVinci DM368 Linux | `Salted__` openssl blob (V); not decrypted (no key work) | **unknown** (strongly suspected: stream source, see "Stream path") | unknown | target of UEG fw-id 12 (DUML Update Transmit) | header bytes |
 | m0900 | Lightbridge MCU, STM32F103 | Cortex-M3 base `0x08008000` | **yes**: SPI2 FPGA regs, USART3 DUML, upgrade handshake (fpga-bringup.md, fpga-upgrade-path.md) | **yes**: STM32 UID `0x080127be`, DUML request `0x0904` -> reply `0x0954`. No FPGA ID read | handles Enter Loader/Confirm/Finish for receiver 0x13; no Update Transmit handler | existing docs; const scan agrees |
 | m1100 / m1101 | battery 1 / 2 | non-ARM; m1100 likely TI MSP430 (I: `31 40` = `mov #imm,SP`) | no | unknown (not disassembled) | DUML target | arch scan |
@@ -147,7 +147,7 @@ UID-read summary across variants: STM32 UID literals exist only in P3X V01.11.00
 - **m0100**: ATSHA204 SN (9 bytes) and board number verified against A9 NAND; SD-card SN; authorized MAC. Not an SoC or FPGA UID.
 - **m1700**: camera-module ID, not a chip UID.
 - **FPGA / Cyclone V**: no code anywhere reads the FPGA die ID, JTAG IDCODE or eFuse. Only FPGA values read are regs 0x08/0x09 in the upgrade check (fpga-upgrade-path.md). Bitstream shows no user chip-ID block (weak, see m1900).
-- m1500: none. m0400: none (reads a flash page, meaning U). ESC/battery: unknown.
+- m1500: none. m0400: none (reads flash `0x080C0000`, contents U). ESC/battery: unknown.
 
 ### (c) Firmware-upgrade path reaching the FPGA or sending an ID
 - V: UEG in m0100 runs per module: version, entry, confirm, transmit, finish, reboot. **FPGA = fw-id 10, receiver 0x13, generic DUML transmit.** FX2LP = fw-id 11, USB transmit. m0900 = fw-id 9.
@@ -166,7 +166,73 @@ UID-read summary across variants: STM32 UID literals exist only in P3X V01.11.00
 - **ESC (m1200-m1203), battery (m1100/m1101)**: architecture not confirmed (MSP430 for m1100 is I); no disassembler available here.
 - **P3SE m0100** cannot be split by `amba_fwpak`; **Wi-Fi modules** m0700/m2700 (ath9k Linux) not analysed beyond keyword strings.
 - **Hardware facts**: FIFO peer of the FX2LP, USB mux topology, which board strap the owned unit has: need a schematic or logic-analyzer capture.
-- **DUML Get Version (0x01) / Query Device Info (0xFF) replies** traced for m0900 only (existing docs); candidate General-set tables found by heuristic scan: m0400 `0x0801d4ac`, m0305 `0x2000a390`, m0306 `0x080baa60`; reply contents not decoded.
+- **DUML Get Version (0x01) / Query Device Info (0xFF) replies** traced for m0900 only (existing docs); m0400 resolved (see "m0400 gimbal"); m0305 `0x2000a390` and m0306 `0x080baa60` still heuristic-only; reply contents not decoded.
+
+## m0400 gimbal: firmware reversing (issue #41)
+
+Image: `firmware/unpacked/P3X_FW_V01.11.0020_m0400.bin` (97032 B, V). Ini version `01.48.0000` (V).
+Loaded at `0x08008000` (I): reset vector `0x0800819d` lands inside the image (V).
+Tooling: `scripts/re/m0400_fingerprint.py`, `m0400_ghidra_disasm.py`, `m0400_literal_refs.py`,
+`m0400_cmd_table.py`. DumpARM.java got optional args (peripheral TSV, `vectors`, table spec).
+Ghidra project: `re/ghidra-projects/m0400_gimbal.tar.gz` (archived, not deleted).
+
+### Image and library
+- V: no ELF, no `.symtab`/`.debug_*`, no compiler banner, no map tokens. Stripped raw image.
+- V: no ST StdPeriph/HAL/CMSIS/RTOS names, no `assert_failed` or source-path strings.
+- U: FunctionID/FLIRT not run. "No names" is not "no library".
+- V: Ghidra found 328 functions (18 vector-table ISRs, 27 table handlers), 22890 instructions.
+  No functions from `0x0801b660` to image end `0x0801fb08` (data or unexplored, U).
+- All functions are `FUN_*`. Nothing is named yet beyond the table-derived `vec_*`/`cmd_*`.
+
+### Peripheral map (F4 RM0090 bases; Ghidra literal xrefs, V)
+- RCC `0x40023800` 18 refs, FLASH_IF `0x40023C00` 1 ref: both in clock-init `0x08011220`.
+- GPIOA `0x40020000` 80 refs; GPIOB 4; GPIOC 1.
+- USART1 `0x40011000` 11 refs (ISR `0x08011724`, IRQ37). USART2 `0x40004400` 14 refs (ISR `0x080117bc`, IRQ38).
+- USART3, SPI2, I2C1, DMA2, SDIO: 0 refs.
+- SPI1 `0x40013000` 12; DMA1 `0x40026000` 2; ADC1 `0x40012000` 7; CAN1 `0x40006400` 9.
+- TIM1 2; TIM3 1; TIM4 6. TIM2 `0x40000000` hits are float bit patterns (2.0f), not timers.
+- U: F1-layout literals (RCC `0x40021000`, FLASH `0x40022000`) exist but have no confirmed LDR site.
+
+### Part (I)
+- V: 98 vector slots; F4 has 82 IRQs, F1 high-density has 60.
+- V: SP `0x2000fc40` inside F4 SRAM1 range.
+- I: 1 MB flash (flash read at `0x080C0000`). Exact part F405/F407/F415/F417 not resolved.
+
+### DUML dispatch
+- V: dispatcher `FUN_08016ff4`, loop `0x08017064`-`0x080170a4`. Rejects payload < 11 B (`cmp #0xb`).
+- V: loop matches `frame[0x0a]` (cmd id) vs entry+4 and `frame[0x09]` (cmd set) vs entry+5.
+- V: entry = `{u32 handler|1, u8 id, u8 set, 2 pad}`, 8 B, 0-terminated.
+- V: table `0x0801d46c`, 27 entries, terminator at `0x0801d544`.
+- V: `FUN_08016fac` (base literal `0x08016ff0` -> `0x0801d464`) has an empty table: first word at `0x0801d464` is 0, so it dispatches nothing.
+- Entries (set/id -> handler):
+  - 0x00/0x01 `0x08016254` Get Version. 0x00/0x07 `0x08016338`. 0x00/0x08 `0x08016cdc`.
+  - 0x00/0x09 `0x08016188`. 0x00/0x0a `0x080162e4`. 0x00/0x0b `0x08016840`. 0x00/0x0c `0x08016d30`.
+  - 0x00/0x0d `0x08016bf8`. 0x00/0x30 `0x08013fcc`.
+  - 0x01/0x01 `0x08016c78`. 0x03/0x42 `0x08016634`.
+  - 0x04/0x01 `0x08016564`. 0x04/0x06 `0x0801675c`. 0x04/0x07 `0x080168ac`. 0x04/0x08 `0x08016990` AutoCalibration.
+  - 0x04/0x0a `0x08015a50`. 0x04/0x0b `0x08015eb4`. 0x04/0x0c `0x08015c88` GimbalSpeedControl. 0x04/0x0d `0x08016eac`.
+  - 0x04/0x0e `0x080167e0`. 0x04/0x0f `0x08016a98`. 0x04/0x10 `0x080163c4`. 0x04/0x11 `0x08016930`.
+  - 0x04/0x13 `0x080161e8`. 0x04/0x14 `0x08015fe0`. 0x04/0x20 `0x08016e14`. 0x04/0x21 `0x08016e30`.
+
+### Wire-to-code: the two confirmed commands
+- **0x04/0x08 AutoCalibration -> `0x08016990` (V).**
+  - Wire frame, issue #16 capture (V): `550e046602040074200408008c2f`. Attr `0x20`, payload `00`.
+  - Handler sets a state word to 3, then reads attr bits [6:5] (V). Nonzero means the reply is built.
+  - Reply: 14-byte frame, cmd set `0x04` and id `0x08` echoed, sent via `0x08016d94` (V).
+  - Afterwards the state goes to 5. The payload byte is not read on this path (V).
+- **0x04/0x0c GimbalSpeedControl -> `0x08015c88` (V).**
+  - Mode check: global `0x08015ea0`+4 vs request byte `+4 & 0x1f`. Mismatch sets flag `0xff` (V).
+  - Mode field from frame byte `+0x11` bit 7: 2 if set, else 0 (V).
+  - Three int16 at frame `+0x0b`, `+0x0d`, `+0x0f` scaled by `0.0017453292` (pi/180, V) into floats at global `+0x48`, `+0x4c`, `+0x50`.
+  - A setpoint outside [-pi, +pi] is replaced by `0.0`, not saturated. Checked for `+0x48` and `+0x50` (V). Constants at `0x08015ea4`-`0x08015eb0`.
+  - Reply path: not traced (U).
+- Not decoded: what the setpoints drive, and the wire payload layout beyond these offsets.
+
+### Get Version -> `0x08016254` (set 0x00 id 0x01)
+- V: copies 2 words from flash `0x080C0000` via `0x0800da3e(src, count, dst)` into stack.
+- V: stores word[1] (flash `+4`) into reply at frame `+0x12`.
+- V: writes constant `0x01300000` to a struct `+4` and `1` to `+8`. Meaning U.
+- U: flash `0x080C0000` contents. Outside the image, so not in this file.
 
 ## DJI GO 4 APK: checklist (not on disk, nothing downloaded)
 - Class/package names: upgrade (`Upgrade`, `Firmware`, `FwUpdate`), version/device info (`GetVersion`, `DeviceInfo`, `DeviceState`), activation (`Active`, `Activation`, `RealName`), module-id tables with `FPGA`, `68013`, `DM368`, `1765`.
