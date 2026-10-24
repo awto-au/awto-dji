@@ -45,6 +45,91 @@ See the diagnostic logging section for the exact file, device identity and limit
   command input, a USB serial console, or access to the Linux shell**. The Ambarella
   USB interface observed during this session was mass storage, not CDC serial.
 
+## `sys` partition load address: 0x0e600000 vs wiki's 0x8020000 (resolved 2026-10-24)
+
+**W** (`o-gs/dji-firmware-tools` wiki, "Firmware m0100",
+<https://github.com/o-gs/dji-firmware-tools/wiki/Firmware-m0100>): "`sys` - System
+Software - contains a memory image of ARM (Cortex A9) binary. During startup, it is
+being loaded into memory at address `0x8020000` and executed by a loader." This is a
+generic statement covering every product/version the page lists (OSMO, WM610, P3X,
+P3S, P3C, P3XW, WM330 - dozens of firmware builds from 2015-2016), not tied to a
+specific build.
+
+**V, resolved — this repo's own extraction disagrees, and is the authoritative value
+for the build actually being analyzed:**
+
+- `tmp/air/amba_P3X0020/P3X_FW_V01.11.0020_m0100_part_sys.a9h` (the Ambarella Firmware
+  Packer section-header sidecar, produced directly by `amba_fwpak -x` unpacking this
+  exact firmware) states `mem_addr=0E600000` in plain text — not inferred, a field the
+  packer tool itself emits. Recorded in `docs/symbols/air_modules.tsv` line 2.
+- The same unpack's Linux-kernel partition header
+  (`P3X_FW_V01.11.0020_m0100_part_lnx.a9h`) states `mem_addr=00508000` — also not
+  `0x8020000`.
+- Independently corroborated in bytes, not just the header: `scripts/re/fpga_write_path.py`'s
+  `mode_check()` decodes a known function (`DjiMsgChannelInit`) at `0x0e861988` as sane
+  ARM A32 code, and literal-pool pointers throughout the image resolve to valid strings
+  only when read relative to base `0x0E600000` (see `pool_xrefs()`/`cstr()`). Decoding
+  under a `0x08020000` base would put every one of these absolute pointers and string
+  literals outside the file entirely (the image is 8.9 MB, loaded range
+  `0x0E600000`-`0x0EF00000`; `0x08020000` is ~220 MB away).
+- `0x08020000` **is** a real address in this repo's own data — just for a different,
+  unrelated module family: it's the flash base for this project's **STM32-based**
+  modules (`m0306` flight controller, confirmed via vector-table decode in
+  `docs/code-provenance.md`; same `0x0802xxxx` region cited for other Cortex-M modules
+  in `docs/air-id-and-stream-survey.md`). Most likely explanation: the wiki's figure is
+  either a generic/placeholder value from Ambarella SDK documentation examples, or
+  cross-contamination from the STM32 convention used elsewhere in the DJI firmware
+  family — not a measurement of this specific Ambarella A9SE `sys` image. **Verdict:
+  `0x8020000` does not apply to `P3X_FW_V01.11.0020`'s `sys` partition; `0x0E600000` is
+  correct for it**, verified two independent ways (packer header field + in-image
+  pointer consistency).
+
+## m0800 investigation (2026-10-24, issue #20)
+
+**W** (same wiki page, "Interfaces -> Linux console via ETH"): *"To access Ambarella
+Linux console in P3X, you can attach to Firmware m0800 Debug serial interface, and
+from there connect to Ambarella via internal Ethernet."* The wiki's own m0100 page
+documents a separate, distinct **debug serial interface U0** on the Ambarella side
+(115200 8N1, `AmbaShell`/ThreadX `sys` shell — matches this doc's own section 3
+findings) and says reaching the **Linux** console instead requires going via `m0800`.
+
+**V, blocking finding: `m0800` cannot be disassembled in this workspace — it is
+ciphertext, not merely "never attempted."** Both locally available copies —
+`firmware/unpacked/P3X_FW_V01.11.0020_m0800.bin` (3.3 MB) and the older
+`tmp/air/P3X0006/P3X_FW_V01.01.0006_m0800.bin` — start with the literal 8-byte
+OpenSSL marker `Salted__` followed by a password-derived salt, the standard
+`openssl enc -salt` container format. Measured Shannon entropy over the full
+`V01.11.0020` file: **7.99995 bits/byte** (ideal-random is 8.0) — no structure, no
+readable strings anywhere (`strings -n6` on the whole 3.3 MB file returns zero
+GCC/GNU/GPL/network/UART/console hits; `air_survey.py`'s own `file_kind()` already
+classifies `Salted__`-prefixed blobs this way, line 383-384). This directly
+contradicts two existing doc entries that claimed string-based "GNU"/"GPL" toolchain
+evidence for `m0800` (`docs/code-provenance.md`, `docs/license-compliance.md`) — both
+corrected in this pass; that evidence could not have come from this file's actual
+bytes. `docs/air-id-and-stream-survey.md` already had this right ("`Salted__` openssl
+blob (V); not decrypted (no key work)").
+
+- **Consequence for the wiki's ETH claim: cannot be verified or refuted from this
+  repo's firmware images.** No `eth`/network-driver string, debug-serial reference, or
+  any other evidence can be extracted from an encrypted blob at 7.99995 bits/byte
+  entropy. Decryption needs the OpenSSL password, which is not published and not in
+  this repo (same boundary `air-id-and-stream-survey.md` already documented: "decrypting
+  would need key material (out of scope)").
+- **I, plausible but unconfirmed:** the wiki's claim is architecturally consistent with
+  this doc's own finding that the camera's Linux side (`m0100` `lnx`/`rfs`) has **no
+  wired Ethernet MAC driver** and only brings up `usb0` via `cam_server` (section 2
+  above) — if `m0800` (DaVinci DM368, itself a Linux SoC per `docs/video-and-link.md`)
+  has its own Ethernet-capable interconnect to the Ambarella A9SE's Linux core (e.g. an
+  internal MII/RMII link between the two SoCs, separate from the external USB-net path),
+  that would be a second, distinct route to the same Linux console the always-on
+  `ttyS2` root shell (section 1) already reaches directly. Not established either way
+  without decrypting `m0800` or finding a schematic.
+- **Not resolved this pass, needs follow-up with key material or a schematic**: whether
+  `m0800` has its own always-on UART (the wiki's "Debug serial interface" language
+  implies yes, by analogy with `m0100`'s U0), and whether it's wired to the A9SE via a
+  real MII/RMII Ethernet PHY or something narrower DJI calls "internal Ethernet"
+  loosely (e.g. a point-to-point packet link over a non-standard bus).
+
 ## Firmware trace of the logging gate and related filenames
 
 All addresses in this section refer to `P3X_FW_V01.11.0020_m0100_part_sys.a9s`,
@@ -155,6 +240,19 @@ bytes readable, then `EIO`). The marker's logging effect is no longer just claim
 there's a file to point to - but causation (that the empty `0x40003000.dji` marker is
 what produced it, versus some other trigger) is still not independently proven; see
 `docs/firmware-upgrade-log-review.md:90-96`.
+
+**W, corroboration (2026-10-24, issue #20 pass):** the `o-gs/dji-firmware-tools` wiki's
+m0100 page documents the exact same mechanism independently: *"Ambarella sys component
+shell log can be enabled by creating an empty file `0x40003000.dji` on the sd-card
+root. The result will be creation of `CameraLogCur.log` in the hidden MISC folder"* -
+and its sample log literally shows the same function name this repo's own static trace
+found at `0x0e80d184` (`DjiLog2SdDetectProc[L222]: detect log record config file enable
+sd record log`), confirming this repo's RTOS-side function-name attribution against an
+independent source, not just the firmware bytes. This test (write marker, confirm log
+appears) had already been run live on this operator's own hardware before this pass -
+see the "SD-card diagnostic logging marker" section above and
+`docs/firmware-upgrade-log-review.md` for the result (log appeared, causation still not
+isolated from the camera-aging alternate gate).
 
 ## 1. A root shell is already live by default - no unlock needed
 
@@ -368,6 +466,50 @@ access. Candidate paths, none tested yet:
   shadow hash is empty) appears to still be undocumented elsewhere, as far as
   searched 2026-10-24.
 
+## IPC channel names vs issue #37's `GetUSB` RTOS-caller question (2026-10-24)
+
+The wiki's sample boot log (an older firmware, ~2015-2016 vintage per its own
+`DJI firmware version v01.30.5036` / `SD Updater Version v01.22.4095` lines, i.e. not
+`P3X_FW_V01.11.0020`) shows `MCCTRL_PostLinuxReady` creating three named RPMsg
+channels right after `Recive Linux Bootup Ack`: `IPC_Rpmsg_Alloc[...]: IPC RPMsg
+Channel(dji_test, ...)`, `(dji_usr, ...)`, `(dji_drv, ...)`, each followed by
+`DjiIpcAlloc` PID attachment. Task #4 asked whether these names settle issue #37's
+open "what RTOS code calls `rpc_trans`'s `linux_rpcsvr_ctrl` ambaipc service (the
+`GetUSB` candidate)" question.
+
+**V, checked directly against `P3X_FW_V01.11.0020_m0100_part_sys.a9s`: partial match,
+does not settle #37.**
+
+- **The channel set differs by firmware build.** This repo's actual analyzed image
+  does NOT contain `dji_usr` or `dji_drv` as strings anywhere. It contains `dji_test`
+  (the one name shared with the wiki's older log) plus three others the wiki's sample
+  doesn't show: `dji_app`, `dji_sock`, `dji_usbdrv`. Found by disassembling the single
+  function at `0x0ea31758` that creates all four in sequence via calls to `0x0e912098`
+  (the `IPC_Rpmsg_Alloc`-equivalent wrapper, matching the wiki log's pattern exactly) -
+  this build's `MCCTRL`-layer function names also differ
+  (`MCCTRL_CallLinuxBootupRecall`/`MCCTRL_RegLinuxBootupRecall` here, vs the wiki log's
+  implied `MCCTRL_PostLinuxReady`, which does not appear as a string in this image at
+  all). DJI evidently renamed/restructured this channel set between firmware
+  revisions - citing the wiki's exact names against this firmware would have been
+  wrong.
+- **`dji_usbdrv` is a new, better-named lead than the wiki gave us** - not traced
+  end-to-end this pass (would need to follow channel-index usage from this alloc site
+  to every `IPC_Rpmsg_Send`/`IPC_Rpmsg_SendSyn` call site, out of scope for this task's
+  budget), but it is a stronger naming match for USB-related RTOS<->Linux traffic than
+  either `dji_usr` or `dji_drv` ever were.
+- **Negative result: no string-level link between the `dji_*` RPMsg channels and
+  `rpc_trans`'s `linux_rpcsvr_ctrl` service.** `linux_rpcsvr_ctrl` (confirmed in
+  `rpc_trans`'s own strings, registered via `libambaipc.so`'s `ambaipc_svc_register`)
+  does not appear anywhere in the `sys` partition's strings. Both sides do reference an
+  `AmbaIPC_*` function family (`AmbaIPC_ClockInit`, `AmbaIPC_HiberSaveRpmsgInfo`, etc. on
+  the RTOS side; `libambaipc.so` on the Linux side), consistent with both using the same
+  underlying Ambarella IPC/rpmsg transport - but DJI's named `dji_*` channels and
+  `rpc_trans`'s named ambaipc service are not shown to be the same channel, or even to
+  communicate with each other, by string evidence alone. **Issue #37's `GetUSB`
+  RTOS-caller question remains open** - this cross-check narrowed the search (ruled out
+  the wiki's exact names, surfaced `dji_usbdrv` as the better candidate) but did not
+  close it.
+
 ## Open / next steps
 
 - No DJI schematic or device tree for the camera (Ambarella) board exists on this
@@ -398,3 +540,12 @@ access. Candidate paths, none tested yet:
   `DjiUegDm368StreamControl`) but not `AppCdcAcm` itself - no GPIO/mux identified yet,
   all three show zero direct `bl` callers in the scanned range (dispatched via a
   table, not disassembled), so this is a start, not a resolution.
+- **`m0800` decryption** - the only way to check the wiki's "debug serial + internal
+  Ethernet" claim against real code. Needs the OpenSSL password (not published, not in
+  this repo); until then `m0800` is opaque (`Salted__`, 7.99995 bits/byte entropy,
+  verified 2026-10-24). `air-id-and-stream-survey.md` already flagged this boundary.
+- **`dji_usbdrv` RPMsg channel** (found 2026-10-24, `sys` partition, allocation call
+  site `0x0ea31758`-`0x0ea31848`) - not traced past its allocation. Following its
+  channel-index through `IPC_Rpmsg_Send`/`IPC_Rpmsg_SendSyn` call sites is the most
+  specific lead this pass produced for issue #37's open `GetUSB` RTOS-caller question,
+  still unresolved.

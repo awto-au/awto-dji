@@ -13,7 +13,7 @@ match frequency, i.e. a strong/weak presence signal.
 |---|---|---|---|
 | `m0100` | Camera SoC (Linux core) | Linux kernel, glibc, **busybox**, OpenSSL, wpa_supplicant, zlib, libjpeg, dropbear, + ThreadX | GPLv2 / LGPL / permissive / (ThreadX = commercial) |
 | `m0101` | Camera loader | ThreadX (Express Logic) | commercial RTOS — no OSS obligation |
-| `m0800` | DM368 video encoder | GNU / GPL present (small Linux) | GPLv2 |
+| `m0800` | DM368 video encoder | **correction 2026-10-24 (issue #20):** not observable — file is `Salted__` OpenSSL ciphertext (entropy 7.99995 bits/byte), no plaintext strings at all. Previous "GNU/GPL present" was unsupported by the actual bytes. See `docs/camera-linux-console-access.md`. | unknown (ciphertext) |
 | `m1900` | Lightbridge air FPGA | one stray BSD string | negligible |
 | `m0900` | Lightbridge MCU (STM32) | **none** — bare-metal Thumb-2 | proprietary |
 | `m0306`/`m0305` | A3 flight controller | **µC/OS** (Micrium RTOS) — see code-provenance.md | commercial RTOS — no OSS obligation |
