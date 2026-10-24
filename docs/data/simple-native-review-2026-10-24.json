@@ -1,0 +1,15 @@
+{
+  "unicorn_version": "2.1.0",
+  "cases": 544,
+  "apk_entry": "0x3438",
+  "firmware_entry": "0x400042e4",
+  "apk_sha256": "04a531f55d6011e68a9fc2d91b63da407cc877a36dec4767a60eef05a5bc3e76",
+  "firmware_sha256": "703d211d04bafa27f7c8fa95ec336d814440a7950740562bb28601bfdaa764a0",
+  "native_outputs_match": true,
+  "native_inverse_checks_pass": true,
+  "vectors": "tmp/simple-native-vectors.json",
+  "dart_verifier_pass": true,
+  "duml_tests_passed": 28,
+  "app_tests_passed": 25,
+  "scope": "Isolated native routines emulated; no hardware commands sent"
+}
