@@ -76,6 +76,41 @@ class GimbalControl(C.LittleEndianStructure):
     ]
 
 
+class GimbalSpeedControl(C.LittleEndianStructure):
+    """CmdSet.GIMBAL/0x04 id=0x0c (SpeedControl). Source: DataGimbalSpeedControl.java.
+
+    THIS is the command the real app actually uses for interactive single-pilot gimbal
+    control - confirmed 2026-10-24 against dji.pilot's real FPV gimbal UI
+    (DJIFpvGimbalPitchView.java): sent continuously on a 40ms Timer while a control
+    button is held (setPermission(true) + speed), then one final
+    setPermission(false)+zero-speed send on release. An exhaustive call-site search of
+    the whole decompiled app found AngleControl/AbsAngleControl/Control/
+    RequestGimbalCtrPermission used only for RC master/slave handoff and the third-party
+    Mobile SDK layer - NOT this app's own gimbal control path. This likely explains the
+    whole session's gimbal-move failures: wrong command family entirely, not a payload
+    or permission-sequencing bug in the ones tried.
+
+    Permission is embedded as bit7 of byte 6 in THIS SAME packet - there is no separate
+    request/ack handshake for interactive control (gimbal.requestCtrPermission appears
+    to be for the master/slave scenario above, not this flow - matches it never getting
+    a reply all session).
+
+    Speed scale: I (inferred) - deg/s*10 by analogy with this project's existing *10
+    convention; the UI's own speed constant is 270 (DJIFpvGimbalPitchView$2/$3.java),
+    not independently confirmed as a unit.
+    """
+    _pack_ = 1
+    _fields_ = [
+        ("yaw", C.c_int16),
+        ("roll", C.c_int16),
+        ("pitch", C.c_int16),
+        ("flags", C.c_uint8),  # bit7 = permission (1=take control, 0=release)
+    ]
+
+
+GIMBAL_SPEED_PERMISSION_BIT = 0x80
+
+
 class CameraRequestIFrame(C.LittleEndianStructure):
     """CmdSet.CAMERA/0x02 id=0xb3 - no payload. Forces an SPS/PPS/IDR resend
     (docs/aoa-live-test-2026-10-23.md)."""
@@ -85,9 +120,16 @@ class CameraRequestIFrame(C.LittleEndianStructure):
 
 class RcRequestGimbalCtrPermission(C.LittleEndianStructure):
     """CmdSet.RC/0x06 id=0x22 - empty payload. Receiver is DeviceType.osd (14), not RC -
-    DJI's own class targets that device type despite the cmdset being named RC. Must be
-    sent (and presumably acked) before AngleControl/Control commands are honored - this
-    was the missing step the first two gimbal-move attempts silently failed on.
+    DJI's own class targets that device type despite the cmdset being named RC.
+
+    UPDATE 2026-10-24: this does NOT appear to be a prerequisite for interactive gimbal
+    control - an exhaustive call-site search of the real dji.pilot app found this class
+    used only for the RC master/slave handoff scenario and the third-party Mobile SDK
+    layer, never in the app's own single-pilot FPV gimbal UI (which uses
+    GimbalSpeedControl instead, with permission embedded in that packet - see its
+    docstring). Consistent with this command never getting a reply all session despite
+    being sent before every AngleControl/AbsAngleControl attempt. Kept for the
+    master/slave scenario; don't assume it's needed for GimbalSpeedControl.
     Source: DataRcRequestGimbalCtrPermission.java."""
     _pack_ = 1
     _fields_: list = []
@@ -105,6 +147,14 @@ REGISTRY = {
     ),
     "gimbal.control": (
         0x04, 0x01, DeviceType.app, DeviceType.gimbal, GimbalControl, {}, {},
+    ),
+    "gimbal.speedControl": (
+        0x04, 0x0C, DeviceType.app, DeviceType.gimbal, GimbalSpeedControl,
+        {"yaw": 10, "roll": 10, "pitch": 10},
+        # flags default to the permission bit set (take control) - the real app sends
+        # this continuously while a button is held; for a one-shot test, send this a
+        # few times in a row (no separate permission request needed, see docstring).
+        {"flags": GIMBAL_SPEED_PERMISSION_BIT},
     ),
     "gimbal.absAngle": (
         0x04, 0x14, DeviceType.app, DeviceType.gimbal, GimbalAbsAngleControl,

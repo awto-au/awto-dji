@@ -20,10 +20,11 @@ falls back to hex for everything else).
 
 | Name | cmdset/id | Notes |
 |---|---|---|
-| `gimbal.angle` | 0x04/0x0a | AngleControl - relative, has duration field. Payload layout V - confirmed byte-for-byte 2026-10-24 against real `dji.pilot` decompile (`DataGimbalAngleControl.java`); the "opaque flags byte" claim is also V now (hand-traced the real bit-packing, confirmed all-defaults really does produce exactly 0x24) |
-| `gimbal.absAngle` | 0x04/0x14 | AbsAngleControl - absolute, explicit axis-invalid flags. Payload layout V - same confirmation pass (`DataGimbalAbsAngleControl.java`) |
-| `gimbal.control` | 0x04/0x01 | Mode set (YawNoFollow/FPV/YawFollow). Payload layout V - same pass (`DataGimbalControl.java`) |
-| `gimbal.requestCtrPermission` | 0x06/0x22 | **Reply must be checked** - `scripts/re/verify.py`'s `wait_for_permission_reply` decodes it (1=Refused, 2=TimeOut, 3=Getted); `duml_cli.py` alone does not. Cmdid and the 1/2/3 mapping are V (confirmed in `DataRcRequestGimbalCtrPermission.java`/`RcGimbalError`, dji.pilot); the exact wire byte offset the raw status comes from is still **I** - it passes through a generic wrapper class whose own source (where it reads the wire) wasn't read this pass |
+| `gimbal.speedControl` | 0x04/0x0c | **The real app's actual interactive-control command** (confirmed 2026-10-24: `DJIFpvGimbalPitchView.java` uses this, sent on a 40ms timer while a control button is held, nothing else). Permission is bit7 of byte6 in this same packet - no separate handshake. Never tried against hardware yet - highest-priority thing to test once the aircraft is back. See `scripts/re/duml_commands.py` docstring |
+| `gimbal.angle` | 0x04/0x0a | AngleControl - relative, has duration field. Payload layout V (byte-for-byte vs real `dji.pilot` decompile), but confirmed 2026-10-24 this is used for RC master/slave handoff and the third-party Mobile SDK, **not** this app's own single-pilot gimbal control - that's almost certainly why it never produced movement here |
+| `gimbal.absAngle` | 0x04/0x14 | AbsAngleControl - same story as `gimbal.angle`: payload layout V, but not the command the app's own gimbal UI uses |
+| `gimbal.control` | 0x04/0x01 | Mode set (YawNoFollow/FPV/YawFollow). Payload layout V; also not part of the real single-pilot gimbal control path |
+| `gimbal.requestCtrPermission` | 0x06/0x22 | Confirmed 2026-10-24: used for the RC master/slave handoff scenario, not interactive gimbal control - explains why it never got a reply all session despite being sent before every move attempt. `scripts/re/verify.py`'s `wait_for_permission_reply` decodes it anyway (1=Refused, 2=TimeOut, 3=Getted) for when it *is* relevant. The exact wire byte offset (byte 11, the dedicated ack-status field, not payload[0] as a "payload" concept - though numerically the same byte our parser treats as payload[0]) is now V, confirmed in `dji/midware/data/a/a/b.java` |
 | `camera.requestIFrame` | 0x02/0xb3 | Forces an IDR-adjacent re-sync; does not fix the no-true-IDR issue (awto-dji#26) |
 
 Send any of these: `python3 -I scripts/re/duml_cli.py send <name> [--field value...]`.
