@@ -1,10 +1,18 @@
 /// Decoder for the Flight Controller "OSD General Data" push
-/// (`cmd_set = 0x03`, `cmd_id = 0x43`), the main telemetry message.
+/// (`cmd_set = 0x03`, `cmd_id = 0x43`, "GetPushCommon" per duml_catalog.py), the main
+/// telemetry message.
 ///
 /// Field offsets are taken from the public o-gs/dji-firmware-tools Wireshark
 /// dissector. Only the leading, unambiguous geometric fields are decoded here; the
 /// deeper bitfield block (flight-state flags, GPS count) varies by platform and must
 /// be confirmed against a capture from your own aircraft before it is trusted.
+///
+/// U (unknown), not V: checked 2026-10-24 against the full session capture (~44MB,
+/// ~2.5h) via the Python port of this decoder (scripts/re/duml_telemetry.py) - this
+/// cmdset/cmdid never appears, not once. cmdset/cmdid matches our own APK-extracted
+/// catalog name exactly, so it's not a wrong-id guess; not yet root-caused (no gating/
+/// subscribe command found for it in the catalog). Treat matches() returning true as
+/// untested until this is resolved - see awto-dji#16.
 library;
 
 import 'dart:math' as math;

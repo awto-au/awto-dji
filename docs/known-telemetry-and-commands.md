@@ -8,7 +8,7 @@ decoders are added/confirmed, don't let it go stale.
 
 | Name | cmdset/id | Decoder | Fields | Confidence |
 |---|---|---|---|---|
-| OSD General | 0x03/0x43 | `app/packages/duml/lib/src/telemetry.dart` `OsdGeneral` | lat, lon, relative height, vgx/vgy/vgz, pitch/roll/yaw | V - offsets from public dissector |
+| OSD General | 0x03/0x43 ("GetPushCommon") | `app/packages/duml/lib/src/telemetry.dart` `OsdGeneral` | lat, lon, relative height, vgx/vgy/vgz, pitch/roll/yaw | **U, not V** - checked 2026-10-24 against the full session capture (~44MB, ~2.5h): this cmdset/cmdid never appears once. cmdset/cmdid matches our own APK catalog exactly, so not a wrong-id guess - not yet root-caused (awto-dji#16). Don't trust position/attitude from `ground/python/awto_dji_ground/duml_bridge.py` until this is resolved |
 | Gimbal GetPushParams | 0x04/0x05 | `scripts/re/duml_telemetry.py` `_gimbal_push` | pitch, roll, yaw, err, mode | V - cross-checked live, byte6 mode confirmed via AutoCalibration test (awto-dji#16) |
 | RC/OSD signal quality | 0x09/0x08 | `app/packages/duml/lib/src/rc_signal.dart` `RcSignalQuality` | aggregateQuality (0-127), isUplink, antenna1Dbm, antenna2Dbm | V - confirmed against decompiled `DataOsdGetPushSignalQuality.java` (dji.go.v4) 2026-10-24. An earlier version of this decoder read only the secondary per-antenna dBm bytes and wrongly concluded the link was strong while the real quality byte (aggregateQuality) was reporting a mediocre ~42% the whole time - see awto-dji#16 |
 

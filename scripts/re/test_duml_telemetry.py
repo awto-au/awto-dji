@@ -3,6 +3,7 @@ that have broken this parser before (the protection= field). Run:
 python3 -I scripts/re/test_duml_telemetry.py
 """
 import os
+import struct
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -49,6 +50,22 @@ check("format_frame names device+cmd, decodes gimbal push instead of hex",
 check("format_frame falls back to hex for an unstructured command",
       format_frame(0x02, 0x0e, 0x06, 0x22, b""),
       "app->osd RC/RequestGimbalCtrPermission payload=")
+
+cset, cid, decode = PUSH_DECODERS["osd"]
+check("osd decoder cmdset/cmdid", (cset, cid), (0x03, 0x43))
+_osd_payload = bytearray(30)
+struct.pack_into("<dd", _osd_payload, 0, 0.0, 0.0)
+struct.pack_into("<7h", _osd_payload, 16, 100, 10, 0, 0, 50, 0, 900)
+check("osd decode lat/lon/height/velocity/attitude",
+      decode(bytes(_osd_payload)),
+      {"latitude": 0.0, "longitude": 0.0, "relative_height": 10.0, "vgx": 1.0,
+       "vgy": 0.0, "vgz": 0.0, "pitch": 5.0, "roll": 0.0, "yaw": 90.0})
+
+cset, cid, decode = PUSH_DECODERS["rc_signal"]
+check("rc_signal decoder cmdset/cmdid", (cset, cid), (0x09, 0x08))
+check("rc_signal decode byte0=0x35 (quality 53/127, downlink) matches app's 'weak' report",
+      decode(bytes.fromhex("35e1e1")),
+      {"aggregate_quality": 53, "is_uplink": False, "antenna1_dbm": -31, "antenna2_dbm": -31})
 
 if FAILURES:
     print(f"{len(FAILURES)} failure(s):")

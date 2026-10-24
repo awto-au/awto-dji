@@ -9,6 +9,7 @@ aoa_relay_frames.log): "<ts> sender=0x.. receiver=0x.. seq=N type=0x.. set=0x.. 
 parser was first written; matched as optional here so a future added field doesn't
 silently break it again (add a test to test_duml_telemetry.py for any new field).
 """
+import math
 import os
 import re
 import struct
@@ -48,8 +49,53 @@ def _gimbal_push(b):
 # DataGimbalControl.MODE - byte6>>6 of GetPushParams, also GimbalControl's mode_byte>>6.
 GIMBAL_MODE_NAMES = {0: "YawNoFollow", 1: "FPV", 2: "YawFollow"}
 
+
+def _osd_general_push(b):
+    """FlightController/0x43 ("GetPushCommon" per duml_catalog.py) - Python port of
+    app/packages/duml/lib/src/telemetry.dart's OsdGeneral, same field offsets/scale.
+
+    U (unknown/unconfirmed), not V: checked against the full 2026-10-24 session
+    capture (~44MB, ~2.5h) and this cmdset/cmdid combination appears ZERO times -
+    not rare, genuinely absent. cmdset/cmdid match our own APK-extracted catalog name
+    exactly, so this isn't a wrong-id guess; either this push needs some gating
+    condition never triggered this session (no FLYC "enable this push" counterpart
+    command found in the catalog), or the field layout assumption is wrong in a way
+    that also breaks matching somehow (unlikely, matching is on cmdset/cmdid only).
+    Do not treat data from this decoder as confirmed-working - it has never actually
+    fired against real hardware. See awto-dji#16 (ties into the DataOsdGetPushCommon
+    class the 2026-10-24 dji.pilot mining pass also read for the motor-interlock
+    finding - same push, not yet root-caused why it's absent)."""
+    if len(b) < 30:
+        return None
+    lat_rad, lon_rad = struct.unpack_from("<dd", b, 0)
+    rel_h, vgx, vgy, vgz, pitch, roll, yaw = struct.unpack_from("<7h", b, 16)
+    deg_per_rad = 180.0 / math.pi
+    return {
+        "latitude": lat_rad * deg_per_rad, "longitude": lon_rad * deg_per_rad,
+        "relative_height": rel_h / 10, "vgx": vgx / 10, "vgy": vgy / 10, "vgz": vgz / 10,
+        "pitch": pitch / 10, "roll": roll / 10, "yaw": yaw / 10,
+    }
+
+
+def _rc_signal_push(b):
+    """hdLink/0x08 signal quality - Python port of
+    app/packages/duml/lib/src/rc_signal.dart's RcSignalQuality (V, confirmed 2026-10-24
+    against decompiled DataOsdGetPushSignalQuality.java)."""
+    if len(b) < 3:
+        return None
+    def signed8(x):
+        return x - 256 if x >= 128 else x
+    byte0 = b[0]
+    return {
+        "aggregate_quality": byte0 & 0x7F, "is_uplink": bool(byte0 & 0x80),
+        "antenna1_dbm": signed8(b[1]), "antenna2_dbm": signed8(b[2]),
+    }
+
+
 PUSH_DECODERS = {
     "gimbal": (0x04, 0x05, _gimbal_push),  # GIMBAL/0x05 GetPushParams, DataGimbalGetPushParams.java
+    "osd": (0x03, 0x43, _osd_general_push),  # FLIGHT_CONTROLLER/0x43 OSD General
+    "rc_signal": (0x09, 0x08, _rc_signal_push),  # hdLink/0x08 GetPushSignalQuality
 }
 
 # (cmdset, cmdid) -> name, first CATALOG entry wins on duplicates (e.g. AngleControl/SetAngle).
@@ -65,7 +111,7 @@ def format_frame(sender, receiver, cset, cid, payload):
     src = DEVICE_NAMES.get(sender, hex(sender))
     dst = DEVICE_NAMES.get(receiver, hex(receiver))
     name = NAME_BY_ID.get((cset, cid), f"0x{cset:02x}/0x{cid:02x}")
-    decoder = PUSH_DECODERS.get("gimbal") if (cset, cid) == (0x04, 0x05) else None
+    decoder = next((d for d in PUSH_DECODERS.values() if (d[0], d[1]) == (cset, cid)), None)
     if decoder:
         decoded = decoder[2](payload)
         if decoded:
