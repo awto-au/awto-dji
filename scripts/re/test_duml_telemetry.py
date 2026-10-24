@@ -2,6 +2,7 @@
 that have broken this parser before (the protection= field). Run:
 python3 -I scripts/re/test_duml_telemetry.py
 """
+import math
 import os
 import struct
 import sys
@@ -37,8 +38,8 @@ check("hypothetical extra field",
 
 check("non-matching line", parse_line("not a frame line at all"), None)
 
-cset, cid, decode = PUSH_DECODERS["gimbal"]
-check("gimbal decoder cmdset/cmdid", (cset, cid), (0x04, 0x05))
+ids, decode = PUSH_DECODERS["gimbal"]
+check("gimbal decoder cmdset/cmdid", ids, ((0x04, 0x05),))
 check("gimbal decode -37.0/0.1/22.9 mode/err from byte6=0x80",
       decode(bytes.fromhex("8efe0100e50080ff00002001")),
       {"pitch": -37.0, "roll": 0.1, "yaw": 22.9, "err": 0, "mode": "YawFollow"})
@@ -51,18 +52,25 @@ check("format_frame falls back to hex for an unstructured command",
       format_frame(0x02, 0x0e, 0x06, 0x22, b""),
       "app->osd RC/RequestGimbalCtrPermission payload=")
 
-cset, cid, decode = PUSH_DECODERS["osd"]
-check("osd decoder cmdset/cmdid", (cset, cid), (0x03, 0x43))
+ids, decode = PUSH_DECODERS["osd"]
+check("osd decoder cmdset/cmdid (both aliases, awto-dji#16)", ids, ((0x03, 0x43), (0x09, 0x01)))
+# offset 0 = longitude, offset 8 = latitude (app/packages/duml/lib/src/telemetry.dart's
+# OsdGeneral, the V-confirmed source for this layout) - distinct values here catch the
+# lat/lon swap this schema migration found and fixed in the old hand-written decoder.
 _osd_payload = bytearray(30)
-struct.pack_into("<dd", _osd_payload, 0, 0.0, 0.0)
+struct.pack_into("<dd", _osd_payload, 0, 151.2093 * math.pi / 180.0,
+                  -33.8688 * math.pi / 180.0)
 struct.pack_into("<7h", _osd_payload, 16, 100, 10, 0, 0, 50, 0, 900)
-check("osd decode lat/lon/height/velocity/attitude",
-      decode(bytes(_osd_payload)),
-      {"latitude": 0.0, "longitude": 0.0, "relative_height": 10.0, "vgx": 1.0,
-       "vgy": 0.0, "vgz": 0.0, "pitch": 5.0, "roll": 0.0, "yaw": 90.0})
+_decoded = decode(bytes(_osd_payload))
+check("osd decode longitude", round(_decoded["longitude"], 4), 151.2093)
+check("osd decode latitude", round(_decoded["latitude"], 4), -33.8688)
+check("osd decode height/velocity/attitude",
+      {k: v for k, v in _decoded.items() if k not in ("longitude", "latitude")},
+      {"relative_height": 10.0, "vgx": 1.0, "vgy": 0.0, "vgz": 0.0,
+       "pitch": 5.0, "roll": 0.0, "yaw": 90.0})
 
-cset, cid, decode = PUSH_DECODERS["rc_signal"]
-check("rc_signal decoder cmdset/cmdid", (cset, cid), (0x09, 0x08))
+ids, decode = PUSH_DECODERS["rc_signal"]
+check("rc_signal decoder cmdset/cmdid", ids, ((0x09, 0x08),))
 check("rc_signal decode byte0=0x35 (quality 53/127, downlink) matches app's 'weak' report",
       decode(bytes.fromhex("35e1e1")),
       {"aggregate_quality": 53, "is_uplink": False, "antenna1_dbm": -31, "antenna2_dbm": -31})

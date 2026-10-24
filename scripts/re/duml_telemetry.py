@@ -9,13 +9,13 @@ aoa_relay_frames.log): "<ts> sender=0x.. receiver=0x.. seq=N type=0x.. set=0x.. 
 parser was first written; matched as optional here so a future added field doesn't
 silently break it again (add a test to test_duml_telemetry.py for any new field).
 """
-import math
 import os
 import re
 import struct
 import time
 
 from duml_catalog import CATALOG
+from duml_generated import osd_general
 from duml_proto import DeviceType
 
 LINE_RE = re.compile(
@@ -50,31 +50,11 @@ def _gimbal_push(b):
 GIMBAL_MODE_NAMES = {0: "YawNoFollow", 1: "FPV", 2: "YawFollow"}
 
 
-def _osd_general_push(b):
-    """FlightController/0x43 ("GetPushCommon" per duml_catalog.py) - Python port of
-    app/packages/duml/lib/src/telemetry.dart's OsdGeneral, same field offsets/scale.
-
-    U (unknown/unconfirmed), not V: checked against the full 2026-10-24 session
-    capture (~44MB, ~2.5h) and this cmdset/cmdid combination appears ZERO times -
-    not rare, genuinely absent. cmdset/cmdid match our own APK-extracted catalog name
-    exactly, so this isn't a wrong-id guess; either this push needs some gating
-    condition never triggered this session (no FLYC "enable this push" counterpart
-    command found in the catalog), or the field layout assumption is wrong in a way
-    that also breaks matching somehow (unlikely, matching is on cmdset/cmdid only).
-    Do not treat data from this decoder as confirmed-working - it has never actually
-    fired against real hardware. See awto-dji#16 (ties into the DataOsdGetPushCommon
-    class the 2026-10-24 dji.pilot mining pass also read for the motor-interlock
-    finding - same push, not yet root-caused why it's absent)."""
-    if len(b) < 30:
-        return None
-    lat_rad, lon_rad = struct.unpack_from("<dd", b, 0)
-    rel_h, vgx, vgy, vgz, pitch, roll, yaw = struct.unpack_from("<7h", b, 16)
-    deg_per_rad = 180.0 / math.pi
-    return {
-        "latitude": lat_rad * deg_per_rad, "longitude": lon_rad * deg_per_rad,
-        "relative_height": rel_h / 10, "vgx": vgx / 10, "vgy": vgy / 10, "vgz": vgz / 10,
-        "pitch": pitch / 10, "roll": roll / 10, "yaw": yaw / 10,
-    }
+# OSD General ("GetPushCommon") is now schema-generated - see
+# docs/schema/duml/osd_general.yaml + docs/schema/duml/README.md (awto-dji#33 proof of
+# concept). duml_generated.osd_general.decode() replaces the hand-written
+# _osd_general_push that used to live here; regenerate with
+# `python3 -I scripts/re/gen_duml_schema.py` after editing the schema, never this file.
 
 
 def _rc_signal_push(b):
@@ -92,10 +72,15 @@ def _rc_signal_push(b):
     }
 
 
+# name -> (tuple of (cmdset, cmdid) pairs the decoder matches, decode_fn). A tuple of
+# pairs (not just one) because some real classes are registered under more than one
+# cmdset/cmdid in the vendor app (see docs/schema/duml/osd_general.yaml's `ids`) -
+# matching only the first one found silently looked like "this telemetry never
+# arrives" for 2026-10-24's whole session until the second id was found.
 PUSH_DECODERS = {
-    "gimbal": (0x04, 0x05, _gimbal_push),  # GIMBAL/0x05 GetPushParams, DataGimbalGetPushParams.java
-    "osd": (0x03, 0x43, _osd_general_push),  # FLIGHT_CONTROLLER/0x43 OSD General
-    "rc_signal": (0x09, 0x08, _rc_signal_push),  # hdLink/0x08 GetPushSignalQuality
+    "gimbal": (((0x04, 0x05),), _gimbal_push),  # GIMBAL/0x05 GetPushParams
+    "osd": (osd_general.IDS, osd_general.decode),  # DataOsdGetPushCommon, both ids - schema-generated
+    "rc_signal": (((0x09, 0x08),), _rc_signal_push),  # hdLink/0x08 GetPushSignalQuality
 }
 
 # (cmdset, cmdid) -> name, first CATALOG entry wins on duplicates (e.g. AngleControl/SetAngle).
@@ -111,9 +96,9 @@ def format_frame(sender, receiver, cset, cid, payload):
     src = DEVICE_NAMES.get(sender, hex(sender))
     dst = DEVICE_NAMES.get(receiver, hex(receiver))
     name = NAME_BY_ID.get((cset, cid), f"0x{cset:02x}/0x{cid:02x}")
-    decoder = next((d for d in PUSH_DECODERS.values() if (d[0], d[1]) == (cset, cid)), None)
+    decoder = next((d for d in PUSH_DECODERS.values() if (cset, cid) in d[0]), None)
     if decoder:
-        decoded = decoder[2](payload)
+        decoded = decoder[1](payload)
         if decoded:
             fields = " ".join(f"{k}={v}" for k, v in decoded.items())
             return f"{src}->{dst} {name} {fields}"
@@ -141,7 +126,11 @@ def tail_pushes(log_path, decoder_name, seconds, start_offset=None):
     """Yield decoded dicts from new matching push lines for `seconds`. 0.1s poll: these
     pushes arrive every tens of ms (observed live), so this keeps up without
     busy-spinning; it's a log-file tail, not a hardware-facing timeout."""
-    cset, cid, decode = PUSH_DECODERS[decoder_name]
+    # Pre-existing bug fixed here (not this task's subject, found while wiring in the
+    # schema-generated osd decoder): PUSH_DECODERS values are (ids_tuple, decode_fn),
+    # not (cset, cid, decode) - this used to raise ValueError on every call. ids_tuple
+    # may hold more than one (cset, cid) pair (see PUSH_DECODERS' own comment).
+    ids, decode = PUSH_DECODERS[decoder_name]
     f = open(log_path)
     f.seek(0, os.SEEK_END) if start_offset is None else f.seek(start_offset)
     end = time.time() + seconds
@@ -154,7 +143,7 @@ def tail_pushes(log_path, decoder_name, seconds, start_offset=None):
         if parsed is None:
             continue
         _sender, _receiver, c, i, payload = parsed
-        if c == cset and i == cid:
+        if (c, i) in ids:
             d = decode(payload)
             if d:
                 yield d
