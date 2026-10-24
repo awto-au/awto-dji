@@ -220,9 +220,138 @@ step is **V**):
 | Firmware-update specifics | full flow reversed from strings + partial Ghidra xref confirmation | **V/I** |
 | Switch/mux mechanisms | SD/UHS bus-mode negotiation only, nothing DJI-specific | **V** (negative) |
 
+## 8. Follow-up pass (second agent, 2026-10-24) — the 3 open items from #37
+
+Reused the first pass's Ghidra project/dump (no re-run needed). Method: ThreadX's public
+ABI (github.com/eclipse-threadx/threadx, `common/inc/tx_*.h`) defines a fixed magic 32-bit
+"ID" constant per object type (`TX_THREAD_ID=0x54485244` etc) that every create/validate
+function reads or writes — these are stable across ThreadX versions and not DJI-specific, so
+they work as byte-pattern anchors even with zero symbols. Capstone (ARM:LE:32:v7) linear
+sweep for every `LDR Rd,[PC,#imm]` literal load, resolved to its target, found every place
+in the image these constants are touched. Repro: `scripts/re/m0101_threadx_api_scan.py`
+(log: `tmp/logs/m0101_threadx_api_scan.log`).
+
+### 8.1 ThreadX primitive call sites — V (resolved, supersedes §1's "not resolved this pass")
+
+Found **4 ThreadX object-create primitives**, each by its magic-ID *write* (not a
+read+compare — every other hit on these constants is a validate-pattern
+`cmp r1,r2; bne fail`, the generic "is this ID stamped" check every other thread/semaphore/
+mutex/event-flags API function does first; only the create function ever *writes* the ID):
+
+| Primitive (candidate) | create fn entry | ID write site | magic ID |
+|---|---|---|---|
+| `_tx_thread_create` | `0xc1e0` | `0xc2cc` (`str r0,[r4]`) | `TX_THREAD_ID` |
+| `_tx_semaphore_create` | `0xccec` | `0xcd24` | `TX_SEMAPHORE_ID` |
+| `_tx_mutex_create` | `0xd638` | `0xd670` | `TX_MUTEX_ID` |
+| `_tx_event_flags_create` | `0xe060` | `0xe08c` | `TX_EVENT_FLAGS_ID` |
+
+`_tx_thread_create` cross-checked independently three ways (not just the ID write):
+calling convention has 2 extra stack args beyond r0-r3 at `[sp,#0x28]`/`[sp,#0x2c]`
+(`_tx_thread_create(thread,name,entry_fn,entry_input,stack_start,stack_size,priority,
+preempt_threshold,time_slice,auto_start)` — exactly 10 params, the 5th/6th land there); a
+`bl` right after loading `stack_start` with `r1=0xef` (`0xc210`) matches ThreadX's
+`TX_STACK_FILL` (`0xEFEFEFEF`) stack-poison pattern; and right after the ID write, a
+load-increment-store on a global immediately followed by `cmp r0,#0; bne` matches
+`_tx_thread_created_count++` / "first thread created" special-case from ThreadX's own source.
+
+Each primitive is called from exactly **one** Ambarella-style convenience wrapper (checks a
+magic struct-size constant, `0xbc`=188 bytes for the thread one, before calling through —
+classic Ambarella KAL ABI-compat guard):
+
+| Wrapper (`AmbaKAL_*Create` candidate) | calls | called from |
+|---|---|---|
+| `0xa30c` (thread) | `0xc1e0` @ `0xa500` | `0x9cd4` @ `0x9d18` (4 call sites, see below) |
+| `0xa8c4` (semaphore) | `0xccec` @ `0xa9d4` | — |
+| `0xacd0` (mutex) | `0xd638` @ `0xadf8` | — |
+| `0xaf38` (event flags) | `0xe060` @ `0xb040` | — |
+
+**Negative/unresolved sub-result:** could not tie the `RootTask`/`AmbaPrintTask`/
+`AmbaFwUpdaterTask`/`DjiFwUpdaterLedTask` name *strings* (§1) to these call sites directly.
+Checked exhaustively — zero hits for all 4 string addresses across every ARM addressing
+mode that could carry an absolute/relative reference: direct 32-bit pointer anywhere in the
+file, `LDR Rd,[PC,#imm]` literal loads, `ADD/SUB Rd,PC,#imm` (ADR-style), and `MOVW+MOVT`
+pairs. The one further-up generic task-spawn helper found (`0x9cd4`, called from exactly 4
+sites: `0x1231c`, `0x1239c`, `0x14938`, `0x62c20`) passes r0/r1 values that don't decode
+cleanly as a flat name pointer either (r0 values land ~0x330b8-0x3adc0 *past* the 401 KB
+file — plausible as `.bss`-resident TCB globals under base 0x0, consistent with §1's base
+question, but not confirmable without the base). **Flag as genuinely unresolved, not
+guessed**: either the name strings reach `tx_thread_create` through a path this sweep can't
+see (e.g. an indirect/computed call, which a linear `bl #imm` scan structurally cannot find),
+or these 4 call sites are unrelated tasks and the named ones are created elsewhere (e.g. via
+the direct, wrapper-bypassing caller of `_tx_thread_create` found at `0x62fc4` — see 8.4).
+
+### 8.4 New finding: a second, Ghidra-unanalyzed ThreadX code region — U, flagged for future work
+
+A second cluster of ThreadX ID-validate patterns (and one direct, wrapper-bypassing
+`_tx_thread_create` call, `0x62fc4`) sits around file offset `0x58000`-`0x64000` (~45 KB:
+`TX_THREAD_ID` reads @ `0x587b4`/`0x58a94`, `TX_TIMER_ID` @ `0x62fb4`/`0x63300`,
+`TX_EVENT_FLAGS_ID`/`TX_MUTEX_ID`/`TX_SEMAPHORE_ID` reads @ `0x63550`/`0x6361c`/`0x637ac`).
+**None of this region is covered by the first pass's Ghidra function list** — bisecting any
+address in it against the 1,308-function table lands on a function hundreds of KB away
+(Ghidra's auto-analysis never flowed into this region, so it has no identified function
+boundaries at all despite clearly being valid ARM code per manual capstone disassembly).
+Could be a second statically-linked ThreadX personality/support library, or code Ghidra's
+call-graph discovery simply never reached. Not investigated further this pass — would need
+a manual "force-disassemble + create function" pass in Ghidra, or a code-coverage diff
+against the function list, to resolve.
+
+### 8.2 Base load address — still U, with one correction to the first pass's own evidence
+
+- **Correction:** the first pass's Ghidra function list shows `Reset`/`UndefinedInstruction`/
+  `SupervisorCall`/.../`FIQ` at file offsets `0x0`-`0x1c`, which could misread as "the real ARM
+  exception vector table lives at offset 0, so base=0 is confirmed." It is not that — these
+  are Ghidra's own default placeholder labels for the generic ARM processor module, created
+  regardless of what's actually there. Checked the real bytes: file offset `0x0` is the ASCII
+  version tag `v01.05.2735\0...` (confirmed via hex dump), not branch/LDR vector instructions.
+  Noting this so a future pass doesn't reuse that function-list entry as vector-table evidence.
+- **Attempted two independent resolution methods this pass, both negative:**
+  1. Brute-force: for every aligned 4-byte value V in the file, treat `V - stringOffset` as a
+     candidate base, keep only candidates consistent across all 4 task-name strings
+     simultaneously. ~30 "matches" out of 11,910 candidates — all false positives: they
+     cluster on `0xe59e......`, which is just the top byte of ARM's unconditional `LDR`
+     encoding (`0xE5......`), i.e. the search was matching instruction bytes, not real
+     pointers. No credible base emerged.
+  2. Checked whether the header-like bytes at file offset `0x40`-`0x47` (`length`=`0x64548`,
+     matching `file_size (0x645cc) - 0x84`-byte header exactly) carry a `mem_addr` field per
+     the firmware-header format documented in §2/§7 (the *external* SD-card container
+     format) — they don't line up with that struct; this file's own leading 0x84 bytes are a
+     different, smaller header (redundant two-copy layout, 0x20 bytes apart, matching only on
+     a CRC-sized field), not the container header. No load address recovered from it.
+  - Bonus, unrelated to base resolution but found along the way: bytes `0x48`-`0x83`
+    (immediately after that header) are a flat `uint32[]` list — `0x800, 0x40000, 0x40000,
+    0x100000, 0x2000000, 0x500000, 0xf00000, 0xa00000, 0x3c00000, 0x1e00000, 0, 0x500000,
+    0xc00000, 0x500000` — plausible real NAND partition **sizes** lining up positionally with
+    §2's partition **name** list (`Bootstrap, Partition Table, Bootloader, SD FW Update Code,
+    System Software, DSP uCode, System ROM Data, Linux Kernel, Linux Root FS, Linux
+    Hibernation Image, Storage1, Storage2, ...`). Not verified against a second firmware build
+    for consistency — flag as **I**, worth a follow-up diff pass, not the base answer.
+  - **Verdict: base address remains U.** No public Ambarella A9SE loader-header spec, and
+    both attempts above to derive it from the image's own bytes came back empty-handed —
+    stating this plainly rather than guessing a round number.
+
+### 8.3 Debug/input surface — upgraded from U to a stronger, well-supported negative (I)
+
+- Full `strings` triage (558 strings ≥4 chars) has **zero** hits for `uart`, `usb`, `i2c`,
+  `spi`, `debug`, `dbg`, `console`, `shell`, `getchar`, `scanf`, `parse`, `token`, or
+  `readline` (case-insensitive) anywhere in the module. The only `cmd`-adjacent strings are
+  SD/MMC protocol command names (`AmbaRTSL_SDSendOpCondCmd1`, `AmbaRTSL_SDSendOPCondAcmd41`,
+  `cmd error %d`) — these are the loader **issuing** SD-card bus commands outward, not an
+  inbound channel into the loader.
+- Combined with §5's "no interactive shell token table" finding: this module carries **no
+  named driver for any input-capable peripheral at all** (UART/USB/I2C/SPI), only the SD-card
+  host-controller stack used to read the firmware file (already documented in §2/§7).
+- **Still can't be 100% ruled out** — a register-level binary protocol with no debug strings
+  at all would be invisible to this method, and that residual case wasn't checked at the
+  instruction level this pass either. But the complete absence of *any* named serial-capable
+  peripheral driver is stronger evidence than the first pass had (which only checked for a
+  text-shell token table) — there is no identified peripheral left to carry such a protocol.
+  Upgrading from the first pass's **U** to **I, well-supported negative**.
+
 ## Artifacts
 
-- `scripts/re/m0101_ghidra_disasm.py`, `scripts/re/ghidra/DumpM0101.java` — repro.
+- `scripts/re/m0101_ghidra_disasm.py`, `scripts/re/ghidra/DumpM0101.java` — repro (first pass).
+- `scripts/re/m0101_threadx_api_scan.py` — repro for §8.1/8.2 (ThreadX magic-ID literal scan).
+  Log: `tmp/logs/m0101_threadx_api_scan.log`.
 - `tmp/m0101_ghidra/m0101_dump.txt` — function list (1,308), target-string xrefs (gitignored,
   regenerate via the script above).
 - `re/ghidra-projects/m0101_threadx_loader.tar.gz` — archived Ghidra project (committed).
