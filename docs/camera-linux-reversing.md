@@ -317,18 +317,140 @@ PLT thunks) - small enough to read in full, not sampled.
   IPC-port) cross-reference, same class of gap as section 1a's untraced IPC producer.
   Reported to the issue as: evidence is suggestive, not proof.
 
+## 8. `viz_tracking` - full disassembly (issue #37 follow-up, ask 1)
+
+Resolves the section 2 open item. Repro: `python3 scripts/re/cam_server_ghidra_disasm.py
+viz_tracking` (dump `tmp/viz_tracking_ghidra/viz_tracking_dump.txt`; project archived
+`re/ghidra-projects/viz_tracking_m0100.tar.gz`). 164 functions, 12,149 instructions over the
+67,556-byte stripped ARM EABI5 ELF - small enough for a full read, not sampled.
+
+- **V, it is a real tracker, not a passthrough/consumer.** The binary implements an FFT
+  correlation-filter tracker: `get_weight_window`/`get_confident_map`/`get_hamm_series`/
+  `get_hann_series` (Hamming/Hanning window generation), `fft2`/`fft2_real`/`ifft2` via the
+  FFTS library (`[fft2_with_ffts]Error: FFTS plan empty`) with a mixed-radix FFT fallback
+  (`mixfft.c`, `"Prime factor of FFT length too large"` - matches the public Ooura/Jensen
+  mixed-radix FFT used by several open-source MOSSE-style trackers), plus a generic
+  `image_float`/`image_int`/`image_char`/`image_complex` tensor layer (`new_image_*`/
+  `free_image_*`). This is the signature shape of a **MOSSE-family correlation tracker**
+  (confidence map + windowed FFT correlation), not a dumb frame forwarder. Version string:
+  `"[viz_tracking] ver %s\n"` / `"0.8.26nohog"` (`FUN_0000b350`, vaddr `0xb35c`).
+- **V, trigger chain inside the binary (how it gets frames).** `FUN_00008e10` (the real
+  `main`, called from `entry`/`__libc_start_main`):
+  1. `FUN_00009a6c` - opens a device/fd and `mmap`s a physical address to a virtual one
+     (`"mmap phy addr(0x%08x) -> virt addr(0x%08x)\n"`), same `/dev/mem`-style physical-frame
+     mapping pattern as `cam_server`'s `rscvmem.ko` consumer (section 1d) - on failure logs
+     `"MemMap error"` and exits; on success logs `"MemMap ok"`.
+  2. `FUN_00009778` - creates **two `AF_NETLINK` sockets** (`socket(16, SOCK_RAW, 24)`),
+     binds each, and `pthread_create`s a receive-loop thread (`FUN_0000947c`) per socket -
+     logs `"init ipc ok"`.
+  3. `FUN_0000b350` - version-string log + a `sizeof(cplx_t)==sizeof(float)*2` sanity check,
+     then logs `"init server ok"`.
+  4. `FUN_00009740("0x6607", FUN_0000b1a0, <mmap handle>)` - **registers `FUN_0000b1a0` as
+     the callback for netlink message type `0x6607`**, with the mmap'd buffer handle as
+     context.
+  5. `sleep(9999872)` (main thread then effectively parks;~115 days - a "sleep forever"
+     idiom, not a real polling interval) while the two receiver threads do the work.
+- **V, dispatch in the receive thread (`FUN_0000947c`):** loops `recvmsg` on its netlink
+  socket; a message of type `0x7788` is the **"recv lv yuv addr 0x%08x len %u\n"** live-view
+  frame-ready notification (same family of message `cam_server`'s own live-view IPC uses,
+  section 1d) and is handed to `FUN_00009bdc`; any message whose header's `+0x18` field
+  equals the registered id (`0x6607`) invokes the registered callback - i.e. **`FUN_0000b1a0`
+  (the tracker) runs once per incoming liveview-frame-ready IPC message**, not on a timer and
+  not by polling the mmap'd buffer itself.
+- **V, `FUN_0000b1a0` (the tracker entry point) and `FUN_0000a604` (2964-byte tracker
+  core):** `FUN_0000b1a0` normalizes an incoming seed box (read from the IPC message: x/y/
+  width/height/flags at offsets `0x0`-`0xa`) into a float center, calls `FUN_0000a604` with
+  that seed plus fixed tuning constants (`5`, `0.25f`, `2.25f` - search-window/scale
+  parameters) which runs the actual correlation-filter update and returns a refined center,
+  stores the new center back into static state, and **every 150th frame** (`frameIdx % 150
+  == 0`) logs it via `printf("[viz_tracking] frameIdx:%d, timing:%d ms, center(y,x)=(%d,%d),
+  frame size:%d,%d[pitch:%d], needflip(%d)\n", ...)` (vaddr `0x6554`) - confirming the
+  earlier strings-pass finding is a genuine, computed tracking result, not a dead string.
+- **V, well-supported negative: no output path found.** Searched every `sendmsg`/`socket`/
+  `bind`/`pthread_create`/IPC-send (`FUN_000092f8`, the module's own send-side counterpart
+  to `FUN_0000947c`'s receive loop) call site in the whole binary (full disassembly, not
+  sampled): the tracker core (`FUN_0000a604`) and its caller (`FUN_0000b1a0`) make **no**
+  call to any of them. The one `FUN_000092f8` (IPC send) call site in the whole binary is
+  inside `FUN_0000947c`'s own generic-message dispatch path (an ack/reply for the *receive*
+  side), unreachable from the tracking computation. The updated center is stored to static
+  memory and periodically `printf`-logged - **no evidence this binary ever reports its
+  tracking result to any other process, gimbal, or control loop.** Read as: either an
+  instrumented/debug-only build of a vision feature, or a shelved feature never wired to a
+  consumer on this firmware (`P3X_V01.11.0020`) - the Phantom 3 Professional app does not
+  expose an ActiveTrack-style feature, consistent with this reading. Not falsifiable further
+  without a second firmware version or dynamic tracing on hardware.
+- **V, trigger mechanism: genuinely not found, re-checked.** `grep -r viz_tracking` and
+  `grep -r viz_track` across the full 335-file extraction (every script, binary, and the
+  `_SYMLINKS.txt` manifest) returns **zero** hits anywhere outside the binary's own path -
+  no init script, no other binary's string table, no symlink alias. This is a second,
+  independent re-check past the first pass's script-only search (this pass also grepped
+  binary contents and the symlink manifest). Not resolved: either it is started by a
+  mechanism this static search cannot see (a hardcoded `fork`+`execve` byte pattern in
+  another binary that builds the path at runtime rather than storing a literal string -
+  not ruled out), or it is genuinely dead/unused on this firmware build and only ever run
+  manually at a shell during development.
+
+## 9. `boot_done` - confirmed genuinely missing, not a busybox applet (issue #37 follow-up, ask 2)
+
+Resolves the section 2 open item.
+
+- **V, extraction re-verified complete.** `tmp/logs/rfs_full_extract.log`: the UBI image
+  (`P3X_FW_V01.11.0020_m0100_part_rfs.a9s`, 27,000,832 bytes) has exactly 2 UBI volumes
+  (vol 0: 190 LEBs, vol 1: 14 LEBs, `leb_size=126976`); vol 1's UBIFS tree is empty (0 files,
+  0 symlinks - a reserved/unused volume, not a second rootfs); vol 0 (the real rootfs)
+  walked to **335 files + 415 symlinks with zero exceptions logged**, and all 335 were
+  written to disk (`find tmp/air/rfs_P3X0020_full -type f | wc -l` = 335, excluding the
+  `_SYMLINKS.txt` manifest itself) with the symlink manifest listing exactly 415 entries -
+  an exact match between what the UBIFS walker found and what landed on disk, no silent
+  drop. No second, larger volume exists that could be hiding a missed binary.
+- **V, re-confirmed:** `grep -r boot_done` across the full 335-file tree (scripts, binaries,
+  and `_SYMLINKS.txt`) finds only the same 6 **call sites** already documented (section 2) -
+  still no binary, script, or symlink named `boot_done` anywhere.
+- **V, busybox does NOT provide it as an applet.** `bin/busybox` on this rootfs is a
+  dynamically-linked ARM ELF (not a static multi-call binary stripped of its string table)
+  and its applet names are present as **plain ASCII strings** in the binary (confirmed:
+  `ash`, `cat`, `echo`, `hush`, `ifconfig`, `init`, `insmod`, `kill`, `ls`, `mdev`, `mount`,
+  `ps`, `rmmod`, `sh`, `udhcpc`, `umount` all found via `strings`). `boot_done` is **not**
+  among them, and a plain `strings -a -n2` dump of the entire binary (24,633 lines) contains
+  no `boot_done` substring at all. Since this busybox build's applet names are readable via
+  `strings` at all (ruling out "it's compiled in but the string got dead-stripped" as an
+  explanation), this is a clean negative: **this busybox does not implement a `boot_done`
+  applet.**
+- **I, settled: every one of the 6 call sites silently no-ops.** `boot_done` is referenced
+  as a bare command (not a path) in `S50service`, `S52wifi`, `ap_start.sh`,
+  `wifi_start.sh`/`p2p_start.sh`/`sta_start.sh`, all run under `/bin/sh` -> `busybox ash`/
+  `hush`. With no binary, script, or busybox applet named `boot_done` anywhere on the
+  filesystem and no shell builtin by that name in busybox's `ash`/`hush` (not in the applet
+  string table at all, builtins included), every one of these call sites hits `command not
+  found` and the shell continues (exit status nonzero, not fatal under the surrounding
+  script logic as read in each of the 6 sites). **This is a real finding, not a shrug**: a
+  firmware-wide dead reference across 6 init-path call sites - either a leftover from a
+  retired synchronization mechanism (plausible name: a flag file or semaphore a "boot done"
+  gate once checked) that was dropped without removing its call sites, or a build-
+  configuration variant where `boot_done` exists in a different SKU/region image but not
+  `P3X_FW_V01.11.0020`. Not resolved which, and not resolvable from this image alone.
+
 ## Not done / open
 
-- `rpc_trans`'s RTOS-side caller for `linux_rpcsvr_ctrl` message type 2 (USB query):
-  not traced - would fully confirm or refute the `GetUSB` link (section 7).
+- `rpc_trans`'s RTOS-side caller for `linux_rpcsvr_ctrl` message type 2 (USB query): not
+  traced this pass either - a quick repo-wide grep for the literal string
+  `linux_rpcsvr_ctrl` outside this doc's own analysis output found nothing, but the RTOS
+  `sys`/m0100-companion firmware partition where that caller would live has not been
+  extracted/disassembled in this repo yet - would need that extraction first, then a real
+  Ghidra pass, before this can move past "plausible, actively searched, not found" (still
+  not **V**, same status as the previous pass left it).
 - `FUN_0000b1c8`'s caller / the IPC message producer for its `+0x10` type field: not
   traced (needs `libambaipc.so` or an RTOS-side cross-reference).
-- `viz_tracking`'s trigger (what starts it - no static reference found in any init
-  script or `usr/local/share/script/*.sh`) and its own command surface: not
-  disassembled this pass (67 KB, stripped - a full Ghidra pass is feasible, just not
-  done under this pass's time budget).
-- `boot_done`: genuinely missing from the 335-file extraction despite 6 references by
-  name - re-verify extraction completeness before concluding it's an image defect.
+- `viz_tracking`'s own output path: **resolved this pass (section 8)** - full disassembly
+  done, confirms real FFT-correlation tracking logic with no reachable send/IPC-output call
+  site from the tracker core. Its **trigger is still genuinely unresolved** - re-checked
+  against binary contents and the symlink manifest too (not just scripts), zero hits; either
+  it's started by a mechanism a static string/grep search can't see, or it's dead/unused on
+  this firmware build.
+- `boot_done`: **resolved this pass (section 9)** - extraction re-verified complete (exact
+  335 files/415 symlinks, no logged errors), confirmed absent from busybox's own applet
+  string table - genuinely missing, not a hidden applet; all 6 call sites silently no-op
+  under `/bin/sh`.
 - `cherokee`/`index.cgi` auth posture: not exercised against hardware (static only).
 - `hdr_merge`, `util_svc`, `ipcbind`/`ipcinfo`: strings-only, no DJI-specific surface
   found; lower priority for a future pass.
