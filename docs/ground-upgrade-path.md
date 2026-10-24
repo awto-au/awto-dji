@@ -149,11 +149,117 @@ Settles the conflict with `docs/control-plane-re.md` (which said the remote MCU 
   (LPC1549 SRAM region) -> **LPC1549 variant of m1400** (verified strings/SP; part number inferred from `1549`). Contains
   `FpgaErr` and `Encryption_Check_And_Set_Chip_Info` / `Common_Encrypt_Get_Chip2` assert strings. Not analysed further.
 - `m1300` 02.26.0000: video decoder (DM365). File starts with ASCII `Salted__` = OpenSSL salted-encrypted blob (verified header; not decrypted, out of scope).
-- `m1600` 01.03.0256: ".ini: IG810 LB2_68013_RX". 2750 B, starts `C2 47 05 31 21`: Cypress FX2 (68013) EEPROM/boot load image (inferred from the C2 header).
-- `m1601` 02.00.0006: ".ini: IG810 LB2_CY2014_RX". Starts `43 59 1C B0`: "CY" Cypress FX3 boot image signature, ARM code follows (inferred part: FX3).
+- `m1600` 01.03.0256: ".ini: IG810 LB2_68013_RX". 2750 B, starts `C2 47 05 31 21`: Cypress FX2 (68013) EEPROM/boot load image (inferred from the C2 header). Full Ghidra pass below.
+- `m1601` 02.00.0006: ".ini: IG810 LB2_CY2014_RX". Starts `43 59 1C B0`: "CY" Cypress FX3 boot image signature, ARM code follows (inferred part: FX3). Full Ghidra pass below.
 - `m2000/m2001/m2002` 01.00.2107 / 01.01.2107 / 01.02.2109: ground FPGA config images, board models 00/01/02, each 8 MiB padded with 0xFF
   (payload from offset `0x80`/`0x20`/`0x80`, ends at `0x470325`/`0x2058f0`/`0x49416c`). m2000/m2002 are Cyclone V streams (encrypted); m2001 is Cyclone III/IV-format (best match EP4CGX150), payload not decoded
   (see `docs/fpga-images.md`). 8 MiB = serial config flash sized (inferred, flash part unknown).
+
+## m1600 / m1601: full Ghidra pass, compared against each other and air's m1500 (issue #42)
+
+Firmware: `firmware/unpacked/C1_FW_V01.06.0000/C1_FW_V01.06.0000_m1600.bin` (2748 B record payload,
+2818 B flat code image) and `..._m1601.bin` (190,836 B). Air baseline: `m1500` (issue #31, see
+`docs/air-id-and-stream-survey.md` "m1500"). Reproduce:
+`python3 scripts/re/m1600_fx2_disasm.py` (log `tmp/logs/m1600_fx2_disasm.log`) and
+`python3 scripts/re/m1601_fx3_disasm.py` (log `tmp/logs/m1601_fx3_disasm.log`). Both Ghidra
+projects archived: `re/ghidra-projects/m1600_fx2.tar.gz`, `re/ghidra-projects/m1601_fx3.tar.gz`.
+
+| | m1500 (air, FX2LP) | m1600 (ground, FX2) | m1601 (ground, FX3/ARM9) |
+|---|---|---|---|
+| Core | 8051 | 8051 (same part family) | ARM926EJ-S-class (ARMv5TEJ), ThreadX RTOS |
+| Image | 2748 B `.iic` | 2748 B `.iic` (near-identical layout, not byte-identical) | 190,836 B "CY" boot image, 5 load sections |
+| Ghidra pass | 32 funcs, 1353 instrs (issue #31) | 32 funcs, 1391 instrs | 485 funcs, 37,863 instrs |
+| Active bulk endpoints | EP2, EP6 (2 total; EP4/EP8 invalidated) | EP2, EP4, EP6, EP8 (4 total, all valid) [see below] | up to 4 bulk endpoints per personality, switchable at runtime (`fx3-usb-modes.md`) |
+| Device VID:PID (runtime) | `0547:1002` | `0547:1002` (same) | switches between `2ca3:1004` and `0547:1002` depending on GPIO41/stored config bit |
+| Touches FIFO payload bytes (0xF000-0xFFFF)? | **no** (V, exhaustive MOVX trace) | **no** (V, same exhaustive MOVX trace) | n/a (no 8051-style FIFO window); real protocol logic found instead (dispatch table, persistent config) |
+| Beyond USB housekeeping? | no | no | **yes** (V) |
+
+### m1600 (ground FX2): same pipe pattern as m1500, but 2x the endpoints
+
+- V: `.iic` header `C2 47 05 31 21`, boot-time VID:PID:DID `0547:2131:0000` — **identical boot PID**
+  (`0x2131`) to m1500's `.iic` header (`docs/air-id-and-stream-survey.md` "m1500"). Runtime device
+  descriptor (file offset `0x7b3`): VID:PID `0547:1002` (same as air m1500's runtime descriptor),
+  `bcdDevice=0x0000`, `iSerialNumber=0`.
+- V: core init sequence is byte-for-byte structurally identical to m1500's: `IFCONFIG=0x03` (slave
+  FIFO, sync, external IFCLK) at 8051 `0x00a9`; `REVCTL` cleared at `0x00bf`; `EP1OUTCFG`/`EP1INCFG`
+  bit7 (VALID) cleared at `0x00d3`/`0x00ea`.
+- V (the actual difference from m1500): `EP2CFG=0xA2` (`0x0101`+3) and `EP6CFG=0xE2` (`0x0117`+3) —
+  air's values were `0xA0`/`0xE0` (`docs/air-id-and-stream-survey.md`), i.e. bit1 is set on both
+  here where air left it clear. U: which TRM field bit1 is — `EP2FIFOCFG`/`EP6FIFOCFG` still pair
+  as AUTOOUT/AUTOIN exactly as in air (below), and an endpoint whose FIFOCFG is AUTOOUT only makes
+  sense if it is still OUT-direction, so this is probably not the DIR bit despite the position I'd
+  otherwise guess from the TRM; not resolved against the actual Cypress register map in this pass,
+  flagged rather than asserted. **And** `EP4CFG=0xA0` (`0x012d`+3) / `EP8CFG=0xE0` (`0x0143`+3) are
+  written **valid** here — air explicitly invalidates both (clears bit7, never sets a value).
+  `EP2FIFOCFG=0x10`/`EP4FIFOCFG=0x10` (AUTOOUT) and `EP6FIFOCFG=0x08`/`EP8FIFOCFG=0x08` (AUTOIN) are
+  all four written (`0x0218`/`0x0244`/`0x022e`/`0x025a`) — **four** live auto-commit bulk endpoints
+  versus air's two (EP2/EP6 only; EP4/EP8 invalidated in air). I: consistent with the `.ini`
+  names — air's module is "..._TX", ground's is "..._RX ground"; the ground chip is wired for
+  twice as many simultaneous FIFO channels as the air chip needs. U: which two streams
+  (video+telemetry? diversity antenna pair? uplink+downlink?) — not resolvable from firmware alone.
+- V: same exhaustive-MOVX methodology as the m1500 pass (every `MOVX @DPTR`/`MOVX @Ri` operand
+  traced): 118 total `MOVX @DPTR` (109 literal-DPTR, 9 computed — same split as m1500), 1
+  `MOVX @Ri`. **Zero** touch the `0xF000-0xFFFF` FIFO buffer range despite the extra endpoints.
+  **Same conclusion as m1500: the 8051 core is a pure hardware pipe here too** — more endpoints
+  configured, but still no byte reordering, buffering or protocol translation in code.
+
+### m1601 (ground FX3, ARM9/ThreadX): first FX3 target in this repo, and genuinely NOT a pure pipe
+
+No native Ghidra loader exists for Cypress FX3 "CY" boot images, so this is a new technique for
+the project: `scripts/re/ghidra/DumpFX3.java` imports a throwaway dummy blob just to create a
+Ghidra `Program` (selects the `ARM:LE:32:v5t` processor), then rebuilds the real memory map itself
+by reading the 5 section records straight off the original file (same record format
+`scripts/re/fx3_trace.py`'s `sections()` already parses for the capstone-based pass in
+`docs/fx3-usb-modes.md`), before seeding disassembly and running full auto-analysis.
+
+- V: 5 load sections — VA `0x100` (8744 B, boot stub), `0x40003000` (64 KiB), `0x40013000`
+  (64 KiB, contains the entry point `0x40018208`), `0x40023000` (24,032 B), `0x40030000`
+  (26,932 B). Entry point and all 5 sections match the capstone pass's addressing.
+- V: full auto-analysis finds **485 functions, 37,863 instructions**. Per-section instruction
+  coverage: `0x100` 90.5%, `0x40003000` 90.7%, `0x40013000` 95.0%, `0x40023000` 91.0% of bytes
+  resolve to valid instructions — the remainder is literal pools/padding, not under-analysis.
+  The 5th section (`0x40030000`, 26,932 B) is **0% instructions**: pure data, matching the
+  capstone pass's device/config descriptors at VA `0x40030460`+.
+- V: every address the prior capstone-based pass (`docs/fx3-usb-modes.md`) already identified
+  resolves, independently, to a real Ghidra function at that exact entry point — cross-validation,
+  not just a re-run of the same tool: `0x400068b8` (1452 B, USB descriptor registration),
+  `0x40007c70` (152 B, cmd-set/id dispatch table consumer), `0x4000e2dc` (268 B, persistent
+  16-byte config record loader at storage address `0x60000`), `0x40007618`/`0x400078e0`
+  (config set/get), plus the GPIO41/"K"-bit mode-selection getters.
+- V: ThreadX strings: `Copyright (c) 1996-2008 Express Logic Inc. * ThreadX ARM9/RVDS Version
+  G5.1.5.1`, and 7 named threads: `01_DMA_THREAD`, `02_SYSTEM_THREAD`, `03_PIB_THREAD` (FX3's
+  GPIF-II parallel-bus block — the same class of interface FX2's slave FIFO exposes, just on a
+  more capable peripheral), `04_UIB_THREAD` (USB), `05_LPP_THREAD` (UART/SPI/I2C), `06_SIB_THREAD`
+  (storage — SD/eMMC capability present in the RTOS config even if unused on this board),
+  `07_DEBUG_THREAD`, plus a `USB_DEBUG` diagnostic tag string and `@DJI`/`@xV4` container markers
+  embedded in the image (the project's standing interest in diagnostic surfaces, CLAUDE.md).
+- **V, answers task item 4 directly: yes, the FX3 does real work beyond USB housekeeping**, on two
+  independent kinds of evidence: (1) the capstone pass already found a DUML-style command
+  dispatch table (`0x40030480`/`0x40030498`), persistent configuration storage with checksum
+  validation, and runtime USB-personality switching (GPIO41 + a stored bit swap the whole
+  descriptor set between an Apple-accessory-style identity `2ca3:1004` and an "internal" identity
+  `0547:1002` — the **same VID:PID family as air's m1500/m1600**); (2) this Ghidra pass shows it
+  running a full ThreadX RTOS across 7 dedicated peripheral/system threads rather than a bare
+  superloop — architecturally using far more of the chip than m1600's bare-metal 8051 pipe ever
+  could. I: no direct byte-level evidence either chip's video/telemetry payload bytes are
+  inspected or transformed by m1601's code (that would need live traffic capture, out of scope
+  here) — the dispatch/config logic found is control-plane (DUML commands, mode select), not
+  shown touching the bulk-endpoint payload itself.
+
+### Why two bridge chips on the ground side (I, not fully settled)
+
+- I: the `0547:1002` VID:PID overlap between m1601's "internal" personality and air's
+  m1500/m1600 suggests a division of labour — **m1600** (FX2, 4-endpoint slave-FIFO pipe) is the
+  ground-side counterpart that terminates the Lightbridge/FPGA-facing data path, doubled relative
+  to air's single-stream m1500 to sink two simultaneous channels at once (U: which two — video +
+  telemetry/OSD, or an antenna-diversity pair, cannot be determined from firmware alone); **m1601**
+  (FX3) is the externally-facing bridge that talks to the **phone / accessory / PC** side, a role
+  air's design never needs because air's only USB peer is the internal DM368 camera SoC, not an
+  external host.
+- U: whether m1600 and m1601 sit on the same physical USB topology (e.g. m1601 enumerating as USB
+  host with m1600 as a downstream device) or are both wired independently to the ground MCU/FPGA
+  with no direct USB link between them. Not resolvable from static firmware analysis; would need
+  the ground PCB's USB topology or a live descriptor walk from the RC's own USB host.
 
 ## Ground vs air (m1400 vs m0900)
 
