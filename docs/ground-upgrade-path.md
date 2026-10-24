@@ -298,6 +298,30 @@ by reading the 5 section records straight off the original file (same record for
 | Board/variant strap | `(PA0<<2)\|(PC15<<1)\|PC14`, gates whole FPGA/radio bring-up | `(GPIO1.27<<2)\|(GPIO1.21<<1)\|GPIO1.24` -> RAM `0x10000006`, gates version-reply, cmd `0x30`, telemetry records, and the `radio_start` RF profile (not a single on/off gate) | verified (issue #39) |
 | RTOS | bare-metal, ST StdPeriph, no RTOS | **µC/OS-III** (PendSV/SysTick disassembly + string fingerprint) | verified (issue #39) |
 
+## Flash-writer consolidation (issue #43, ground side)
+
+Ground-side half of the full-container distribution map; air side (and the full
+m0800/ESC/m0400 depth) is in `air-id-and-stream-survey.md` "Flash-writer
+consolidation (issue #43)". Per-module answer to "which chip/code path performs
+the actual nonvolatile write", not just "which chip acks".
+
+| Module | Receiving chip / interface | Flash-writer | Confidence |
+|---|---|---|---|
+| `m1400` (LPC1765, ground radio MCU, self) | DUML receiver 0x0E, UART ports per `port_send` | **partial self**: Enter Loader writes marker `0x55AA66CC`/`~` to flash sector 8 via real IAP erase(52)+program(51) (verified bytes/code). No Update Transmit handler — actual app reflash inferred to happen in the bootloader (flash `0x0000-0x9FFF`, **not in the container**) after the WDT-reset the marker triggers | V (marker write) / I-U (app reflash, bootloader absent) |
+| `m1400`, FPGA entry (receiver 0x14) | DUML over the same UART, legacy SPI0 to the ground FPGA | **unknown** — same structural gap as air issue #18: no Update Transmit handler, no forwarding of type 0x14, MCU-side bulk SPI helpers (`0xbe50`/`0xbe8a`) exist but have no callers/pointers. MCU only supervises (enter mode, confirm, compare two FPGA bytes, reset pulse) | U — doubles the air-side gap, not a one-off |
+| `m1401` (LPC1549 variant of `m1400`) | not independently analysed beyond header/string ID | likely the same marker-write self-flash pattern as `m1400` by chip-family resemblance; not confirmed | I, unconfirmed |
+| `m1600` (ground FX2, 8051) | USB slave-FIFO pipe, 4 live bulk endpoints (vs air `m1500`'s 2) | **none** — same exhaustive-`MOVX` method as `m1500`/air: zero touches of the `0xF000-0xFFFF` FIFO buffer range despite more endpoints live. Pure hardware pipe, not a flash-write target. How the `m1600` image itself reaches the ground FX2 chip (fxload-equivalent from `m1601`'s ARM side, I) not independently confirmed | V (not a writer) / I (own load path) |
+| `m1601` (ground FX3, ARM9/ThreadX) | USB, switches `2ca3:1004`/`0547:1002` personalities (GPIO41) | **writes its own persistent 16-byte config record** (storage address `0x60000`, V, Ghidra-confirmed function `0x4000e2dc`/`0x40007618`/`0x400078e0`) — a real nonvolatile write, but of its own mode/personality config, not of a DJI firmware image. No evidence found of `m1601` rewriting its own code flash (FX3 boot images load from an external SPI/I2C boot source per Cypress FX3 norms — not traced in this pass, no FX3 boot-source driver identified in the disassembly) | V (config write) / U (own firmware self-write) |
+| `m2000`/`m2001`/`m2002` (ground FPGA config images, boards 00/01/02) | legacy SPI0 register handshake (same chip, same mechanism as `m1400`'s FPGA entry above) | **unknown** — structurally identical open question to air's `m1900`/issue #18. Payload not decoded (`m2001` Cyclone III/IV-format undecoded; `m2000`/`m2002` encrypted Cyclone V streams, per `fpga-images.md`). No evidence either `m1400` or any other ground module writes ground config flash directly | U — same confirmed gap, ground side |
+
+**Net for the ground side:** `m1400` is the one chip with a confirmed (V) self-flash
+action (the IAP marker write), exactly mirroring air's `m0900` — strong
+cross-confirmation that "write a reboot-to-loader marker via IAP, let an
+undumped bootloader do the rest" is DJI's standard Cortex-M self-update pattern
+on this product line, found independently on two different silicon families
+(STM32F103 air, LPC1765 ground). The FPGA write-path gap (issue #18) is
+structurally identical on both sides — ground doesn't resolve it, it reproduces it.
+
 ## Open
 
 - Data path of the FPGA image on both sides (neither MCU handles Update Transmit).

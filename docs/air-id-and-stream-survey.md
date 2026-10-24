@@ -10,21 +10,138 @@ Ground side (C1/m1400) is a separate survey: not covered here.
 
 Addresses: Cortex-M modules = runtime address; m0100 sys = runtime address (base `0x0E600000`); m1500 = 8051 code address; others = file offset.
 
-| Module | Role | Arch (basis) | FPGA-stream contact | Chip/die ID read | Upgrade-path role | Evidence |
-|---|---|---|---|---|---|---|
-| m0100 (55 MB) | camera, Ambarella A9SE | container: sys RTOS 8.9 MB, lnx Linux 3.8.0 4.8 MB, rfs UBIFS 26 MB, rom_fw 11 MB, dsp_fw 3.7 MB (V: amba_fwpak) | **yes (I for FPGA end)**: USB host driver `68013.ko` to the FX2LP, DM368 stream control, rpmsg video/update channels | **yes, not a chip UID**: ATSHA204 SN + board-number check vs A9 NAND copy; SD-card SN logged; authorized-MAC list. No FPGA/Cyclone ID read | **orchestrator** (UEG): checks packet, sends every module's image | see "m0100" below |
-| m0101 | camera loader (SD updater) | ARM Cortex-A9, ThreadX/IAR (V: string `0x64be4`) | no | no | SD-card updater: CRC32 check, model-name check (`0x4ce4`), NAND program, reboot | strings `0x4c5c-0x5fe4` |
-| m0305 | A3 FC loader | Cortex-M (STM32F4 by option-byte address) linked at `0x20000000` (I: base), SP `0x1000e4e8` | no | no UID/IDCODE. Reads option byte `0x1FFFC001` into RAM (`0x20007d0c`): protection state (V) | loader for m0306 | const scan |
-| m0306 | A3 flight controller | Cortex-M4 STM32F4, base `0x08020000` | no (reaches m0900 over CAN per dataflow.md) | **yes**: STM32F4 UID read `0x0808527a`; word 0 used in a 10-byte record built at `0x080596ea` (callers `0x08059798`, `0x08059b3e`). Strings: `m8 uid not received` (`0x0802867b`), `IMU SN ERROR`, `[set uuid]` | updated via DUML | disasm (V structure, U consumer) |
-| m0400 | gimbal | STM32F4 family (V), base `0x08008000` | no | no UID or DBGMCU read. Set 0x00 id 0x01 handler `0x08016254` reads 2 words at flash `0x080C0000` (code V, contents U, outside image) | updated via DUML | DUML table `0x0801d46c`, 27 entries, see "m0400 gimbal" |
-| m0800 | video encoder, DaVinci DM368 Linux | `Salted__` openssl blob (V); not decrypted (no key work) | **unknown** (strongly suspected: stream source, see "Stream path") | unknown | target of UEG fw-id 12 (DUML Update Transmit) | header bytes |
-| m0900 | Lightbridge MCU, STM32F103 | Cortex-M3 base `0x08008000` | **yes**: SPI2 FPGA regs, USART3 DUML, upgrade handshake (fpga-bringup.md, fpga-upgrade-path.md) | **yes**: STM32 UID `0x080127be`, DUML request `0x0904` -> reply `0x0954`. No FPGA ID read | handles Enter Loader/Confirm/Finish for receiver 0x13; no Update Transmit handler | existing docs; const scan agrees |
-| m1100 / m1101 | battery 1 / 2 | non-ARM; m1100 likely TI MSP430 (I: `31 40` = `mov #imm,SP`) | no | unknown (not disassembled) | DUML target | arch scan |
-| m1200-m1203 | ESC 0-3 (identical bytes, sha256 `940e4dd1c38f`) | not identified (U) | no | unknown | DUML target | arch scan |
-| m1500 | **FX2LP firmware** "IG810 LB2_68013_TX" (2.7 KB) | Cypress FX2LP 8051 `.iic` (V) | **yes, direct, full-disassembly verified (issue #31)**: synchronous slave-FIFO bridge, core never touches FIFO payload memory, see "m1500" | **no**: no REVID (`0xE60A`) or I2C/EEPROM regs; descriptor `iSerialNumber=0` | loaded into RAM by A9 Linux via `fxload`; UEG fw-id 11, USB transfer | full Ghidra 8051 disassembly (32 funcs, 1353 instrs) |
-| m1700 | vision module, camera MCU | Cortex-M base `0x0800C000` (I: best string-pointer fit) | no | camera-module ID only (`Camera ID`, `Factory: sunny/chicony/foxconn`, `EFL`), not MCU UID | DUML target | strings `0x75b-0x7f9` |
-| m1701 | vision module, sonar | Cortex-M base 0 | no | no | DUML target | const scan |
-| m1900 | air FPGA container (4 MiB, 2.06 MB used) | FPGA bitstream, compressed, no MCU code | is the stream engine (I) | see "m1900" | target of UEG fw-id 10 | mistral-cv |
+| Module | Role | Arch (basis) | FPGA-stream contact | Chip/die ID read | Upgrade-path role | **Flash-writer (issue #43)** | Evidence |
+|---|---|---|---|---|---|---|---|
+| m0100 (55 MB) | camera, Ambarella A9SE | container: sys RTOS 8.9 MB, lnx Linux 3.8.0 4.8 MB, rfs UBIFS 26 MB, rom_fw 11 MB, dsp_fw 3.7 MB (V: amba_fwpak) | **yes (I for FPGA end)**: USB host driver `68013.ko` to the FX2LP, DM368 stream control, rpmsg video/update channels | **yes, not a chip UID**: ATSHA204 SN + board-number check vs A9 NAND copy; SD-card SN logged; authorized-MAC list. No FPGA/Cyclone ID read | **orchestrator** (UEG): checks packet, sends every module's image | not itself (I) — hands off to `m0101` via the shared `DjiUeg*`/`DjiUec*` NAND-meta flag (`CamLdrEntry`/`CamAppEntry`/`CamBstEntry` strings in `m0100` match `m0101`'s own role); see "Flash-writer consolidation" | see "m0100" below |
+| m0101 | camera loader (SD updater) | ARM Cortex-A9, ThreadX/IAR (V: string `0x64be4`) | no | no | SD-card updater: CRC32 check, model-name check (`0x4ce4`), NAND program, reboot | **itself (V)** — `AmbaNAND_Program`/`AmbaNFTL_ErasePart`, full NAND incl. Bootstrap/Bootloader/System Software/Linux Kernel/RootFS (`m0101-threadx-reversing.md` §2/§7) | strings `0x4c5c-0x5fe4` |
+| m0305 | A3 FC loader | Cortex-M (STM32F4 by option-byte address) linked at `0x20000000` (I: base), SP `0x1000e4e8` | no | no UID/IDCODE. Reads option byte `0x1FFFC001` into RAM (`0x20007d0c`): protection state (V) | loader for m0306 | **itself (I)**, well-supported: "reads as a flash programmer, not a jump/VTOR target" (`fc-usb-duml.md` adversarial re-check #1 — zero `SCB->VTOR` hits, flash-sector-boundary table at file offset `0xa4ac`); writes `m0306`'s app flash | const scan |
+| m0306 | A3 flight controller | Cortex-M4 STM32F4, base `0x08020000` | no (reaches m0900 over CAN per dataflow.md) | **yes**: STM32F4 UID read `0x0808527a`; word 0 used in a 10-byte record built at `0x080596ea` (callers `0x08059798`, `0x08059b3e`). Strings: `m8 uid not received` (`0x0802867b`), `IMU SN ERROR`, `[set uuid]` | updated via DUML | **not itself (U)**: no app-level Enter Loader/Confirm/Transmit/Finish dispatch found for receiver FLYC/self in any pass to date — genuine gap, not assumed. Real write = `m0305` (I, see above) | disasm (V structure, U consumer) |
+| m0400 | gimbal | STM32F4 family (V), base `0x08008000` | no | no UID or DBGMCU read. Set 0x00 id 0x01 handler `0x08016254` reads 2 words at flash `0x080C0000` (code V, contents U, outside image) | updated via DUML | **unknown (U), genuine gap**: cmd ids `0x07-0x0d` in the "general" cmd-set — which numerically match the Enter Loader/Confirm/Transmit/Finish/Reboot convention used by `m0900`/`m1400` — are confirmed (full 27/27 Ghidra decode) to be ordinary param-get/trim/ack handlers in this build, **not** update handlers. No marker-write/IAP code and no separate loader module (unlike `m0101`/`m0305`) found for gimbal. Real-world SD log (`firmware-upgrade-log-review.md`) shows `[04 00]` version changes with "successful rewrite" during real UEG sessions — so it does happen; the mechanism is simply not visible in this static image | DUML table `0x0801d46c`, 27 entries, see "m0400 gimbal" |
+| m0800 | video encoder, DaVinci DM368 Linux | `Salted__` openssl blob (V); not decrypted (no key work) | **unknown** (strongly suspected: stream source, see "Stream path") | unknown | target of UEG fw-id 12 (DUML Update Transmit) | **unknown (U)** — contents encrypted. Delivery mechanism traced this pass despite that (see "Flash-writer consolidation"): generic DUML Update Transmit framing, routed to channel 2 (UART, 115200 baud) by the camera's own route table. DM368 is itself a Linux SoC (presumably its own NAND/flash write under its own kernel, by analogy with the `m0100`/`m0101` split) — not verifiable without the key | header bytes |
+| m0900 | Lightbridge MCU, STM32F103 | Cortex-M3 base `0x08008000` | **yes**: SPI2 FPGA regs, USART3 DUML, upgrade handshake (fpga-bringup.md, fpga-upgrade-path.md) | **yes**: STM32 UID `0x080127be`, DUML request `0x0904` -> reply `0x0954`. No FPGA ID read | handles Enter Loader/Confirm/Finish for receiver 0x13; no Update Transmit handler | **partial self (V/I)**: receiver-9 (self) Enter Loader writes IAP marker `OOXX` to flash `0x7400` (V, real flash write, but of a marker not the app image) then presumably reboots into the un-dumped bootloader for the actual app reflash (I/U). Receiver 0x13 (FPGA): never receives Update Transmit; writer unknown — **issue #18, unchanged, the one confirmed gap** | existing docs; const scan agrees |
+| m1100 / m1101 | battery 1 / 2 | non-ARM; m1100 likely TI MSP430 (I: `31 40` = `mov #imm,SP`) | no | unknown (not disassembled) | DUML target | **unknown (U)** — no new trace found this pass; no battery firmware image identifiable in the container, nothing to disassemble | arch scan |
+| m1200-m1203 | ESC 0-3 (identical bytes, sha256 `940e4dd1c38f`) | **TI TMS320F28027F "Piccolo" C2000 DSP + DRV8301 pre-driver (W, public corroboration — `o-gs/dji-firmware-tools` wiki via `dataflow.md` §7.9 / `fc-usb-port.md`)**, not this repo's own RE | no | unknown | DUML target | **unknown (U/I)** — chip now identified by public source, not firmware trace; no ESC firmware image is identifiable among this container's own module files (the UEG table has an ESC fw-id, but no disassemblable binary for it was found locally), so the write path can't be traced in code. **Real-world confirmation it happens**: the camera's own SD upgrade log (`firmware-upgrade-log-review.md`) records a completed session rewriting all four ESCs `[12 00-03]` (1.13.0.0 -> 1.11.0.0) with packet-level success. Control bus is shared UART3 + PWM1-4 (not CAN/DUML-relay at the ESC chip itself — W, same source) — if the ESC chip takes DUML-framed update bytes at all, the FC (`m0306`) must be the relay (I, architecturally consistent, not traced); the C2000's own on-chip flash would then be written via its standard SCI ROM bootloader (I, by TI-part-family analogy, not DJI-code-confirmed) | arch scan |
+| m1500 | **FX2LP firmware** "IG810 LB2_68013_TX" (2.7 KB) | Cypress FX2LP 8051 `.iic` (V) | **yes, direct, full-disassembly verified (issue #31)**: synchronous slave-FIFO bridge, core never touches FIFO payload memory, see "m1500" | **no**: no REVID (`0xE60A`) or I2C/EEPROM regs; descriptor `iSerialNumber=0` | loaded into RAM by A9 Linux via `fxload`; UEG fw-id 11, USB transfer | **none (V)** — RAM-loaded via `fxload` every boot, never persisted to any flash; not a flash-write target at all | full Ghidra 8051 disassembly (32 funcs, 1353 instrs) |
+| m1700 | vision module, camera MCU | Cortex-M base `0x0800C000` (I: best string-pointer fit) | no | camera-module ID only (`Camera ID`, `Factory: sunny/chicony/foxconn`, `EFL`), not MCU UID | DUML target | **unknown (U)** — no new trace found this pass | strings `0x75b-0x7f9` |
+| m1701 | vision module, sonar | Cortex-M base 0 | no | no | DUML target | **unknown (U)** — no new trace found this pass | const scan |
+| m1900 | air FPGA container (4 MiB, 2.06 MB used) | FPGA bitstream, compressed, no MCU code | is the stream engine (I) | see "m1900" | target of UEG fw-id 10 | **unknown (U) — issue #18, the one confirmed gap, deliberately not papered over.** `m0900` excluded (no data path, too small), `m0100`/A9 excluded (USB-only, no SPI/JTAG/config-pin driver), `m1500` excluded (full-disassembly-verified transparent FIFO pipe). Only remaining candidate is FPGA-resident logic receiving the FX2LP's FIFO output and writing its own config memory — plausible, not confirmed | mistral-cv |
+
+## Flash-writer consolidation (issue #43)
+
+Consolidates, cross-references and extends the piecemeal findings above into one
+answer per module: which chip/code path performs the **actual nonvolatile write**,
+not "receives a DUML Confirm/Finish ack". Ground-side equivalent table:
+`ground-upgrade-path.md` "Flash-writer consolidation (issue #43, ground side)".
+Does not re-litigate issue #18 (FPGA config-flash writer) — restated as still open.
+
+### Two confirmed self-flash patterns among the Cortex-M modules
+
+- **`m0900` (STM32F103) and `m1400` (LPC1765, ground, see `ground-upgrade-path.md`)
+  both self-flash a *marker*, not the new image, from their own app code (V for
+  both):** `m0900` Enter Loader (receiver 9) writes `OOXX` to flash `0x7400`
+  (`fpga-upgrade-path.md`); `m1400` Enter Loader (receiver 0x0E) writes
+  `0x55AA66CC`/`~0x55AA66CC` to flash sector 8 via real IAP erase(52)+program(51)
+  calls (`ground-upgrade-path.md` "Loader marker and reboot-to-loader"). Both then
+  stop feeding the watchdog and reset. **Neither app ever handles Update Transmit
+  (0x09)** — confirmed absent from both dispatch tables. The actual new-image write
+  is therefore **inferred to happen in the bootloader** (flash below the app base,
+  `0x08000000-0x08007FFF` for `m0900`, `0x0000-0x9FFF` for `m1400`) — **neither
+  bootloader is in the container**, so this is I, not V, for both chips. This is
+  the same shape repeated on two independent chip families (STM32 and LPC17xx),
+  which is itself evidence it's DJI's standard self-update convention, not a
+  one-off.
+- **`m0306` (FC) and the camera (`m0100`/`m0101`) instead use a *separate loader
+  module*, not self-flash-via-marker:** `m0305` ("A3 FC loader") is a distinct
+  STM32F4 image, structurally confirmed as a flash programmer (`fc-usb-duml.md`'s
+  adversarial re-check: zero `SCB->VTOR` hits in either `m0306` or `m0305`, and
+  `m0305`'s only `0x08020000`-valued literal sits inside an F42x flash-sector
+  table, not a vector-relocation target) — it is inferred (I, well-supported) to
+  be the actual writer of `m0306`'s app flash, analogous to how `m0101` is the
+  confirmed (V) NAND writer underneath `m0100`'s UEG orchestration layer. In
+  neither case does the "app" module (`m0306`, `m0100`) write its own flash
+  directly — the separate loader does.
+- **`m0400` (gimbal) fits neither pattern, and this is a genuine new negative
+  result, not a gap in search effort:** the full 27/27-entry DUML dispatch decode
+  (`m0400` section below) shows cmd ids `0x07`-`0x0d` of the "general" cmd-set —
+  which numerically match the Enter-Loader/Confirm/Transmit/Finish/Reboot
+  convention used by `m0900` and `m1400` — are ordinary parameter-get, trim-byte
+  and plain-ack handlers in this build, not update handlers. No IAP/marker-write
+  code and no separate `m04xx`-loader module exist in the container for the
+  gimbal. Yet the camera's own historical SD-card upgrade log
+  (`firmware-upgrade-log-review.md`) shows `[04 00]` (gimbal) version changes with
+  packet-level success in real completed update sessions — so the gimbal
+  genuinely does get reflashed by the real hardware; the code path that does it is
+  simply not present/found in this app image (candidates: an un-dumped gimbal
+  bootloader by analogy with `m0900`/`m1400`, or cmd ids assigned differently than
+  the numeric convention suggests — neither confirmed). Stated as U, not guessed.
+
+### `m0800` (DM368): delivery path traced without decrypting contents
+
+Connects `air-id-and-stream-survey.md`'s own UEG routing table to its own DUML
+channel-init trace (both already in this file, never cross-referenced against each
+other before this pass):
+- V (UEG table, "Upgrade engine" above): DM368 is a distinct UEG fw-id entry,
+  Update Transmit for it uses the **generic DUML transmit** cell
+  (`DjiUegFwMsgTransmitSend`, `0x0e89e018`, frame `[u8][u32 idx][u16 len][data]`) —
+  not the USB/IPC path used for FPGA and 68013 (`fpga-write-path.md`'s correction:
+  those two use `DjiUegFwUsbTransmitSend`).
+- V (camera route table `0x0e861cc4`/`0x0e861ce4`, `fpga-write-path.md` §1):
+  receiver type 8 (DM368) resolves to **channel 2**, a UART channel
+  (`DjiMsgChannelInit`, first config word `0x1c200`, I: 115200 baud) — the same
+  channel type 15 (68013.A) also uses for its DUML handshake (Enter
+  Loader/Confirm/Finish; its bulk data still goes over USB/IPC separately).
+- **Conclusion (I, from connecting the two V findings above, not independently
+  re-verified against a capture):** `m0800`'s update package is staged by `m0100`'s
+  UEG (parsed off the SD card, MD5-checked like every other module — see
+  "Upgrade engine (UEG)" above) and delivered to the DM368 as plain DUML Update
+  Transmit frames over a dedicated UART at ch2 — **not** over USB/IPC like the FPGA
+  and 68013 paths. This is new: no earlier pass connected the UEG transmit-cell
+  choice to the DUML channel-routing table for this specific module.
+- U, and stays U: what DM368 does with the bytes once received (its own flash/NAND
+  write, success confirmation back to the camera) — the module is ciphertext
+  (`Salted__`, 7.99995 bits/byte entropy, `camera-linux-console-access.md`), so
+  the receiving/writing code cannot be read. DM368 is itself a Linux-class SoC
+  (`video-and-link.md`), so a split comparable to `m0100`(orchestrator)/`m0101`
+  (NAND writer) is plausible inside it — not verifiable without the key.
+
+### ESC (`m1200`-`m1203`): chip identified, write path not traceable in this container
+
+- The chip is now known: **TI TMS320F28027F "Piccolo" C2000 DSP + DRV8301
+  pre-driver** — **W, public corroboration** (`o-gs/dji-firmware-tools` wiki, via
+  `dataflow.md` §7.9 and `fc-usb-port.md`), not this repo's own disassembly (the
+  four ESC images in the container are byte-identical and architecturally
+  unidentified, sha256 `940e4dd1c38f`). Control is shared UART3 + PWM1-4, not a
+  CAN/DUML-relay endpoint on the ESC chip itself (same W source).
+- No ESC firmware image distinguishable from the generic container blob was found
+  to disassemble, so the actual flash-write code cannot be traced here — stated
+  plainly rather than guessed at.
+- **What is confirmed, empirically, not from code:** the camera's own historical SD
+  upgrade log (`firmware-upgrade-log-review.md`) records a completed real-hardware
+  session that rewrote all four ESCs (`[12 00-03]`, 1.13.0.0 -> 1.11.0.0) with
+  packet-level success — the UEG mechanism really does reach and reflash the ESCs,
+  whatever the exact code path. If the ESC chip receives DUML-framed bytes at all,
+  the flight controller (`m0306`) is the only plausible relay (I, architecturally
+  consistent with the UART3 wiring, not traced in code); the C2000 would then write
+  its own flash via its standard SCI ROM bootloader (I, by TI C2000-family
+  convention, not DJI-code-confirmed — no ESC image to check).
+
+### Not re-litigated here
+
+- **Issue #18 (air FPGA config-flash writer): still open.** `m0900` is excluded (no
+  data path, too small, SPI2 handshake-only), `m0100`/A9 is excluded (USB bulk only,
+  no SPI/JTAG/config-pin driver anywhere in the Linux kernel or rootfs), `m1500` is
+  excluded (full 8051 disassembly, zero FIFO-memory touches). Only remaining
+  candidate is FPGA-resident logic consuming its own FIFO input — plausible, not
+  confirmed. Ground side has the structurally identical open gap for
+  `m2000`-`m2002` (see `ground-upgrade-path.md`).
+- **Issue #19 (no P3-aircraft firmware-push engine in the vendor APK) / issue #30
+  (APK may be the wrong app for a P3 Pro):** consistent with everything above —
+  every transmit/confirm/finish step traced in this section lives entirely in the
+  aircraft's own `m0100` UEG + per-module app/loader code, driven by an SD-card
+  file or a DUML session from whatever app is actually paired to this product;
+  nothing here required a P3-specific push engine inside the single APK already
+  examined, so its absence there doesn't indicate a missing mechanism on the
+  aircraft side. Not independently re-investigated this pass.
 
 ## m0100 (camera SoC)
 
