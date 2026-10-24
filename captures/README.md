@@ -1,5 +1,13 @@
 # captures/
 
+Tracked artifacts from real hardware (owner's aircraft/RC), kept because they can't be
+regenerated from firmware/code alone. Regenerable analysis output (Renode, disassembly,
+firmware unpack) stays in `tmp/` - see root CLAUDE.md.
+
+- `sessions/<date>/` - per-session logs from live-hardware scripts (AOA relay, identity
+  queries, gimbal sends, app logcat captures), one README per session.
+- Top-level `*.pcapng`/`*.txt` below - USB captures of vendor tools (Assistant 2, tshark).
+
 Raw USB captures (USBPcap via tshark) of vendor tools talking to the aircraft/controller.
 
 ## 2026-10-23_assistant2-phantom_p3-controller.pcapng

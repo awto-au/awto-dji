@@ -17,10 +17,36 @@ Needs pyserial. Close DJI Assistant first (its DJIService holds the port open).
   python scripts/duml_probe.py COM3                  # controller (2CA3:0008)
   python scripts/duml_probe.py COM4 --listen 10      # aircraft side (FFF0:0008): listen 10 s
   python scripts/duml_probe.py COM3 --receiver 1400 --sender 1000 --cmd 0:1
+
+Log: captures/sessions/<today>/duml_probe.log (tracked, real-hardware data; --selftest doesn't log).
 """
 import argparse
+import datetime
+import os
+import subprocess
 import sys
 import time
+
+_logf = None  # set in main(); session_log_dir() lives here too since this script has no
+              # sibling helper module to import from (it's used standalone, outside scripts/re/)
+
+
+def repo_root():
+    return os.environ.get("AWTO_DJI_REPO") or subprocess.check_output(
+        ["git", "rev-parse", "--show-toplevel"], text=True,
+        cwd=os.path.dirname(os.path.abspath(__file__))).strip()
+
+
+def session_log_dir():
+    d = os.path.join(repo_root(), "captures", "sessions", datetime.date.today().isoformat())
+    os.makedirs(d, exist_ok=True)
+    return d
+
+
+def tee(msg):
+    print(msg)
+    if _logf:
+        _logf.write(msg + "\n")
 
 # DUML CRCs (reflected): CRC8 poly 0x31 init 0x77; CRC16 poly 0x1021 init 0x3692.
 def crc8(data, init=0x77):
@@ -89,7 +115,7 @@ def show(f, ok):
     s = f"  {kind} snd={sender:02x} rcv={receiver:02x} seq={seq:04x} set={cs:02x} id={cid:02x} crc={'ok' if ok else 'BAD'} payload={pl.hex()}"
     if sum(1 for c in pl if 32 <= c < 127) >= 6:
         s += f"  ascii={txt!r}"
-    print(s)
+    tee(s)
 
 
 def selftest():
@@ -109,6 +135,7 @@ def main():
     ap.add_argument('--sender', default='1000', help='TTII, default 1000 (PC)')
     ap.add_argument('--receiver', default='1400', help='TTII, default 1400 (what the controller answered)')
     ap.add_argument('--cmd', action='append', help='SET:ID (decimal or 0x..); default ping/version/build. Only use read-only ones')
+    ap.add_argument('--payload', default='', help='hex payload sent with every --cmd, e.g. 01030a0c0d0f')
     ap.add_argument('--listen', type=float, default=0, help='seconds to listen without sending')
     ap.add_argument('--heartbeat', action='store_true', help='with --listen: send the Assistant-style ping every 0.5 s')
     ap.add_argument('--wait', type=float, default=1.5, help='seconds to wait for each reply')
@@ -120,12 +147,17 @@ def main():
     if not a.port:
         ap.error('port required (or --selftest)')
 
+    global _logf
+    log_path = os.path.join(session_log_dir(), 'duml_probe.log')
+    _logf = open(log_path, 'a', buffering=1)
+    tee(f"\n=== {datetime.datetime.now().isoformat(timespec='seconds')} {' '.join(sys.argv[1:])} ===")
+
     import serial
     ser = serial.Serial()
     ser.port, ser.baudrate, ser.timeout = a.port, a.baud, 0.1
     ser.dtr, ser.rts = False, True      # same as DJI Assistant 2; set before open() so there is no later toggle
     ser.open()
-    print(f"opened {a.port} {a.baud} 8N1 RTS=1 DTR=0")
+    tee(f"opened {a.port} {a.baud} 8N1 RTS=1 DTR=0")
     buf = bytearray()
     raw = [0]
 
@@ -145,7 +177,7 @@ def main():
         return got
 
     if a.listen:
-        print(f"listening {a.listen}s{' with 0.5 s heartbeat' if a.heartbeat else ''} ...")
+        tee(f"listening {a.listen}s{' with 0.5 s heartbeat' if a.heartbeat else ''} ...")
         end, n = time.time() + a.listen, 0
         while time.time() < end:
             if a.heartbeat:   # what the Assistant sends the FFF0 port: PC -> receiver 00, set 00 id 0c, payload 00
@@ -155,12 +187,12 @@ def main():
     else:
         cmds = [tuple(int(x, 0) for x in c.split(':')) for c in a.cmd] if a.cmd else [(0, 0x0c), (0, 0x01), (0, 0xff)]
         for n, (cs, cid) in enumerate(cmds):
-            pkt = build(ttii(a.sender), ttii(a.receiver), 0x2700 + n, cs, cid)
-            print(f"> set={cs:02x} id={cid:02x}  {pkt.hex()}")
+            pkt = build(ttii(a.sender), ttii(a.receiver), 0x2700 + n, cs, cid, bytes.fromhex(a.payload))
+            tee(f"> set={cs:02x} id={cid:02x}  {pkt.hex()}")
             ser.write(pkt)
             if not pump(a.wait):
-                print("  (no reply)")
-    print(f"{raw[0]} raw bytes received")
+                tee("  (no reply)")
+    tee(f"{raw[0]} raw bytes received")
     ser.close()
 
 

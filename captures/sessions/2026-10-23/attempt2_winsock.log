@@ -1,0 +1,413 @@
+002c:trace:winsock:gethostname name 000000000031F6C0, len 256
+002c:trace:winsock:gethostname <- "selwyn"
+002c:trace:winsock:getaddrinfo node "selwyn", service (null), hints 000000000031F4B0
+002c:trace:winsock:inet_ntop family 23, addr 000000000003E5CF, buffer 000000000031ED30, len 46
+002c:trace:winsock:getaddrinfo => 000000000003E590, flags 0x2, family 23, type 0, protocol 0, len 28, name selwyn, addr { family AF_INET6, address fe80::b7aa:8d2:92a3:cc39, flow label 0, port 0, scope 6 }
+002c:trace:winsock:inet_ntop family 23, addr 000000000003E61B, buffer 000000000031ED30, len 46
+002c:trace:winsock:getaddrinfo => 000000000003E5E3, flags 0x2, family 23, type 0, protocol 0, len 28, name (null), addr { family AF_INET6, address fe80::b7aa:8d2:92a3:cc39, flow label 0, port 0, scope 6 }
+002c:trace:winsock:inet_ntop family 23, addr 000000000003E667, buffer 000000000031ED30, len 46
+002c:trace:winsock:getaddrinfo => 000000000003E62F, flags 0x2, family 23, type 0, protocol 0, len 28, name (null), addr { family AF_INET6, address fe80::9377:791b:35f3:313a, flow label 0, port 0, scope 7 }
+002c:trace:winsock:inet_ntop family 23, addr 000000000003E6B3, buffer 000000000031ED30, len 46
+002c:trace:winsock:getaddrinfo => 000000000003E67B, flags 0x2, family 23, type 0, protocol 0, len 28, name (null), addr { family AF_INET6, address fe80::13bf:246e:bf0d:a220, flow label 0, port 0, scope 8 }
+002c:trace:winsock:inet_ntop family 23, addr 000000000003E6FF, buffer 000000000031ED30, len 46
+002c:trace:winsock:getaddrinfo => 000000000003E6C7, flags 0x2, family 23, type 0, protocol 0, len 28, name (null), addr { family AF_INET6, address fe80::b086:e9ff:fe51:9471, flow label 0, port 0, scope 9 }
+002c:trace:winsock:inet_ntop family 23, addr 000000000003E74B, buffer 000000000031ED30, len 46
+002c:trace:winsock:getaddrinfo => 000000000003E713, flags 0x2, family 23, type 0, protocol 0, len 28, name (null), addr { family AF_INET6, address fe80::d7b0:69c4:78d0:e4fe, flow label 0, port 0, scope 10 }
+002c:trace:winsock:inet_ntop family 23, addr 000000000003E797, buffer 000000000031ED30, len 46
+002c:trace:winsock:getaddrinfo => 000000000003E75F, flags 0x2, family 23, type 0, protocol 0, len 28, name (null), addr { family AF_INET6, address fe80::ecab:15ff:fe8e:bef1, flow label 0, port 0, scope 12 }
+002c:trace:winsock:inet_ntop family 23, addr 000000000003E7E3, buffer 000000000031ED30, len 46
+002c:trace:winsock:getaddrinfo => 000000000003E7AB, flags 0x2, family 23, type 0, protocol 0, len 28, name (null), addr { family AF_INET6, address fd6a:dbcf:68ae:5fb8:f6c5:27ff:b9a:6a85, flow label 0, port 0, scope 0 }
+002c:trace:winsock:inet_ntop family 23, addr 000000000003E82F, buffer 000000000031ED30, len 46
+002c:trace:winsock:getaddrinfo => 000000000003E7F7, flags 0x2, family 23, type 0, protocol 0, len 28, name (null), addr { family AF_INET6, address fd6a:dbcf:68ae:5fb8:b60b:77f4:d1db:9729, flow label 0, port 0, scope 0 }
+002c:trace:winsock:inet_ntop family 23, addr 000000000003E87B, buffer 000000000031ED30, len 46
+002c:trace:winsock:getaddrinfo => 000000000003E843, flags 0x2, family 23, type 0, protocol 0, len 28, name (null), addr { family AF_INET6, address fd7a:115c:a1e0::6901:23e3, flow label 0, port 0, scope 0 }
+002c:trace:winsock:inet_ntop family 2, addr 000000000003E8C3, buffer 000000000031ED30, len 16
+002c:trace:winsock:getaddrinfo => 000000000003E88F, flags 0x2, family 2, type 0, protocol 0, len 16, name (null), addr { family AF_INET, address 192.168.25.33, port 0 }
+002c:trace:winsock:inet_ntop family 2, addr 000000000003E903, buffer 000000000031ED30, len 16
+002c:trace:winsock:getaddrinfo => 000000000003E8CF, flags 0x2, family 2, type 0, protocol 0, len 16, name (null), addr { family AF_INET, address 192.168.25.114, port 0 }
+002c:trace:winsock:inet_ntop family 2, addr 000000000003E943, buffer 000000000031ED30, len 16
+002c:trace:winsock:getaddrinfo => 000000000003E90F, flags 0x2, family 2, type 0, protocol 0, len 16, name (null), addr { family AF_INET, address 10.11.12.2, port 0 }
+002c:trace:winsock:inet_ntop family 2, addr 000000000003E983, buffer 000000000031ED30, len 16
+002c:trace:winsock:getaddrinfo => 000000000003E94F, flags 0x2, family 2, type 0, protocol 0, len 16, name (null), addr { family AF_INET, address 192.168.25.30, port 0 }
+002c:trace:winsock:inet_ntop family 2, addr 000000000003E9C3, buffer 000000000031ED30, len 16
+002c:trace:winsock:getaddrinfo => 000000000003E98F, flags 0x2, family 2, type 0, protocol 0, len 16, name (null), addr { family AF_INET, address 172.31.99.1, port 0 }
+002c:trace:winsock:inet_ntop family 2, addr 000000000003EA03, buffer 000000000031ED30, len 16
+002c:trace:winsock:getaddrinfo => 000000000003E9CF, flags 0x2, family 2, type 0, protocol 0, len 16, name (null), addr { family AF_INET, address 100.77.35.93, port 0 }
+002c:trace:winsock:inet_ntop family 2, addr 000000000003EA43, buffer 000000000031ED30, len 16
+002c:trace:winsock:getaddrinfo => 000000000003EA0F, flags 0x2, family 2, type 0, protocol 0, len 16, name (null), addr { family AF_INET, address 172.17.0.1, port 0 }
+002c:trace:winsock:inet_ntop family 2, addr 000000000003EA83, buffer 000000000031ED30, len 16
+002c:trace:winsock:getaddrinfo => 000000000003EA4F, flags 0x2, family 2, type 0, protocol 0, len 16, name (null), addr { family AF_INET, address 192.168.25.143, port 0 }
+002c:trace:winsock:freeaddrinfo 000000000003E590
+0054:trace:winsock:sock_ioctl handle 0x54, code 0x121000, in_buffer 0xa1f5c0, in_size 56, out_buffer 0xe5a100, out_size 122628
+002c:trace:wininet:DllMain 00006FFFFAC50000,1,0000000000000000
+002c:trace:wininet:InternetOpenW (L"Wine", 0, (null), (null), 0)
+002c:trace:wininet:InternetOpenW   access type : INTERNET_OPEN_TYPE_PRECONFIG
+002c:trace:wininet:InternetOpenW   flags       :
+002c:trace:wininet:INTERNET_LoadProxySettings No proxy server settings in registry.
+002c:trace:wininet:INTERNET_LoadProxySettings No proxy bypass server settings in registry.
+002c:trace:wininet:InternetOpenW returning 0000000000803760
+002c:trace:wininet:InternetCloseHandle 0000000000000001
+002c:trace:wininet:WININET_AddRef 0000000000803760 -> refcount = 2
+002c:trace:wininet:get_handle_object handle 1 -> 0000000000803760
+002c:trace:wininet:WININET_Release object 0000000000803760 refcount = 1
+002c:trace:wininet:WININET_Release object 0000000000803760 refcount = 0
+002c:trace:wininet:WININET_Release destroying object 0000000000803760
+002c:trace:wininet:APPINFO_Destroy 0000000000803760
+002c:trace:wininet:DllMain 00006FFFFAC50000,0,0000000000000001
+0138:trace:winsock:WSAStartup version 0x202
+0138:trace:winsock:WSAStartup increasing startup count to 1
+0138:trace:winsock:sock_ioctl handle 0xc4, code 0x121000, in_buffer 0x10ff1d0, in_size 56, out_buffer 0x226b838, out_size 108804
+0138:trace:winsock:sock_ioctl handle 0xc4, code 0x121000, in_buffer 0x10ff1d0, in_size 56, out_buffer 0x1632e80, out_size 2820
+0138:trace:winsock:sock_ioctl handle 0xc4, code 0x121000, in_buffer 0x10ff1d0, in_size 56, out_buffer 0x226b838, out_size 108804
+0138:trace:winsock:sock_ioctl handle 0xc4, code 0x121000, in_buffer 0x10ff1d0, in_size 56, out_buffer 0x1632e80, out_size 2820
+0138:trace:winsock:sock_ioctl handle 0xc4, code 0x121000, in_buffer 0x10ff1d0, in_size 56, out_buffer 0x166a7f8, out_size 3076
+0138:trace:winsock:sock_ioctl handle 0xc4, code 0x121000, in_buffer 0x10ff72c, in_size 56, out_buffer 0x226b838, out_size 122628
+0138:trace:winsock:sock_ioctl handle 0xc4, code 0x121008, in_buffer 0x161ec80, in_size 52, out_buffer 0x10ff8f8, out_size 16
+0138:trace:winsock:sock_ioctl handle 0xc4, code 0x121008, in_buffer 0x161ec80, in_size 52, out_buffer 0x10ff8f8, out_size 16
+0138:trace:winsock:sock_ioctl handle 0xc4, code 0x121008, in_buffer 0x161ec80, in_size 52, out_buffer 0x10ff8f8, out_size 16
+0138:trace:winsock:sock_ioctl handle 0xc4, code 0x121008, in_buffer 0x161ec80, in_size 52, out_buffer 0x10ff8f8, out_size 16
+0138:trace:winsock:sock_ioctl handle 0xc4, code 0x121008, in_buffer 0x161ec80, in_size 52, out_buffer 0x10ff8f8, out_size 16
+0138:trace:winsock:sock_ioctl handle 0xc4, code 0x121008, in_buffer 0x161ec80, in_size 52, out_buffer 0x10ff8f8, out_size 16
+0138:trace:winsock:sock_ioctl handle 0xc4, code 0x121008, in_buffer 0x161ec80, in_size 52, out_buffer 0x10ff8f8, out_size 16
+0138:trace:winsock:sock_ioctl handle 0xc4, code 0x121008, in_buffer 0x161ec80, in_size 52, out_buffer 0x10ff8f8, out_size 16
+0138:trace:winsock:sock_ioctl handle 0xc4, code 0x121008, in_buffer 0x161ec80, in_size 52, out_buffer 0x10ff8f8, out_size 16
+0138:trace:winsock:sock_ioctl handle 0xc4, code 0x121008, in_buffer 0x161ec80, in_size 52, out_buffer 0x10ff8f8, out_size 16
+0138:trace:winsock:sock_ioctl handle 0xc4, code 0x121000, in_buffer 0x10ff6ac, in_size 56, out_buffer 0x166e508, out_size 4356
+0138:trace:winsock:sock_ioctl handle 0xc4, code 0x121000, in_buffer 0x10ff6ac, in_size 56, out_buffer 0x1615880, out_size 3844
+0138:trace:winsock:sock_ioctl handle 0xc4, code 0x121000, in_buffer 0x10ff688, in_size 56, out_buffer 0x1618718, out_size 6660
+0138:trace:winsock:sock_ioctl handle 0xc4, code 0x121000, in_buffer 0x10ff688, in_size 56, out_buffer 0x1646fd0, out_size 5124
+0138:trace:winsock:sock_ioctl handle 0xc4, code 0x121000, in_buffer 0x10ff72c, in_size 56, out_buffer 0x22732a0, out_size 122628
+0138:trace:winsock:sock_ioctl handle 0xc4, code 0x121008, in_buffer 0x16326c0, in_size 52, out_buffer 0x10ff8f8, out_size 16
+0138:trace:winsock:sock_ioctl handle 0xc4, code 0x121008, in_buffer 0x16326c0, in_size 52, out_buffer 0x10ff8f8, out_size 16
+0138:trace:winsock:sock_ioctl handle 0xc4, code 0x121008, in_buffer 0x16326c0, in_size 52, out_buffer 0x10ff8f8, out_size 16
+0138:trace:winsock:sock_ioctl handle 0xc4, code 0x121008, in_buffer 0x16326c0, in_size 52, out_buffer 0x10ff8f8, out_size 16
+0138:trace:winsock:sock_ioctl handle 0xc4, code 0x121008, in_buffer 0x16326c0, in_size 52, out_buffer 0x10ff8f8, out_size 16
+0138:trace:winsock:sock_ioctl handle 0xc4, code 0x121008, in_buffer 0x16326c0, in_size 52, out_buffer 0x10ff8f8, out_size 16
+0138:trace:winsock:sock_ioctl handle 0xc4, code 0x121008, in_buffer 0x16326c0, in_size 52, out_buffer 0x10ff8f8, out_size 16
+0138:trace:winsock:sock_ioctl handle 0xc4, code 0x121008, in_buffer 0x16326c0, in_size 52, out_buffer 0x10ff8f8, out_size 16
+0138:trace:winsock:sock_ioctl handle 0xc4, code 0x121008, in_buffer 0x16326c0, in_size 52, out_buffer 0x10ff8f8, out_size 16
+0138:trace:winsock:sock_ioctl handle 0xc4, code 0x121008, in_buffer 0x16326c0, in_size 52, out_buffer 0x10ff8f8, out_size 16
+0138:trace:winsock:sock_ioctl handle 0xc4, code 0x121000, in_buffer 0x10ff6ac, in_size 56, out_buffer 0x16489f8, out_size 4356
+0138:trace:winsock:sock_ioctl handle 0xc4, code 0x121000, in_buffer 0x10ff6ac, in_size 56, out_buffer 0x1615880, out_size 3844
+0138:trace:winsock:sock_ioctl handle 0xc4, code 0x121000, in_buffer 0x10ff688, in_size 56, out_buffer 0x1618718, out_size 6660
+0138:trace:winsock:sock_ioctl handle 0xc4, code 0x121000, in_buffer 0x10ff688, in_size 56, out_buffer 0x1646fd0, out_size 5124
+013c:trace:winsock:sock_ioctl handle 0xc4, code 0x121000, in_buffer 0x247d144, in_size 56, out_buffer 0x227c8a8, out_size 108804
+013c:trace:winsock:sock_ioctl handle 0xc4, code 0x121000, in_buffer 0x247d144, in_size 56, out_buffer 0x1632e80, out_size 2820
+013c:trace:winsock:sock_ioctl handle 0xc4, code 0x121000, in_buffer 0x247d144, in_size 56, out_buffer 0x227c8a8, out_size 108804
+013c:trace:winsock:sock_ioctl handle 0xc4, code 0x121000, in_buffer 0x247d144, in_size 56, out_buffer 0x1632e80, out_size 2820
+013c:trace:winsock:sock_ioctl handle 0xc4, code 0x121000, in_buffer 0x247d144, in_size 56, out_buffer 0x1615880, out_size 3076
+013c:trace:winsock:sock_ioctl handle 0xc4, code 0x121000, in_buffer 0x247d6a0, in_size 56, out_buffer 0x227c8a8, out_size 122628
+013c:trace:winsock:sock_ioctl handle 0xc4, code 0x121008, in_buffer 0x161ee40, in_size 52, out_buffer 0x247d86c, out_size 16
+013c:trace:winsock:sock_ioctl handle 0xc4, code 0x121008, in_buffer 0x161ee40, in_size 52, out_buffer 0x247d86c, out_size 16
+013c:trace:winsock:sock_ioctl handle 0xc4, code 0x121008, in_buffer 0x161ee40, in_size 52, out_buffer 0x247d86c, out_size 16
+013c:trace:winsock:sock_ioctl handle 0xc4, code 0x121008, in_buffer 0x161ee40, in_size 52, out_buffer 0x247d86c, out_size 16
+013c:trace:winsock:sock_ioctl handle 0xc4, code 0x121008, in_buffer 0x161ee40, in_size 52, out_buffer 0x247d86c, out_size 16
+013c:trace:winsock:sock_ioctl handle 0xc4, code 0x121008, in_buffer 0x161ee40, in_size 52, out_buffer 0x247d86c, out_size 16
+013c:trace:winsock:sock_ioctl handle 0xc4, code 0x121008, in_buffer 0x161ee40, in_size 52, out_buffer 0x247d86c, out_size 16
+013c:trace:winsock:sock_ioctl handle 0xc4, code 0x121008, in_buffer 0x161ee40, in_size 52, out_buffer 0x247d86c, out_size 16
+013c:trace:winsock:sock_ioctl handle 0xc4, code 0x121008, in_buffer 0x161ee40, in_size 52, out_buffer 0x247d86c, out_size 16
+013c:trace:winsock:sock_ioctl handle 0xc4, code 0x121008, in_buffer 0x161ee40, in_size 52, out_buffer 0x247d86c, out_size 16
+013c:trace:winsock:sock_ioctl handle 0xc4, code 0x121000, in_buffer 0x247d620, in_size 56, out_buffer 0x16489f8, out_size 4356
+013c:trace:winsock:sock_ioctl handle 0xc4, code 0x121000, in_buffer 0x247d620, in_size 56, out_buffer 0x1615880, out_size 3844
+013c:trace:winsock:sock_ioctl handle 0xc4, code 0x121000, in_buffer 0x247d5fc, in_size 56, out_buffer 0x1618718, out_size 6660
+013c:trace:winsock:sock_ioctl handle 0xc4, code 0x121000, in_buffer 0x247d5fc, in_size 56, out_buffer 0x1646fd0, out_size 5124
+013c:trace:winsock:sock_ioctl handle 0xc4, code 0x121000, in_buffer 0x247d6a0, in_size 56, out_buffer 0x227c8a8, out_size 122628
+013c:trace:winsock:sock_ioctl handle 0xc4, code 0x121008, in_buffer 0x1646810, in_size 52, out_buffer 0x247d86c, out_size 16
+013c:trace:winsock:sock_ioctl handle 0xc4, code 0x121008, in_buffer 0x1646810, in_size 52, out_buffer 0x247d86c, out_size 16
+013c:trace:winsock:sock_ioctl handle 0xc4, code 0x121008, in_buffer 0x1646810, in_size 52, out_buffer 0x247d86c, out_size 16
+013c:trace:winsock:sock_ioctl handle 0xc4, code 0x121008, in_buffer 0x1646810, in_size 52, out_buffer 0x247d86c, out_size 16
+013c:trace:winsock:sock_ioctl handle 0xc4, code 0x121008, in_buffer 0x1646810, in_size 52, out_buffer 0x247d86c, out_size 16
+013c:trace:winsock:sock_ioctl handle 0xc4, code 0x121008, in_buffer 0x1646810, in_size 52, out_buffer 0x247d86c, out_size 16
+013c:trace:winsock:sock_ioctl handle 0xc4, code 0x121008, in_buffer 0x1646810, in_size 52, out_buffer 0x247d86c, out_size 16
+013c:trace:winsock:sock_ioctl handle 0xc4, code 0x121008, in_buffer 0x1646810, in_size 52, out_buffer 0x247d86c, out_size 16
+013c:trace:winsock:sock_ioctl handle 0xc4, code 0x121008, in_buffer 0x1646810, in_size 52, out_buffer 0x247d86c, out_size 16
+013c:trace:winsock:sock_ioctl handle 0xc4, code 0x121008, in_buffer 0x1646810, in_size 52, out_buffer 0x247d86c, out_size 16
+013c:trace:winsock:sock_ioctl handle 0xc4, code 0x121000, in_buffer 0x247d620, in_size 56, out_buffer 0x16489f8, out_size 4356
+013c:trace:winsock:sock_ioctl handle 0xc4, code 0x121000, in_buffer 0x247d620, in_size 56, out_buffer 0x1615880, out_size 3844
+013c:trace:winsock:sock_ioctl handle 0xc4, code 0x121000, in_buffer 0x247d5fc, in_size 56, out_buffer 0x1618718, out_size 6660
+013c:trace:winsock:sock_ioctl handle 0xc4, code 0x121000, in_buffer 0x247d5fc, in_size 56, out_buffer 0x1646fd0, out_size 5124
+0138:trace:winsock:WSAStartup version 0x2
+0138:trace:winsock:WSAStartup increasing startup count to 2
+0138:trace:winsock:WSASocketW family 23, type 1, protocol 0, info 00000000, group 0, flags 0x81
+0138:trace:winsock:sock_ioctl handle 0x110, code 0x120320, in_buffer 0x10ffa08, in_size 16, out_buffer (nil), out_size 0
+0138:trace:winsock:WSASocketW created 0x110
+0138:trace:winsock:WSAIoctl socket 0x110, FIONBIO, in_buff 010FFA6C, in_size 0x4, out_buff 010FFA70, out_size 0x4, ret_size 010FFA7C, overlapped 00000000, completion 00000000
+0138:trace:winsock:sock_ioctl handle 0x110, code 0x120344, in_buffer 0x10ffa6c, in_size 4, out_buffer (nil), out_size 0
+0138:trace:winsock:server_ioctl_sock status 0.
+0138:trace:winsock:setsockopt socket 0x110, level SOL_SOCKET, name SO_OOBINLINE, optval 010FFA7C (1), optlen 4
+0138:trace:winsock:sock_ioctl handle 0x110, code 0x120390, in_buffer 0x10ffa34, in_size 4, out_buffer (nil), out_size 0
+0138:trace:winsock:server_setsockopt status 0.
+0138:trace:winsock:setsockopt socket 0x110, level IPPROTO_IPV6, name IPV6_V6ONLY, optval 010FFA28 (0), optlen 4
+0138:trace:winsock:sock_ioctl handle 0x110, code 0x120460, in_buffer 0x10ff9ec, in_size 4, out_buffer (nil), out_size 0
+0138:trace:winsock:server_setsockopt status 0.
+0138:trace:winsock:inet_ntop family 23, addr 010FFA60, buffer 010FF90A, len 46
+0138:trace:winsock:bind socket 0x110, addr { family AF_INET6, address ::, flow label 0, port 19870, scope 0 }, len 28
+0138:trace:winsock:sock_ioctl handle 0x110, code 0x12003, in_buffer 0x1641060, in_size 32, out_buffer 0x1641090, out_size 28
+0138:trace:winsock:inet_ntop family 23, addr 01641098, buffer 010FF90A, len 46
+0138:trace:winsock:bind successfully bound to address { family AF_INET6, address ::, flow label 0, port 19870, scope 0 }
+0138:trace:winsock:getsockname socket 0x110, addr 010FFA00, len 128
+0138:trace:winsock:sock_ioctl handle 0x110, code 0x1202f, in_buffer (nil), in_size 0, out_buffer 0x10ffa00, out_size 128
+0138:trace:winsock:getsockname status 0.
+0138:trace:winsock:getsockopt socket 0x110, level IPPROTO_IPV6, name IPV6_V6ONLY, optval 010FF9F4, optlen 010FF9FC (4)
+0138:trace:winsock:sock_ioctl handle 0x110, code 0x12045c, in_buffer (nil), in_size 0, out_buffer 0x10ff9f4, out_size 1
+0138:trace:winsock:server_getsockopt status 0.
+0138:trace:winsock:getpeername socket 0x110, addr 010FFA00, len 28
+0138:trace:winsock:sock_ioctl handle 0x110, code 0x120360, in_buffer (nil), in_size 0, out_buffer 0x10ffa00, out_size 28
+0138:trace:winsock:getpeername status 0xc0000140.
+0138:trace:winsock:getsockopt socket 0x110, level SOL_SOCKET, name SO_TYPE, optval 010FF9D0, optlen 010FF9D4 (4)
+0138:trace:winsock:sock_ioctl handle 0x110, code 0x120368, in_buffer (nil), in_size 0, out_buffer 0x10ff6e4, out_size 12
+0138:trace:winsock:listen socket 0x110, backlog 50
+0138:trace:winsock:sock_ioctl handle 0x110, code 0x1200b, in_buffer 0x10ffa68, in_size 12, out_buffer (nil), out_size 0
+0138:trace:winsock:sock_ioctl backlog 50
+0138:trace:winsock:listen status 0.
+0138:trace:winsock:WSAAsyncSelect socket 0x110, window 00010060, message 0x400, mask 0x29
+0138:trace:winsock:sock_ioctl handle 0x110, code 0x12035c, in_buffer 0x10ff9cc, in_size 16, out_buffer (nil), out_size 0
+0138:trace:winsock:WSAAsyncSelect status 0.
+015c:trace:winsock:WSAStartup version 0x2
+015c:trace:winsock:WSAStartup increasing startup count to 3
+015c:trace:winsock:getaddrinfo node "mydjiflight.dji.com", service (null), hints 00000000
+015c:trace:winsock:inet_ntop family 2, addr 022A8F0C, buffer 0297F912, len 16
+015c:trace:winsock:getaddrinfo => 022A8EE8, flags 0xc00, family 2, type 1, protocol 6, len 16, name (null), addr { family AF_INET, address 13.32.45.94, port 0 }
+015c:trace:winsock:inet_ntop family 2, addr 022A8F3C, buffer 0297F912, len 16
+015c:trace:winsock:getaddrinfo => 022A8F18, flags 0xc00, family 2, type 2, protocol 17, len 16, name (null), addr { family AF_INET, address 13.32.45.94, port 0 }
+015c:trace:winsock:inet_ntop family 2, addr 022A8F6C, buffer 0297F912, len 16
+015c:trace:winsock:getaddrinfo => 022A8F48, flags 0xc00, family 2, type 3, protocol 0, len 16, name (null), addr { family AF_INET, address 13.32.45.94, port 0 }
+015c:trace:winsock:inet_ntop family 2, addr 022A8F9C, buffer 0297F912, len 16
+015c:trace:winsock:getaddrinfo => 022A8F78, flags 0xc00, family 2, type 1, protocol 6, len 16, name (null), addr { family AF_INET, address 13.32.45.43, port 0 }
+015c:trace:winsock:inet_ntop family 2, addr 022A8FCC, buffer 0297F912, len 16
+015c:trace:winsock:getaddrinfo => 022A8FA8, flags 0xc00, family 2, type 2, protocol 17, len 16, name (null), addr { family AF_INET, address 13.32.45.43, port 0 }
+015c:trace:winsock:inet_ntop family 2, addr 022A8FFC, buffer 0297F912, len 16
+015c:trace:winsock:getaddrinfo => 022A8FD8, flags 0xc00, family 2, type 3, protocol 0, len 16, name (null), addr { family AF_INET, address 13.32.45.43, port 0 }
+015c:trace:winsock:inet_ntop family 2, addr 022A902C, buffer 0297F912, len 16
+015c:trace:winsock:getaddrinfo => 022A9008, flags 0xc00, family 2, type 1, protocol 6, len 16, name (null), addr { family AF_INET, address 13.32.45.28, port 0 }
+015c:trace:winsock:inet_ntop family 2, addr 022A905C, buffer 0297F912, len 16
+015c:trace:winsock:getaddrinfo => 022A9038, flags 0xc00, family 2, type 2, protocol 17, len 16, name (null), addr { family AF_INET, address 13.32.45.28, port 0 }
+015c:trace:winsock:inet_ntop family 2, addr 022A908C, buffer 0297F912, len 16
+015c:trace:winsock:getaddrinfo => 022A9068, flags 0xc00, family 2, type 3, protocol 0, len 16, name (null), addr { family AF_INET, address 13.32.45.28, port 0 }
+015c:trace:winsock:inet_ntop family 2, addr 022A90BC, buffer 0297F912, len 16
+015c:trace:winsock:getaddrinfo => 022A9098, flags 0xc00, family 2, type 1, protocol 6, len 16, name (null), addr { family AF_INET, address 13.32.45.57, port 0 }
+015c:trace:winsock:inet_ntop family 2, addr 022A90EC, buffer 0297F912, len 16
+015c:trace:winsock:getaddrinfo => 022A90C8, flags 0xc00, family 2, type 2, protocol 17, len 16, name (null), addr { family AF_INET, address 13.32.45.57, port 0 }
+015c:trace:winsock:inet_ntop family 2, addr 022A911C, buffer 0297F912, len 16
+015c:trace:winsock:getaddrinfo => 022A90F8, flags 0xc00, family 2, type 3, protocol 0, len 16, name (null), addr { family AF_INET, address 13.32.45.57, port 0 }
+015c:trace:winsock:inet_ntop family 23, addr 022A9150, buffer 0297F912, len 46
+015c:trace:winsock:getaddrinfo => 022A9128, flags 0xc00, family 23, type 1, protocol 6, len 28, name (null), addr { family AF_INET6, address 2600:9000:2084:7e00:1c:29dc:8900:93a1, flow label 0, port 0, scope 0 }
+015c:trace:winsock:inet_ntop family 23, addr 022A918C, buffer 0297F912, len 46
+015c:trace:winsock:getaddrinfo => 022A9164, flags 0xc00, family 23, type 2, protocol 17, len 28, name (null), addr { family AF_INET6, address 2600:9000:2084:7e00:1c:29dc:8900:93a1, flow label 0, port 0, scope 0 }
+015c:trace:winsock:inet_ntop family 23, addr 022A91C8, buffer 0297F912, len 46
+015c:trace:winsock:getaddrinfo => 022A91A0, flags 0xc00, family 23, type 3, protocol 0, len 28, name (null), addr { family AF_INET6, address 2600:9000:2084:7e00:1c:29dc:8900:93a1, flow label 0, port 0, scope 0 }
+015c:trace:winsock:inet_ntop family 23, addr 022A9204, buffer 0297F912, len 46
+015c:trace:winsock:getaddrinfo => 022A91DC, flags 0xc00, family 23, type 1, protocol 6, len 28, name (null), addr { family AF_INET6, address 2600:9000:2084:9200:1c:29dc:8900:93a1, flow label 0, port 0, scope 0 }
+015c:trace:winsock:inet_ntop family 23, addr 022A9240, buffer 0297F912, len 46
+015c:trace:winsock:getaddrinfo => 022A9218, flags 0xc00, family 23, type 2, protocol 17, len 28, name (null), addr { family AF_INET6, address 2600:9000:2084:9200:1c:29dc:8900:93a1, flow label 0, port 0, scope 0 }
+015c:trace:winsock:inet_ntop family 23, addr 022A927C, buffer 0297F912, len 46
+015c:trace:winsock:getaddrinfo => 022A9254, flags 0xc00, family 23, type 3, protocol 0, len 28, name (null), addr { family AF_INET6, address 2600:9000:2084:9200:1c:29dc:8900:93a1, flow label 0, port 0, scope 0 }
+015c:trace:winsock:inet_ntop family 23, addr 022A92B8, buffer 0297F912, len 46
+015c:trace:winsock:getaddrinfo => 022A9290, flags 0xc00, family 23, type 1, protocol 6, len 28, name (null), addr { family AF_INET6, address 2600:9000:2084:e000:1c:29dc:8900:93a1, flow label 0, port 0, scope 0 }
+015c:trace:winsock:inet_ntop family 23, addr 022A92F4, buffer 0297F912, len 46
+015c:trace:winsock:getaddrinfo => 022A92CC, flags 0xc00, family 23, type 2, protocol 17, len 28, name (null), addr { family AF_INET6, address 2600:9000:2084:e000:1c:29dc:8900:93a1, flow label 0, port 0, scope 0 }
+015c:trace:winsock:inet_ntop family 23, addr 022A9330, buffer 0297F912, len 46
+015c:trace:winsock:getaddrinfo => 022A9308, flags 0xc00, family 23, type 3, protocol 0, len 28, name (null), addr { family AF_INET6, address 2600:9000:2084:e000:1c:29dc:8900:93a1, flow label 0, port 0, scope 0 }
+015c:trace:winsock:inet_ntop family 23, addr 022A936C, buffer 0297F912, len 46
+015c:trace:winsock:getaddrinfo => 022A9344, flags 0xc00, family 23, type 1, protocol 6, len 28, name (null), addr { family AF_INET6, address 2600:9000:2084:c600:1c:29dc:8900:93a1, flow label 0, port 0, scope 0 }
+015c:trace:winsock:inet_ntop family 23, addr 022A93A8, buffer 0297F912, len 46
+015c:trace:winsock:getaddrinfo => 022A9380, flags 0xc00, family 23, type 2, protocol 17, len 28, name (null), addr { family AF_INET6, address 2600:9000:2084:c600:1c:29dc:8900:93a1, flow label 0, port 0, scope 0 }
+015c:trace:winsock:inet_ntop family 23, addr 022A93E4, buffer 0297F912, len 46
+015c:trace:winsock:getaddrinfo => 022A93BC, flags 0xc00, family 23, type 3, protocol 0, len 28, name (null), addr { family AF_INET6, address 2600:9000:2084:c600:1c:29dc:8900:93a1, flow label 0, port 0, scope 0 }
+015c:trace:winsock:inet_ntop family 23, addr 022A9420, buffer 0297F912, len 46
+015c:trace:winsock:getaddrinfo => 022A93F8, flags 0xc00, family 23, type 1, protocol 6, len 28, name (null), addr { family AF_INET6, address 2600:9000:2084:be00:1c:29dc:8900:93a1, flow label 0, port 0, scope 0 }
+015c:trace:winsock:inet_ntop family 23, addr 022A945C, buffer 0297F912, len 46
+015c:trace:winsock:getaddrinfo => 022A9434, flags 0xc00, family 23, type 2, protocol 17, len 28, name (null), addr { family AF_INET6, address 2600:9000:2084:be00:1c:29dc:8900:93a1, flow label 0, port 0, scope 0 }
+015c:trace:winsock:inet_ntop family 23, addr 022A9498, buffer 0297F912, len 46
+015c:trace:winsock:getaddrinfo => 022A9470, flags 0xc00, family 23, type 3, protocol 0, len 28, name (null), addr { family AF_INET6, address 2600:9000:2084:be00:1c:29dc:8900:93a1, flow label 0, port 0, scope 0 }
+015c:trace:winsock:inet_ntop family 23, addr 022A94D4, buffer 0297F912, len 46
+015c:trace:winsock:getaddrinfo => 022A94AC, flags 0xc00, family 23, type 1, protocol 6, len 28, name (null), addr { family AF_INET6, address 2600:9000:2084:9e00:1c:29dc:8900:93a1, flow label 0, port 0, scope 0 }
+015c:trace:winsock:inet_ntop family 23, addr 022A9510, buffer 0297F912, len 46
+015c:trace:winsock:getaddrinfo => 022A94E8, flags 0xc00, family 23, type 2, protocol 17, len 28, name (null), addr { family AF_INET6, address 2600:9000:2084:9e00:1c:29dc:8900:93a1, flow label 0, port 0, scope 0 }
+015c:trace:winsock:inet_ntop family 23, addr 022A954C, buffer 0297F912, len 46
+015c:trace:winsock:getaddrinfo => 022A9524, flags 0xc00, family 23, type 3, protocol 0, len 28, name (null), addr { family AF_INET6, address 2600:9000:2084:9e00:1c:29dc:8900:93a1, flow label 0, port 0, scope 0 }
+015c:trace:winsock:inet_ntop family 23, addr 022A9588, buffer 0297F912, len 46
+015c:trace:winsock:getaddrinfo => 022A9560, flags 0xc00, family 23, type 1, protocol 6, len 28, name (null), addr { family AF_INET6, address 2600:9000:2084:2600:1c:29dc:8900:93a1, flow label 0, port 0, scope 0 }
+015c:trace:winsock:inet_ntop family 23, addr 022A95C4, buffer 0297F912, len 46
+015c:trace:winsock:getaddrinfo => 022A959C, flags 0xc00, family 23, type 2, protocol 17, len 28, name (null), addr { family AF_INET6, address 2600:9000:2084:2600:1c:29dc:8900:93a1, flow label 0, port 0, scope 0 }
+015c:trace:winsock:inet_ntop family 23, addr 022A9600, buffer 0297F912, len 46
+015c:trace:winsock:getaddrinfo => 022A95D8, flags 0xc00, family 23, type 3, protocol 0, len 28, name (null), addr { family AF_INET6, address 2600:9000:2084:2600:1c:29dc:8900:93a1, flow label 0, port 0, scope 0 }
+015c:trace:winsock:inet_ntop family 23, addr 022A963C, buffer 0297F912, len 46
+015c:trace:winsock:getaddrinfo => 022A9614, flags 0xc00, family 23, type 1, protocol 6, len 28, name (null), addr { family AF_INET6, address 2600:9000:2084:1400:1c:29dc:8900:93a1, flow label 0, port 0, scope 0 }
+015c:trace:winsock:inet_ntop family 23, addr 022A9678, buffer 0297F912, len 46
+015c:trace:winsock:getaddrinfo => 022A9650, flags 0xc00, family 23, type 2, protocol 17, len 28, name (null), addr { family AF_INET6, address 2600:9000:2084:1400:1c:29dc:8900:93a1, flow label 0, port 0, scope 0 }
+015c:trace:winsock:inet_ntop family 23, addr 022A96B4, buffer 0297F912, len 46
+015c:trace:winsock:getaddrinfo => 022A968C, flags 0xc00, family 23, type 3, protocol 0, len 28, name (null), addr { family AF_INET6, address 2600:9000:2084:1400:1c:29dc:8900:93a1, flow label 0, port 0, scope 0 }
+015c:trace:winsock:freeaddrinfo 022A8EE8
+015c:trace:winsock:WSACleanup decreasing startup count from 3
+0154:trace:winsock:WSAStartup version 0x2
+0154:trace:winsock:WSAStartup increasing startup count to 3
+0154:trace:winsock:WSASocketW family 2, type 1, protocol 0, info 00000000, group 0, flags 0x81
+0154:trace:winsock:sock_ioctl handle 0x198, code 0x120320, in_buffer 0x287d86c, in_size 16, out_buffer (nil), out_size 0
+0154:trace:winsock:WSASocketW created 0x198
+0154:trace:winsock:WSAIoctl socket 0x198, FIONBIO, in_buff 0287D8D0, in_size 0x4, out_buff 0287D8D4, out_size 0x4, ret_size 0287D8E0, overlapped 00000000, completion 00000000
+0154:trace:winsock:sock_ioctl handle 0x198, code 0x120344, in_buffer 0x287d8d0, in_size 4, out_buffer (nil), out_size 0
+0154:trace:winsock:server_ioctl_sock status 0.
+0154:trace:winsock:setsockopt socket 0x198, level SOL_SOCKET, name SO_OOBINLINE, optval 0287D8E0 (1), optlen 4
+0154:trace:winsock:sock_ioctl handle 0x198, code 0x120390, in_buffer 0x287d898, in_size 4, out_buffer (nil), out_size 0
+0154:trace:winsock:server_setsockopt status 0.
+0154:trace:winsock:inet_ntop family 2, addr 0287D8CC, buffer 0287D7EA, len 16
+0154:trace:winsock:connect socket 0x198, addr { family AF_INET, address 13.32.45.94, port 443 }, len 16
+0154:trace:winsock:sock_ioctl handle 0x198, code 0x12032c, in_buffer 0x22a9140, in_size 24, out_buffer (nil), out_size 0
+0154:trace:winsock:connect failed, status 0xc00000a3.
+0154:trace:winsock:getsockopt socket 0x198, level SOL_SOCKET, name SO_ERROR, optval 0287D8BC, optlen 0287D8C0 (4)
+0154:trace:winsock:sock_ioctl handle 0x198, code 0x120378, in_buffer (nil), in_size 0, out_buffer 0x287d8bc, out_size 4
+0154:trace:winsock:server_getsockopt status 0.
+0154:trace:winsock:getsockopt socket 0x198, level SOL_SOCKET, name SO_ERROR, optval 0287D8BC, optlen 0287D8C0 (4)
+0154:trace:winsock:sock_ioctl handle 0x198, code 0x120378, in_buffer (nil), in_size 0, out_buffer 0x287d8bc, out_size 4
+0154:trace:winsock:server_getsockopt status 0.
+0154:trace:winsock:WSAAsyncSelect socket 0x198, window 00010074, message 0x400, mask 0x12
+0154:trace:winsock:sock_ioctl handle 0x198, code 0x12035c, in_buffer 0x287d850, in_size 16, out_buffer (nil), out_size 0
+0154:trace:winsock:WSAAsyncSelect status 0.
+0154:trace:winsock:inet_ntop family 2, addr 0287DB48, buffer 0287DA66, len 16
+0154:trace:winsock:connect socket 0x198, addr { family AF_INET, address 13.32.45.94, port 443 }, len 16
+0154:trace:winsock:sock_ioctl handle 0x198, code 0x12032c, in_buffer 0x22a8fe0, in_size 24, out_buffer (nil), out_size 0
+0154:trace:winsock:connect failed, status 0xc000023b.
+0154:trace:winsock:getsockname socket 0x198, addr 0287DAF8, len 128
+0154:trace:winsock:sock_ioctl handle 0x198, code 0x1202f, in_buffer (nil), in_size 0, out_buffer 0x287daf8, out_size 128
+0154:trace:winsock:getsockname status 0.
+0154:trace:winsock:getpeername socket 0x198, addr 0287DAF8, len 16
+0154:trace:winsock:sock_ioctl handle 0x198, code 0x120360, in_buffer (nil), in_size 0, out_buffer 0x287daf8, out_size 16
+0154:trace:winsock:getpeername status 0.
+0154:trace:winsock:getsockopt socket 0x198, level SOL_SOCKET, name SO_TYPE, optval 0287DAC8, optlen 0287DACC (4)
+0154:trace:winsock:sock_ioctl handle 0x198, code 0x120368, in_buffer (nil), in_size 0, out_buffer 0x287d7dc, out_size 12
+0154:trace:winsock:WSAAsyncSelect socket 0x198, window 00010074, message 0x400, mask 0x3b
+0154:trace:winsock:sock_ioctl handle 0x198, code 0x12035c, in_buffer 0x287daac, in_size 16, out_buffer (nil), out_size 0
+0154:trace:winsock:WSAAsyncSelect status 0.
+0154:trace:winsock:WSAAsyncSelect socket 0x198, window 00010074, message 0x400, mask 0x29
+0154:trace:winsock:sock_ioctl handle 0x198, code 0x12035c, in_buffer 0x287db0c, in_size 16, out_buffer (nil), out_size 0
+0154:trace:winsock:WSAAsyncSelect status 0.
+0154:trace:winsock:WS2_sendto socket 0x198, buffers 0287DB28, buffer_count 1, flags 0, addr 00000000, addr_len 0, overlapped 00000000, completion 00000000
+0154:trace:winsock:sock_ioctl handle 0x198, code 0x120338, in_buffer 0x287da88, in_size 32, out_buffer (nil), out_size 0
+0154:trace:winsock:WS2_sendto status 0.
+0154:trace:winsock:setsockopt socket 0x198, level SOL_SOCKET, name SO_KEEPALIVE, optval 0287DA60 (1), optlen 4
+0154:trace:winsock:sock_ioctl handle 0x198, code 0x120380, in_buffer 0x287da18, in_size 4, out_buffer (nil), out_size 0
+0154:trace:winsock:server_setsockopt status 0.
+0154:trace:winsock:WSAIoctl socket 0x198, FIONREAD, in_buff 0287DB54, in_size 0x4, out_buff 0287DB4C, out_size 0x4, ret_size 0287DB50, overlapped 00000000, completion 00000000
+0154:trace:winsock:sock_ioctl handle 0x198, code 0x12034c, in_buffer 0x287db54, in_size 4, out_buffer 0x287db4c, out_size 4
+0154:trace:winsock:server_ioctl_sock status 0.
+0154:trace:winsock:WS2_recv_base socket 0x198, buffers 0287DB20, buffer_count 1, flags 0, addr 00000000, addr_len -1, overlapped 00000000, completion 00000000, control 00000000
+0154:trace:winsock:sock_ioctl handle 0x198, code 0x120334, in_buffer 0x287da88, in_size 48, out_buffer (nil), out_size 0
+0154:trace:winsock:WS2_recv_base status 0.
+0154:trace:winsock:WSAIoctl socket 0x198, FIONREAD, in_buff 0287DB54, in_size 0x4, out_buff 0287DB4C, out_size 0x4, ret_size 0287DB50, overlapped 00000000, completion 00000000
+0154:trace:winsock:sock_ioctl handle 0x198, code 0x12034c, in_buffer 0x287db54, in_size 4, out_buffer 0x287db4c, out_size 4
+0154:trace:winsock:server_ioctl_sock status 0.
+0154:trace:winsock:WS2_recv_base socket 0x198, buffers 0287DB20, buffer_count 1, flags 0, addr 00000000, addr_len -1, overlapped 00000000, completion 00000000, control 00000000
+0154:trace:winsock:sock_ioctl handle 0x198, code 0x120334, in_buffer 0x287da88, in_size 48, out_buffer (nil), out_size 0
+0154:trace:winsock:WS2_recv_base status 0.
+014c:trace:wininet:DllMain 73910000,1,038EFD24
+014c:trace:winsock:WSAStartup version 0x202
+014c:trace:winsock:WSAStartup increasing startup count to 1
+0154:trace:winsock:WSAIoctl socket 0x198, FIONREAD, in_buff 0287DB54, in_size 0x4, out_buff 0287DB4C, out_size 0x4, ret_size 0287DB50, overlapped 00000000, completion 00000000
+0154:trace:winsock:sock_ioctl handle 0x198, code 0x12034c, in_buffer 0x287db54, in_size 4, out_buffer 0x287db4c, out_size 4
+0154:trace:winsock:server_ioctl_sock status 0.
+0154:trace:winsock:WS2_recv_base socket 0x198, buffers 0287DB20, buffer_count 1, flags 0, addr 00000000, addr_len -1, overlapped 00000000, completion 00000000, control 00000000
+0154:trace:winsock:sock_ioctl handle 0x198, code 0x120334, in_buffer 0x287da88, in_size 48, out_buffer (nil), out_size 0
+0154:trace:winsock:WS2_recv_base status 0.
+0154:trace:winsock:WSAAsyncSelect socket 0x198, window 00010074, message 0x400, mask 0x3b
+0154:trace:winsock:sock_ioctl handle 0x198, code 0x12035c, in_buffer 0x287c984, in_size 16, out_buffer (nil), out_size 0
+0154:trace:winsock:WSAAsyncSelect status 0.
+0154:trace:winsock:WSAAsyncSelect socket 0x198, window 00010074, message 0x400, mask 0x29
+0154:trace:winsock:sock_ioctl handle 0x198, code 0x12035c, in_buffer 0x287db0c, in_size 16, out_buffer (nil), out_size 0
+0154:trace:winsock:WSAAsyncSelect status 0.
+0154:trace:winsock:WS2_sendto socket 0x198, buffers 0287DB28, buffer_count 1, flags 0, addr 00000000, addr_len 0, overlapped 00000000, completion 00000000
+0154:trace:winsock:sock_ioctl handle 0x198, code 0x120338, in_buffer 0x287da88, in_size 32, out_buffer (nil), out_size 0
+0154:trace:winsock:WS2_sendto status 0.
+0154:trace:winsock:WSAIoctl socket 0x198, FIONREAD, in_buff 0287DB54, in_size 0x4, out_buff 0287DB4C, out_size 0x4, ret_size 0287DB50, overlapped 00000000, completion 00000000
+0154:trace:winsock:sock_ioctl handle 0x198, code 0x12034c, in_buffer 0x287db54, in_size 4, out_buffer 0x287db4c, out_size 4
+0154:trace:winsock:server_ioctl_sock status 0.
+0154:trace:winsock:WS2_recv_base socket 0x198, buffers 0287DB20, buffer_count 1, flags 0, addr 00000000, addr_len -1, overlapped 00000000, completion 00000000, control 00000000
+0154:trace:winsock:sock_ioctl handle 0x198, code 0x120334, in_buffer 0x287da88, in_size 48, out_buffer (nil), out_size 0
+0154:trace:winsock:WS2_recv_base status 0.
+0154:trace:winsock:WSAAsyncSelect socket 0x198, window 00010074, message 0, mask 0
+0154:trace:winsock:sock_ioctl handle 0x198, code 0x12035c, in_buffer 0x287c8b8, in_size 16, out_buffer (nil), out_size 0
+0154:trace:winsock:WSAAsyncSelect status 0.
+0154:trace:winsock:WSAAsyncSelect socket 0x198, window 00010074, message 0x400, mask 0x29
+0154:trace:winsock:sock_ioctl handle 0x198, code 0x12035c, in_buffer 0x287dae0, in_size 16, out_buffer (nil), out_size 0
+0154:trace:winsock:WSAAsyncSelect status 0.
+0154:trace:winsock:WSAAsyncSelect socket 0x198, window 00010074, message 0x400, mask 0x3b
+0154:trace:winsock:sock_ioctl handle 0x198, code 0x12035c, in_buffer 0x287c9a0, in_size 16, out_buffer (nil), out_size 0
+0154:trace:winsock:WSAAsyncSelect status 0.
+0154:trace:winsock:WS2_sendto socket 0x198, buffers 0287DA8C, buffer_count 1, flags 0, addr 00000000, addr_len 0, overlapped 00000000, completion 00000000
+0154:trace:winsock:sock_ioctl handle 0x198, code 0x120338, in_buffer 0x287d9f0, in_size 32, out_buffer (nil), out_size 0
+0154:trace:winsock:WS2_sendto status 0.
+0154:trace:winsock:WSAAsyncSelect socket 0x198, window 00010074, message 0x400, mask 0x29
+0154:trace:winsock:sock_ioctl handle 0x198, code 0x12035c, in_buffer 0x287da50, in_size 16, out_buffer (nil), out_size 0
+0154:trace:winsock:WSAAsyncSelect status 0.
+0154:trace:winsock:WSAAsyncSelect socket 0x198, window 00010074, message 0x400, mask 0x3b
+0154:trace:winsock:sock_ioctl handle 0x198, code 0x12035c, in_buffer 0x287c9a0, in_size 16, out_buffer (nil), out_size 0
+0154:trace:winsock:WSAAsyncSelect status 0.
+0154:trace:winsock:WS2_sendto socket 0x198, buffers 0287DA8C, buffer_count 1, flags 0, addr 00000000, addr_len 0, overlapped 00000000, completion 00000000
+0154:trace:winsock:sock_ioctl handle 0x198, code 0x120338, in_buffer 0x287d9f0, in_size 32, out_buffer (nil), out_size 0
+0154:trace:winsock:WS2_sendto status 0.
+0154:trace:winsock:WSAAsyncSelect socket 0x198, window 00010074, message 0x400, mask 0x29
+0154:trace:winsock:sock_ioctl handle 0x198, code 0x12035c, in_buffer 0x287da50, in_size 16, out_buffer (nil), out_size 0
+0154:trace:winsock:WSAAsyncSelect status 0.
+0154:trace:winsock:WSAIoctl socket 0x198, FIONREAD, in_buff 0287DB54, in_size 0x4, out_buff 0287DB4C, out_size 0x4, ret_size 0287DB50, overlapped 00000000, completion 00000000
+0154:trace:winsock:sock_ioctl handle 0x198, code 0x12034c, in_buffer 0x287db54, in_size 4, out_buffer 0x287db4c, out_size 4
+0154:trace:winsock:server_ioctl_sock status 0.
+0154:trace:winsock:WS2_recv_base socket 0x198, buffers 0287DB20, buffer_count 1, flags 0, addr 00000000, addr_len -1, overlapped 00000000, completion 00000000, control 00000000
+0154:trace:winsock:sock_ioctl handle 0x198, code 0x120334, in_buffer 0x287da88, in_size 48, out_buffer (nil), out_size 0
+0154:trace:winsock:WS2_recv_base status 0.
+0154:trace:winsock:WSAAsyncSelect socket 0x198, window 00010074, message 0x400, mask 0x3b
+0154:trace:winsock:sock_ioctl handle 0x198, code 0x12035c, in_buffer 0x287c9a0, in_size 16, out_buffer (nil), out_size 0
+0154:trace:winsock:WSAAsyncSelect status 0.
+0154:trace:winsock:WS2_sendto socket 0x198, buffers 0287DA8C, buffer_count 1, flags 0, addr 00000000, addr_len 0, overlapped 00000000, completion 00000000
+0154:trace:winsock:sock_ioctl handle 0x198, code 0x120338, in_buffer 0x287d9f0, in_size 32, out_buffer (nil), out_size 0
+0154:trace:winsock:WS2_sendto status 0.
+0154:trace:winsock:WSAAsyncSelect socket 0x198, window 00010074, message 0x400, mask 0x29
+0154:trace:winsock:sock_ioctl handle 0x198, code 0x12035c, in_buffer 0x287da50, in_size 16, out_buffer (nil), out_size 0
+0154:trace:winsock:WSAAsyncSelect status 0.
+0154:trace:winsock:WSAIoctl socket 0x198, FIONREAD, in_buff 0287DB54, in_size 0x4, out_buff 0287DB4C, out_size 0x4, ret_size 0287DB50, overlapped 00000000, completion 00000000
+0154:trace:winsock:sock_ioctl handle 0x198, code 0x12034c, in_buffer 0x287db54, in_size 4, out_buffer 0x287db4c, out_size 4
+0154:trace:winsock:server_ioctl_sock status 0.
+0154:trace:winsock:WS2_recv_base socket 0x198, buffers 0287DB20, buffer_count 1, flags 0, addr 00000000, addr_len -1, overlapped 00000000, completion 00000000, control 00000000
+0154:trace:winsock:sock_ioctl handle 0x198, code 0x120334, in_buffer 0x287da88, in_size 48, out_buffer (nil), out_size 0
+0154:trace:winsock:WS2_recv_base status 0.
+014c:trace:winsock:WSAStartup version 0x202
+014c:trace:winsock:WSAStartup increasing startup count to 2
+014c:trace:winsock:socket af=2 type=1 protocol=0
+014c:trace:winsock:WSASocketW family 2, type 1, protocol 0, info 00000000, group 0, flags 0x1
+014c:trace:winsock:sock_ioctl handle 0xd0, code 0x120320, in_buffer 0x38ef7dc, in_size 16, out_buffer (nil), out_size 0
+014c:trace:winsock:WSASocketW created 0xd0
+014c:trace:winsock:getsockopt socket 0xd0, level SOL_SOCKET, name SO_PROTOCOL_INFOW, optval 038EF9EC, optlen 038EF858 (628)
+014c:trace:winsock:sock_ioctl handle 0xd0, code 0x120368, in_buffer (nil), in_size 0, out_buffer 0x38ef560, out_size 12
+014c:trace:winsock:closesocket 0xd0
+014c:trace:winsock:socket af=23 type=1 protocol=0
+014c:trace:winsock:WSASocketW family 23, type 1, protocol 0, info 00000000, group 0, flags 0x1
+014c:trace:winsock:sock_ioctl handle 0xd0, code 0x120320, in_buffer 0x38ef7dc, in_size 16, out_buffer (nil), out_size 0
+014c:trace:winsock:WSASocketW created 0xd0
+014c:trace:winsock:getsockopt socket 0xd0, level SOL_SOCKET, name SO_PROTOCOL_INFOW, optval 038EF9EC, optlen 038EF858 (628)
+014c:trace:winsock:sock_ioctl handle 0xd0, code 0x120368, in_buffer (nil), in_size 0, out_buffer 0x38ef560, out_size 12
+014c:trace:winsock:closesocket 0xd0
+014c:trace:winsock:sock_ioctl handle 0x108, code 0x121000, in_buffer 0x38ee2fc, in_size 56, out_buffer 0x3e13c60, out_size 122628
+014c:trace:winsock:sock_ioctl handle 0x108, code 0x121008, in_buffer 0x1125a8, in_size 52, out_buffer 0x38ee4c8, out_size 16
+014c:trace:winsock:sock_ioctl handle 0x108, code 0x121008, in_buffer 0x1125a8, in_size 52, out_buffer 0x38ee4c8, out_size 16
+014c:trace:winsock:sock_ioctl handle 0x108, code 0x121008, in_buffer 0x1125a8, in_size 52, out_buffer 0x38ee4c8, out_size 16
+014c:trace:winsock:sock_ioctl handle 0x108, code 0x121008, in_buffer 0x1125a8, in_size 52, out_buffer 0x38ee4c8, out_size 16
+014c:trace:winsock:sock_ioctl handle 0x108, code 0x121008, in_buffer 0x1125a8, in_size 52, out_buffer 0x38ee4c8, out_size 16
+014c:trace:winsock:sock_ioctl handle 0x108, code 0x121008, in_buffer 0x1125a8, in_size 52, out_buffer 0x38ee4c8, out_size 16
+014c:trace:winsock:sock_ioctl handle 0x108, code 0x121008, in_buffer 0x1125a8, in_size 52, out_buffer 0x38ee4c8, out_size 16
+014c:trace:winsock:sock_ioctl handle 0x108, code 0x121008, in_buffer 0x1125a8, in_size 52, out_buffer 0x38ee4c8, out_size 16
+014c:trace:winsock:sock_ioctl handle 0x108, code 0x121008, in_buffer 0x1125a8, in_size 52, out_buffer 0x38ee4c8, out_size 16
+014c:trace:winsock:sock_ioctl handle 0x108, code 0x121008, in_buffer 0x1125a8, in_size 52, out_buffer 0x38ee4c8, out_size 16
+014c:trace:winsock:sock_ioctl handle 0x108, code 0x121000, in_buffer 0x38ee27c, in_size 56, out_buffer 0x3e14368, out_size 4356
+014c:trace:winsock:sock_ioctl handle 0x108, code 0x121000, in_buffer 0x38ee27c, in_size 56, out_buffer 0x3e13c60, out_size 3844
+014c:trace:winsock:sock_ioctl handle 0x108, code 0x121000, in_buffer 0x38ee258, in_size 56, out_buffer 0x3e14e68, out_size 6660
+014c:trace:winsock:sock_ioctl handle 0x108, code 0x121000, in_buffer 0x38ee258, in_size 56, out_buffer 0x3e14868, out_size 5124
+014c:trace:winsock:gethostname name 001135B8, len 64
+014c:trace:winsock:gethostname <- "selwyn"
+014c:trace:wininet:DllMain 73910000,0,00000001
+0138:trace:winsock:WSAAsyncSelect socket 0x110, window 00010060, message 0, mask 0
+0138:trace:winsock:sock_ioctl handle 0x110, code 0x12035c, in_buffer 0x10ffc60, in_size 16, out_buffer (nil), out_size 0
+0138:trace:winsock:WSAAsyncSelect status 0.
+0154:trace:winsock:WSAAsyncSelect socket 0x198, window 00010074, message 0, mask 0
+0154:trace:winsock:sock_ioctl handle 0x198, code 0x12035c, in_buffer 0x287fd00, in_size 16, out_buffer (nil), out_size 0
+0154:trace:winsock:WSAAsyncSelect status 0.
+0154:trace:winsock:closesocket 0x198
+0154:trace:winsock:WSACleanup decreasing startup count from 3

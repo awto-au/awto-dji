@@ -1,0 +1,121 @@
+002c:fixme:winediag:loader_init wine-staging 11.0 is a testing version containing experimental patches.
+002c:fixme:winediag:loader_init Please mention your exact version when filing bug reports on winehq.org.
+00f4:fixme:wineusb:add_usb_device Interface 0 has 2 alternate settings; using the first one.
+00f4:fixme:wineusb:add_usb_device Interface 0 has 2 alternate settings; using the first one.
+00f4:fixme:wineusb:add_usb_device Interface 0 has 2 alternate settings; using the first one.
+00f4:fixme:wineusb:add_usb_device Interface 0 has 2 alternate settings; using the first one.
+00f4:fixme:wineusb:add_usb_device Interface 0 has 2 alternate settings; using the first one.
+00f4:fixme:wineusb:add_usb_device Interface 0 has 2 alternate settings; using the first one.
+00cc:fixme:wineusb:query_id Unhandled ID query type 0x5.
+00cc:fixme:wineusb:query_id Unhandled ID query type 0x5.
+00cc:fixme:wineusb:query_id Unhandled ID query type 0x5.
+00cc:fixme:wineusb:query_id Unhandled ID query type 0x5.
+00cc:fixme:wineusb:query_id Unhandled ID query type 0x5.
+00cc:fixme:wineusb:query_id Unhandled ID query type 0x5.
+00cc:fixme:wineusb:query_id Unhandled ID query type 0x5.
+00cc:fixme:wineusb:query_id Unhandled ID query type 0x5.
+00cc:fixme:wineusb:query_id Unhandled ID query type 0x5.
+00cc:fixme:wineusb:query_id Unhandled ID query type 0x5.
+00cc:fixme:wineusb:query_id Unhandled ID query type 0x5.
+00cc:fixme:wineusb:query_id Unhandled ID query type 0x5.
+00cc:fixme:wineusb:query_id Unhandled ID query type 0x5.
+00cc:fixme:wineusb:query_id Unhandled ID query type 0x5.
+00cc:fixme:wineusb:query_id Unhandled ID query type 0x5.
+00cc:fixme:wineusb:query_id Unhandled ID query type 0x5.
+00cc:fixme:wineusb:query_id Unhandled ID query type 0x5.
+00cc:fixme:wineusb:query_id Unhandled ID query type 0x5.
+00cc:fixme:wineusb:query_id Unhandled ID query type 0x5.
+00cc:fixme:wineusb:query_id Unhandled ID query type 0x5.
+00cc:fixme:wineusb:query_id Unhandled ID query type 0x5.
+00cc:fixme:wineusb:query_id Unhandled ID query type 0x5.
+00cc:fixme:wineusb:query_id Unhandled ID query type 0x5.
+00cc:fixme:wineusb:query_id Unhandled ID query type 0x5.
+00cc:fixme:wineusb:query_id Unhandled ID query type 0x5.
+00cc:fixme:wineusb:query_id Unhandled ID query type 0x5.
+00cc:fixme:wineusb:query_id Unhandled ID query type 0x5.
+00cc:fixme:wineusb:query_id Unhandled ID query type 0x5.
+00cc:fixme:wineusb:query_id Unhandled ID query type 0x5.
+00cc:fixme:wineusb:query_id Unhandled ID query type 0x5.
+00cc:fixme:wineusb:query_id Unhandled ID query type 0x5.
+00cc:fixme:wineusb:query_id Unhandled ID query type 0x5.
+00cc:fixme:wineusb:query_id Unhandled ID query type 0x5.
+00cc:fixme:wineusb:query_id Unhandled ID query type 0x5.
+00cc:fixme:wineusb:query_id Unhandled ID query type 0x5.
+00cc:fixme:wineusb:query_id Unhandled ID query type 0x5.
+00cc:fixme:wineusb:query_id Unhandled ID query type 0x5.
+00cc:fixme:wineusb:query_id Unhandled ID query type 0x5.
+00cc:fixme:wineusb:query_id Unhandled ID query type 0x5.
+00cc:fixme:wineusb:query_id Unhandled ID query type 0x5.
+00cc:fixme:wineusb:query_id Unhandled ID query type 0x5.
+0024:fixme:winediag:loader_init wine-staging 11.0 is a testing version containing experimental patches.
+0024:fixme:winediag:loader_init Please mention your exact version when filing bug reports on winehq.org.
+00cc:fixme:wineusb:query_id Unhandled ID query type 0x5.
+00cc:fixme:wineusb:query_id Unhandled ID query type 0x5.
+00cc:fixme:wineusb:query_id Unhandled ID query type 0x5.
+00cc:fixme:wineusb:query_id Unhandled ID query type 0x5.
+00cc:fixme:wineusb:query_id Unhandled ID query type 0x5.
+00cc:fixme:wineusb:query_id Unhandled ID query type 0x5.
+00cc:fixme:wineusb:query_id Unhandled ID query type 0x5.
+00cc:fixme:wineusb:query_id Unhandled ID query type 0x5.
+00cc:fixme:wineusb:query_id Unhandled ID query type 0x5.
+00cc:fixme:wineusb:query_id Unhandled ID query type 0x5.
+00cc:fixme:wineusb:query_id Unhandled ID query type 0x5.
+00cc:fixme:wineusb:query_id Unhandled ID query type 0x5.
+00cc:fixme:wineusb:query_id Unhandled ID query type 0x5.
+00cc:fixme:wineusb:query_id Unhandled ID query type 0x5.
+00cc:fixme:wineusb:query_id Unhandled ID query type 0x5.
+00cc:fixme:wineusb:query_id Unhandled ID query type 0x5.
+00cc:fixme:wineusb:query_id Unhandled ID query type 0x5.
+00cc:fixme:wineusb:query_id Unhandled ID query type 0x5.
+00cc:fixme:wineusb:query_id Unhandled ID query type 0x5.
+00cc:fixme:wineusb:query_id Unhandled ID query type 0x5.
+00cc:fixme:wineusb:query_id Unhandled ID query type 0x5.
+00cc:fixme:wineusb:query_id Unhandled ID query type 0x5.
+00cc:fixme:wineusb:query_id Unhandled ID query type 0x5.
+00cc:fixme:wineusb:query_id Unhandled ID query type 0x5.
+00cc:fixme:wineusb:query_id Unhandled ID query type 0x5.
+00cc:fixme:wineusb:query_id Unhandled ID query type 0x5.
+0134:fixme:toolhelp:CreateToolhelp32Snapshot Unimplemented: heap list snapshot
+0134:fixme:toolhelp:Heap32ListFirst : stub
+0134:fixme:ntdll:NtQuerySystemInformation info_class SYSTEM_PERFORMANCE_INFORMATION
+0134:fixme:wlanapi:WlanRegisterNotification (00000001, 65535, 1, 766D2F80, 01630388, 00000000, 00000000) stub
+0138:fixme:wlanapi:WlanEnumInterfaces (00000001, 00000000, 0247DAE4) semi-stub
+0058:fixme:ndis:query_global_stats Unsupported OID 10202
+0058:fixme:ndis:query_global_stats Unsupported OID 10202
+0058:fixme:ndis:query_global_stats Unsupported OID 10202
+0058:fixme:ndis:query_global_stats Unsupported OID 10202
+0058:fixme:ndis:query_global_stats Unsupported OID 10202
+0058:fixme:ndis:query_global_stats Unsupported OID 10202
+0058:fixme:ndis:query_global_stats Unsupported OID 10202
+0058:fixme:ndis:query_global_stats Unsupported OID 10202
+0058:fixme:ndis:query_global_stats Unsupported OID 10202
+0058:fixme:ndis:query_global_stats Unsupported OID 10202
+0058:fixme:ndis:query_global_stats Unsupported OID 10202
+0058:fixme:ndis:query_global_stats Unsupported OID 10202
+0058:fixme:ndis:query_global_stats Unsupported OID 10202
+0058:fixme:ndis:query_global_stats Unsupported OID 10202
+0058:fixme:ndis:query_global_stats Unsupported OID 10202
+0058:fixme:ndis:query_global_stats Unsupported OID 10202
+0134:fixme:wlanapi:WlanEnumInterfaces (00000001, 00000000, 010FF83C) semi-stub
+0148:fixme:ntdll:NtQuerySystemInformation info_class SYSTEM_PERFORMANCE_INFORMATION
+0148:fixme:msvcrt:__clean_type_info_names_internal (74B19184) stub
+0134:fixme:msvcrt:type_info_name_internal_method type_info_node parameter ignored
+0134:fixme:msvcrt:__clean_type_info_names_internal (75501010) stub
+0134:fixme:msvcrt:__clean_type_info_names_internal (75BA20B0) stub
+0134:fixme:msvcrt:__clean_type_info_names_internal (760D0210) stub
+0134:fixme:msvcrt:__clean_type_info_names_internal (76648040) stub
+0134:fixme:msvcrt:__clean_type_info_names_internal (761547F8) stub
+0134:fixme:msvcrt:__clean_type_info_names_internal (766DA668) stub
+0134:fixme:msvcrt:__clean_type_info_names_internal (766FA638) stub
+0134:fixme:msvcrt:__clean_type_info_names_internal (769E6384) stub
+0134:fixme:msvcrt:__clean_type_info_names_internal (7697D3F4) stub
+0134:fixme:msvcrt:__clean_type_info_names_internal (7711BA40) stub
+0134:fixme:msvcrt:__clean_type_info_names_internal (77563DC8) stub
+0134:fixme:msvcrt:__clean_type_info_names_internal (774F2E58) stub
+0134:fixme:msvcrt:__clean_type_info_names_internal (775996F0) stub
+0134:fixme:msvcrt:__clean_type_info_names_internal (779B1738) stub
+0134:fixme:msvcrt:__clean_type_info_names_internal (77EC5E50) stub
+0134:fixme:msvcrt:__clean_type_info_names_internal (78376AA4) stub
+0134:fixme:msvcrt:__clean_type_info_names_internal (7B556E6C) stub
+0170:fixme:winediag:loader_init wine-staging 11.0 is a testing version containing experimental patches.
+0170:fixme:winediag:loader_init Please mention your exact version when filing bug reports on winehq.org.

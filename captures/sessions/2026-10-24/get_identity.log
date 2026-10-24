@@ -1,0 +1,186 @@
+# get_identity 2026-10-24T11:05:03+1100 port=None dry_run=True receivers=0e,08,0d,06
+Frames to send (all verified pure reads):
+  rcv=0e GetDeviceState           set=00 id=0c payload=- frame=550d04330a0e002840000c86b2  [dissector General 0x0c Get Device State; catalog GetDeviceStatus]
+  rcv=0e GetVersion               set=00 id=01 payload=- frame=550d04330a0e01284000012762  [dissector General 0x01 version inquiry; APK DataCommonGetVersion (empty payload)]
+  rcv=0e GetDeviceInfo            set=00 id=ff payload=- frame=550d04330a0e02284000ff1a61  [dissector General 0xff Query Device Info; APK DataCommonGetDeviceInfo (empty)]
+  rcv=0e GetSerialNum(BoardNum)   set=00 id=51 payload=01 frame=550e04660a0e032840005101ab0a  [dissector General 0x51 Get Serial Number; APK DataCommonGetDeviceSerialNumber idx 1]
+  rcv=0e GetSerialNum(ChipId)     set=00 id=51 payload=02 frame=550e04660a0e042840005102e124  [same, idx 2]
+  rcv=0e GetSerialNum(ModuleNum)  set=00 id=51 payload=03 frame=550e04660a0e0528400051034331  [same, idx 3]
+  rcv=0e GetSerialNum(FlycNum)    set=00 id=51 payload=04 frame=550e04660a0e0628400051048149  [same, idx 4 (FC serial; expected only from a flight controller)]
+  rcv=0e RcGetName                set=06 id=09 payload=- frame=550d04330a0e07284006092781  [dissector RC 0x09 RC Name Get; APK DataRcGetName (empty, receiver OSD)]
+  rcv=0e RcGetMaster              set=06 id=07 payload=- frame=550d04330a0e0828400607a502  [dissector RC 0x07 Master/Slave Mode Get; APK DataRcGetMaster (empty)]
+  rcv=0e RcGetConnectMaster       set=06 id=0d payload=- frame=550d04330a0e092840060dbba6  [dissector RC 0x0d Connected Master Id Get; APK DataRcGetConnectMaster (empty)]
+  rcv=08 GetDeviceState           set=00 id=0c payload=- frame=550d04330a080a2840000cd4e6  [dissector General 0x0c Get Device State; catalog GetDeviceStatus]
+  rcv=08 GetVersion               set=00 id=01 payload=- frame=550d04330a080b284000017536  [dissector General 0x01 version inquiry; APK DataCommonGetVersion (empty payload)]
+  rcv=08 GetDeviceInfo            set=00 id=ff payload=- frame=550d04330a080c284000ff5818  [dissector General 0xff Query Device Info; APK DataCommonGetDeviceInfo (empty)]
+  rcv=08 GetSerialNum(BoardNum)   set=00 id=51 payload=01 frame=550e04660a080d2840005101c46b  [dissector General 0x51 Get Serial Number; APK DataCommonGetDeviceSerialNumber idx 1]
+  rcv=08 GetSerialNum(ChipId)     set=00 id=51 payload=02 frame=550e04660a080e28400051022255  [same, idx 2]
+  rcv=08 GetSerialNum(ModuleNum)  set=00 id=51 payload=03 frame=550e04660a080f28400051038040  [same, idx 3]
+  rcv=08 GetSerialNum(FlycNum)    set=00 id=51 payload=04 frame=550e04660a08102840005104064b  [same, idx 4 (FC serial; expected only from a flight controller)]
+  rcv=08 RcGetName                set=06 id=09 payload=- frame=550d04330a0811284006090516  [dissector RC 0x09 RC Name Get; APK DataRcGetName (empty, receiver OSD)]
+  rcv=08 RcGetMaster              set=06 id=07 payload=- frame=550d04330a081228400607b7e2  [dissector RC 0x07 Master/Slave Mode Get; APK DataRcGetMaster (empty)]
+  rcv=08 RcGetConnectMaster       set=06 id=0d payload=- frame=550d04330a08132840060da946  [dissector RC 0x0d Connected Master Id Get; APK DataRcGetConnectMaster (empty)]
+  rcv=0d GetDeviceState           set=00 id=0c payload=- frame=550d04330a0d142840000cab27  [dissector General 0x0c Get Device State; catalog GetDeviceStatus]
+  rcv=0d GetVersion               set=00 id=01 payload=- frame=550d04330a0d15284000010af7  [dissector General 0x01 version inquiry; APK DataCommonGetVersion (empty payload)]
+  rcv=0d GetDeviceInfo            set=00 id=ff payload=- frame=550d04330a0d16284000ff37f4  [dissector General 0xff Query Device Info; APK DataCommonGetDeviceInfo (empty)]
+  rcv=0d GetSerialNum(BoardNum)   set=00 id=51 payload=01 frame=550e04660a0d172840005101d9f0  [dissector General 0x51 Get Serial Number; APK DataCommonGetDeviceSerialNumber idx 1]
+  rcv=0d GetSerialNum(ChipId)     set=00 id=51 payload=02 frame=550e04660a0d182840005102cbff  [same, idx 2]
+  rcv=0d GetSerialNum(ModuleNum)  set=00 id=51 payload=03 frame=550e04660a0d19284000510369ea  [same, idx 3]
+  rcv=0d GetSerialNum(FlycNum)    set=00 id=51 payload=04 frame=550e04660a0d1a2840005104ab92  [same, idx 4 (FC serial; expected only from a flight controller)]
+  rcv=0d RcGetName                set=06 id=09 payload=- frame=550d04330a0d1b284006092a4e  [dissector RC 0x09 RC Name Get; APK DataRcGetName (empty, receiver OSD)]
+  rcv=0d RcGetMaster              set=06 id=07 payload=- frame=550d04330a0d1c284006078897  [dissector RC 0x07 Master/Slave Mode Get; APK DataRcGetMaster (empty)]
+  rcv=0d RcGetConnectMaster       set=06 id=0d payload=- frame=550d04330a0d1d2840060d9633  [dissector RC 0x0d Connected Master Id Get; APK DataRcGetConnectMaster (empty)]
+  rcv=06 GetDeviceState           set=00 id=0c payload=- frame=550d04330a061e2840000c2646  [dissector General 0x0c Get Device State; catalog GetDeviceStatus]
+  rcv=06 GetVersion               set=00 id=01 payload=- frame=550d04330a061f284000018796  [dissector General 0x01 version inquiry; APK DataCommonGetVersion (empty payload)]
+  rcv=06 GetDeviceInfo            set=00 id=ff payload=- frame=550d04330a0620284000ff5b36  [dissector General 0xff Query Device Info; APK DataCommonGetDeviceInfo (empty)]
+  rcv=06 GetSerialNum(BoardNum)   set=00 id=51 payload=01 frame=550e04660a062128400051017159  [dissector General 0x51 Get Serial Number; APK DataCommonGetDeviceSerialNumber idx 1]
+  rcv=06 GetSerialNum(ChipId)     set=00 id=51 payload=02 frame=550e04660a062228400051029767  [same, idx 2]
+  rcv=06 GetSerialNum(ModuleNum)  set=00 id=51 payload=03 frame=550e04660a062328400051033572  [same, idx 3]
+  rcv=06 GetSerialNum(FlycNum)    set=00 id=51 payload=04 frame=550e04660a062428400051045b1a  [same, idx 4 (FC serial; expected only from a flight controller)]
+  rcv=06 RcGetName                set=06 id=09 payload=- frame=550d04330a06252840060966d6  [dissector RC 0x09 RC Name Get; APK DataRcGetName (empty, receiver OSD)]
+  rcv=06 RcGetMaster              set=06 id=07 payload=- frame=550d04330a062628400607d422  [dissector RC 0x07 Master/Slave Mode Get; APK DataRcGetMaster (empty)]
+  rcv=06 RcGetConnectMaster       set=06 id=0d payload=- frame=550d04330a06272840060dca86  [dissector RC 0x0d Connected Master Id Get; APK DataRcGetConnectMaster (empty)]
+dry-run: nothing sent
+# get_identity 2026-10-24T11:05:06+1100 port=/dev/ttyACM4 dry_run=False receivers=0e
+Frames to send (all verified pure reads):
+  rcv=0e GetDeviceState           set=00 id=0c payload=- frame=550d04330a0e002840000c86b2  [dissector General 0x0c Get Device State; catalog GetDeviceStatus]
+  rcv=0e GetVersion               set=00 id=01 payload=- frame=550d04330a0e01284000012762  [dissector General 0x01 version inquiry; APK DataCommonGetVersion (empty payload)]
+  rcv=0e GetDeviceInfo            set=00 id=ff payload=- frame=550d04330a0e02284000ff1a61  [dissector General 0xff Query Device Info; APK DataCommonGetDeviceInfo (empty)]
+  rcv=0e GetSerialNum(BoardNum)   set=00 id=51 payload=01 frame=550e04660a0e032840005101ab0a  [dissector General 0x51 Get Serial Number; APK DataCommonGetDeviceSerialNumber idx 1]
+  rcv=0e GetSerialNum(ChipId)     set=00 id=51 payload=02 frame=550e04660a0e042840005102e124  [same, idx 2]
+  rcv=0e GetSerialNum(ModuleNum)  set=00 id=51 payload=03 frame=550e04660a0e0528400051034331  [same, idx 3]
+  rcv=0e GetSerialNum(FlycNum)    set=00 id=51 payload=04 frame=550e04660a0e0628400051048149  [same, idx 4 (FC serial; expected only from a flight controller)]
+  rcv=0e RcGetName                set=06 id=09 payload=- frame=550d04330a0e07284006092781  [dissector RC 0x09 RC Name Get; APK DataRcGetName (empty, receiver OSD)]
+  rcv=0e RcGetMaster              set=06 id=07 payload=- frame=550d04330a0e0828400607a502  [dissector RC 0x07 Master/Slave Mode Get; APK DataRcGetMaster (empty)]
+  rcv=0e RcGetConnectMaster       set=06 id=0d payload=- frame=550d04330a0e092840060dbba6  [dissector RC 0x0d Connected Master Id Get; APK DataRcGetConnectMaster (empty)]
+opened /dev/ttyACM4 115200 8N1 RTS=1 DTR=0
+> rcv=0e GetDeviceState 550d04330a0e002840000c86b2
+  < snd=0e rcv=0a seq=2800 type=80 set=00 id=0c crc=ok
+    GetDeviceState: len=6 hex=e30000000000
+> rcv=0e GetVersion 550d04330a0e01284000012762
+  < snd=0e rcv=0a seq=2801 type=80 set=00 id=01 crc=ok
+    GetVersion: len=31 hex=0010474c333030430000000000000000000007010103001c18054302000000 | ascii=['GL300C']
+> rcv=0e GetDeviceInfo 550d04330a0e02284000ff1a61
+  < snd=0e rcv=0a seq=2802 type=80 set=00 id=ff crc=ok
+    GetDeviceInfo: len=26 hex=574d3332302041375f4c5043312032303137303832382f303000 | ascii=['WM320 A7_LPC1 20170828/00']
+> rcv=0e GetSerialNum(BoardNum) 550e04660a0e032840005101ab0a
+  (no reply)
+> rcv=0e GetSerialNum(ChipId) 550e04660a0e042840005102e124
+  (no reply)
+> rcv=0e GetSerialNum(ModuleNum) 550e04660a0e0528400051034331
+  (no reply)
+> rcv=0e GetSerialNum(FlycNum) 550e04660a0e0628400051048149
+  (no reply)
+> rcv=0e RcGetName 550d04330a0e07284006092781
+  (no reply)
+> rcv=0e RcGetMaster 550d04330a0e0828400607a502
+  < snd=0e rcv=0a seq=2808 type=80 set=06 id=07 crc=ok
+    RcGetMaster: len=1 hex=00
+> rcv=0e RcGetConnectMaster 550d04330a0e092840060dbba6
+  (no reply)
+# get_identity 2026-10-24T11:05:13+1100 port=/dev/ttyACM4 dry_run=False receivers=08,0d,06
+Frames to send (all verified pure reads):
+  rcv=08 GetDeviceState           set=00 id=0c payload=- frame=550d04330a08002840000c7caa  [dissector General 0x0c Get Device State; catalog GetDeviceStatus]
+  rcv=08 GetVersion               set=00 id=01 payload=- frame=550d04330a080128400001dd7a  [dissector General 0x01 version inquiry; APK DataCommonGetVersion (empty payload)]
+  rcv=08 GetDeviceInfo            set=00 id=ff payload=- frame=550d04330a0802284000ffe079  [dissector General 0xff Query Device Info; APK DataCommonGetDeviceInfo (empty)]
+  rcv=08 GetSerialNum(BoardNum)   set=00 id=51 payload=01 frame=550e04660a080328400051016652  [dissector General 0x51 Get Serial Number; APK DataCommonGetDeviceSerialNumber idx 1]
+  rcv=08 GetSerialNum(ChipId)     set=00 id=51 payload=02 frame=550e04660a080428400051022c7c  [same, idx 2]
+  rcv=08 GetSerialNum(ModuleNum)  set=00 id=51 payload=03 frame=550e04660a080528400051038e69  [same, idx 3]
+  rcv=08 GetSerialNum(FlycNum)    set=00 id=51 payload=04 frame=550e04660a080628400051044c11  [same, idx 4 (FC serial; expected only from a flight controller)]
+  rcv=08 RcGetName                set=06 id=09 payload=- frame=550d04330a080728400609dd99  [dissector RC 0x09 RC Name Get; APK DataRcGetName (empty, receiver OSD)]
+  rcv=08 RcGetMaster              set=06 id=07 payload=- frame=550d04330a0808284006075f1a  [dissector RC 0x07 Master/Slave Mode Get; APK DataRcGetMaster (empty)]
+  rcv=08 RcGetConnectMaster       set=06 id=0d payload=- frame=550d04330a08092840060d41be  [dissector RC 0x0d Connected Master Id Get; APK DataRcGetConnectMaster (empty)]
+  rcv=0d GetDeviceState           set=00 id=0c payload=- frame=550d04330a0d0a2840000c53f2  [dissector General 0x0c Get Device State; catalog GetDeviceStatus]
+  rcv=0d GetVersion               set=00 id=01 payload=- frame=550d04330a0d0b28400001f222  [dissector General 0x01 version inquiry; APK DataCommonGetVersion (empty payload)]
+  rcv=0d GetDeviceInfo            set=00 id=ff payload=- frame=550d04330a0d0c284000ffdf0c  [dissector General 0xff Query Device Info; APK DataCommonGetDeviceInfo (empty)]
+  rcv=0d GetSerialNum(BoardNum)   set=00 id=51 payload=01 frame=550e04660a0d0d2840005101679b  [dissector General 0x51 Get Serial Number; APK DataCommonGetDeviceSerialNumber idx 1]
+  rcv=0d GetSerialNum(ChipId)     set=00 id=51 payload=02 frame=550e04660a0d0e284000510281a5  [same, idx 2]
+  rcv=0d GetSerialNum(ModuleNum)  set=00 id=51 payload=03 frame=550e04660a0d0f284000510323b0  [same, idx 3]
+  rcv=0d GetSerialNum(FlycNum)    set=00 id=51 payload=04 frame=550e04660a0d102840005104a5bb  [same, idx 4 (FC serial; expected only from a flight controller)]
+  rcv=0d RcGetName                set=06 id=09 payload=- frame=550d04330a0d11284006098202  [dissector RC 0x09 RC Name Get; APK DataRcGetName (empty, receiver OSD)]
+  rcv=0d RcGetMaster              set=06 id=07 payload=- frame=550d04330a0d122840060730f6  [dissector RC 0x07 Master/Slave Mode Get; APK DataRcGetMaster (empty)]
+  rcv=0d RcGetConnectMaster       set=06 id=0d payload=- frame=550d04330a0d132840060d2e52  [dissector RC 0x0d Connected Master Id Get; APK DataRcGetConnectMaster (empty)]
+  rcv=06 GetDeviceState           set=00 id=0c payload=- frame=550d04330a06142840000c8e0a  [dissector General 0x0c Get Device State; catalog GetDeviceStatus]
+  rcv=06 GetVersion               set=00 id=01 payload=- frame=550d04330a0615284000012fda  [dissector General 0x01 version inquiry; APK DataCommonGetVersion (empty payload)]
+  rcv=06 GetDeviceInfo            set=00 id=ff payload=- frame=550d04330a0616284000ff12d9  [dissector General 0xff Query Device Info; APK DataCommonGetDeviceInfo (empty)]
+  rcv=06 GetSerialNum(BoardNum)   set=00 id=51 payload=01 frame=550e04660a061728400051015b86  [dissector General 0x51 Get Serial Number; APK DataCommonGetDeviceSerialNumber idx 1]
+  rcv=06 GetSerialNum(ChipId)     set=00 id=51 payload=02 frame=550e04660a061828400051024989  [same, idx 2]
+  rcv=06 GetSerialNum(ModuleNum)  set=00 id=51 payload=03 frame=550e04660a06192840005103eb9c  [same, idx 3]
+  rcv=06 GetSerialNum(FlycNum)    set=00 id=51 payload=04 frame=550e04660a061a284000510429e4  [same, idx 4 (FC serial; expected only from a flight controller)]
+  rcv=06 RcGetName                set=06 id=09 payload=- frame=550d04330a061b284006090f63  [dissector RC 0x09 RC Name Get; APK DataRcGetName (empty, receiver OSD)]
+  rcv=06 RcGetMaster              set=06 id=07 payload=- frame=550d04330a061c28400607adba  [dissector RC 0x07 Master/Slave Mode Get; APK DataRcGetMaster (empty)]
+  rcv=06 RcGetConnectMaster       set=06 id=0d payload=- frame=550d04330a061d2840060db31e  [dissector RC 0x0d Connected Master Id Get; APK DataRcGetConnectMaster (empty)]
+opened /dev/ttyACM4 115200 8N1 RTS=1 DTR=0
+> rcv=08 GetDeviceState 550d04330a08002840000c7caa
+  (no reply)
+> rcv=08 GetVersion 550d04330a080128400001dd7a
+  (no reply)
+> rcv=08 GetDeviceInfo 550d04330a0802284000ffe079
+  (no reply)
+> rcv=08 GetSerialNum(BoardNum) 550e04660a080328400051016652
+  (no reply)
+> rcv=08 GetSerialNum(ChipId) 550e04660a080428400051022c7c
+  (no reply)
+> rcv=08 GetSerialNum(ModuleNum) 550e04660a080528400051038e69
+  (no reply)
+> rcv=08 GetSerialNum(FlycNum) 550e04660a080628400051044c11
+  (no reply)
+> rcv=08 RcGetName 550d04330a080728400609dd99
+  (no reply)
+> rcv=08 RcGetMaster 550d04330a0808284006075f1a
+  (no reply)
+> rcv=08 RcGetConnectMaster 550d04330a08092840060d41be
+  (no reply)
+> rcv=0d GetDeviceState 550d04330a0d0a2840000c53f2
+  (no reply)
+> rcv=0d GetVersion 550d04330a0d0b28400001f222
+  (no reply)
+> rcv=0d GetDeviceInfo 550d04330a0d0c284000ffdf0c
+  (no reply)
+> rcv=0d GetSerialNum(BoardNum) 550e04660a0d0d2840005101679b
+  (no reply)
+> rcv=0d GetSerialNum(ChipId) 550e04660a0d0e284000510281a5
+  (no reply)
+> rcv=0d GetSerialNum(ModuleNum) 550e04660a0d0f284000510323b0
+  (no reply)
+> rcv=0d GetSerialNum(FlycNum) 550e04660a0d102840005104a5bb
+  (no reply)
+> rcv=0d RcGetName 550d04330a0d11284006098202
+  (no reply)
+> rcv=0d RcGetMaster 550d04330a0d122840060730f6
+  (no reply)
+> rcv=0d RcGetConnectMaster 550d04330a0d132840060d2e52
+  (no reply)
+> rcv=06 GetDeviceState 550d04330a06142840000c8e0a
+  (no reply)
+> rcv=06 GetVersion 550d04330a0615284000012fda
+  (no reply)
+> rcv=06 GetDeviceInfo 550d04330a0616284000ff12d9
+  (no reply)
+> rcv=06 GetSerialNum(BoardNum) 550e04660a061728400051015b86
+  (no reply)
+> rcv=06 GetSerialNum(ChipId) 550e04660a061828400051024989
+  (no reply)
+> rcv=06 GetSerialNum(ModuleNum) 550e04660a06192840005103eb9c
+  (no reply)
+> rcv=06 GetSerialNum(FlycNum) 550e04660a061a284000510429e4
+  (no reply)
+> rcv=06 RcGetName 550d04330a061b284006090f63
+  (no reply)
+> rcv=06 RcGetMaster 550d04330a061c28400607adba
+  (no reply)
+> rcv=06 RcGetConnectMaster 550d04330a061d2840060db31e
+  (no reply)
+# get_identity 2026-10-24T11:29:37+1100 port=None dry_run=True receivers=0e
+Frames to send (all verified pure reads):
+  rcv=0e GetDeviceState           set=00 id=0c payload=- frame=550d04330a0e002840000c86b2  [dissector General 0x0c Get Device State; catalog GetDeviceStatus]
+  rcv=0e GetVersion               set=00 id=01 payload=- frame=550d04330a0e01284000012762  [dissector General 0x01 version inquiry; APK DataCommonGetVersion (empty payload)]
+  rcv=0e GetDeviceInfo            set=00 id=ff payload=- frame=550d04330a0e02284000ff1a61  [dissector General 0xff Query Device Info; APK DataCommonGetDeviceInfo (empty)]
+  rcv=0e GetSerialNum(BoardNum)   set=00 id=51 payload=01 frame=550e04660a0e032840005101ab0a  [dissector General 0x51 Get Serial Number; APK DataCommonGetDeviceSerialNumber idx 1]
+  rcv=0e GetSerialNum(ChipId)     set=00 id=51 payload=02 frame=550e04660a0e042840005102e124  [same, idx 2]
+  rcv=0e GetSerialNum(ModuleNum)  set=00 id=51 payload=03 frame=550e04660a0e0528400051034331  [same, idx 3]
+  rcv=0e GetSerialNum(FlycNum)    set=00 id=51 payload=04 frame=550e04660a0e0628400051048149  [same, idx 4 (FC serial; expected only from a flight controller)]
+  rcv=0e RcGetName                set=06 id=09 payload=- frame=550d04330a0e07284006092781  [dissector RC 0x09 RC Name Get; APK DataRcGetName (empty, receiver OSD)]
+  rcv=0e RcGetMaster              set=06 id=07 payload=- frame=550d04330a0e0828400607a502  [dissector RC 0x07 Master/Slave Mode Get; APK DataRcGetMaster (empty)]
+  rcv=0e RcGetConnectMaster       set=06 id=0d payload=- frame=550d04330a0e092840060dbba6  [dissector RC 0x0d Connected Master Id Get; APK DataRcGetConnectMaster (empty)]
+dry-run: nothing sent

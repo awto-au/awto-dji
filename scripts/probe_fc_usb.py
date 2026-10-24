@@ -2,9 +2,10 @@
 """Probe the Phantom 3 front micro-USB (CDC-ACM -> FC UART, DUML 9600 8N1).
 
 Phase 1 passive listen, phase 2 one read-only DUML Get-Version (set 0x00 id 0x01) per target.
-Log: tmp/logs/probe_fc_usb.log. Usage: probe_fc_usb.py [port]
+Log: captures/sessions/<today>/probe_fc_usb.log (tracked, real-hardware data).
+Usage: probe_fc_usb.py [port]
 """
-import os, select, subprocess, sys, time
+import datetime, os, select, subprocess, sys, time
 
 PORT = sys.argv[1] if len(sys.argv) > 1 else "/dev/serial/by-id/usb-DJI_DJI_CONTROLLER_0001A0000000-if00"
 # Stall guard: 9600 baud = ~960 B/s; a 13-byte reply is ~14 ms. 1 s of silence = no answer.
@@ -17,6 +18,12 @@ def repo():
     return os.environ.get("AWTO_DJI_REPO") or subprocess.check_output(
         ["git", "rev-parse", "--show-toplevel"], text=True,
         cwd=os.path.dirname(os.path.abspath(__file__))).strip()
+
+
+def session_log_dir():
+    d = os.path.join(repo(), "captures", "sessions", datetime.date.today().isoformat())
+    os.makedirs(d, exist_ok=True)
+    return d
 
 
 def crc8(seed, data):
@@ -43,8 +50,7 @@ def duml(src, dst, seq, ctype, cset, cid, payload=b""):
 
 
 def main():
-    log_path = os.path.join(repo(), "tmp", "logs", "probe_fc_usb.log")
-    os.makedirs(os.path.dirname(log_path), exist_ok=True)
+    log_path = os.path.join(session_log_dir(), "probe_fc_usb.log")
     lf = open(log_path, "a")
 
     def log(msg):
