@@ -200,6 +200,29 @@ def gpio_strap(img):
     print("  GPIO41 high -> plain 0547:1002 device, AUTO EP2->PIB0 / PIB2->EP6 (DaVinci/HDMI-board RC)")
 
 
+def gpif(img):
+    print("\n## GPIF II towards the ground FPGA (V; field layout from FX3 SDK 1.3.1 gpif_regs.h)")
+    cfg = struct.unpack_from("<HxxIIHxxIHxxI", img, 0x400103FC - BASE)
+    states, nfunc, nregs, regs_at = cfg[0], cfg[3], cfg[5], cfg[6]
+    r = struct.unpack_from(f"<{nregs}I", img, regs_at - BASE)
+    conf, bus, ad, dirn, pol = r[0], r[1], r[3], r[9], r[11]
+    sel = r[13:29]
+    print(f"  CyU3PGpifLoad(0x400103fc): {states} states, {nfunc} functions, {nregs} registers @{regs_at:#x}")
+    print(f"  GPIF_CONFIG {conf:#010x}: enable={conf >> 31}, sync={(conf >> 8) & 1}, DDR={(conf >> 6) & 1}, "
+          f"clk_source={'internal' if conf & 0x10 else 'external CLK pin (FPGA drives it)'}")
+    width = (8, 16, 24, 32)[(bus >> 2) & 3]
+    print(f"  GPIF_BUS_CONFIG {bus:#010x}: pin_count={('47', '43', '35', '31')[bus & 3]}-pin, DQ {width}-bit, "
+          f"OE_present={(bus >> 12) & 1}")
+    outs = [n for n in range(16) if (dirn >> (2 * n)) & 3 == 1]
+    print(f"  CTRL_BUS_DIRECTION {dirn:#x}: outputs CTL{outs}; SELECT " +
+          ", ".join(f"CTL{n}={sel[n]}" for n in outs) + " (24 = current-thread empty/full, 25 = partial)")
+    print(f"  CTRL_BUS_POLARITY {pol:#x} (1 = active low); AD_CONFIG {ad:#x}: "
+          f"address lines {'inputs' if (ad >> 2) & 3 == 1 else 'outputs/other'}, data thread from "
+          f"{'A1:A0' if not (ad >> 9) & 1 else 'DATA_THREAD'}")
+    assert conf == 0x80000380 and width == 8 and outs == [4, 5] and (sel[4], sel[5]) == (24, 25)
+    assert (ad >> 2) & 3 == 1 and not (ad >> 9) & 1
+
+
 def main():
     img = load_cy(sys.argv[1])
     descriptors(img)
@@ -207,6 +230,7 @@ def main():
     threads(img)
     routing(img)
     gpio_strap(img)
+    gpif(img)
 
 
 if __name__ == "__main__":

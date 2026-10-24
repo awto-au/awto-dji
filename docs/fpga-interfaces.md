@@ -1,5 +1,11 @@
 # FPGA data interfaces (streams in/out), both ends
 
+> **Superseded in part (2026-10-24): see `fpga-pinout-model.md`.** On P3P/GL300C the ground
+> FPGA talks to a Cypress **FX3** (`m1601`, 8-bit synchronous slave FIFO, FPGA-clocked), not an
+> FX2LP. The air FPGA talks to the FX2 (`m1500`), also 8-bit synchronous slave FIFO. The
+> 256000 8N1 CENTER UART to the FC is m0900's USART1, not an FPGA pin (`m0900-can-channels.md`).
+
+
 What goes into and out of the Lightbridge FPGA, and the bus types/widths. Interface
 *types* and control signals are documented (dji-firmware-tools OFDM-receiver-board wiki
 + the module map); exact **widths are not published** and the radio MCU is stripped, so
