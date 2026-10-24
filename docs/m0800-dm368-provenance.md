@@ -258,7 +258,13 @@ FIFO master is the air FPGA. DUML reaches the air FPGA separately, over m0900 US
 `dataflow.md` §3). So **by elimination, DUML and video are multiplexed inside the air FPGA**
 (I). Pinning down the format needs an FPGA or SDR capture: `dataflow.md` §5 item 6.
 
-The ground side is the mirror image (`video-and-link.md`): ground FPGA → DM365 (`m1300`, in
-the RC package) → FX2LP → USB to the phone. USB appears on **both** sides. The analogous check
-there is whether `m1300` or the ground FX2 adds or strips anything. That needs the RC firmware
-(`m1300`), which has not been decoded here.
+The ground side depends on the RC revision (dji-firmware-tools wiki pages for m1300, m1600
+and m1601, read 2026-10-24; I for anything not in this repo):
+- **GL300a:** ground FPGA → FX2 (`m1600`) → DM368 (`m1300`) → USB to the phone.
+- **GL300b/c:** the DM368 is removed, and the ground FPGA feeds a **Cypress FX3 / CYUSB2014
+  (`m1601`, ThreadX, ~190 KB)**, which is itself the USB device the phone talks to.
+
+The operator's controller is a **GL300C** (`fc-usb-port.md`). So on the owner's hardware the
+phone-facing USB endpoint, for video down and DUML both ways, is the `m1601` firmware. That is
+the module to reverse for ground control. `duml-protection.md` already places a DUML
+SIMPLE-frame table in it (`0x10920`, routine `0x400042e4`).
