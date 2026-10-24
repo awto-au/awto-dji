@@ -95,7 +95,7 @@ All the analysis docs cite exact offsets so you can re-derive against your own u
 6. **m0800 DM368 provenance (2026-10-24, `docs/m0800-dm368-provenance.md`).** It is TI DVSDK
    4.02.00.06 (DM368), mostly unchanged; DJI changes are U-Boot env/boot defaults, UBL clock
    tables, a few kernel drivers (ADV761x HDMI receiver, I2C recovery), FX2 USB drivers, and the
-   `encode_usb` app (TI encode demo reworked; `AddSerialDataToFrame`). Next: extract TI's
+   `encode_usb` app (TI encode demo reworked). Disassembly: the DM368 sends raw H.264 slices (no header, no DUML) over USB EP2 into the AUTOOUT FX2, so DUML and video must meet in the air FPGA (I). Next: extract TI's
    DM368 DVSDK installer for the PSP 03.21 kernel and the encode demo, then diff at function level.
 5. Build out the Flutter app-to-bird UI on top of `app/packages/duml` + `rust/awto_dji_core`.
 

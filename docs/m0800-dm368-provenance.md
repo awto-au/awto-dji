@@ -173,9 +173,10 @@ What the unmatched messages are:
   - I: H.264 leaves the DM368 over USB into the FX2, and from there into the air FPGA.
     `/dev/68013` is opened by `monitor`; how `encode_usb` writes the stream (usbfs via
     `mylibusb.c`, or the misc device) is U.
-- **DUML/video multiplexing (§5 item 6, was U).** I, from function names only:
-  `AddSerialDataToFrame` together with a serial link (`/dev/ttyS1`) suggests the DM368 inserts
-  serial-side data into the encoded frames before USB. Format: U.
+- **DUML/video multiplexing (§5 item 6).** ~~I, from the function name: `AddSerialDataToFrame`
+  suggests the DM368 inserts serial data into the frames.~~ **Retracted after disassembly (§7):**
+  the function is dead code, and the DM368 sends raw H.264 slices.
+- **Correction (same day): the DM368 does not put serial data in the video.** See §7.
 - **Camera to DM368 input.** I: the `adv761x` HDMI receiver plus `autoDetectVideoIput` suggest
   the camera feeds the DM368 over HDMI. The project name `enc_nohdmi_wm610` and the WM610
   (Inspire 1) banners show that **one encoder build is shared across aircraft**; P3P-specific
@@ -199,3 +200,58 @@ python3 scripts/re/ref_string_diff.py Image linux-2.6.32.17 linux-davinci-stagin
 **Next, to close the I items:** extract TI's `dvsdk_dm368-evm_4_02_00_06_setuplinux` (PSP 03.21
 kernel and the `encode` demo) on a disposable machine, then rerun the kernel diff and do a
 function-level diff of `encode_usb` against the demo.
+
+## 7. Where the video bytes go, and where DUML does NOT go (V, disassembly)
+
+`encode_usb` is built without optimisation and keeps its symbols and DWARF, so the functions
+below read directly as C. Tools: capstone, ARM mode; `readelf -s/-r`.
+
+1. **`AddSerialDataToFrame` (`0x127e0`, `video.c:118`, `int f(int offset)`) is dead code.**
+   - It calls `Enc_Serial_Fill_Forward_Data(outBuf + offset, 0xb3ffa)`.
+   - Every 300th call (`osdDataCnt % 300`, magic `0x1b4e81b5`) it hex-dumps the result as
+     `serialData[...]`.
+   - `Enc_Serial_Fill_Forward_Data` (`0x153e8`) is a **stub**: it stores its two arguments and
+     returns 0.
+   - Nothing calls `AddSerialDataToFrame`. A sweep of `.text` finds no `bl`/`b` to it, and its
+     address appears in no literal pool or function table. So in this build no serial data is
+     added to any frame. I: a leftover from a shared WM610 code base.
+2. **Per-slice output.**
+   - `videoThrFxn` puts `getEncodedSliceProvideSpace` (`0x1298c`) into the H.264 encoder's
+     dynamic parameters at `0x130d8`. This is TI H264VENC's data-sync, slice-level output
+     callback.
+   - For each slice it:
+     - reads the NAL type `buf[4] & 0x1f` after the `00 00 00 01` start code (1 = P, 5 = IDR)
+       and counts `Pslice`/`Islice`;
+     - optionally `fwrite`s to a debug file (`outFile`, set from a command-line option);
+     - unless `nooutput`/`nostream`/`usbErr` is set, calls
+       **`libusb_Send(slice, len, &sent, 100)`**, failing with `send slice data error-%d`;
+     - then re-arms the capture buffer (V4L2 ioctl `0x40045644`).
+   - There is no header, length prefix or trailer.
+3. **`libusb_Send`** (`libcommon.so` `0x61a0`, `mylibusb.c`) is not libusb. It fills a 20-byte
+   request `{u8 type=0, u8 ep=2, ptr data, u32 len, ..., u32 timeout}` and calls
+   `ioctl(fd, 0x1001, &req)` on DJI's device (`init_libusb`, `/dev/68013`).
+4. **`usb_68013.ko` `usb_68013_ioctl`**, case `0x1001`:
+   - `copy_from_user` copies the data to **offset 0** of the URB buffer, in chunks of at most
+     the buffer size;
+   - the pipe is `0xC0000000 | ep<<15 | devnum<<8`, i.e. **bulk OUT EP2**;
+   - then `usb_submit_urb` with completion `usb_68013_UsbDeviceTransport_Complete`.
+   - The driver adds nothing. Case `0x1000` is a `usb_bulk_msg` read, the EP6 IN direction.
+     Its consumer in user space is U.
+5. **FX2 (`m1500`).** This matches the earlier decode in `air-id-and-stream-survey.md`:
+   - descriptor `0547:1002`, one vendor interface;
+   - `IFCONFIG=0x03`: slave FIFO with an external clock;
+   - `EP2CFG=0xA0` / `EP2FIFOCFG=0x10`: bulk OUT 512 B, **AUTOOUT**;
+   - `EP6CFG=0xE0` / `EP6FIFOCFG=0x08`: bulk IN, **AUTOIN**.
+   - USB data flows to and from the FIFO without the 8051 touching it, so the FX2 cannot insert
+     DUML either.
+
+**Result.** On the air side, the H.264 elementary stream (Annex-B slices) reaches the FIFO
+master **unframed and alone**. V: the path is DM368 → USB EP2 → FX2 → 8-bit slave FIFO. I: the
+FIFO master is the air FPGA. DUML reaches the air FPGA separately, over m0900 USART3 (V route,
+`dataflow.md` §3). So **by elimination, DUML and video are multiplexed inside the air FPGA**
+(I). Pinning down the format needs an FPGA or SDR capture: `dataflow.md` §5 item 6.
+
+The ground side is the mirror image (`video-and-link.md`): ground FPGA → DM365 (`m1300`, in
+the RC package) → FX2LP → USB to the phone. USB appears on **both** sides. The analogous check
+there is whether `m1300` or the ground FX2 adds or strips anything. That needs the RC firmware
+(`m1300`), which has not been decoded here.

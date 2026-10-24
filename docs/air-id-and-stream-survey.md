@@ -81,7 +81,7 @@ UID-read summary across variants: STM32 UID literals exist only in P3X V01.11.00
 - **m1500 (FX2LP)**: yes, V. Slave-FIFO bridge with bulk EP2 OUT / EP6 IN, auto-commit. Strongest evidence of a payload path. FIFO peer = FPGA is I.
 - **m0100**: yes. `68013.ko` + `rpmsg_trans.ko` + `cam_server` carry data/commands to the FX2LP over USB; RTOS controls DM368 streaming around updates (V).
 - **m0900**: yes (existing docs): SPI2 register/AD9363 access, USART3 DUML, FPGA handshakes.
-- **m0800 (DM368)**: now decrypted (`m0800-dm368-provenance.md`). V: TI DVSDK 4.02 DM368 stack plus DJI `encode_usb`, which runs as USB host to a CY7C68013A (`usb_68013.ko`, USB `0547:1002`). I: H.264 leaves over USB into the FX2.
+- **m0800 (DM368)**: now decrypted (`m0800-dm368-provenance.md`). V: TI DVSDK 4.02 DM368 stack plus DJI `encode_usb`, which runs as USB host to a CY7C68013A (`usb_68013.ko`, USB `0547:1002`). V: raw H.264 Annex-B slices leave over USB bulk EP2 with no header (`m0800-dm368-provenance.md` §7).
 - m0306, m0400, m1100/m1101, m1200-m1203, m1700/m1701, m0101, m0305: no FPGA contact found.
 - I: aircraft video chain is DM368 -> USB -> FX2LP (m1500) -> slave FIFO -> FPGA -> AD9363. Not proven end to end.
 
