@@ -319,8 +319,8 @@ Bit timing (V from `0x0800331c` stores): prescaler field 3 (BRP=2), BS1 raw 5 (6
 ### 7.6 IDs in use (inventory so far)
 
 - **0x412 TX, 0x413 RX**: board 2/4/5/6 (V). Relay path already in this doc (section 4 / push set 0x03 id 0x43).
-- **0x414 TX, 0x415 RX**: registered on all boards (V registration; I that it is always used). Its TX endpoint is the target of routing types 3, 5, 10, 11, 12, 18, 21, 23 (`dataflow.md` routing notes).
-- **Payload meaning of 0x412-0x415: U.** The DUML relay case is confirmed from the dispatch code, not from frame captures.
+- **0x414 TX, 0x415 RX**: registered on all boards (V registration; I that it is always used). **Corrected in §7.11**: its TX endpoint is reached by exactly one receiver-type value (30), not the {3,5,10,11,12,18,21,23} set stated here previously - that set was an unverified inference (see §7.11 for the full byte-level trace that replaces it).
+- **Payload meaning of 0x412-0x415: resolved in §7.11.** Both carry ordinary DUML, same framing/dispatch as every other transport - CAN is purely a carrier here, not a second protocol.
 
 ### 7.7 RX path (partial)
 
@@ -378,3 +378,119 @@ motor/ESC bus" (§7.9: no, ESC is UART3+PWM1-4).
   ADC referenced anywhere in `m0306` — this FC does not do direct-SPI sensor/FPGA access
   the way `m0900` does; USART1/2/3/UART4/5/USART6 (all six, one shared init dispatcher) and
   I2C1/2/3 are its other comms peripherals.
+
+## 7.11 CAN bus: consolidated cross-chip findings (issue #36)
+
+Pulls together §7.1-7.9 (`m0900`, air radio), §7.10 (`m0306`, FC), and `control-plane-re.md`
+"Full GPIO/bus survey" + `ground-upgrade-path.md` (`m1400`, ground radio) - no new scatter,
+corrections land here with pointers back. Reproduce the `m0900` table dump:
+`python3 scripts/re/m0900_can_routing_decode.py` (output `tmp/m0900_can_ghidra/routing_table.txt`,
+log `tmp/logs/m0900_can_routing_decode.log`). Ghidra dumps used: `tmp/m0900_can_ghidra/m0900_dump.txt`
+(issue #36 pass, not yet archived - still `-deleteProject`, same gap as §7.8 item 3),
+`tmp/m0306_ghidra/m0306_dump.txt` (archived `re/ghidra-projects/m0306_flight_controller.tar.gz`),
+`tmp/m1400_ghidra/m1400_dump.txt` (archived `re/ghidra-projects/m1400_radio.tar.gz`).
+
+**Address-base note (V, resolve before cross-reading §1-6 vs §7):** §1-6's routing addresses
+(`packet_send` 0x080118d0, dispatch 0x0801198a, framer 0x08011a8e, filter table 0x0801a120)
+and §7's CAN-driver addresses (0x08009xxx, 0x08003xxx) are the **same functions**, found at
+addresses exactly `0x8000` apart (confirmed by matching call-graph shape, not just address
+arithmetic: `FUN_0800998a`'s dispatch-table-walk and fallback-to-`FUN_080098d0` structure is
+byte-identical to §1-6's described `0x0801198a`/`0x080118d0` behaviour). Two different Ghidra
+loads of the same `P3X_FW_V01.11.0020_m0900.bin` used base addresses `0x8000` apart; which one
+is "correct" (matches the real flash address) isn't re-derived here - use the `+0x8000`
+translation when matching an address from §1-6 against one from §7 or this section.
+
+### Q1: what do 0x414/0x415 actually carry? (V, full trace this pass)
+
+`packet_send` (`FUN_080098d0`, ≡ §1-6's `0x080118d0`) is `m0900`'s single outbound-DUML
+router: it dispatches purely on `byte5 & 0x1f` (the DUML receiver-type byte) through a
+**31-entry Thumb `tbb` table at flash `0x080098e4`**, read directly out of the firmware image
+byte-for-byte (`scripts/re/m0900_can_routing_decode.py` - no decompiler needed, the table is
+flash data). Full mapping (device-type names from `docs/data/apk-cmdset-devicetype.tsv`):
+
+| Receiver type(s) | Device name(s) | Destination |
+|---|---|---|
+| 1, 4, 8, 15 | CAMERA, GIMBAL, DM368, TRANSFORM | `0x0800941c`: board-gated (2/4/5/6) `can_send_bytes` to **CAN std ID 0x412** - plus an extra check (upper 3 bits of byte5 must be 1 or 7) before actually sending; board 7 or failed check falls back to USART1/2 via `FUN_080030a4` |
+| 2, 6, 13, 14, 16, 20, 22 | APP, RC, DM368_G, OSD, TRANSFORM_G, FPGA_G, 22 (unlabeled) | unconditional **USART3** (`FUN_080030a4` reason 3) - matches the pre-existing `m0900-buses.tsv` USART3 row exactly |
+| 3, 5, 10, 11, 12, 18, 21, 23 | FLYC, CENTER, PC, BATTERY, DIGITAL, DOUBLE, 21/23 (unlabeled) | **CORRECTS the prior inference** (old §7.6, `m0900-buses.tsv` CAN1 row "bus peers... INFERRED"): unconditional **USART1** (`FUN_080030a4` reason 1, via thunk `0x0800a61c`), on every board code, **not CAN at all**. The CAN-0x414 destination for this group, as previously written in §7.6/issue #36's own comment, was never actually traced ("Second CAN TX queue... ID word: not decoded") - it was a plausible guess that this trace refutes. |
+| 30 (unlabeled) | - | the **only** receiver-type value that reaches **CAN std ID 0x414**: board-gated (2/4/5/6) via thunk `0x08009876` -> `can_send_bytes`; board 7 falls back to USART1 (reason 1) |
+| 17 (SINGLE) | - | "mixed" (confirms the old §7.6/§227 note, now with mechanism): board 2/4/5/6 -> USART1 (reason 1); board 7 -> attempts the CAN-0x412 path (`0x0800941c`), which then fails its own internal board-code check (7 isn't in {2,4,5,6}) and falls through to its own USART1/2 fallback - so type 17 never actually reaches CAN on any board |
+| 0, 7, 9, 19, 24-29 | WHO, WIFI, OFDM(self), FPGA, unlabeled | **dropped silently** - no transport reached at all (type 9 = `m0900` itself; anything addressed to `m0900` that reaches this far means no registered callback matched it in `FUN_0800998a`'s dispatch table first) |
+
+Cross-check (same script): `FUN_080030a4`'s reason-code literals resolve to the exact DMA
+buffer addresses `m0900-buses.tsv` already documents per-USART (`reason 1` -> `0x200001d0`
+USART1, `reason 2` -> `0x200004d0` USART2, `reason 3` -> `0x200007d0` USART3) - confirms the
+reason-code-to-USART mapping independently of the table-walk above.
+
+**Net answer:** 0x412/0x413 and 0x414/0x415 are structurally identical - same
+`can_endpoint_register`/`can_send_bytes`/`CAN_Transmit` plumbing on the TX side, same incoming
+framer+dispatch (`FUN_08009a8e`, `FUN_0800998a`) on the RX side as every other transport
+(USART1/2/3). **CAN carries plain DUML; it is not a second protocol.** What's narrow is the
+*gate*: only receiver-type 30 (unlabeled in the public `DeviceType` enum extract so far) reaches
+0x414/0x415 at all, and only on board codes 2/4/5/6.
+
+**Architectural re-framing (I, follows directly from the V trace above):** CAN1 0x412/0x413 is
+the CAMERA/GIMBAL/DM368/TRANSFORM relay, **not the FC relay** - `dataflow.md:138` already said
+this ("fans out... to camera/gimbal via CAN"); this pass just nails the mechanism down. FLYC
+(device type 3, the flight controller) traffic from `m0900` goes out via **USART1**, never CAN.
+This reopens who's on the other end of `m0900`'s CAN1/CAN2: §7.10's inference that `m0306`'s
+live CAN1 is "plausibly this chip's end of the same DUML-relay CAN bus `m0900` carries
+0x412-0x415 on" is now **weaker** than stated there - if `m0900` never sends FC-addressed
+traffic over CAN, the FC doesn't need to be the CAN1 peer at all.
+
+**New data point, outside the issue's 3 named chips but directly bears on the above (I):**
+`m0400` (gimbal MCU, `tmp/m0400_ghidra/m0400_full_dump.txt:25611`, `FUN_080095b8`) registers
+exactly **one** CAN std ID, **0x321** (`*DAT_080096bc = 0x321`, literal `movw r0,#0x321` at
+`0x0800968a`) - confirmed live via its own `CAN_Init`/filter/start sequence
+(`air-id-and-stream-survey.md` "CAN1: initialized" section). `0x321` is **not** in `m0900`'s
+registered set {0x412,0x413,0x414,0x415}: `m0900` never filters for it and never transmits it.
+Either `m0400`'s CAN1 and `m0900`'s CAN1 are separate physical buses, or one side has an
+undiscovered additional endpoint. **Open (U), not resolved this pass** - flagging as a genuinely
+new open question, not previously tracked anywhere in this repo.
+
+### Q2: is {0x412, 0x413, 0x414, 0x415} the complete CAN-ID set across all three chips? (mixed - NOT fully closed)
+
+- **`m0900`: exhaustive, CLOSED.** The only function that creates a CAN endpoint object is
+  `can_endpoint_register` (`0x080033ec`); grepping every `bl 0x080033ec` in the full
+  322-function disassembly finds **exactly 4 call sites** (2 inside `FUN_080093a8` for
+  0x412/0x413, 2 inside `FUN_08009828` for 0x414/0x415). `CAN_Transmit` (`0x080008a0`) has
+  exactly 2 callers (`can_tx_pump`, `can_send_bytes`) and `CAN_FilterInit` (`0x0800072e`) has
+  exactly 1 (`can_endpoint_register`) - both fully inside the same generic plumbing, no
+  hardcoded/bypass CAN send anywhere else in the image. **Confirmed: {0x412, 0x413, 0x414,
+  0x415} is `m0900`'s complete set, no more, no hidden fifth ID.**
+- **`m1400`: NOT closed - same gap as before, real attempt made.** `control-plane-re.md`'s own
+  two-method survey (literal scan + Ghidra xref scan) already found CAN1(10)/CAN2(3)
+  *peripheral-base* literal hits and traced the `duml_route` TBB (offset `0x5C8C`) to receiver
+  types `0x19`/`0x1C` -> port 5 (CAN1/CAN2) - that's a count of base-address references, not of
+  distinct arbitration IDs. This pass traced the byte-push call sites (`FUN_0001bc08`, called
+  from `FUN_0000f7d0`) and found a 2-byte sub-header (`0x0203`/`0x0403`) prepended to two of its
+  payloads before entering the CAN queue - a type/length-tag-shaped value, but **not confirmed**
+  as the actual 11-bit arbitration ID (the mailbox TID-equivalent pointers, `DAT_0000fa14`/
+  `DAT_0000fa18`, didn't resolve to a clean literal on a direct file dereference - needs real
+  Ghidra data-type/xref analysis, not attempted further this pass). **Still open (U): the actual
+  CAN1/CAN2 arbitration ID(s) `m1400` sends/filters on.**
+- **`m0306`: NOT closed - different reason (data-driven, not code-driven).** Both CAN1
+  (`FUN_080351d0`) and CAN2 (`FUN_08035484`/`FUN_080353b2`) filter/ID setup is StdPeriph-style
+  and **reads its ID/mask fields from an external config-struct pointer** (`DAT_08035534`,
+  offsets `+0x28`/`+0x2c`/`+0x30`/`+0x34`), not from instruction immediates - confirmed by
+  reading the generic filter-write helper at `0x080352xx` that both CAN1 and CAN2 init call
+  through. A literal-immediate scan (what closed the question on `m0900`'s hand-rolled driver)
+  **structurally cannot find these IDs** - they live in a data table (likely `.rodata`) not
+  located this pass. GPIO AF9 (CAN alternate function) setup for both instances was confirmed
+  (`movs r2,#0x9` at `0x080353e6`/`0x080353f0`) and CAN1's bit-timing constant `0x10f` was found
+  (`0x080351dc`) - but **the actual arbitration ID(s) remain undetermined (U).**
+- **Honest net answer:** 4 IDs are confirmed system-wide to date, and all 4 are on `m0900`.
+  `m1400` and `m0306` have **not** yielded their own arbitration IDs despite a real attempt this
+  pass - their ID values are structurally harder to reach by static search (set outside the
+  traced helper on `m1400`; set as data, not code, on `m0306`), not because nobody looked. **This
+  is NOT "confirmed, these 4 IDs are the complete set across all three chips."** It is "4
+  confirmed on `m0900`; `m1400` and `m0306` each have at least one more live CAN node whose own
+  ID(s) are still unknown."
+
+### Q3: `m0306`'s CAN2 purpose (budget-limited, no resolution)
+
+No forward progress this pass. Searched for a direct `bl` caller of `FUN_080351d0` (CAN1 init)
+and `FUN_08035484`/`FUN_080353b2` (CAN2 init) anywhere in the 2745-function disassembly: **none
+found for either** - both are evidently reached only through an indirect call (a function-pointer
+table, consistent with this chip's other init code), which applies equally to CAN1 and CAN2 and
+so doesn't help distinguish CAN2's role from CAN1's. §7.10's open item stands: **U, still open.**
