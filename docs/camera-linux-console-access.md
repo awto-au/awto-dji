@@ -324,6 +324,50 @@ access. Candidate paths, none tested yet:
   needs physical pads in those examples, and `AppCdcAcm`/`t dji console` are things
   you'd type *after* you already have a prompt, not a way to get one from nothing.
 
+## Public corroboration, round 2 (2026-10-24, issue #20 research pass)
+
+- **Cross-product shadow match:** `droner69/MavicPro` (public GitHub, full extracted
+  `_AMBA_wm220_0100` Ambarella rootfs for the Mavic Pro's camera board, a different
+  product/firmware) has the **identical** `default::10933:0:99999:7:::` (empty hash)
+  and `a8sdk:HHTiH8SGMjHoM:0:0:99999:7:::` lines this repo found in the P3X camera's
+  `/etc/shadow` - same account names, same literal DES hash string. That build's
+  `root` entry is *also* empty (`root::0:0:99999:7:::`), wider open than P3X's real
+  `$6$` root hash. This independently corroborates (different product, different repo,
+  publicly posted before this research) that the empty-hash `default`/weak-hash
+  `a8sdk` accounts are a shared Ambarella-SDK rootfs skeleton reused across DJI
+  products, not an artifact of one firmware build - strengthens, doesn't prove, this
+  doc's "likely passwordless telnet as `default`" inference.
+- **IP-scheme match, different link:** VoidSec (Paolo Stagno), "Hacking the DJI
+  Phantom 3", Jan 2017 (<https://voidsec.com/hacking-dji-phantom-3/>) - nmap of a
+  Phantom 3 (WiFi-link variant) found **both telnetd and sshd open on the camera's
+  IP, `192.168.1.3`** - matching this repo's own firmware trace of `add_usb_net.sh`
+  assigning the camera `192.168.1.3` on `usb0` (section 2 above). He did not attempt
+  login to the camera's telnet/ssh; his actual root access (cleartext FTP creds pulled
+  from the Android app's `upgrade_config.json`, then `telnetd -l /bin/ash` re-enabled
+  via a firmware downgrade) was against the **WiFi/companion board** (OpenWRT,
+  ar71xx) - a different Linux system from the Ambarella camera this doc covers, same
+  pattern independently confirmed elsewhere: `Howchoo/drone-wars` (public GitHub,
+  OpenWERX drone-hacking-competition repo) ships that same board's boot script with
+  `telnetd -l /bin/ash &` unauthenticated, no `-l` omission this time.
+- **Same-shape precedent, different product:** Mavic Mini (WM160) - USB-Ethernet
+  adapter, static IP, `telnet 192.168.3.10` = unauthenticated root (cited on
+  mavicpilots.com, sourced from `444A49/minifindings` on GitHub). Different
+  architecture (Android-based FC, not an Ambarella camera), but the same *shape* as
+  this doc's own `usb0` hypothesis - USB-net interface up, telnet reachable, no
+  auth - confirming DJI has shipped exactly that pattern before. Not evidence for
+  this camera specifically.
+- **`P3X_FW_DEBUG` independently confirmed:** `o-gs/dji-firmware-tools` issue #4
+  (mefistotelis, maintainer) documents `P3X_FW_DEBUG` as a stat-only, contents-
+  irrelevant flag file disabling firmware version checks - matches this doc's own
+  firmware trace of that filename exactly (see table above).
+- **Net, negative result on the core question:** no public source found (GitHub
+  code/repo search, `o-gs/dji-firmware-tools` issues/wiki, PhantomPilots,
+  MavicPilots) documents reaching or exploiting passwordless telnet/shell on the
+  **P3 camera's Ambarella Linux side** specifically, via `usb0` or otherwise. This
+  doc's firmware-level finding (telnetd falls back to `/bin/login`; `default`'s
+  shadow hash is empty) appears to still be undocumented elsewhere, as far as
+  searched 2026-10-24.
+
 ## Open / next steps
 
 - No DJI schematic or device tree for the camera (Ambarella) board exists on this
