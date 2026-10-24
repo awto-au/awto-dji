@@ -186,12 +186,27 @@ def routing(img):
           " type 0x5749 = DUML (from 0x4000f830), 0x574A = video (from FPGA PIB2 buffers)")
 
 
+def gpio_strap(img):
+    print("\n## GPIO 41 boot strap selects the USB personality (V)")
+    flag = [i for i in md.disasm(img[0x40008288 - BASE:0x40008294 - BASE], 0x40008288)]
+    assert flag[0].mnemonic == "ldr" and word(img, 0x40008288 + 8 + flag[0].operands[1].mem.disp) == 0x40031626
+    setup = [(i.mnemonic, i.op_str) for i in md.disasm(img[0x40008170 - BASE:0x40008184 - BASE], 0x40008170)]
+    assert ("mov", "r0, #0x29") in setup  # GPIO 41 read via CyU3PGpioGetValue
+    lo = {word(img, a) for a in range(0x400069c0, 0x40006a10, 4)}
+    assert {0x40010440, 0x400104a0} <= lo, "pin-low path should load the iAP2 configs"
+    hi = {word(img, a) for a in range(0x400069c0, 0x40006a20, 4)}
+    assert {0x40010520, 0x40010560} <= hi, "pin-high path should load the plain-vendor configs"
+    print("  GPIO41 low  -> iPhone iAP2 / Android AOA, UART DUML + 55 CC chunking (threads uart, usbsocket)")
+    print("  GPIO41 high -> plain 0547:1002 device, AUTO EP2->PIB0 / PIB2->EP6 (DaVinci/HDMI-board RC)")
+
+
 def main():
     img = load_cy(sys.argv[1])
     descriptors(img)
     channels(img)
     threads(img)
     routing(img)
+    gpio_strap(img)
 
 
 if __name__ == "__main__":

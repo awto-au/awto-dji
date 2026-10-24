@@ -133,7 +133,52 @@ resyncing past `55 CC` headers and video bytes. A small demuxer would make both 
 - route `0x5749` payloads to the DUML framer;
 - route `0x574A` payloads to the H.264 decoder.
 
-## 7. Open
+## 7. USB port ownership and switching, both ends (2026-10-24)
+
+**Ground (V code; board meaning I).** A boot strap on **FX3 GPIO 41** decides who owns the RC's
+phone USB port.
+- GPIO setup is at `0x40008074`: GPIO 39 and 33 are outputs (33 is toggled every 30 ms by the
+  `Gpio` thread), GPIO 41 is an input read once.
+- The flag is stored at `0x40031626` and returned by `0x40008288`.
+- Only the main loop (`0x400044ac`, `0x400044d8`) and the USB start function (`0x40006534`)
+  branch on it.
+
+| GPIO 41 | USB role | Data path | Threads |
+|---|---|---|---|
+| low | iPhone iAP2 device (descriptors `0x40010440`/`0x400104a0`) or Android AOA host | FPGA video and UART DUML chunked `55 CC` through the CPU (§3–4) | uart, usbsocket, FPGA pump, threadpool, Gpio (init table `0x400103c8`) |
+| high | plain device `0547:1002` (descriptors `0x40010520`/`0x40010560`) | **AUTO** EP2→PIB0, PIB2→EP6, no CPU, no DUML, no phone protocol | USB device + Gpio only (`0x40006770`, loop `0x40006bf8`) |
+
+I: high = GL300a or HDMI-board RC. There, the DaVinci (`m1300`) is USB host to the FX3, binding
+`0547:1002` with the same `usb_68013` driver as the air DM368, and the DaVinci owns the
+external phone port (wiki m1300: "The external USB connector is managed by the DM368 chip").
+Low = GL300b/c, the owner's GL300C.
+
+**Air (V strings/scripts in `m0100`; mux part W).** The camera A9 has one USB port that is
+switched between an **external** role and the **internal** FX2 bus:
+- **External, device role:** `msc: switch USB class to msc`, `mtp: switch USB class to mtp`
+  (SD card to a PC over the camera's micro-USB).
+- **Internal, host role:**
+  - `setusbmode.sh` runs `echo host > /proc/ambarella/uport` and then loads EHCI/OHCI;
+  - "Switch Linux usb to host mode" / `usbsw.sh host`;
+  - `AmbaIPC_RpcUsbOwnerSwitch` hands the controller between the RTOS (device) and Linux (host);
+  - Linux `68013.ko` drives the FX2, used for FX2 firmware load and the UEG upgrade transmit to
+    the FPGA.
+- **The FX2 bus itself** is switched between the A9 and the DM368 ("connect usb to A9 /
+  connect usb to DM368", `DjiMsgStUsbSwitchStatusSet`).
+- **Upgrade interlock:** `[DJI_UEG] Please Discon USB Port.`
+- `DjiNotice1765SwitchUsb2A9` (1765 = DJI's legacy name for the air radio MCU) can request the
+  switch.
+- W: the camera board has two TI TS3USB221A 2:1 USB muxes (`camera-linux-console-access.md`).
+  I: one selects A9 ⇄ {external micro-USB, internal bus}, the other selects FX2 ⇄ {A9, DM368}.
+
+**So yes: the internal USB data paths do meet external ports, through switches.** In the
+aircraft, the camera's micro-USB shares the A9's port with the internal FX2 bus. In the RC, the
+phone port is either the FX3's own (GL300b/c) or the DaVinci's (GL300a/HDMI). Not established:
+- the exact mux wiring and GPIOs on the camera board (needs a board trace or the
+  `MCCTRL_SetUsbMode` disassembly, issue #25);
+- whether the RC's other USB/micro-USB port (if fitted) reaches anything but the LPC1765 (U).
+
+## 8. Open
 
 - The UART peer is **I** (m1400, by sender type 14 and the existing docs); a board trace or a
   logic probe on the FX3 UART pins would make it V.
