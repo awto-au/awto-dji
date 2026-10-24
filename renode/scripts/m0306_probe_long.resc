@@ -1,0 +1,46 @@
+:name: m0306 USB-CDC gate probe (extended boot window)
+:description: Extended follow-up - check if driver init (USART1 NVIC enable) ever happens.
+
+# Follow-up to m0306_probe.resc - the 200ms window landed in the uC/OS-III idle task with
+# NVIC ISER all-zero; this extends the window to check whether driver init (USART1 enable,
+# as a positive control) ever happens, up to a bounded 2s cap.
+
+$fw ?= @firmware/unpacked/P3X_FW_V01.11.0020_m0306.bin
+$appBase ?= 0x08020000
+
+mach create "m0306"
+machine LoadPlatformDescription @renode/platforms/m0306.repl
+logFile @m0306-probe-long.log true
+
+sysbus LoadBinary $fw $appBase
+sysbus.cpu VectorTableOffset $appBase
+
+# 4 x 500ms = 2s cap. Each step checked: no silent block past 2s simulated boot, which is
+# already >=10x a normal MCU driver-init window (ms-scale) and matches this repo's existing
+# m0900 precedent of using multi-second RunFor windows for RTOS/driver bring-up.
+emulation RunFor "00:00:00.500"
+echo "t=500ms PC / ISER1 / ISER2:"
+sysbus.cpu PC
+sysbus ReadDoubleWord 0xE000E104
+sysbus ReadDoubleWord 0xE000E108
+
+emulation RunFor "00:00:00.500"
+echo "t=1000ms PC / ISER1 / ISER2:"
+sysbus.cpu PC
+sysbus ReadDoubleWord 0xE000E104
+sysbus ReadDoubleWord 0xE000E108
+
+emulation RunFor "00:00:00.500"
+echo "t=1500ms PC / ISER1 / ISER2:"
+sysbus.cpu PC
+sysbus ReadDoubleWord 0xE000E104
+sysbus ReadDoubleWord 0xE000E108
+
+emulation RunFor "00:00:00.500"
+echo "t=2000ms PC / ISER1 / ISER2 (cap reached):"
+sysbus.cpu PC
+sysbus ReadDoubleWord 0xE000E104
+sysbus ReadDoubleWord 0xE000E108
+
+echo ""
+echo "Done."

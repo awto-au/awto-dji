@@ -1,5 +1,13 @@
 # Link security, pairing and "keys" (P3 Lightbridge)
 
+> **Review correction (2026-10-24):** the categorical claims below that there are no
+> keys/authentication or payload protection are not established. The APK has a separate
+> SIMPLE XOR command transform using a bundled table and packet sequence bytes; ATSHA204
+> authentication is another mechanism. RC master/slave connection fields must not be
+> assumed to describe aircraft binding. Cleartext MCU messages do not exclude radio-layer
+> protection. Use [duml-protection.md](duml-protection.md) for the current evidence and
+> unresolved per-pair-key question; the older analysis below needs reconciliation.
+
 Does the RC↔aircraft link use encryption keys? How do they pair? Evidence from the
 firmware and the DUML command set. Short answer: **binding is by identifier, not a
 crypto key pair; the "scrambler" is whitening, not a cipher; no evidence of a

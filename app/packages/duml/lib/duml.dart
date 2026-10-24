@@ -8,5 +8,9 @@ library duml;
 
 export 'src/crc.dart';
 export 'src/packet.dart';
+export 'src/simple.dart';
 export 'src/catalog.dart';
 export 'src/telemetry.dart';
+export 'src/rc_signal.dart';
+export 'src/motor_status.dart';
+export 'src/version.dart';

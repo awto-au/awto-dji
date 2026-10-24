@@ -1,0 +1,134 @@
+{
+  "apk_library": "tmp/apk/raw/lib/arm64-v8a/libGroudStation.so",
+  "table_va": "0x3d70",
+  "table_length": 21,
+  "table_sha256": "223dc119e52ee113040d6cdb17a5126e7384626a8986c9c9402cf6310dace7dd",
+  "roots": [
+    "firmware",
+    "tmp/air"
+  ],
+  "files_scanned": 678,
+  "bytes_scanned": 3352896788,
+  "matches": [
+    {
+      "path": "firmware/raw/C1/C1_FW_V01.05.0070.bin",
+      "offsets": [
+        "0x43dae0"
+      ],
+      "sha256": "3f8e56ad728bc6b69f0c01ba4666216aa5d6c8840f294f012796770ea134f9ba"
+    },
+    {
+      "path": "firmware/raw/C1/C1_FW_V01.05.0072",
+      "offsets": [
+        "0x441a58"
+      ],
+      "sha256": "6ef4368ceb654788fd41857efb0b0242eabb94824dd0c5d9811ee574b87d6913"
+    },
+    {
+      "path": "firmware/raw/C1/C1_FW_V01.05.0080.bin",
+      "offsets": [
+        "0x441a98"
+      ],
+      "sha256": "683b9d65f53b930c88851b5aad8e8406168333f8dfc4e41755a12f5be51c138c"
+    },
+    {
+      "path": "firmware/raw/C1/C1_FW_V01.06.0000.bin",
+      "offsets": [
+        "0x441a98"
+      ],
+      "sha256": "38de9e3fe0664fb43b85c11eabeed0c026dd15f80d402091ac68a0364f23d942"
+    },
+    {
+      "path": "firmware/raw/C1/C1_FW_v01.05.0071.bin",
+      "offsets": [
+        "0x43dae0"
+      ],
+      "sha256": "a9b9f74a3c6714aedaa227950c8969aaf3467594b42a1c4fb12bc7badfa2dc89"
+    },
+    {
+      "path": "firmware/raw/C1/C1_FW_v01.06.0001.bin",
+      "offsets": [
+        "0x443e56"
+      ],
+      "sha256": "e676b8f27ea240440fb9600897b63c74c905f6f21909b2c6226bcb33b9f1bcf7"
+    },
+    {
+      "path": "firmware/raw/C1/C1_FW_v01.07.0000.bin",
+      "offsets": [
+        "0x443e52"
+      ],
+      "sha256": "58c77969bf698fe4621d64e6a1ada67ddc9f06cff4350e86295641a8264dea5f"
+    },
+    {
+      "path": "firmware/raw/C1/C1_FW_v01.07.0002.bin",
+      "offsets": [
+        "0x440fda"
+      ],
+      "sha256": "edb391888b90da93a62261929b0ea53836333b86b6e9d82b253ead86191c64bb"
+    },
+    {
+      "path": "firmware/raw/C1/C1_FW_v01.07.0030.bin",
+      "offsets": [
+        "0x440fda"
+      ],
+      "sha256": "3b11e59d0ceb4024582614a4f58e51a587373091e3b68b28b4597bbbeff53d72"
+    },
+    {
+      "path": "firmware/raw/C1/C1_FW_v01.07.0040.bin",
+      "offsets": [
+        "0x440fda"
+      ],
+      "sha256": "26cc9d8a6bf3d6c052c85cd0936b845e22a218ce91659952941667be8e1d52e9"
+    },
+    {
+      "path": "firmware/raw/C1/C1_FW_v01.08.0000.bin",
+      "offsets": [
+        "0x443e56"
+      ],
+      "sha256": "93731eb085c749cf4726bd3f003fcb74425f38f254fba2f97f9c6a495d4c0618"
+    },
+    {
+      "path": "firmware/raw/C1/C1_FW_v01.09.0000.bin",
+      "offsets": [
+        "0x443e3e"
+      ],
+      "sha256": "d1c93a4153b191265c98a62f1c099c1ea4194c7c48d71b4257361186bd6baedf"
+    },
+    {
+      "path": "firmware/raw/C1/C1_v00.01.00.00_20161012.bin",
+      "offsets": [
+        "0x44dd6"
+      ],
+      "sha256": "1863c6e2c8bf70f38ac16a8f3c93550788306f0ec5fbb4713473d7ec4857c4ea"
+    },
+    {
+      "path": "firmware/raw/C1/C1_v00.01.00.01_20161021.bin",
+      "offsets": [
+        "0x44dda"
+      ],
+      "sha256": "23a105b3e2b7a88a768731b98947b3520a194cfb2cee7296675fb0249a4c4d1b"
+    },
+    {
+      "path": "firmware/raw/C1/C1_v00.01.00.01_20161104.bin",
+      "offsets": [
+        "0x42546"
+      ],
+      "sha256": "6ce8b8e7b8a205578abc3bd1dc8a601f4b9a7efee6a40ed3965e9512ea297040"
+    },
+    {
+      "path": "firmware/unpacked/C1_FW_V01.06.0000/C1_FW_V01.06.0000_m1601.bin",
+      "offsets": [
+        "0x10920"
+      ],
+      "sha256": "703d211d04bafa27f7c8fa95ec336d814440a7950740562bb28601bfdaa764a0"
+    },
+    {
+      "path": "firmware/unpacked/corpus_scan/C1/C1_FW_v01.07.0000_m1601.bin",
+      "offsets": [
+        "0x10920"
+      ],
+      "sha256": "703d211d04bafa27f7c8fa95ec336d814440a7950740562bb28601bfdaa764a0"
+    }
+  ],
+  "errors": []
+}

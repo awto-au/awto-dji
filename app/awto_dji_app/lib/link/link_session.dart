@@ -1,10 +1,25 @@
 import 'dart:async';
 import 'dart:collection';
+import 'dart:math' as math;
 
 import 'package:duml/duml.dart';
 import 'package:flutter/foundation.dart';
 
 import '../transport/link_transport.dart';
+
+/// Gap between packet arrivals over a window: mean interval, jitter (standard deviation of the
+/// interval) and the worst gap, in ms. Measured at chunk arrival on this device.
+class GapStats {
+  const GapStats(this.count, this.meanMs, this.jitterMs, this.maxMs);
+  final int count;
+  final double meanMs, jitterMs, maxMs;
+}
+
+/// Throughput over a window, KB/s.
+class ByteRates {
+  const ByteRates(this.duml, this.video, this.other);
+  final double duml, video, other;
+}
 
 /// One received frame, good or bad, for the packet log.
 class PacketLogEntry {
@@ -45,11 +60,20 @@ class LinkSession extends ChangeNotifier {
   bool _disposed = false;
 
   int bytesReceived = 0;
+  int dumlBytes = 0; // whole on-wire length of every CRC-valid packet
+  int get videoBytes => transport.videoBytes;
   int packetCount = 0;
   int crcErrorCount = 0;
   DateTime? lastPacketAt;
   DateTime? lastTelemetryAt;
   OsdGeneral? latestOsd;
+  RcSignalQuality? latestSignal;
+
+  /// Most recent `GetVersion` reply per replying device (`DumlPacket.senderType`,
+  /// e.g. [DeviceType.flightController]/[DeviceType.gimbal]/[DeviceType.camera]) -
+  /// see `link/diagnostics_commands.dart` for the request and `CommonVersion` (duml
+  /// package) for the decode.
+  final Map<int, CommonVersion> latestVersions = {};
   LinkState linkState = LinkState.disconnected;
 
   Stream<DumlPacket> get packets => _packets.stream;
@@ -97,14 +121,23 @@ class LinkSession extends ChangeNotifier {
 
   void _onBytes(Uint8List chunk) {
     bytesReceived += chunk.length;
+    debugPrint('[link] rx ${chunk.length}B total=$bytesReceived '
+        '${_hex(chunk, 32)}');
     final now = _clock();
+    final prev = lastPacketAt;
+    var gotPacket = false;
     for (final p in _framer.add(chunk)) {
+      gotPacket = true;
       packetCount++;
+      dumlBytes += p.wholeLength;
       lastPacketAt = now;
       _recent.add(now);
       final key = (p.cmdSet << 8) | p.cmdId;
       messageCounts[key] = (messageCounts[key] ?? 0) + 1;
       _addEntry(PacketLogEntry(now, p.encode(), packet: p));
+      debugPrint('[link] packet set=0x${p.cmdSet.toRadixString(16)} '
+          'id=0x${p.cmdId.toRadixString(16)} sender=${p.senderType} '
+          'receiver=${p.receiverType} ${_hex(p.encode(), 32)}');
       _packets.add(p);
       final osd = OsdGeneral.fromPacket(p);
       if (osd != null) {
@@ -112,13 +145,75 @@ class LinkSession extends ChangeNotifier {
         lastTelemetryAt = now;
         _telemetry.add(osd);
       }
+      final signal = RcSignalQuality.fromPacket(p);
+      if (signal != null) {
+        latestSignal = signal;
+      }
+      final version = CommonVersion.fromPacket(p);
+      if (version != null) {
+        latestVersions[p.senderType] = version;
+      }
+    }
+    if (gotPacket && prev != null) {
+      _gaps.add((now, now.difference(prev).inMilliseconds));
+      while (_gaps.isNotEmpty && now.difference(_gaps.first.$1) > _gapHistory) {
+        _gaps.removeFirst();
+      }
+    }
+    _samples.add((now, bytesReceived, dumlBytes, videoBytes));
+    while (_samples.length > 1 && now.difference(_samples.elementAt(1).$1) > _gapHistory) {
+      _samples.removeFirst();
     }
     _notify();
   }
 
+  final _samples = Queue<(DateTime, int, int, int)>(); // (time, total, duml, video) cumulative
+
+  /// Throughput in KB/s over the last [window], split into DUML, video and everything else.
+  ByteRates byteRates(Duration window, [DateTime? now]) {
+    final n = now ?? _clock();
+    if (_samples.isEmpty) return const ByteRates(0, 0, 0);
+    final cur = _samples.last;
+    var base = _samples.first;
+    for (final s in _samples) {
+      if (n.difference(s.$1) < window) break;
+      base = s;
+    }
+    final secs = n.difference(base.$1).inMilliseconds / 1000;
+    if (secs <= 0) return const ByteRates(0, 0, 0);
+    final duml = cur.$3 - base.$3;
+    final video = cur.$4 - base.$4;
+    final other = math.max(0, (cur.$2 - base.$2) - duml - video);
+    double kbps(int b) => b / secs / 1024;
+    return ByteRates(kbps(duml), kbps(video), kbps(other));
+  }
+
+  static const _gapHistory = Duration(minutes: 1);
+  final _gaps = Queue<(DateTime, int)>(); // (arrival, gap since previous packet in ms)
+
+  /// Arrival-gap stats over the last [window] (at most one minute is kept).
+  GapStats gapStats(Duration window, [DateTime? now]) {
+    final n = now ?? _clock();
+    final g = [
+      for (final (t, ms) in _gaps)
+        if (n.difference(t) <= window) ms
+    ];
+    if (g.isEmpty) return const GapStats(0, 0, 0, 0);
+    final mean = g.reduce((a, b) => a + b) / g.length;
+    final variance = g.map((x) => (x - mean) * (x - mean)).reduce((a, b) => a + b) / g.length;
+    return GapStats(g.length, mean, math.sqrt(variance), g.reduce(math.max).toDouble());
+  }
+
   void _onBad(Uint8List frame, String reason) {
     crcErrorCount = _framer.badFrames;
+    debugPrint('[link] bad frame ($reason) ${frame.length}B ${_hex(frame, 32)}');
     _addEntry(PacketLogEntry(_clock(), frame, error: reason));
+  }
+
+  static String _hex(Uint8List b, int max) {
+    final n = b.length > max ? max : b.length;
+    final s = b.sublist(0, n).map((x) => x.toRadixString(16).padLeft(2, '0')).join(' ');
+    return b.length > max ? '$s...' : s;
   }
 
   void _addEntry(PacketLogEntry e) {

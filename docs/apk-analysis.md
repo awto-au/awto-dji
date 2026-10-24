@@ -5,13 +5,24 @@ Reproduce: `python3 -I scripts/re/apk_extract.py` (log `tmp/logs/apk_extract.log
 Tags: **V** verified (seen in APK file) · **I** inferred · **U** unknown / not obtainable here.
 Commands table: `data/apk-duml-commands.tsv`.
 
-## 0. Hard limit: the Java code is packed (V)
+## 0. The Java code is packed - scope decision, revised 2026-10-23 (V)
 - Manifest `application` + `appComponentFactory` = `com.AppGuard.AppGuard.*` (V). Packer/anti-tamper stub.
-- `classes.dex` header defines 1623 classes, all `com.amap`, `com.autonavi`, `com.AppGuard` (V); jadx 1.5.6 output = third-party only.
-- ~37 MB of the 39 MB file is payload outside the dex tables. String pool of that payload is readable (class/resource names, constants); bytecode is not (V).
-- Unpacking it = anti-tamper analysis: **declined** (scope). Consequence: no method bodies, no numeric constants from Java.
-- All "Java layer" answers below come from: manifest, `res/xml`, class names, string constants, native-lib strings/exports.
-- Method-level facts (cmd ids, upgrade order, block size, timeouts) are **U** unless confirmed elsewhere (repo m0900 work, public dissectors, or a live capture).
+- `classes.dex` header defines 1623 classes, all `com.amap`, `com.autonavi`, `com.AppGuard` (V); static jadx 1.5.6 output on the on-disk APK = third-party only.
+- ~37 MB of the 39 MB file is payload outside the dex tables. String pool of that payload is readable (class/resource names, constants); static bytecode is not (V).
+- **Revised scope decision (operator, 2026-10-23):** `scripts/re/apk_dynamic_unpack.py` dumps the
+  real dex from a *running* instance of the app (Frida dexdump, with a manual classloader-walk
+  and `/proc/pid/mem` scan as fallbacks) - this does defeat AppGuard's static packing, since its
+  entire purpose is to hide the real bytecode until runtime. Explicitly authorised, bounded: the
+  dynamically-unpacked source (`tmp/apk/dynamic/decompiled/`, git-ignored, never committed - see
+  `.gitignore`) is read **only to extract protocol facts** (numeric cmdset/cmdid values, field
+  layouts, framing rules) for documentation and for this project's own independently-written code
+  (`app/packages/duml`, docs). DJI's actual code/expression is never copied, derived-from, or
+  committed - standard interoperability clean-room boundary. Supersedes the original "declined"
+  note below, kept for history.
+- Original note (2026-10-23, earlier in the session, now superseded): "Unpacking it = anti-tamper
+  analysis: declined (scope). Consequence: no method bodies, no numeric constants from Java."
+- Method-level facts (cmd ids, upgrade order, block size, timeouts) not yet re-extracted under the
+  revised scope are still **U** below until specifically updated with a V/dynamic-unpack citation.
 
 ## 1. USB / AOA connection
 - Accessory filter `res/xml/accessory_filter.xml`: `manufacturer="DJI" model="T600"` only (V). No version/description/uri/serial in the filter (V).
@@ -33,7 +44,7 @@ Commands table: `data/apk-duml-commands.tsv`.
 ## 2. DUML layer (as implemented in the app)
 - Enums in `dji.midware.data.config.P3`: `DataConfig$CMDTYPE`, `DataConfig$NEEDACK`, `DataConfig$EncryptType`, `DeviceType`, `CmdSet`, `ProductType` (V). Same field set as `packet.dart` (cmd-type/response, ack, encrypt, device types, cmd set) (I). Numeric values: **U**.
 - Native `libGroudStation.so` (`dji.midware.natives.GroudStation`) exports JNI `CalcChecksumCrc8/16`, `VerifyChecksumCrc8/16`, `getCRCFromData`, `checkCRCForData`, table `wCRC_Table` (V names). CRC seeds: not re-extracted here; repo CRCs already match a captured packet (see `app/README.md`).
-- Same lib has `encodeData/decodeData`, `encryptData/deEncryptData` using a TEA-style routine (V names). Exists; **not analysed** (encryption helper, scope). Whether the EncryptType field is ever non-zero for P3 control traffic: **U**.
+- Same lib has `encodeData/decodeData`, `encryptData/deEncryptData` using a TEA-style routine (V names). These are distinct from the **verified SIMPLE XOR path** through `native_rcDataDeal` / `simple_stream_filter`: bundled table plus packet sequence bytes, with no per-pair input identified. See [duml-protection.md](duml-protection.md) for addresses, provenance and limits. Whether SIMPLE is used on the owner's P3 link remains **U**.
 - Sender/receiver model: `DeviceType` enum (V); app = type 2, FC = 3, gimbal = 4, camera = 1, RC = 6, per `packet.dart`/`dji-firmware-tools` (I). m0900 routes by receiver type (docs/dataflow.md, V m0900).
 - Sequence numbers, ack handling, timeouts, retry: classes `DataBase` (`dji.midware.data.manager.P3`), `DataBase$DATA_TYPE`, `ServiceManager` (V names). Behaviour: **U**. Public precedent: request carries seq, ack matched by seq+set+id with per-request timeout and retry count (I, not from this APK).
 - `DJISTLVPackFactory` / `dji.midware.tlv.*` = a second, TLV-framed container (V names); use: **U** (likely newer products).
@@ -57,7 +68,7 @@ Commands table: `data/apk-duml-commands.tsv`.
 - Video path: accessory read -> `UsbAccessoryService.onGetBody` (log strings: `dataType==22346`, modes default/dual/single, `putVideoBuffer`, `toTransVideoData(need packed / no need to pack)`) -> `DJIVideoPackManager.parseData` (JNI callback target in `libdjivideo.so`) -> decoder `dji.midware.media.DJIVideoDecoder` (V names/strings).
 - `dataType` 22346 (0x574A) is the video data type in that log line (V string; meaning of the value I).
 - `libdjivideo.so` (V from strings/exports): native threads `native_startRecvThread/startParseThread`, queues, `native_getDJIAVPaserHeaderMagic` (so the stream has a DJI AV header with a magic; value **U**, needs arm64 disassembly), `native_setDecodeMode/DecoderType/DataMode`, `native_setIsNeedPacked`, `native_transferVideoData`, FFmpeg `av_parser_*` + H.264 SPS/PPS/slice-header parsing, `native_putVideoStreamData`, live-stream push, MP4 muxer, x264 transcode.
-- Net effect: native lib splits the AV-header-framed payload into H.264 access units, tracks `spsFlag/ppsFlag`, hands NALs to MediaCodec (I). Annex-B vs length-prefixed: **U**. I-frame request exists: `DataCameraRequestForIFrame` (V name).
+- Net effect: native lib splits the AV-header-framed payload into H.264 access units, tracks `spsFlag/ppsFlag`, hands NALs to MediaCodec (I). Annex-B vs length-prefixed: **V, Annex-B** - confirmed from a real capture, not inferred: `docs/aoa-live-test-2026-10-23.md` found 262/265 start-code occurrences (`00 00 00 01`/`00 00 01`) with real NAL type patterns (type 1 coded-slice, type 9 AUD) in the AOA byte stream, interleaved with DUML frames on the same raw pipe with no channel-ID header - the two framing patterns are structurally distinct enough to disambiguate without any DJI-specific demux logic. I-frame request exists: `DataCameraRequestForIFrame` (V name).
 - `libvideoLib.so` (JNI `dji.pilot2.videolib.VideoLibWrapper`): playback/thumbnail/metadata/YUV scale/filter for files, not the live link (V exports). `libffmpeg.so` = codec library (V).
 - `LB2VideoController` is Lightbridge 2 (Inspire 2/P4-era) (I); P3 uses the default mode (I).
 
@@ -125,6 +136,36 @@ sequenceDiagram
 Operator authorized unpacking the AppGuard packer ("we can remove appguard - there is no
 issue"), lifting the restriction noted above for the AppGuard payload specifically. Method,
 device state, findings and remaining scope exclusions below.
+
+**Second pass, broadened scan**: the first carve (5 regions, `rw-p` only) missed the
+legacy-P3 DUML layer. Scanning `r-xp`/`r--p` regions too (packer mmaps the real payload
+read-only/read-exec from a backing file rather than keeping it in anonymous `rw-p` memory)
+and bounding each carved dex by its own header `file_size` (not "to end of region") found 82
+properly-sized dex files (169 MB total), decompiling to 31,142 classes with only 113
+per-class errors. This recovered the real legacy-P3 DUML package tree:
+`dji.midware.data.config.P3.{CmdSet,DeviceType,DataConfig,...}`,
+`dji.midware.data.model.P3.Data*` (hundreds of per-command classes),
+`dji.midware.data.manager.P3.{DataBase,DJIProductManager,...}`, `dji.midware.usb.P3.*`.
+
+**`CmdSet` and `DeviceType` numeric values - verified, extracted to
+`docs/data/apk-cmdset-devicetype.tsv`**: `CmdSet` 0-8 are COMMON/SPECIAL/CAMERA/FLYC/GIMBAL/
+CENTER/RC/WIFI/DM368 (enum continues past DM368 in the source; not yet fully extracted).
+`DeviceType` (the DUML receiver-type byte) is the standout cross-check: **`OFDM = 9`
+matches exactly** what `docs/symbols/m0900_V01.11.0020.tsv` independently derived from
+disassembly (DUML keys `0x0913`/`0x0914`, receiver type 9) in an earlier session, before
+this APK was ever opened; **`FPGA = 19` (0x13) and `FPGA_G = 20` (0x14) match exactly** the air (m0900,
+`docs/fpga-upgrade-path.md`) and ground (m1400, `docs/ground-upgrade-path.md`) FPGA-upgrade
+receiver types found independently by static firmware RE. This is a real, independent
+cross-validation of the firmware-side DUML receiver-type reverse engineering against DJI's
+own app source - not a coincidence at this specificity.
+
+Each `CmdSet` carries a nested `CmdIdType` enum with real numeric command IDs and payload
+model classes (e.g. `RC.CmdIdType.SetConnectMaster(12)` / `GetConnectMaster(13)` - matches
+`docs/id-entry-point.md`'s "Connected Master Id Set/Get" m1400 proof exactly, including the
++1 Set/Get pairing pattern). `docs/data/apk-duml-commands.tsv`'s "?" numeric ids can now be
+filled from this source class by class; not yet done here (large task, left for a follow-up
+pass - the raw decompiled `.java` is not committed, per the no-DJI-derivative-code
+convention, so re-extraction needs a fresh unpack run against `scripts/re/apk_dynamic_unpack.py`).
 
 **Method**: `scripts/re/apk_dynamic_unpack.py --device <serial>` on a real, dedicated-for-work,
 rooted (Magisk) Android device. frida-server pushed/run; `frida-dexdump` dumped ~62 resident

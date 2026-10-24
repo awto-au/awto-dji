@@ -1,0 +1,173 @@
+
+=== 2026-10-24T11:53:02 /dev/ttyACM11 --listen 45 --heartbeat ===
+opened /dev/ttyACM11 115200 8N1 RTS=1 DTR=0
+listening 45.0s with 0.5 s heartbeat ...
+
+=== 2026-10-24T11:53:29 /dev/ttyACM11 --listen 20 --heartbeat ===
+opened /dev/ttyACM11 115200 8N1 RTS=1 DTR=0
+listening 20.0s with 0.5 s heartbeat ...
+0 raw bytes received
+
+=== 2026-10-24T12:09:22 /dev/ttyACM11 --receiver 1400 --cmd 0:0x01 --cmd 0:0xff --cmd 0:0x51 --payload 04 --wait 1.0 ===
+opened /dev/ttyACM11 115200 8N1 RTS=1 DTR=0
+> set=00 id=01  550e04660a0e00274000010470e8
+  ACK/reply snd=0e rcv=0a seq=2700 set=00 id=01 crc=ok payload=0010474c333030430000000000000000000007010103001c18054302000000  ascii='..GL300C..................C....'
+> set=00 id=ff  550e04660a0e01274000ff04430a
+  ACK/reply snd=0e rcv=0a seq=2701 set=00 id=ff crc=ok payload=574d3332302041375f4c5043312032303137303832382f303000  ascii='WM320 A7_LPC1 20170828/00.'
+> set=00 id=51  550e04660a0e022740005104d133
+  (no reply)
+83 raw bytes received
+
+=== 2026-10-24T12:09:40 /dev/ttyACM11 --receiver 0300 --cmd 0:0x01 --cmd 0:0xff --cmd 0:0x51 --payload 04 --wait 1.0 ===
+opened /dev/ttyACM11 115200 8N1 RTS=1 DTR=0
+> set=00 id=01  550e04660a030027400001043fc6
+  (no reply)
+> set=00 id=ff  550e04660a0301274000ff040c24
+  (no reply)
+> set=00 id=51  550e04660a030227400051049e1d
+  (no reply)
+0 raw bytes received
+
+=== 2026-10-24T12:09:47 /dev/ttyACM11 --receiver 1400 --cmd 0:0x0c --wait 1.0 ===
+opened /dev/ttyACM11 115200 8N1 RTS=1 DTR=0
+> set=00 id=0c  550d04330a0e002740000c7f00
+  ACK/reply snd=0e rcv=0a seq=2700 set=00 id=0c crc=ok payload=e30000000000
+19 raw bytes received
+
+=== 2026-10-24T12:09:58 /dev/ttyACM11 --receiver 0100 --cmd 0:0x0c --wait 0.6 ===
+opened /dev/ttyACM11 115200 8N1 RTS=1 DTR=0
+> set=00 id=0c  550d04330a01002740000cf63d
+  (no reply)
+0 raw bytes received
+
+=== 2026-10-24T12:09:59 /dev/ttyACM11 --receiver 0300 --cmd 0:0x0c --wait 0.6 ===
+opened /dev/ttyACM11 115200 8N1 RTS=1 DTR=0
+> set=00 id=0c  550d04330a03002740000ca035
+  (no reply)
+0 raw bytes received
+
+=== 2026-10-24T12:09:59 /dev/ttyACM11 --receiver 0400 --cmd 0:0x0c --wait 0.6 ===
+opened /dev/ttyACM11 115200 8N1 RTS=1 DTR=0
+> set=00 id=0c  550d04330a04002740000c7129
+  (no reply)
+0 raw bytes received
+
+=== 2026-10-24T12:10:00 /dev/ttyACM11 --receiver 0500 --cmd 0:0x0c --wait 0.6 ===
+opened /dev/ttyACM11 115200 8N1 RTS=1 DTR=0
+> set=00 id=0c  550d04330a05002740000c5a2d
+  (no reply)
+0 raw bytes received
+
+=== 2026-10-24T12:10:01 /dev/ttyACM11 --receiver 0600 --cmd 0:0x0c --wait 0.6 ===
+opened /dev/ttyACM11 115200 8N1 RTS=1 DTR=0
+> set=00 id=0c  550d04330a06002740000c2721
+  (no reply)
+0 raw bytes received
+
+=== 2026-10-24T12:10:01 /dev/ttyACM11 --receiver 2300 --cmd 0:0x0c --wait 0.6 ===
+opened /dev/ttyACM11 115200 8N1 RTS=1 DTR=0
+> set=00 id=0c  550d04330a17002740000cbc67
+  (no reply)
+0 raw bytes received
+
+=== 2026-10-24T12:10:02 /dev/ttyACM11 --receiver 2400 --cmd 0:0x0c --wait 0.6 ===
+opened /dev/ttyACM11 115200 8N1 RTS=1 DTR=0
+> set=00 id=0c  550d04330a18002740000c355a
+  (no reply)
+0 raw bytes received
+
+=== 2026-10-24T12:10:03 /dev/ttyACM11 --receiver 4300 --cmd 0:0x0c --wait 0.6 ===
+opened /dev/ttyACM11 115200 8N1 RTS=1 DTR=0
+> set=00 id=0c  550d04330a2b002740000c9891
+  (no reply)
+0 raw bytes received
+
+=== 2026-10-24T12:10:07 /dev/ttyACM11 --receiver 1400 --cmd 0:0x0c --wait 0.6 ===
+opened /dev/ttyACM11 115200 8N1 RTS=1 DTR=0
+> set=00 id=0c  550d04330a0e002740000c7f00
+  ACK/reply snd=0e rcv=0a seq=2700 set=00 id=0c crc=ok payload=e30000000000
+19 raw bytes received
+
+=== 2026-10-24T12:16:08 /dev/ttyACM11 --receiver 1400 --cmd 0:0x51 --payload 01 --wait 0.8 ===
+opened /dev/ttyACM11 115200 8N1 RTS=1 DTR=0
+> set=00 id=51  550e04660a0e0027400051012a6c
+  (no reply)
+0 raw bytes received
+
+=== 2026-10-24T12:16:09 /dev/ttyACM11 --receiver 1400 --cmd 0:0x51 --payload 02 --wait 0.8 ===
+opened /dev/ttyACM11 115200 8N1 RTS=1 DTR=0
+> set=00 id=51  550e04660a0e002740005102b15e
+  (no reply)
+0 raw bytes received
+
+=== 2026-10-24T12:16:10 /dev/ttyACM11 --receiver 1400 --cmd 0:0x51 --payload 03 --wait 0.8 ===
+opened /dev/ttyACM11 115200 8N1 RTS=1 DTR=0
+> set=00 id=51  550e04660a0e002740005103384f
+  (no reply)
+0 raw bytes received
+
+=== 2026-10-24T12:16:10 /dev/ttyACM11 --receiver 1400 --cmd 6:7 --cmd 6:9 --cmd 6:0xd --wait 0.8 ===
+opened /dev/ttyACM11 115200 8N1 RTS=1 DTR=0
+> set=06 id=07  550d04330a0e00274006077cea
+  ACK/reply snd=0e rcv=0a seq=2700 set=06 id=07 crc=ok payload=00
+> set=06 id=09  550d04330a0e01274006094608
+  (no reply)
+> set=06 id=0d  550d04330a0e022740060dae53
+  (no reply)
+14 raw bytes received
+
+=== 2026-10-24T12:16:56 /dev/ttyACM11 --sender 1400 --receiver 1400 --cmd 0:0x0c --wait 0.8 ===
+opened /dev/ttyACM11 115200 8N1 RTS=1 DTR=0
+> set=00 id=0c  550d04330e0e002740000c096f
+  (no reply)
+0 raw bytes received
+
+=== 2026-10-24T12:16:56 /dev/ttyACM11 --receiver 0800 --cmd 0:0x0c --wait 0.5 ===
+opened /dev/ttyACM11 115200 8N1 RTS=1 DTR=0
+> set=00 id=0c  550d04330a08002740000c8518
+  (no reply)
+0 raw bytes received
+
+=== 2026-10-24T12:16:57 /dev/ttyACM11 --receiver 0b00 --cmd 0:0x0c --wait 0.5 ===
+opened /dev/ttyACM11 115200 8N1 RTS=1 DTR=0
+
+=== 2026-10-24T12:16:57 /dev/ttyACM11 --receiver 0d00 --cmd 0:0x0c --wait 0.5 ===
+opened /dev/ttyACM11 115200 8N1 RTS=1 DTR=0
+
+=== 2026-10-24T12:16:57 /dev/ttyACM11 --receiver 1100 --cmd 0:0x0c --wait 0.5 ===
+opened /dev/ttyACM11 115200 8N1 RTS=1 DTR=0
+> set=00 id=0c  550d04330a0b002740000cf814
+  (no reply)
+0 raw bytes received
+
+=== 2026-10-24T12:16:58 /dev/ttyACM11 --receiver 1200 --cmd 0:0x0c --wait 0.5 ===
+opened /dev/ttyACM11 115200 8N1 RTS=1 DTR=0
+> set=00 id=0c  550d04330a0c002740000c2908
+  (no reply)
+0 raw bytes received
+
+=== 2026-10-24T12:16:58 /dev/ttyACM11 --receiver 0900 --cmd 0:0x0c --wait 0.5 ===
+opened /dev/ttyACM11 115200 8N1 RTS=1 DTR=0
+> set=00 id=0c  550d04330a09002740000cae1c
+  (no reply)
+0 raw bytes received
+
+=== 2026-10-24T12:16:59 /dev/ttyACM11 --receiver 0a00 --cmd 0:0x0c --wait 0.5 ===
+opened /dev/ttyACM11 115200 8N1 RTS=1 DTR=0
+
+=== 2026-10-24T12:16:59 /dev/ttyACM11 --receiver 2000 --cmd 0:0x0c --wait 0.5 ===
+opened /dev/ttyACM11 115200 8N1 RTS=1 DTR=0
+> set=00 id=0c  550d04330a14002740000cc16b
+  ACK/reply snd=14 rcv=0a seq=2700 set=00 id=0c crc=ok payload=e30000000000
+19 raw bytes received
+
+=== 2026-10-24T12:17:00 /dev/ttyACM11 --receiver 0e20 --cmd 0:0x0c --wait 0.5 ===
+opened /dev/ttyACM11 115200 8N1 RTS=1 DTR=0
+
+=== 2026-10-24T12:17:47 /dev/ttyACM11 --receiver 2000 --cmd 0:0x01 --cmd 0:0xff --wait 0.8 ===
+opened /dev/ttyACM11 115200 8N1 RTS=1 DTR=0
+> set=00 id=01  550d04330a14002740000124b0
+  ACK/reply snd=14 rcv=0a seq=2700 set=00 id=01 crc=ok payload=001000000000000000000000000000000000fefffffffeffffff0100000000
+> set=00 id=ff  550d04330a1401274000ff91a5
+  (no reply)
+44 raw bytes received

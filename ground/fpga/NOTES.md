@@ -1,0 +1,7 @@
+# ground/fpga — VOID (2026-10-24)
+
+- The earlier "m2001 = Cyclone V e50f, decoded by Mistral against 5CEBA4U19C8" is wrong (pluribus #114). The decode was noise from a preamble-stripping bug; route counts (56,337 routes / 1,832 LABs / 31 DSP / 224 pins) are not a quality check.
+- m2001 is a Cyclone III/IV-format stream: 0x20 FF preamble, 43-byte `.rbf` header with valid header CRC16, best match Cyclone IV GX EP4CGX150 (moderate: one header bit separates it from EP4CGX110). Payload ~2.12 MB, probably compressed, not decoded. Evidence: pluribus `docs/cyclonev-compressed-rbf.md`, `scripts/fpga_family_probe.py`, `scripts/fpga_family_compare.py`.
+- Everything in `void-2026-10-24/` (pins.tsv, io_table.tsv, hypotheses.tsv, classify.py, board.toml, NOTES.old.md) derives from that noise: the DDR3/HMC/PLLOUT/AD9363-CMOS pin guesses and the board-trace ranking have no evidence behind them. Kept for history only; do not build on them.
+- m2000/m2002 are Cyclone V streams (0x80 preamble, nibble-shifted sync), ENCRYPTED (strong circumstantial; option-bit meaning inferred; may be a producer-side keyed scramble rather than Altera AES). Air m1900 is Cyclone V e50f-family by header/PRAM CRC with the same verdict: CRAM indistinguishable from uniform random (entropy 7.9999), PRAM cleartext with valid CRCs. See pluribus `docs/cyclonev-compressed-rbf.md`, "Encrypted bitstreams".
+- Ground pin/function knowledge needs board tracing or a decodable stream; the pluribus Cyclone V lifter is validated only on Quartus-built corpus designs.

@@ -22,6 +22,36 @@ void main() {
     });
   });
 
+  group('cross-model validation', () {
+    // Real DUML packets from OTHER DJI aircraft (not this project's own Phantom 3
+    // captures) - embedded as dissector test vectors in o-gs/dji-firmware-tools'
+    // tests/test_comm_dissector.py (pckt_mavic_air_fcc/pckt_mini_2_fcc), found
+    // 2026-10-24. Independent confirmation that this codec's CRC8/CRC16/framing is
+    // correct across models, not just tuned to our own one aircraft's traffic.
+    final mavicAir = Uint8List.fromList([
+      0x55, 0x17, 0x04, 0x38, 0x02, 0x0e, 0x1d, 0x00, 0x40, 0x07, 0x30, 0x55, 0x53,
+      0x00, 0x00, 0x55, 0x53, 0x00, 0x00, 0x01, 0x00, 0xfe, 0x5d,
+    ]);
+    final mini2 = Uint8List.fromList([
+      0x55, 0x18, 0x04, 0x20, 0x02, 0x09, 0x00, 0x00, 0x40, 0x09, 0x27, 0x00, 0x02,
+      0x48, 0x00, 0xff, 0xff, 0x02, 0x00, 0x00, 0x00, 0x00, 0x81, 0x1f,
+    ]);
+
+    test('Mavic Air packet (SetWiFiCountryCode, cmdset 0x07/0x30) passes our CRC', () {
+      expect(headerCrc8(mavicAir), equals(mavicAir[3]));
+      final crc = packetCrc16(mavicAir, mavicAir.length);
+      expect(crc & 0xFF, equals(mavicAir[mavicAir.length - 2]));
+      expect((crc >> 8) & 0xFF, equals(mavicAir[mavicAir.length - 1]));
+    });
+
+    test('Mini 2 packet (SetSdrAssitantWrite, cmdset 0x09/0x27) passes our CRC', () {
+      expect(headerCrc8(mini2), equals(mini2[3]));
+      final crc = packetCrc16(mini2, mini2.length);
+      expect(crc & 0xFF, equals(mini2[mini2.length - 2]));
+      expect((crc >> 8) & 0xFF, equals(mini2[mini2.length - 1]));
+    });
+  });
+
   group('packet build', () {
     test('reproduces the captured RC stick-request packet byte-for-byte', () {
       final p = DumlPacket(
@@ -153,6 +183,52 @@ void main() {
         cmdId: 0x01,
       );
       expect(OsdGeneral.fromPacket(p), isNull);
+    });
+
+    test('also matches the hdLink/OSD 0x09/0x01 alias of the same struct', () {
+      final p = DumlPacket(
+        senderType: DeviceType.flightController,
+        receiverType: DeviceType.app,
+        sequence: 1,
+        cmdSet: CmdSet.hdLink,
+        cmdId: 0x01,
+        payload: Uint8List(30),
+      );
+      expect(OsdGeneral.matches(p), isTrue);
+    });
+
+    test('decodes motor-arming interlock, motor-fail cause and IMU reason', () {
+      final payload = Uint8List(60);
+      final d = ByteData.sublistView(payload);
+      // flags int32 @32: bit3 (motorUp)=1, bit27 (motorBlocked)=1, bit16 (compass)=1.
+      d.setUint32(32, (1 << 3) | (1 << 27) | (1 << 16), Endian.little);
+      d.setUint8(38, 89); // MotorStartFailedCause.gimbalDisorder
+      d.setUint8(47, 26); // flycVersion >= 26 -> byte38 read directly
+      d.setUint8(49, 1); // ImuInitFailReason.colletingData
+
+      final osd = OsdGeneral.fromPayload(payload);
+      expect(osd.flycVersion, 26);
+      expect(osd.motorUp, isTrue);
+      expect(osd.motorBlocked, isTrue);
+      expect(osd.compassError, isTrue);
+      expect(osd.motorFailedCause, MotorStartFailedCause.gimbalDisorder);
+      expect(osd.imuInitFailReason, ImuInitFailReason.colletingData);
+    });
+
+    test('a too-short payload leaves the new fields null, not a crash', () {
+      final osd = OsdGeneral.fromPayload(Uint8List(30));
+      expect(osd.flycVersion, isNull);
+      expect(osd.motorUp, isNull);
+      expect(osd.motorFailedCause, isNull);
+      expect(osd.imuInitFailReason, isNull);
+    });
+
+    test('REMOTE_USB_CONNECTED range (200-255) resolves via MotorStartFailedCause.find',
+        () {
+      expect(MotorStartFailedCause.find(200), MotorStartFailedCause.remoteUsbConnected);
+      expect(MotorStartFailedCause.find(255), MotorStartFailedCause.remoteUsbConnected);
+      expect(MotorStartFailedCause.find(199), isNot(MotorStartFailedCause.remoteUsbConnected));
+      expect(MotorStartFailedCause.find(9999), MotorStartFailedCause.other);
     });
   });
 }

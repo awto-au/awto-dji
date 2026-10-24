@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'dart:typed_data';
 
+import 'package:flutter/foundation.dart';
+
 enum LinkState { disconnected, connecting, connected, failed }
 
 /// Raw byte pipe to the aircraft link. No protocol logic lives here.
@@ -16,8 +18,11 @@ abstract class LinkTransport {
   Future<void> connect();
   Future<void> disconnect();
 
-  /// Raw write. Read-only transports reject it; [LinkSession] never calls it.
+  /// Raw write to the device. Transports with no device (simulated, replay) reject it.
   Future<void> write(Uint8List data);
+
+  /// Bytes of H.264 NAL units carried on the same pipe as DUML (0 if the transport has none).
+  int get videoBytes;
 }
 
 /// Shared stream/state plumbing for the concrete transports.
@@ -26,6 +31,9 @@ abstract class BaseTransport implements LinkTransport {
   final _state = StreamController<LinkState>.broadcast();
   LinkState _current = LinkState.disconnected;
   String? _error;
+
+  @override
+  int videoBytes = 0;
 
   @override
   LinkState get currentState => _current;
@@ -43,12 +51,13 @@ abstract class BaseTransport implements LinkTransport {
   void setState(LinkState s, {String? error}) {
     _current = s;
     _error = error;
+    debugPrint('[transport:$name] state=$s${error != null ? ' error=$error' : ''}');
     if (!_state.isClosed) _state.add(s);
   }
 
   @override
   Future<void> write(Uint8List data) =>
-      Future.error(UnsupportedError('$name is read-only'));
+      Future.error(UnsupportedError('$name has no device to write to'));
 
   Future<void> dispose() async {
     await disconnect();

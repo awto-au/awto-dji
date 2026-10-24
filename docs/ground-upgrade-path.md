@@ -118,7 +118,7 @@ Air-side counterpart: `docs/fpga-upgrade-path.md`, `docs/fpga-bringup.md`.
 - `m1600` 01.03.0256: ".ini: IG810 LB2_68013_RX". 2750 B, starts `C2 47 05 31 21`: Cypress FX2 (68013) EEPROM/boot load image (inferred from the C2 header).
 - `m1601` 02.00.0006: ".ini: IG810 LB2_CY2014_RX". Starts `43 59 1C B0`: "CY" Cypress FX3 boot image signature, ARM code follows (inferred part: FX3).
 - `m2000/m2001/m2002` 01.00.2107 / 01.01.2107 / 01.02.2109: ground FPGA config images, board models 00/01/02, each 8 MiB padded with 0xFF
-  (payload from offset `0x80`/`0x20`/`0x80`, ends at `0x470325`/`0x2058f0`/`0x49416c`). `m2001.depack.bin` is the de-packed Cyclone V bitstream
+  (payload from offset `0x80`/`0x20`/`0x80`, ends at `0x470325`/`0x2058f0`/`0x49416c`). m2000/m2002 are Cyclone V streams (encrypted); m2001 is Cyclone III/IV-format (best match EP4CGX150), payload not decoded
   (see `docs/fpga-images.md`). 8 MiB = serial config flash sized (inferred, flash part unknown).
 
 ## Ground vs air (m1400 vs m0900)

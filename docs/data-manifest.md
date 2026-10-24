@@ -23,7 +23,7 @@ Unpack with dji-firmware-tools `dji_xv4_fwcon.py` → per-module `.bin`. Key mod
 |---|---|---|---|
 | `P3X_FW_V01.11.0020_m0900.bin` | `72156b4b18e8db4c35c74cf2e8ae90d216fd260cdb5b508087840a8d7313fe6d` | 75,796 | air radio MCU (STM32F103) |
 | `c1_m1400.bin` | `43bc7d6cb9f9c916dcfee0146378a3a6c823d0c65ac9613ca5adecae25f9d93f` | 155,304 | ground radio MCU (LPC1765) — all MCU proofs are against this |
-| `c1_m2001.bin` | `b6cc5e96f12446b12d7d384a6b873cf29653fb0ac34353442124b8480f9a73ca` | 8,388,608 | ground Lightbridge FPGA (Cyclone-V) bitstream container |
+| `c1_m2001.bin` | `b6cc5e96f12446b12d7d384a6b873cf29653fb0ac34353442124b8480f9a73ca` | 8,388,608 | ground Lightbridge FPGA container (Cyclone III/IV-format payload; best match EP4CGX150) |
 
 ## App (DJI GO) — DJI copyright, not stored
 
@@ -39,20 +39,14 @@ v4.3.64 (2026-10-23): official DJI download page (dji.com Download Center -> ser
 
 | Tool | Source | Commit used |
 |---|---|---|
-| Project Mistral (Cyclone-V bitstream RE) | github.com/Ravenslofty/mistral | `d509238a203aadbb76291ab06543a401df91cf54` |
+| Project Mistral (Cyclone-V bitstream RE; not applicable to m2001) | github.com/Ravenslofty/mistral | `d509238a203aadbb76291ab06543a401df91cf54` |
 | dji-firmware-tools (unpack + DUML dissector) | github.com/o-gs/dji-firmware-tools | `195692263c2684cf1ddc4995f2736be6c0fb135e` |
 | Flutter SDK | flutter.dev (install, don't vendor) | bundled Dart used for `dart test` |
 | Renode | github.com/renode/renode | build **from source** — see `renode-task.md` |
 
 ## Derived artifacts (also not stored — reproducible)
 
-`m2001.bt` (Mistral decompile, ~11.6 MB) and `routes.txt` (~56k lines) are **derivative works
-of DJI's bitstream**, so they are not committed. Regenerate:
+No FPGA-derived artifacts are kept: the earlier `m2001.bt` / `routes.txt` came from a void decode (pluribus #114). Do not regenerate them.
 
-```
-mistral-cv decomp 5CEBA4U19C8 m2001.depack.bin m2001.bt
-mistral-cv routes 5CEBA4U19C8 m2001.depack.bin > routes.txt
-```
-
-The analysis scripts that consume them are in `scripts/fpga/`. Every doc cites exact offsets
+Scripts in `scripts/fpga/` that consumed them are void. Every doc cites exact offsets
 so results can be re-derived against your own verified unpack.

@@ -1,0 +1,357 @@
+cmdset_value	cmdset_label	cmdid_value	name	status
+0	General	116	DataLocker	apk_only
+0	General	204	CmdNeedEncrypt	apk_only
+0	General	0	Ping	dissector_only
+0	General	2	Push Param Set	dissector_only
+0	General	3	Push Param Get	dissector_only
+0	General	4	Push Param Start	dissector_only
+0	General	6	Multi Param Get	dissector_only
+0	General	13	Set Device Version	dissector_only
+0	General	16	Set SDK Std Msgs Frequency	dissector_only
+0	General	32	File List	dissector_only
+0	General	33	File Info	dissector_only
+0	General	48	Encrypt Config	dissector_only
+0	General	51	MFi Cert	dissector_only
+0	General	69	Sleep Control	dissector_only
+0	General	70	Shutdown Notification	dissector_only
+0	General	72	LED Control	dissector_only
+0	General	75	Get Date/Time	dissector_only
+0	General	76	Get Module Sys Status	dissector_only
+0	General	77	Set RT	dissector_only
+0	General	78	Get RT	dissector_only
+0	General	80	Set Serial Number	dissector_only
+0	General	84	Get Temperature Info	dissector_only
+0	General	85	Get Alive Time	dissector_only
+0	General	86	Over Temperature	dissector_only
+0	General	87	Send Network Info	dissector_only
+0	General	88	Time Sync	dissector_only
+0	General	89	Test Mode	dissector_only
+0	General	92	UAV Fly Info	dissector_only
+0	General	96	Auto Test Info	dissector_only
+0	General	98	Get Product Newest Ver	dissector_only
+0	General	239	Send Reserved Key	dissector_only
+0	General	242	Log Control Global	dissector_only
+0	General	243	Log Control Module	dissector_only
+0	General	245	Test Stop	dissector_only
+0	General	246	Test Query Result	dissector_only
+0	General	247	Push Test Result	dissector_only
+0	General	248	Get Metadata	dissector_only
+0	General	250	Log Control	dissector_only
+0	General	252	Selftest State Count	dissector_only
+0	General	253	Dump Frame Buffer	dissector_only
+0	General	254	Self Define	dissector_only
+1	Special	0	Sdk Ctrl Mode Open/Close Nav	dissector_only
+1	Special	4	New Special Remote Control	dissector_only
+1	Special	5	SDK Ctrl Mode Arm/Disarm	dissector_only
+1	Special	26	SDK Ctrl Gimbal Speed Ctrl	dissector_only
+1	Special	27	SDK Ctrl Gimbal Angle Ctrl	dissector_only
+1	Special	32	SDK Ctrl Camera Shot Ctrl	dissector_only
+1	Special	33	SDK Ctrl Camera Start Video Ctrl	dissector_only
+1	Special	34	SDK Ctrl Camera Stop Video Ctrl	dissector_only
+1	Special	255	UAV Loopback	dissector_only
+2	Camera	215	SetUserCustomInfo	apk_only
+2	Camera	216	GetUserCustomInfo	apk_only
+2	Camera	218	OptStorageCfg	apk_only
+2	Camera	219	IRCEnable	apk_only
+2	Camera	220	GetPushStorageInfo	apk_only
+2	Camera	229	Watermark	apk_only
+2	Camera	231	SetSaveOrigPhoto	apk_only
+2	Camera	232	GetSaveOrigPhoto	apk_only
+2	Camera	49	Focus Region Get	dissector_only
+2	Camera	53	Zoom Param Get	dissector_only
+2	Camera	54	Flash Mode Set	dissector_only
+2	Camera	55	Flash Mode Get	dissector_only
+2	Camera	64	Face Detect Set	dissector_only
+2	Camera	65	Face Detect Get	dissector_only
+2	Camera	68	Digital Denoise Set	dissector_only
+2	Camera	69	Digital Denoise Get	dissector_only
+2	Camera	80	OSD Param Set	dissector_only
+2	Camera	81	OSD Param Get	dissector_only
+2	Camera	82	Preview OSD Param Set	dissector_only
+2	Camera	83	Preview OSD Param Get	dissector_only
+2	Camera	85	Camera Date/Time Get	dissector_only
+2	Camera	86	Language Param Set	dissector_only
+2	Camera	87	Language Param Get	dissector_only
+2	Camera	88	Camera GPS Set	dissector_only
+2	Camera	89	Camera GPS Get	dissector_only
+2	Camera	90	Discon State Set	dissector_only
+2	Camera	91	Discon State Get	dissector_only
+2	Camera	100	Video Subtitles Log Set	dissector_only
+2	Camera	101	Mgear Shutter Speed Set	dissector_only
+2	Camera	111	Panorama Mode Get	dissector_only
+2	Camera	115	SDcard Format Progress Get	dissector_only
+2	Camera	116	Fw Upgrade Progress Get	dissector_only
+2	Camera	117	Photo Sync Progress Get	dissector_only
+2	Camera	118	Camera Power Info Get	dissector_only
+2	Camera	139	Racing Liveview Format Set	dissector_only
+2	Camera	140	Racing Liveview Format Get	dissector_only
+2	Camera	144	Sensor Calibrate Test	dissector_only
+2	Camera	145	Sensor Calibrate Complete	dissector_only
+2	Camera	148	Focus Range Get	dissector_only
+2	Camera	150	Focus Stroke Get	dissector_only
+2	Camera	188	Gimbal Lock Config Get	dissector_only
+2	Camera	211	Camera UnknownD3	dissector_only
+2	Camera	225	Capture Config Set	dissector_only
+2	Camera	240	Camera TBD F0	dissector_only
+3	Flight Control	204	GetSetWarningAreaEnable	apk_only
+3	Flight Control	3	Origin GPS Set	dissector_only
+3	Flight Control	4	Origin GPS Get	dissector_only
+3	Flight Control	6	Fly Limit Param Set	dissector_only
+3	Flight Control	7	Fly Limit Param Get	dissector_only
+3	Flight Control	10	Battery Status Get	dissector_only
+3	Flight Control	11	Motor Work Status Set	dissector_only
+3	Flight Control	12	Motor Work Status Get	dissector_only
+3	Flight Control	14	Emergency Stop	dissector_only
+3	Flight Control	34	Upload Air Route	dissector_only
+3	Flight Control	35	Download Air Route	dissector_only
+3	Flight Control	36	Upload Waypoint	dissector_only
+3	Flight Control	37	Download Waypoint	dissector_only
+3	Flight Control	38	Enable Waypoint	dissector_only
+3	Flight Control	40	One Key Back	dissector_only
+3	Flight Control	41	Joystick	dissector_only
+3	Flight Control	53	Change Param Ping	dissector_only
+3	Flight Control	54	Request SN	dissector_only
+3	Flight Control	55	Device Info Get	dissector_only
+3	Flight Control	56	Device Info Set	dissector_only
+3	Flight Control	73	Push Encrypted Package	dissector_only
+3	Flight Control	74	Push Att IMU Info	dissector_only
+3	Flight Control	75	Push RC Stick Value	dissector_only
+3	Flight Control	76	Push Fussed Pos Speed Data	dissector_only
+3	Flight Control	80	Imu Data Status	dissector_only
+3	Flight Control	87	GPS GLNS Info	dissector_only
+3	Flight Control	88	Push Att Stick Speed Pos Data	dissector_only
+3	Flight Control	89	Push Sdk Data	dissector_only
+3	Flight Control	90	Push FC Data	dissector_only
+3	Flight Control	96	SVO API Transfer	dissector_only
+3	Flight Control	107	Recorder Data Cfg	dissector_only
+3	Flight Control	109	Upload Hotpoint	dissector_only
+3	Flight Control	110	Download Hotpoint	dissector_only
+3	Flight Control	112	Set Product SN	dissector_only
+3	Flight Control	113	Get Product SN	dissector_only
+3	Flight Control	114	Reset Product SN	dissector_only
+3	Flight Control	115	Set Product Id	dissector_only
+3	Flight Control	116	Get Product Id	dissector_only
+3	Flight Control	117	Write EEPROM FC0	dissector_only
+3	Flight Control	129	Mission IOC: Set Lock Yaw	dissector_only
+3	Flight Control	141	App Set API Sub Mode	dissector_only
+3	Flight Control	157	Miss. WP: Get Idle Veloc	dissector_only
+3	Flight Control	158	App Ctrl Mission Yaw Rate	dissector_only
+3	Flight Control	159	Miss. HotPoint: Auto Radius Ctrl	dissector_only
+3	Flight Control	162	Race Drone OSD Push	dissector_only
+3	Flight Control	163	Miss. WP: Get BreakPoint Info	dissector_only
+3	Flight Control	164	Miss. WP: Return To Cur Line	dissector_only
+3	Flight Control	165	App Ctrl Fly Sweep Ctrl	dissector_only
+3	Flight Control	166	Set RKT Homepoint	dissector_only
+3	Flight Control	170	Sbus Packet	dissector_only
+3	Flight Control	171	Ctrl Attitude Data Send	dissector_only
+3	Flight Control	172	Ctrl Taillock Data Send	dissector_only
+3	Flight Control	174	Cmd Handler RC App Chl Handler	dissector_only
+3	Flight Control	175	Product Config	dissector_only
+3	Flight Control	186	Forearm LED Status Set	dissector_only
+3	Flight Control	187	Open LED Info Get	dissector_only
+3	Flight Control	188	Open Led Action Register	dissector_only
+3	Flight Control	189	Open Led Action Logout	dissector_only
+3	Flight Control	190	Open Led Action Status Set	dissector_only
+3	Flight Control	191	Flight Push	dissector_only
+3	Flight Control	198	Shell Test	dissector_only
+3	Flight Control	212	Additional Info Get	dissector_only
+3	Flight Control	217	Process Sensor Api Data	dissector_only
+3	Flight Control	223	Assistant Unlock Handler	dissector_only
+3	Flight Control	224	Config Table: Get Tbl Attribute	dissector_only
+3	Flight Control	225	Config Table: Get Item Attribute	dissector_only
+3	Flight Control	226	Config Table: Get Item Value	dissector_only
+3	Flight Control	227	Config Table: Set Item Value	dissector_only
+3	Flight Control	228	Config Table: Reset Def. Item Value	dissector_only
+3	Flight Control	229	Push Config Table: Get Tbl Attribute	dissector_only
+3	Flight Control	230	Push Config Table: Get Item Attribute	dissector_only
+3	Flight Control	231	Push Config Table: Set Item Param	dissector_only
+3	Flight Control	232	Push Config Table: Clear	dissector_only
+3	Flight Control	234	Register Open Motor Error Action	dissector_only
+3	Flight Control	235	Logout Open Motor Error Action	dissector_only
+3	Flight Control	236	Set Open Motor Error Action Status	dissector_only
+3	Flight Control	246	Push Param PC Log	dissector_only
+3	Flight Control	253	Product Type Get	dissector_only
+3	Flight Control	255	Motor Force Disable Get	dissector_only
+4	Gimbal	26	SetGimbalRelease	apk_only
+4	Gimbal	31	GetSerialParams	apk_only
+4	Gimbal	37	CommonProtocol	apk_only
+4	Gimbal	53	SetHandleParams	apk_only
+4	Gimbal	0	Gimbal Reserved	dissector_only
+4	Gimbal	2	Gimbal Get Position	dissector_only
+4	Gimbal	3	Gimbal Set Param	dissector_only
+4	Gimbal	4	Gimbal Get Param	dissector_only
+4	Gimbal	6	Gimbal Push AETR	dissector_only
+4	Gimbal	9	Gimbal Reserved2	dissector_only
+4	Gimbal	11	Gimbal Get Ext Ctrl Status	dissector_only
+4	Gimbal	14	Gimbal Thirdp Magn	dissector_only
+4	Gimbal	21	Gimbal Movement	dissector_only
+4	Gimbal	30	Gimbal Degree Info Subscription	dissector_only
+4	Gimbal	32	Gimbal TBD 20	dissector_only
+4	Gimbal	33	Gimbal TBD 21	dissector_only
+4	Gimbal	52	Gimbal Handle Params Set	dissector_only
+4	Gimbal	57	Gimbal Lock	dissector_only
+4	Gimbal	58	Gimbal Rotate Camera X Axis	dissector_only
+4	Gimbal	69	Gimbal Get Temp	dissector_only
+4	Gimbal	71	Gimbal TBD 47	dissector_only
+5	Center Board	65	GetPushPackModeFailReason	apk_only
+5	Center Board	66	GetPushBatteryInPosition	apk_only
+5	Center Board	0	Center Open/Close Virtual RC	dissector_only
+5	Center Board	2	Center Push Batt Dynamic Info	dissector_only
+5	Center Board	3	Center Control Uav Status Led	dissector_only
+5	Center Board	4	Center Transform Control	dissector_only
+5	Center Board	10	Center Bat Storage Info	dissector_only
+5	Center Board	33	Center Req Bat Static Data	dissector_only
+5	Center Board	34	Center Req Bat Dynamic Data	dissector_only
+5	Center Board	35	Center Req Bat Auth Data	dissector_only
+5	Center Board	36	Center Req Bat Auth Result	dissector_only
+6	Remote Control	171	GetPushRcFlowControl	apk_only
+6	Remote Control	28	RC RTC Info Get/Push	dissector_only
+6	Remote Control	29	RC Temperature Info Get/Push	dissector_only
+6	Remote Control	33	RC Power Mode CE/FCC Get	dissector_only
+6	Remote Control	39	RC Detection Info Get	dissector_only
+6	Remote Control	40	RC Gimbal Control Access Right Get	dissector_only
+6	Remote Control	48	RC Test GPS	dissector_only
+6	Remote Control	50	RC RTC Clock Get	dissector_only
+6	Remote Control	55	RC Enter App Mode Request	dissector_only
+6	Remote Control	56	RC Calibration Value Get	dissector_only
+6	Remote Control	57	RC Master Slave Connect Status Push	dissector_only
+6	Remote Control	58	RC 2014 Usb Mode Set	dissector_only
+6	Remote Control	59	RC Id Set	dissector_only
+6	Remote Control	82	RC Push LCD To MCU	dissector_only
+6	Remote Control	85	RC Test Mode Set	dissector_only
+6	Remote Control	240	RC RF Cert Config Set	dissector_only
+6	Remote Control	245	RC Test Stick Value	dissector_only
+6	Remote Control	246	RC Factory Get Board Id	dissector_only
+6	Remote Control	247	RC Push Buzzer To MCU	dissector_only
+6	Remote Control	249	RC Post Calibiration Set	dissector_only
+6	Remote Control	250	RC Stick Middle Value Get	dissector_only
+7	Wi-Fi	0	WiFi Reserved	dissector_only
+7	Wi-Fi	1	WiFi Ap Scan Results Push	dissector_only
+7	Wi-Fi	2	WiFi Ap Channel SNR Get	dissector_only
+7	Wi-Fi	3	WiFi Ap Channel Set	dissector_only
+7	Wi-Fi	4	WiFi Ap Channel Get	dissector_only
+7	Wi-Fi	5	WiFi Ap Tx Pwr Set	dissector_only
+7	Wi-Fi	6	WiFi Ap Tx Pwr Get	dissector_only
+7	Wi-Fi	10	WiFi Ap Ant RSSI Get	dissector_only
+7	Wi-Fi	11	WiFi Ap Mac Addr Set	dissector_only
+7	Wi-Fi	12	WiFi Ap Mac Addr Get	dissector_only
+7	Wi-Fi	15	WiFi Ap Factory Reset	dissector_only
+7	Wi-Fi	20	WiFi Ap Calibrate	dissector_only
+7	Wi-Fi	24	WiFi Ap 18	dissector_only
+7	Wi-Fi	25	WiFi Ap 19	dissector_only
+7	Wi-Fi	26	WiFi Ap 1A	dissector_only
+7	Wi-Fi	27	WiFi Ap 1B	dissector_only
+7	Wi-Fi	28	WiFi Ap 1C	dissector_only
+7	Wi-Fi	29	WiFi Ap 1D	dissector_only
+7	Wi-Fi	30	WiFi SSID Get	dissector_only
+7	Wi-Fi	31	WiFi Ap 1F	dissector_only
+7	Wi-Fi	33	WiFi Ap Set Bw	dissector_only
+7	Wi-Fi	34	WiFi Ap 22	dissector_only
+7	Wi-Fi	35	WiFi Ap 23	dissector_only
+7	Wi-Fi	36	WiFi Ap 24	dissector_only
+7	Wi-Fi	37	WiFi Ap 25	dissector_only
+7	Wi-Fi	49	WiFi Ap Reset Freq	dissector_only
+7	Wi-Fi	50	WiFi Ap Del Country Code	dissector_only
+7	Wi-Fi	57	WiFi Get Work Mode	dissector_only
+7	Wi-Fi	58	WiFi Set Work Mode	dissector_only
+7	Wi-Fi	59	WiFi Config By Qrcode	dissector_only
+7	Wi-Fi	145	WiFi Rc Info Set	dissector_only
+7	Wi-Fi	146	WiFi Update Sw State	dissector_only
+8	DM36x	0	DM36x Reserved	dissector_only
+8	DM36x	5	DM36x Gnd Stat Info Send	dissector_only
+8	DM36x	7	DM36x Gnd Stat Info Recv	dissector_only
+8	DM36x	14	DM36x App Connect Stat Get	dissector_only
+8	DM36x	15	DM36x Recycle Vision Frame Info	dissector_only
+9	HD Link	67	GetPushLinkMode	apk_only
+9	HD Link	68	SetSdrLinkMode	apk_only
+9	HD Link	240	SetDebugVideo	apk_only
+9	HD Link	15	HDLnk Reset Cy68013	dissector_only
+9	HD Link	18	HDLnk Factory Test Set	dissector_only
+9	HD Link	19	HDLnk Factory Test Get	dissector_only
+9	HD Link	44	HDLnk SDR Amt Process	dissector_only
+9	HD Link	47	HDLnk SDR Link Test	dissector_only
+9	HD Link	49	HDLnk SDR Scan Freq Cfg	dissector_only
+9	HD Link	50	HDLnk SDR Factory Mode Set	dissector_only
+9	HD Link	51	HDLnk Tracking State Ind	dissector_only
+9	HD Link	56	HDLnk SDR Set Rate	dissector_only
+9	HD Link	62	HDLnk Slave RT Status Push	dissector_only
+9	HD Link	63	HDLnk RC Conn Status Push	dissector_only
+9	HD Link	65	HDLnk Racing Set Modem Info	dissector_only
+9	HD Link	66	HDLnk Racing Get Modem Info	dissector_only
+10	Mono/Binocular	9	DebugCtrlParam	apk_only
+10	Mono/Binocular	22	GetHandGestureEnabled	apk_only
+10	Mono/Binocular	23	SetHandGestureEnabled	apk_only
+10	Mono/Binocular	24	GetPushObjectDetect	apk_only
+10	Mono/Binocular	49	SendTrackingUserLocation	apk_only
+10	Mono/Binocular	59	SendDrawTrajectory	apk_only
+10	Mono/Binocular	60	DrawOperation	apk_only
+10	Mono/Binocular	61	GetPushDrawState	apk_only
+10	Mono/Binocular	62	SetPseudoCameraControlMode	apk_only
+10	Mono/Binocular	73	SendGPSInfo	apk_only
+10	Mono/Binocular	74	SetQuickMovieParams	apk_only
+10	Mono/Binocular	75	GetQuickMovieParams	apk_only
+10	Mono/Binocular	77	GetPushPseudoCameraShotState	apk_only
+10	Mono/Binocular	78	GetPushAdvancedPilotAssistantSystemState	apk_only
+10	Mono/Binocular	84	GetPushPseudoCameraParams	apk_only
+10	Mono/Binocular	86	SetPerceptionGesture	apk_only
+10	Mono/Binocular	87	GetPushPerceptionInformation	apk_only
+10	Mono/Binocular	88	GetPerceptionGesture	apk_only
+10	Mono/Binocular	96	Stabilization	apk_only
+10	Mono/Binocular	97	GetPushStabilizationState	apk_only
+10	Mono/Binocular	98	AppState	apk_only
+10	Mono/Binocular	107	SetPanoramaEnabled	apk_only
+10	Mono/Binocular	108	GetPushPanoramaInformation	apk_only
+10	Mono/Binocular	112	GetPushFaceDetectionTakeOffState	apk_only
+10	Mono/Binocular	113	GetPushPalmControlState	apk_only
+10	Mono/Binocular	116	SetTimeLapseSubMode	apk_only
+10	Mono/Binocular	117	GetPushTimeLapseKeyFrame	apk_only
+10	Mono/Binocular	118	SetTimeLapseKeyFrame	apk_only
+10	Mono/Binocular	119	GetTimeLapseKeyFrameInfoByIndex	apk_only
+10	Mono/Binocular	120	SetTimeLapseStart	apk_only
+10	Mono/Binocular	121	GetPushTimeLapseOverallData	apk_only
+10	Mono/Binocular	122	SetTimeLapseAction	apk_only
+10	Mono/Binocular	123	SetTimeLapseParams	apk_only
+10	Mono/Binocular	124	SetTimeLapseLoadTask	apk_only
+10	Mono/Binocular	129	UavStatePushSwitch	apk_only
+10	Mono/Binocular	130	CheckPointPosValid	apk_only
+10	Mono/Binocular	131	GetPushPointPosValid	apk_only
+10	Mono/Binocular	148	StartMultiTracking	apk_only
+10	Mono/Binocular	149	GetPushMultiTrackingInformation	apk_only
+10	Mono/Binocular	150	GetPushMultiTrackingState	apk_only
+10	Mono/Binocular	151	StopMultiTracking	apk_only
+10	Mono/Binocular	160	GetPushOmniAvoidance	apk_only
+10	Mono/Binocular	162	GetPushPalmControlNotification	apk_only
+10	Mono/Binocular	192	SetPOIStartWithGPS	apk_only
+10	Mono/Binocular	193	SetPOIInitialTarget	apk_only
+10	Mono/Binocular	194	GetPushPOITargetInformation	apk_only
+10	Mono/Binocular	195	SetPOIAction	apk_only
+10	Mono/Binocular	196	SetPOIParams	apk_only
+10	Mono/Binocular	197	GetPushPOIExecutionParams	apk_only
+10	Mono/Binocular	2	Eye Mono Info	dissector_only
+10	Mono/Binocular	3	Eye Ultrasonic Info	dissector_only
+10	Mono/Binocular	4	Eye Oa Info	dissector_only
+10	Mono/Binocular	5	Eye Relitive Pos	dissector_only
+10	Mono/Binocular	10	Eye Push Vision Debug Info	dissector_only
+10	Mono/Binocular	11	Eye Push Control Debug Info	dissector_only
+10	Mono/Binocular	15	Eye Push SDK Control Cmd	dissector_only
+10	Mono/Binocular	16	Eye Enable Tracking Taptogo	dissector_only
+10	Mono/Binocular	17	Eye Push Target Speed Pos Info	dissector_only
+10	Mono/Binocular	18	Eye Push Target Pos Info	dissector_only
+10	Mono/Binocular	21	Eye Receive Frame Info	dissector_only
+10	Mono/Binocular	44	Eye Ta Lock Update	dissector_only
+10	Mono/Binocular	45	Eye Smart Landing	dissector_only
+10	Mono/Binocular	55	Eye QRCode Mode	dissector_only
+10	Mono/Binocular	70	Eye RC Packet	dissector_only
+10	Mono/Binocular	71	Eye Set Buffer Config	dissector_only
+10	Mono/Binocular	72	Eye Get Buffer Config	dissector_only
+10	Mono/Binocular	164	Eye Detection Msg Push	dissector_only
+10	Mono/Binocular	165	Eye Get SDK Func	dissector_only
+11	Simulator	255	ResetAll	apk_only
+11	Simulator	26	Simu Set Sim Vision Mode	dissector_only
+11	Simulator	27	Simu Get Sim Vision Mode	dissector_only
+13	Battery	213	SelfHeatingControl	apk_only
+13	Battery	6	Battery Push Common Info	dissector_only
+14	Data Logger	34	DLog Battery Data	dissector_only
+14	Data Logger	35	DLog Battery Message	dissector_only
+17	ADSB	28	RidWorkingStatus	apk_only
+17	ADSB	67	UpdatePosEnc	apk_only

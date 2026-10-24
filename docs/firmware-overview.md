@@ -146,32 +146,14 @@ this is why P3 firmware can be downgraded/modified/reflashed by the community.
 - Some P3 modules carry DJI module-level AES (`encrypt_type=1`, e.g. the A3 FC `m0306`),
   **but the keys are known/extracted** — the tool decrypts them automatically (that's how
   we disassembled `m0306`). So that layer is effectively open too.
-- The FPGA module `m1900` is `encrypt_type=0` (no DJI wrapper); its high entropy is the
-  Altera tool's own bitstream compression/encryption, separate from DJI's container.
+- The FPGA module `m1900` is `encrypt_type=0` (no DJI wrapper); the CRAM looks encrypted at the Altera bitstream level, separate from DJI's container.
 
-### FPGA bitstream: compressed, not encrypted (tested)
+### FPGA bitstream: ENCRYPTED (strong circumstantial; no oracle)
 
-High entropy alone does not prove encryption — a *compressed* bitstream also looks
-random, while a *plain* one is low entropy (zero-heavy). Tests on the `m1900` used
-region (2.06 MB) settle it:
-
-- gzip → **98.6%** (incompressible): compressed or encrypted — inconclusive alone.
-- chi-square vs uniform = **113,468** (encryption would give <~310): byte distribution
-  is strongly **non-uniform** → **not AES-encrypted**; non-uniformity is the mark of
-  compression.
-- header is **structured, not random**: first 2 KB entropy **1.22** (mid 7.91), a
-  repeating `xxxx ffff …` pattern. Encrypted data is random from byte 0, so a structured
-  cleartext header rules out whole-file encryption.
-- only **1.85%** zero bytes → not a plain/uncompressed bitstream either.
-
-Conclusion: it is an **Altera-compressed** bitstream, **not encrypted**. The protection
-is obscurity + device-specificity, not a device-bound key. So it is **not**
-cryptographically locked to one chip — the same Cyclone-V part could in principle be
-configured with it (it still needs the board: AD9363, clocks, PAs, the configuring MCU).
-Reversing the *logic* remains hard (undocumented compressed config format). The
-modem/scrambler exists only as gates in this bitstream; the `m0900` MCU merely brings the
-FPGA up (config/reset lines, AD9363 over SPI), so reading the MCU does not reveal the
-radio logic.
+- Verdict from pluribus `docs/cyclonev-compressed-rbf.md`, "Encrypted bitstreams": strong circumstantial; option-bit meaning inferred; may be a producer-side keyed scramble rather than Altera AES.
+- Cyclone V e50f-family by header/PRAM CRC. PRAM is cleartext with valid CRCs; CRAM is indistinguishable from uniform random (entropy 7.9999, chi-square z within +-1.8, no ECB repeats). Ground m2000/m2002 behave the same.
+- The earlier "compressed, not encrypted" conclusion is withdrawn: chi-square 113,468 was computed over the whole container (header, PRAM, 0xFF padding). On the CRAM alone it is ~255 +-23 (uniform).
+- Consequence: not decodable without the key or an oracle; Mistral/Quartus-corpus tooling cannot lift it.
 
 ### Bitstream reverse-engineering tooling
 
@@ -186,22 +168,7 @@ The FPGA-bitstream-documentation projects are the right tools here:
   `rbf_load`), **not LZMA** — Mistral's `liblzma` dependency is only for its own device
   database `.xz` files, not the bitstream.
 
-**Is `m1900` a usable bitstream? Yes — a compressed (not encrypted) config image.**
-Re-tested on the payload bulk (header excluded): chi-square 27,810 for 2 MB (uniform
-would be ~255; encryption gives ~uniform) → **not encrypted**; gzip 99.3% + non-uniform
-→ **compressed**, with a structured framing header. So the "random look" is compression,
-confirmed.
-
-**But Mistral can't load it directly, for two reasons:** (1) the **air FPGA part is
-unknown** — the firmware labels it only "model 0"; Mistral ships data for `5CEBA4`/
-`5CSEBA6`, the P3 *ground* FPGA is `5CEFA4`, the air one is unidentified; and (2)
-`rbf_load` expects a **plain (uncompressed / nibble-RLE) `.rbf`**, whereas `m1900` is a
-further-packed image (structured header + high-entropy bulk) that must be de-packed to a
-plain `.rbf` first.
-
-Realistic feasibility: decompressing/cloning onto the *identical* part is plausible once
-de-packed; recovering readable RTL for the OFDM modem is not — bitstream-RE tools yield a
-LUT/FF-level **structural** netlist on a documented fabric, not behavioral Verilog.
+**Is `m1900` a usable bitstream?** Not for lifting: CRAM appears encrypted (above). Cloning onto the identical part and recovering RTL are both unsupported until the key or an oracle exists; bitstream-RE tools yield a LUT/FF-level structural netlist on a documented fabric at best, not behavioral Verilog.
 
 ## Boundaries
 

@@ -4,6 +4,7 @@
 - **No DJI schematic, boardview or KiCad file for this board exists on this machine.** The KiCad files elsewhere belong to unrelated projects. Nothing here is a net list.
 - Tags: **V** verified in m0900 code or Renode; **W** wiki-sourced (service pads, parts, connector names), not independently checked; **I** inferred; **U** unknown.
 - Rates: `docs/data/m0900-buses.tsv`. Flow-level view: `docs/dataflow.md`.
+- The FPGA part `5CEFA4U19I7` is wiki-sourced (W). The ground firmware ships Cyclone V (m2000/m2002) and Cyclone III/IV-format (m2001) images (`fpga-images.md`); no bitstream-derived pin or net is used here.
 - Board role is unresolved: `rf-sdr-and-repair.md` calls P01007.06 the "OFDM Receiver board" yet wires `CENTER` to the ESC center board (aircraft side). The diagram follows the task framing (m0900 + Cyclone V + AD9363 + FX2LP on one board).
 
 ## Diagram
@@ -33,14 +34,14 @@ flowchart LR
   ANT["Antennas A/B"]
 
   XTAL -->|"I: HSE x6 PLL"| MCU
-  CENTER <-->|"I: UART DUML 256000 8N1, USART1 or USART3 U"| MCU
+  CENTER <-->|"I: UART DUML 256000 8N1, USART1 (FC route V, pads I)"| MCU
   CENTER ---|"W: same TX RX nets"| UARTP
   SWD ---|"W: SWD"| MCU
   JTAG ---|"W: target device U"| FPGA
   MCU -->|"V: SPI2 PB13/14/15, CS PB12, 4.5 MHz mode 1, 8-bit, 3-byte frames"| FPGA
   SPIP ---|"I: same nets as SPI2"| MCU
   MCU -->|"U: config/reset GPIO, pins unknown"| FPGA
-  MCU <-->|"V: CAN1 PA11 RX PA12 TX, 1 Mbit/s, std IDs 0x412 TX 0x413 RX"| CANT
+  MCU <-->|"V: CAN1 PA11 RX PA12 TX, 1 Mbit/s, std IDs 0x412/0x413 and 0x414/0x415"| CANT
   CANT <-->|"W: CANH CANL"| CANP
   FPGA ---|"I: AD9363 SPI bridged by FPGA, rate U"| AD
   FPGA <-->|"I: I/Q ~12-bit, LVDS or CMOS U, 11.2 MHz sample rate I"| AD
@@ -56,7 +57,7 @@ flowchart LR
 ```
 
 - Thick red edges = rates derived from m0900 code (SPI2, CAN1).
-- Edge 1 (UART) shows the CENTER pads' wiki rate; m0900 has two 256000 USARTs and which one is on CENTER is **U** (`dataflow.md` section 5).
+- Edge 1 (UART) shows the CENTER pads' wiki rate; m0900 routes FC-type DUML (types 3, 5, 10, 11, 12) to USART1 on every board (V, `m0900-can-channels.md`), so CENTER is most likely USART1. The pad-to-pin wiring is still not traced (I).
 - CENTER 6-pin signal order is not published (`rf-sdr-and-repair.md`); the ESC board's 10-pin table is the only pin map and is **not** a map of this connector.
 - Power rails (wiki): 3V3, 5V/6V, 2V5, 1V1, 1V2, 1V3, 1V7, 1V8; regulator topology: U.
 - Revision notes (wiki): `.08` changed regulators, `.14` replaces FPGA with Artosyn AR8001/AR8003 and drops JTAG. This diagram is `.06` only.
@@ -68,7 +69,7 @@ flowchart LR
 | MCU to FPGA (also AD9363 via bridge) | SPI2 master | 8-bit, CPOL0 CPHA1, MSB first, soft NSS; 3-byte frames `[0E/0F reg val]` | 4.5 MHz SCK (36 MHz / 8) | V |
 | MCU CS to FPGA | PB12 GPIO, active low | n/a | n/a | V |
 | MCU to FPGA config/reset | GPIO | discrete | n/a | U |
-| MCU on CENTER | USART (1 or 3) | 8N1 | 256000 nominal (256228 or 257143 actual) | V rate, wiring U |
+| MCU on CENTER | USART1 (by routing) | 8N1 | 256000 nominal (256228 actual) | V rate + route, wiring I |
 | MCU to CAN pads | CAN1 | std ID, 8 B | 1 Mbit/s | V rate, pads W |
 | FPGA to AD9363 | sample port | ~12-bit I/Q | 11.2 MHz sample rate | I |
 | FPGA to FX2LP | slave FIFO | 8 or 16-bit | U | W |

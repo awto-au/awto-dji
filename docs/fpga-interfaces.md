@@ -6,7 +6,9 @@ What goes into and out of the Lightbridge FPGA, and the bus types/widths. Interf
 widths are the chips' standard buses, flagged as such. Confirming the exact widths is a
 logic-analyzer job (see end).
 
-## Ground (remote controller) FPGA — Cyclone V `5CEFA4`
+## Ground (remote controller) FPGA — Cyclone V `5CEFA4` (wiki-sourced; not confirmed by any bitstream)
+
+Bitstream evidence on the part is mixed: m2000/m2002 are Cyclone V streams, m2001 is Cyclone III/IV-format (`fpga-images.md`). No pin or width below comes from a bitstream decode.
 
 | Link | Direction (vs FPGA) | Interface | Width / notes |
 |---|---|---|---|

@@ -15,11 +15,11 @@ class AboutScreen extends StatelessWidget {
         padding: const EdgeInsets.all(16),
         children: [
           const ListTile(
-            leading: Icon(Icons.lock_outline),
-            title: Text('Read-only mode'),
+            leading: Icon(Icons.tune),
+            title: Text('Control enabled'),
             subtitle: Text(
-                'This build only receives and decodes. It has no control, takeoff or '
-                'stick commands, and the transport write path is never used.'),
+                'The gimbal screen and the CONNECT / DISCONNECT / GIMBAL intents write to '
+                'the link. Simulated and replay transports reject writes.'),
           ),
           ListTile(
             title: const Text('Transport'),
@@ -31,11 +31,9 @@ class AboutScreen extends StatelessWidget {
                 '${session.bytesReceived} / ${session.packetCount} / ${session.crcErrorCount}'),
           ),
           ListTile(
-            title: const Text('AOA identity'),
-            subtitle: Text(AoaIdentity.verified
-                ? '${AoaIdentity.manufacturer} / ${AoaIdentity.model}'
-                : '${AoaIdentity.manufacturer} / ${AoaIdentity.model} '
-                    '(other fields are placeholders, unverified)'),
+            title: const Text('AOA identity (manufacturer / model)'),
+            subtitle: Text('${AoaIdentity.manufacturer} / ${AoaIdentity.model} '
+                '— confirmed against DJI GO 4\'s own match logic'),
           ),
           const ListTile(
             title: Text('Geofence'),

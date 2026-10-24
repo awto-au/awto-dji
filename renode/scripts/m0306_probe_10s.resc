@@ -1,0 +1,143 @@
+:name: m0306 USB-CDC gate probe (adversarial re-check, extended to 10s)
+:description: Independent re-verification of docs/fc-usb-duml.md check 5 - does extending
+: the simulated boot window 5x past the original 2s cap ever unmask USB OTG at the NVIC?
+
+# Adversarial re-check requested by the operator (skeptical the original 2s window was long
+# enough): extends m0306_probe_long.resc's 4x500ms=2s cap to 20x500ms=10s (5x), sampling PC
+# and NVIC ISER1/ISER2 every 500ms so a later-stage unmask (e.g. after the SD-card poll
+# stall the original doc flagged as unresolved) would show up. Explicit repeated blocks
+# (same pattern as m0306_probe_long.resc) rather than a loop construct, to match the
+# Monitor syntax already proven to work in this repo.
+
+$fw ?= @firmware/unpacked/P3X_FW_V01.11.0020_m0306.bin
+$appBase ?= 0x08020000
+
+mach create "m0306"
+machine LoadPlatformDescription @renode/platforms/m0306.repl
+logFile @m0306-probe-10s.log true
+
+sysbus LoadBinary $fw $appBase
+sysbus.cpu VectorTableOffset $appBase
+
+emulation RunFor "00:00:00.500"
+echo "t=500ms PC / ISER1 / ISER2:"
+sysbus.cpu PC
+sysbus ReadDoubleWord 0xE000E104
+sysbus ReadDoubleWord 0xE000E108
+
+emulation RunFor "00:00:00.500"
+echo "t=1000ms PC / ISER1 / ISER2:"
+sysbus.cpu PC
+sysbus ReadDoubleWord 0xE000E104
+sysbus ReadDoubleWord 0xE000E108
+
+emulation RunFor "00:00:00.500"
+echo "t=1500ms PC / ISER1 / ISER2:"
+sysbus.cpu PC
+sysbus ReadDoubleWord 0xE000E104
+sysbus ReadDoubleWord 0xE000E108
+
+emulation RunFor "00:00:00.500"
+echo "t=2000ms PC / ISER1 / ISER2:"
+sysbus.cpu PC
+sysbus ReadDoubleWord 0xE000E104
+sysbus ReadDoubleWord 0xE000E108
+
+emulation RunFor "00:00:00.500"
+echo "t=2500ms PC / ISER1 / ISER2:"
+sysbus.cpu PC
+sysbus ReadDoubleWord 0xE000E104
+sysbus ReadDoubleWord 0xE000E108
+
+emulation RunFor "00:00:00.500"
+echo "t=3000ms PC / ISER1 / ISER2:"
+sysbus.cpu PC
+sysbus ReadDoubleWord 0xE000E104
+sysbus ReadDoubleWord 0xE000E108
+
+emulation RunFor "00:00:00.500"
+echo "t=3500ms PC / ISER1 / ISER2:"
+sysbus.cpu PC
+sysbus ReadDoubleWord 0xE000E104
+sysbus ReadDoubleWord 0xE000E108
+
+emulation RunFor "00:00:00.500"
+echo "t=4000ms PC / ISER1 / ISER2:"
+sysbus.cpu PC
+sysbus ReadDoubleWord 0xE000E104
+sysbus ReadDoubleWord 0xE000E108
+
+emulation RunFor "00:00:00.500"
+echo "t=4500ms PC / ISER1 / ISER2:"
+sysbus.cpu PC
+sysbus ReadDoubleWord 0xE000E104
+sysbus ReadDoubleWord 0xE000E108
+
+emulation RunFor "00:00:00.500"
+echo "t=5000ms PC / ISER1 / ISER2:"
+sysbus.cpu PC
+sysbus ReadDoubleWord 0xE000E104
+sysbus ReadDoubleWord 0xE000E108
+
+emulation RunFor "00:00:00.500"
+echo "t=5500ms PC / ISER1 / ISER2:"
+sysbus.cpu PC
+sysbus ReadDoubleWord 0xE000E104
+sysbus ReadDoubleWord 0xE000E108
+
+emulation RunFor "00:00:00.500"
+echo "t=6000ms PC / ISER1 / ISER2:"
+sysbus.cpu PC
+sysbus ReadDoubleWord 0xE000E104
+sysbus ReadDoubleWord 0xE000E108
+
+emulation RunFor "00:00:00.500"
+echo "t=6500ms PC / ISER1 / ISER2:"
+sysbus.cpu PC
+sysbus ReadDoubleWord 0xE000E104
+sysbus ReadDoubleWord 0xE000E108
+
+emulation RunFor "00:00:00.500"
+echo "t=7000ms PC / ISER1 / ISER2:"
+sysbus.cpu PC
+sysbus ReadDoubleWord 0xE000E104
+sysbus ReadDoubleWord 0xE000E108
+
+emulation RunFor "00:00:00.500"
+echo "t=7500ms PC / ISER1 / ISER2:"
+sysbus.cpu PC
+sysbus ReadDoubleWord 0xE000E104
+sysbus ReadDoubleWord 0xE000E108
+
+emulation RunFor "00:00:00.500"
+echo "t=8000ms PC / ISER1 / ISER2:"
+sysbus.cpu PC
+sysbus ReadDoubleWord 0xE000E104
+sysbus ReadDoubleWord 0xE000E108
+
+emulation RunFor "00:00:00.500"
+echo "t=8500ms PC / ISER1 / ISER2:"
+sysbus.cpu PC
+sysbus ReadDoubleWord 0xE000E104
+sysbus ReadDoubleWord 0xE000E108
+
+emulation RunFor "00:00:00.500"
+echo "t=9000ms PC / ISER1 / ISER2:"
+sysbus.cpu PC
+sysbus ReadDoubleWord 0xE000E104
+sysbus ReadDoubleWord 0xE000E108
+
+emulation RunFor "00:00:00.500"
+echo "t=9500ms PC / ISER1 / ISER2:"
+sysbus.cpu PC
+sysbus ReadDoubleWord 0xE000E104
+sysbus ReadDoubleWord 0xE000E108
+
+emulation RunFor "00:00:00.500"
+echo "t=10000ms PC / ISER1 / ISER2 (cap reached, 5x the original 2s window):"
+sysbus.cpu PC
+sysbus ReadDoubleWord 0xE000E104
+sysbus ReadDoubleWord 0xE000E108
+
+echo ""
+echo "Done."

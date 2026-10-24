@@ -22,20 +22,34 @@ class TelemetryScreen extends StatelessWidget {
         return ListView(
           padding: const EdgeInsets.all(12),
           children: [
-            _SafetyCard(safety: safety, gate: gate),
-            _card('Position', [
-              _row('Latitude', osd == null ? '-' : osd.latitude.toStringAsFixed(6)),
-              _row('Longitude', osd == null ? '-' : osd.longitude.toStringAsFixed(6)),
-            ]),
-            _card('Altitude and speed', [
-              _row('Height above home', osd == null ? '-' : '${osd.relativeHeight.toStringAsFixed(1)} m'),
-              _row('Ground speed', gs == null ? '-' : '${gs.toStringAsFixed(1)} m/s'),
-              _row('Vertical speed', osd == null ? '-' : '${osd.vgz.toStringAsFixed(1)} m/s'),
-            ]),
+            _compactCard(
+              context,
+              'Position',
+              [
+                ('Lat', osd == null ? '-' : osd.latitude.toStringAsFixed(6)),
+                ('Lon', osd == null ? '-' : osd.longitude.toStringAsFixed(6)),
+                ('Alt', osd == null ? '-' : '${osd.relativeHeight.toStringAsFixed(1)} m'),
+                ('GS', gs == null ? '-' : '${gs.toStringAsFixed(1)} m/s'),
+                ('VS', osd == null ? '-' : '${osd.vgz.toStringAsFixed(1)} m/s'),
+              ],
+              key: const Key('safety-card'),
+              trailing: _gateBadge(context, safety),
+            ),
             _card('Attitude', [
               _row('Pitch', osd == null ? '-' : '${osd.pitch.toStringAsFixed(1)} deg'),
               _row('Roll', osd == null ? '-' : '${osd.roll.toStringAsFixed(1)} deg'),
               _row('Yaw', osd == null ? '-' : '${osd.yaw.toStringAsFixed(1)} deg'),
+            ]),
+            _card('RC signal', [
+              _row('Quality', session.latestSignal == null
+                  ? '-' : '${session.latestSignal!.aggregateQuality}/127 '
+                      '(${session.latestSignal!.qualityPercent.toStringAsFixed(0)}%)'),
+              _row('Direction', session.latestSignal == null
+                  ? '-' : session.latestSignal!.isUplink ? 'Up' : 'Down'),
+              _row('Antenna 1', session.latestSignal == null
+                  ? '-' : '${session.latestSignal!.antenna1Dbm} dBm'),
+              _row('Antenna 2', session.latestSignal == null
+                  ? '-' : '${session.latestSignal!.antenna2Dbm} dBm'),
             ]),
             _LinkCard(session: session),
           ],
@@ -52,6 +66,68 @@ Widget _row(String k, String v) => Padding(
         children: [Text(k), Text(v, style: const TextStyle(fontFeatures: [FontFeature.tabularFigures()]))],
       ),
     );
+
+/// Small geofence status badge; the reason (and sample-data note) is in the tooltip.
+Widget _gateBadge(BuildContext context, SafetyStatus safety) {
+  final cs = Theme.of(context).colorScheme;
+  final (label, color) = switch (safety.state) {
+    GateState.noFix => ('NO FIX', cs.outline),
+    GateState.allowed => ('ALLOWED', Colors.green),
+    GateState.limited => ('LIMITED', Colors.orange),
+    GateState.blocked => ('BLOCKED', cs.error),
+  };
+  return Tooltip(
+    message: '${safety.reason}\nZones are sample data, not airspace authority.',
+    child: Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.2),
+        border: Border.all(color: color),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Text(label,
+          key: const Key('gate-state'), style: Theme.of(context).textTheme.labelSmall),
+    ),
+  );
+}
+
+/// One small tile: label/value pairs flowing on shared lines, optional badge beside the title.
+Widget _compactCard(BuildContext context, String title, List<(String, String)> items,
+    {Key? key, Widget? trailing}) {
+  final small = Theme.of(context).textTheme.bodySmall;
+  return Card(
+    key: key,
+    child: Padding(
+      padding: const EdgeInsets.all(8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(children: [
+            Text(title, style: small?.copyWith(fontWeight: FontWeight.bold)),
+            const Spacer(),
+            ?trailing,
+          ]),
+          const SizedBox(height: 2),
+          Wrap(
+            spacing: 14,
+            runSpacing: 2,
+            children: [
+              for (final (k, v) in items)
+                Text('$k $v',
+                    style: small?.copyWith(fontFeatures: const [FontFeature.tabularFigures()])),
+            ],
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
+String _size(int b) => b < 1024
+    ? '$b B'
+    : b < 1024 * 1024
+        ? '${(b / 1024).toStringAsFixed(1)} KB'
+        : '${(b / (1024 * 1024)).toStringAsFixed(2)} MB';
 
 Widget _card(String title, List<Widget> rows) => Card(
       child: Padding(
@@ -74,59 +150,34 @@ class _LinkCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final now = DateTime.now();
-    final last = session.lastPacketAt;
-    final age = last == null ? '-' : '${now.difference(last).inMilliseconds} ms ago';
+    final windows = [
+      session.gapStats(const Duration(seconds: 1), now),
+      session.gapStats(const Duration(seconds: 5), now),
+      session.gapStats(const Duration(minutes: 1), now),
+    ];
+    String rolling(double Function(GapStats) pick) =>
+        windows.map((w) => w.count == 0 ? '-' : pick(w).toStringAsFixed(0)).join(' / ');
+    final rates = [
+      session.byteRates(const Duration(seconds: 1), now),
+      session.byteRates(const Duration(seconds: 5), now),
+      session.byteRates(const Duration(minutes: 1), now),
+    ];
+    String kbps(double Function(ByteRates) pick) =>
+        rates.map((r) => pick(r).toStringAsFixed(1)).join(' / ');
     return _card('Link health', [
       _row('Transport', '${session.transport.name} (${session.linkState.name})'),
       _row('Health', session.health.name),
+      _row('Received', _size(session.bytesReceived)),
+      _row('DUML KB/s 1s/5s/1m', kbps((r) => r.duml)),
+      _row('Video KB/s 1s/5s/1m', kbps((r) => r.video)),
+      _row('Other KB/s 1s/5s/1m', kbps((r) => r.other)),
       _row('Packets', '${session.packetCount}  (${session.packetsPerSecond(now).toStringAsFixed(0)}/s)'),
       _row('CRC errors', '${session.crcErrorCount}'),
-      _row('Last packet', age),
+      _row('Interval 1s/5s/1m (ms)', rolling((w) => w.meanMs)),
+      _row('Jitter 1s/5s/1m (ms)', rolling((w) => w.jitterMs)),
+      _row('Max gap 1s/5s/1m (ms)', rolling((w) => w.maxMs)),
       if (session.transport.currentState == LinkState.failed)
         _row('Error', session.transport.lastError ?? ''),
     ]);
-  }
-}
-
-class _SafetyCard extends StatelessWidget {
-  const _SafetyCard({required this.safety, required this.gate});
-  final SafetyStatus safety;
-  final SafetyGate gate;
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final (label, color) = switch (safety.state) {
-      GateState.noFix => ('NO FIX', cs.outline),
-      GateState.allowed => ('ALLOWED', Colors.green),
-      GateState.limited => ('LIMITED', Colors.orange),
-      GateState.blocked => ('BLOCKED', cs.error),
-    };
-    final z = safety.nearestZone;
-    final d = safety.nearestDistanceM;
-    return Card(
-      key: const Key('safety-card'),
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(children: [
-              const Text('Geofence gate', style: TextStyle(fontWeight: FontWeight.bold)),
-              const Spacer(),
-              Chip(
-                label: Text(label, key: const Key('gate-state')),
-                backgroundColor: color.withValues(alpha: 0.2),
-                side: BorderSide(color: color),
-              ),
-            ]),
-            Text(safety.reason),
-            if (z != null && d != null)
-              _row('Nearest zone', '${z.name}, ${d.toStringAsFixed(0)} m to edge'),
-            _row('Zones loaded', '${gate.zones.length} (sample data, not airspace authority)'),
-          ],
-        ),
-      ),
-    );
   }
 }

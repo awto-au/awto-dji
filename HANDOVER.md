@@ -65,8 +65,8 @@ above). To reproduce the rest on Selwyn:
    containers. See `docs/data-manifest.md` for exact sources/hashes, `docs/code-provenance.md`
    / `docs/firmware-overview.md` for background.
 2. Unpack with dji-firmware-tools `dji_xv4_fwcon.py` → per-module `.bin` (m0900 air STM32,
-   m1400 ground LPC1765, m2001 ground Cyclone-V FPGA, etc.).
-3. For FPGA work: de-pack `m2001` and run Mistral (`mistral-cv decomp 5CEBA4U19C8 m2001.depack.bin out.bt`).
+   m1400 ground LPC1765, m2000/m2001/m2002 ground FPGA images, etc.).
+3. FPGA work: do NOT run Mistral on `m2001` (Cyclone III/IV-format, not Cyclone V; the earlier decode was noise, #114). `m1900`/`m2000`/`m2002` are Cyclone V but appear encrypted. See `docs/fpga-images.md`.
 
 All the analysis docs cite exact offsets so you can re-derive against your own unpack.
 
@@ -88,6 +88,15 @@ All the analysis docs cite exact offsets so you can re-derive against your own u
 4. **Over-the-air SDR capture** → (a) settle the air-encryption question, (b) run
    Berlekamp-Massey on an all-0s / repetitive-telemetry capture to recover the scrambler
    (`known-plaintext-plan.md`, `alternative-approaches.md`).
+5. **m0900 CAN channels (traced 2026-10-24, `docs/m0900-can-channels.md`).** The 0x20002538 queue
+   is CAN StdId 0x414 (TX), paired with RX 0x415. Only DUML receiver type 30 is routed to it.
+   FC-type traffic goes out **USART1** (CENTER), not CAN; this corrects `dataflow.md`. Open:
+   whether 0x414/0x415 is live on the bus (passive 1 Mbit/s CAN sniff) and which board type 30 is.
+6. **m0800 DM368 provenance (2026-10-24, `docs/m0800-dm368-provenance.md`).** It is TI DVSDK
+   4.02.00.06 (DM368), mostly unchanged; DJI changes are U-Boot env/boot defaults, UBL clock
+   tables, a few kernel drivers (ADV761x HDMI receiver, I2C recovery), FX2 USB drivers, and the
+   `encode_usb` app (TI encode demo reworked). Disassembly: the DM368 sends raw H.264 slices (no header, no DUML) over USB EP2 into the AUTOOUT FX2, so DUML and video must meet in the air FPGA (I). Next: extract TI's
+   DM368 DVSDK installer for the PSP 03.21 kernel and the encode demo, then diff at function level.
 5. Build out the Flutter app-to-bird UI on top of `app/packages/duml` + `rust/awto_dji_core`.
 
 ## Reproduce the key MCU proofs (with your own `c1_m1400.bin`)

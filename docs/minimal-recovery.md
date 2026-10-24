@@ -1,15 +1,13 @@
 # Minimal recovery: eliminate the complex FPGA, reverse only the small DJI-specific parts
 
-> **Update (see `m2001-decomp-findings.md`):** the DSP/M10K "one hard blocker" referenced
-> below is **decoded after all** (LUT masks, FF modes, DSP mode+coef, M10K config+contents
-> all recovered by Mistral `decomp`). The genuine residual is **interconnect source
-> resolution** (~54k unresolved routes). The minimal strategy still holds — re-implement the
-> standard WiMAX datapath, extract only the small LFSR/ID — and the LFSR is now better posed
-> because the LUT masks (XOR/parity = linear feedback) are in hand.
+> **Update (2026-10-24, pluribus #114):** the claim that Mistral decoded `m2001` (LUT masks,
+> DSP/M10K, routes) is void: `m2001` is not a Cyclone V stream and the decode was noise
+> (`m2001-decomp-findings.md`). No FPGA netlist exists. The minimal strategy is unaffected and
+> is the only live route: re-implement the standard WiMAX datapath and solve the LFSR from a
+> known-plaintext capture.
 
 Strategy that collapses the whole effort. The protocol family is established (WiMAX/LTE
-OFDM, confirmed by `mcs`/`harq` in firmware, FCC DTS classification, and the `m2001`
-netlist). So the standard modem is **re-implemented from spec, not reversed** — and the
+OFDM, confirmed by `mcs`/`harq` in firmware, FCC DTS classification). So the standard modem is **re-implemented from spec, not reversed** — and the
 only DJI-specific unknowns are **small and outside the DSP datapath**.
 
 ## What is complex vs small
@@ -48,8 +46,7 @@ Recover it without decoding the complex FPGA:
   `known-plaintext-plan.md`). The transmitted (de-framed) bytes then equal the LFSR
   output. Run **Berlekamp-Massey** on that bit sequence -> it returns the LFSR
   **polynomial + seed** directly. Done in a few lines; no FPGA reversing.
-- **Netlist extraction (alternative):** locate the small LFSR structure in the `m2001`
-  Mistral netlist and ignore the 64 DSPs / M10Ks entirely.
+- **Netlist extraction (unavailable):** needs a decoded FPGA netlist; none exists.
 
 ## Result
 

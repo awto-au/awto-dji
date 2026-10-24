@@ -1,10 +1,10 @@
 # FPGA emulation / co-simulation plan (reconcile netlist against firmware + chips)
 
-> **Correction (see `m2001-decomp-findings.md`):** the "DSP/M10K internals are the
-> undecodable wall" claim below is **wrong on re-run**. Mistral's `decomp` recovers LUT
-> masks (17,144), FF modes, DSP mode+coefficients, and M10K config+contents. The real
-> residual gap is **interconnect source resolution** (~53,889 unresolved active routes),
-> not the logic blocks. Read the bullets below with that correction in mind.
+> **VOID PREMISE (2026-10-24, pluribus #114):** this plan assumed a decoded `m2001` netlist
+> (56,337 routes, 199 named pins, 17,144 LUT masks). That decode was noise: `m2001` is a
+> Cyclone III/IV-format stream (best match EP4CGX150), not decoded; `m1900`/`m2000`/`m2002`
+> appear encrypted. No netlist, pin map or DSP/M10K inventory exists. The method below is
+> generic and applies only once a stream is decodable; see `fpga-images.md`.
 
 Approach: once a bitstream is decompiled to a netlist, identify the pins, simulate the
 fabric, and **reconcile simulated I/O against real captures and the surrounding firmware/
@@ -14,8 +14,7 @@ gap.
 
 ## 1. Identify the pins
 
-Raw material already recovered: Mistral gave **199 named package I/O pins** for `m2001`
-(e.g. `Y3`, `W2`, `AA2`) plus the block/route map. Label them by function using:
+Raw material: none today (the earlier "199 named pins for `m2001`" was decode noise). Once a stream decodes, label the pins by function using:
 
 - **AD9363 data port** (ADI UG-570) — recognise the ~12-bit I/Q sample bus + control.
 - **FX2LP slave-FIFO** signals (`IFCLK`, `SLRD#`, `SLWR#`, `FLAGB#`, `FLAGC#`, `FD[..]`).
@@ -66,10 +65,10 @@ around the decode step.
 **On JTAG probing (the dev-board route).** JTAG on a Cyclone-V gives **configuration +
 boundary-scan**: you can read/toggle the device-boundary **I/O pins** — exactly what the
 input/output reconciliation needs. It does **not** expose internal nodes; that requires a
-**SignalTap** logic-analyzer core compiled *into* the design, and `m2001` has no SignalTap
+**SignalTap** logic-analyzer core compiled *into* the design, and the DJI image is unlikely to contain a SignalTap
 instance (DJI would not ship one, and we can't add one without recompiling). So the clean
 hardware path is: matching 5CEBA4/e50f board -> load the de-packed bitstream -> drive known
-inputs and capture outputs at the boundary using the 199-pin map (step 1) -> reconcile.
+inputs and capture outputs at the boundary using the pin map (step 1, once one exists) -> reconcile.
 Internal visibility, where needed, comes from the Mistral netlist sim, not from JTAG.
 
 ## Can the minimal recovery be done purely in an FPGA emulator? Yes
@@ -117,7 +116,7 @@ diverged):
   **Xilinx 7-series** (Project X-Ray/prjxray). Those map the fabric so completely that
   `bitstream -> unpack -> netlist -> simulate` feels direct. The Altera **Cyclone-V** member
   of that same family of projects is **Project Mistral**, and it is the tool already run
-  here (it unpacked `m2001` to a 56,337-route netlist). So this is **not** "no tool exists":
+  here (it has not decoded any DJI image: m2001 is not Cyclone V; the others appear encrypted). So this is **not** "no tool exists":
   a CPU emulator interprets a known ISA, but an FPGA bitstream is a device-specific fabric
   config that must be *decoded* by the matching RE project first — and for our silicon that
   decoder (Mistral) exists and works. The one difference from ECP5/Trellis is **coverage,

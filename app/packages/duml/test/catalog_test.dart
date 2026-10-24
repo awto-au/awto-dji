@@ -71,4 +71,26 @@ void main() {
     expect(r, contains('SN123456'));
     expect(r, contains('identifier'));
   });
+
+  // Verified against DJI GO 4 v4.3.64's own CmdSet enum (docs/apk-analysis.md,
+  // docs/data/apk-cmdset-devicetype.tsv) - guards against the names silently
+  // drifting back to the pre-verification guesses (0x0b/0x0c/0x0d were wrong).
+  test('cmdSetName matches the app-confirmed CmdSet values', () {
+    expect(cmdSetName(0x00), 'general');
+    expect(cmdSetName(0x03), 'flight-controller');
+    expect(cmdSetName(0x06), 'remote-controller');
+    expect(cmdSetName(0x09), 'osd');
+    expect(cmdSetName(0x0a), 'eye');
+    expect(cmdSetName(0x0b), 'simulator');
+    expect(cmdSetName(0x0c), 'battery');
+    expect(cmdSetName(0x0d), 'smart-battery');
+    expect(cmdSetName(0x0f), 'rtk');
+  });
+
+  test('knownMessageName covers the doubly-confirmed RC/OSD commands', () {
+    expect(knownMessageName(0x06, 0x0c), contains('Connected Master Id'));
+    expect(knownMessageName(0x06, 0x0d), contains('Connected Master Id'));
+    expect(knownMessageName(0x09, 0x12), isNotNull);
+    expect(knownMessageName(0x09, 0x13), isNotNull);
+  });
 }

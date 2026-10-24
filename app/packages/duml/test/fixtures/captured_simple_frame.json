@@ -1,0 +1,9 @@
+{
+  "source": "captures/sessions/2026-10-23/aoa_relay_server.log",
+  "wire": "552d04f20e02cf3b03890202ec7f8471e77fee02b27f951cd231fc1ef11cbd03f746ec61bc59f754ec1d844f85",
+  "sequence": 15311,
+  "cmd_set": 9,
+  "cmd_id": 10,
+  "payload": "ffffffffffffffffffffffffaba8afaeafb2abaeffffffffffffffffffffffff",
+  "expected_fields": "Decoded independently using native-disassembly transform; ciphertext is a real hardware capture, plaintext is not a separate capture."
+}
