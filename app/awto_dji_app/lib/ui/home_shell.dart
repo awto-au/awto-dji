@@ -6,6 +6,7 @@ import '../safety/sample_zones.dart';
 import '../video/video_decoder.dart';
 import 'about_screen.dart';
 import 'command_test_screen.dart';
+import 'diagnostics_screen.dart';
 import 'gimbal_screen.dart';
 import 'packet_log_screen.dart';
 import 'telemetry_screen.dart';
@@ -33,6 +34,7 @@ class _HomeShellState extends State<HomeShell> {
       PacketLogScreen(session: widget.session),
       CommandTestScreen(session: widget.session),
       GimbalScreen(session: widget.session),
+      DiagnosticsScreen(session: widget.session),
       AboutScreen(session: widget.session),
     ];
     return Scaffold(
@@ -43,6 +45,7 @@ class _HomeShellState extends State<HomeShell> {
           'Packet log',
           'Command test',
           'Gimbal',
+          'Diagnostics',
           'About'
         ][_index]),
       ),
@@ -56,6 +59,7 @@ class _HomeShellState extends State<HomeShell> {
           NavigationDestination(icon: Icon(Icons.list_alt), label: 'Packets'),
           NavigationDestination(icon: Icon(Icons.science_outlined), label: 'Test'),
           NavigationDestination(icon: Icon(Icons.camera_outdoor_outlined), label: 'Gimbal'),
+          NavigationDestination(icon: Icon(Icons.health_and_safety_outlined), label: 'Diag'),
           NavigationDestination(icon: Icon(Icons.info_outline), label: 'About'),
         ],
       ),

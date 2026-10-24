@@ -53,6 +53,25 @@ class GimbalCommands {
     ).encode();
   }
 
+  /// Gimbal cmdset 0x04 / 0x08 (AutoCalibration) - the gimbal self-test/calibration
+  /// trigger. Real class `DataGimbalAutoCalibration.start()` (dji.go.v4 decompile,
+  /// `dji/midware/data/model/P3/DataGimbalAutoCalibration.java`) sends APP->GIMBAL,
+  /// `NEEDACK.YES`, `EncryptType.NO`, 1-byte payload from `getSendData()`.
+  ///
+  /// V, confirmed 2026-10-24 against a real wire capture of this exact command
+  /// working (real pitch movement + mode change observed, see awto-dji#16):
+  /// `550e046602040074200408008c2f` -> sender=APP, receiver=GIMBAL, ackType=
+  /// beforeExec (byte8 bits5-6 = 1), cmdSet=0x04, cmdId=0x08, payload=[0x00].
+  Uint8List autoCalibration() => DumlPacket(
+        senderType: DeviceType.app,
+        receiverType: DeviceType.gimbal,
+        sequence: _seq++,
+        ackType: AckType.beforeExec,
+        cmdSet: CmdSet.gimbal,
+        cmdId: 0x08,
+        payload: Uint8List.fromList([0]),
+      ).encode();
+
   /// Gimbal cmdset 0x04 / 0x0a, angles in degrees.
   Uint8List angle({
     double pitch = 0,

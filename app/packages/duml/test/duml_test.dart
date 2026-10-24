@@ -184,5 +184,51 @@ void main() {
       );
       expect(OsdGeneral.fromPacket(p), isNull);
     });
+
+    test('also matches the hdLink/OSD 0x09/0x01 alias of the same struct', () {
+      final p = DumlPacket(
+        senderType: DeviceType.flightController,
+        receiverType: DeviceType.app,
+        sequence: 1,
+        cmdSet: CmdSet.hdLink,
+        cmdId: 0x01,
+        payload: Uint8List(30),
+      );
+      expect(OsdGeneral.matches(p), isTrue);
+    });
+
+    test('decodes motor-arming interlock, motor-fail cause and IMU reason', () {
+      final payload = Uint8List(60);
+      final d = ByteData.sublistView(payload);
+      // flags int32 @32: bit3 (motorUp)=1, bit27 (motorBlocked)=1, bit16 (compass)=1.
+      d.setUint32(32, (1 << 3) | (1 << 27) | (1 << 16), Endian.little);
+      d.setUint8(38, 89); // MotorStartFailedCause.gimbalDisorder
+      d.setUint8(47, 26); // flycVersion >= 26 -> byte38 read directly
+      d.setUint8(49, 1); // ImuInitFailReason.colletingData
+
+      final osd = OsdGeneral.fromPayload(payload);
+      expect(osd.flycVersion, 26);
+      expect(osd.motorUp, isTrue);
+      expect(osd.motorBlocked, isTrue);
+      expect(osd.compassError, isTrue);
+      expect(osd.motorFailedCause, MotorStartFailedCause.gimbalDisorder);
+      expect(osd.imuInitFailReason, ImuInitFailReason.colletingData);
+    });
+
+    test('a too-short payload leaves the new fields null, not a crash', () {
+      final osd = OsdGeneral.fromPayload(Uint8List(30));
+      expect(osd.flycVersion, isNull);
+      expect(osd.motorUp, isNull);
+      expect(osd.motorFailedCause, isNull);
+      expect(osd.imuInitFailReason, isNull);
+    });
+
+    test('REMOTE_USB_CONNECTED range (200-255) resolves via MotorStartFailedCause.find',
+        () {
+      expect(MotorStartFailedCause.find(200), MotorStartFailedCause.remoteUsbConnected);
+      expect(MotorStartFailedCause.find(255), MotorStartFailedCause.remoteUsbConnected);
+      expect(MotorStartFailedCause.find(199), isNot(MotorStartFailedCause.remoteUsbConnected));
+      expect(MotorStartFailedCause.find(9999), MotorStartFailedCause.other);
+    });
   });
 }

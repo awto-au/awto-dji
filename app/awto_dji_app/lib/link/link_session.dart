@@ -68,6 +68,12 @@ class LinkSession extends ChangeNotifier {
   DateTime? lastTelemetryAt;
   OsdGeneral? latestOsd;
   RcSignalQuality? latestSignal;
+
+  /// Most recent `GetVersion` reply per replying device (`DumlPacket.senderType`,
+  /// e.g. [DeviceType.flightController]/[DeviceType.gimbal]/[DeviceType.camera]) -
+  /// see `link/diagnostics_commands.dart` for the request and `CommonVersion` (duml
+  /// package) for the decode.
+  final Map<int, CommonVersion> latestVersions = {};
   LinkState linkState = LinkState.disconnected;
 
   Stream<DumlPacket> get packets => _packets.stream;
@@ -142,6 +148,10 @@ class LinkSession extends ChangeNotifier {
       final signal = RcSignalQuality.fromPacket(p);
       if (signal != null) {
         latestSignal = signal;
+      }
+      final version = CommonVersion.fromPacket(p);
+      if (version != null) {
+        latestVersions[p.senderType] = version;
       }
     }
     if (gotPacket && prev != null) {
