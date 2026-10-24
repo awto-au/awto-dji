@@ -24,6 +24,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from _log import REPO, log  # noqa: E402
+from ghidra_archive import archive_project  # noqa: E402
 
 GHIDRA_HOME = Path("/home/dan/tools/ghidra_12.2_DEV")
 ANALYZE_HEADLESS = GHIDRA_HOME / "support" / "analyzeHeadless"
@@ -86,6 +87,8 @@ def main() -> int:
     dump_path = run_ghidra()
     report(dump_path)
     log(f"full dump: {dump_path}")
+    archive = archive_project(REPO, OUT_DIR / "proj", "m0900_radio")
+    log(f"project archived (not deleted): {archive}")
     return 0
 
 

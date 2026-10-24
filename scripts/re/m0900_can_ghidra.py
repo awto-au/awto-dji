@@ -27,6 +27,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from _log import REPO, log  # noqa: E402
+from ghidra_archive import archive_project  # noqa: E402
 
 GHIDRA_HOME = Path("/home/dan/tools/ghidra_12.2_DEV")
 ANALYZE_HEADLESS = GHIDRA_HOME / "support" / "analyzeHeadless"
@@ -60,7 +61,6 @@ def run_ghidra() -> Path:
         "-loader-baseAddr", f"{BASE:#x}",
         "-postScript", "M0900Dump.java", str(dump),
         "-scriptPath", str(SCRIPT_DIR),
-        "-deleteProject",
     ]
     log("running: " + " ".join(cmd))
     with headless_log.open("w", encoding="utf-8") as fh:
@@ -114,6 +114,8 @@ def main() -> int:
     dump = run_ghidra()
     literal_scan(dump)
     log(f"full dump: {dump}")
+    archive = archive_project(REPO, OUT_DIR / "proj", "m0900_can")
+    log(f"project archived (not deleted): {archive}")
     return 0
 
 
