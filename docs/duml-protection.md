@@ -104,8 +104,10 @@ on the owner's recorded P3 link; new outgoing interoperability tests remain pend
 | DUML `SIMPLE` transform | V: APK `DataConfig.EncryptType.SIMPLE(3)`; `DataBase.preprocessPack`; manager `P3/c.java`; native routine below | XOR transformation of command set, command ID and payload, using a bundled table and packet sequence bytes. No per-device/pair input identified in this path. |
 | Matching firmware implementation | V: C1 `m1601` 02.00.0006, table at file `0x10920`, ARM routine at `0x400042e4` | Ground USB firmware contains the same table and corresponding XOR/sequence logic; packet code calls it for SIMPLE frames. Exact silicon and use in the owner's GL300C remain to be confirmed. |
 | ATSHA204 component authentication | Existing MCU trace in [cpu-reversing-proof.md](cpu-reversing-proof.md), secure-element/provisioning cluster near `m1400:0xf880` | A separate hardware authentication mechanism. Its key provisioning and uniqueness per component/pair have not been established by this APK trace. |
-| RC master/slave connection | V: `DataRcSetConnectMaster`, `DataRcGetConnectMaster`, `DataRcGetSlaveList.RcModel` | Connection record contains ID, name and a password field; `WrongPwd` is a named result. These facts alone do not identify aircraft-radio binding or prove cryptographic authentication. |
-| Aircraft/RC radio protection | U: end-to-end binding and FPGA radio datapath not established here | Cannot infer absence of pair-specific protection from the APK's shared XOR transform. |
+| RC master/slave connection | V: `DataRcSetConnectMaster`, `DataRcGetConnectMaster`, `DataRcGetSlaveList.RcModel`, `RcMasterSlaveView.java`, `CmdIdRc.CmdIdType.SetFrequency` (`FreqMode.MasterEnter/SlaveEnter/SubEnter`) | This is an RC-to-RC (or Wi-Fi-RC-to-RC) multi-controller linking feature — a second/subordinate RC joining the primary RC for shared control — not aircraft-radio binding. Its frames (`SetConnectMaster`, `GetConnectMaster`, `GetSlaveList`, `GetSearchMasters`, `SetFrequency`) are all built with `DataConfig.EncryptType.NO` in their `start()` methods: the password/connect flow is sent in cleartext DUML, not even passed through SIMPLE. |
+| XOR table provenance (`simple_key`) | V: dynsym/relocation/disassembly trace below | `simple_key`/`simple_key_len`/`simple_stream_filter`/`simple_stream_part_filter` are exported dynamic symbols, but every reference to them found in the APK's own libraries and native disassembly is a **read**; no store instruction targets the table, no other bundled library imports the symbol, and the Java-visible native API has no setter. The pointer is fixed by a static `R_AARCH64_RELATIVE` PIE relocation to a `.rodata` offset at image load, not computed at runtime. |
+| Aircraft/RC radio-link binding (DUML command catalog) | V: full `CmdSet.java` enum survey (COMMON/SPECIAL/CAMERA/FLYC/GIMBAL/CENTER/RC/WIFI/BATTERY/SMARTBATTERY/...) | The only "master/slave + password/auth-code" patterns in the entire command catalog are the RC-to-RC mechanism above and its Wi-Fi-RC analog (`CmdSet.WIFI`: `SetMasterSlaveAuthCode`/`ScanMasterList`/`ConnectMasterWithIdAuthCode`/`GetAuthCode`) plus unrelated multi-battery pairing (`CmdSet.SMARTBATTERY`: `GetPair`/`SetPair`/`Authentication`). No distinct aircraft<->single-RC binding/authentication command set was found; `ActiveStatus`/`GetPushActiveRequest`/`SetActiveResult` are DJI-account/SDK activation, not RF link auth. |
+| Aircraft/RC radio protection (RF/physical layer) | U: FPGA radio datapath and over-the-air behaviour not established by any APK/command-catalog trace | This pass only covers the DUML command catalog as implemented in the app. It cannot speak to protection implemented purely in the FPGA/AD9363 physical layer, independent of DUML. |
 
 ## SIMPLE transform: where its inputs come from
 
@@ -147,6 +149,99 @@ readelf -SW tmp/apk/raw/lib/arm64-v8a/libGroudStation.so
 aarch64-linux-gnu-objdump -d --start-address=0x1fac --stop-address=0x209c tmp/apk/raw/lib/arm64-v8a/libGroudStation.so
 aarch64-linux-gnu-objdump -d --start-address=0x3438 --stop-address=0x354c tmp/apk/raw/lib/arm64-v8a/libGroudStation.so
 ```
+
+## XOR table provenance and aircraft/RC binding (2026-10-24, issue #22)
+
+Answers issue #22's two static-analysis questions. No key/table bytes reproduced.
+
+### Cross-library references/writes to `simple_key`
+
+- V: `readelf --dyn-syms` on `tmp/apk/raw/lib/arm64-v8a/libGroudStation.so` shows
+  `simple_key` (`0x15128`), `simple_key_len` (`0x3d6c`), `simple_stream_filter`
+  (`0x3438`) and `simple_stream_part_filter` (`0x34cc`) all `OBJECT/FUNC GLOBAL
+  DEFAULT` — exported from the library, not file-local.
+- V: full disassembly of both routines (`objdump -d --start-address=0x3438
+  --stop-address=0x354c`) shows only `ldrb` (load byte) instructions reading through
+  the table pointer (`ldrb w6, [x9, x6]` / `ldrb w7, [x10, x7]`). The only `strb`
+  (store byte) instructions in either routine write to the destination buffer
+  argument (register `x3`), never to the table. Neither routine contains a write
+  to the table.
+- V: `readelf -rW` lists 44 `.rela.dyn` entries, all `R_AARCH64_RELATIVE` (the
+  loader's own PIE pointer fixups, applied once at image load — not a
+  runtime/application write) plus one `R_AARCH64_GLOB_DAT` for `__stack_chk_guard`.
+  The entry at GOT offset `0x14ff0` sets `simple_key` to `0x15128` -> `0x3d70`,
+  inside `.rodata`: a compile-time constant address, not a computed one.
+- V: `JNI_OnLoad` (`0x17ec`) only resolves the JNIEnv and calls
+  `register_GroudStation`; `.init_array` has one entry (`0x1680`), itself a
+  `__cxa_atexit`-registration stub. `.rela.plt` imports are limited to `malloc`,
+  `free`, `__android_log_print`, `__stack_chk_fail`, `__cxa_atexit`,
+  `__cxa_finalize` — no file, socket, or crypto-library imports exist for this
+  library to load or derive a key from at startup.
+- V: searched dynamic symbol tables of every other `.so` bundled in the APK
+  (`manifest/`, `pilot_static/resources/`, `raw/`, arm64-v8a) for undefined
+  references to `simple_key`, `simple_stream_filter`, `simple_stream_part_filter`
+  or `native_rcDataDeal`: none found in any library other than the three copies
+  of `libGroudStation.so` itself. No other bundled library writes to or reads
+  this symbol.
+- V: the complete Java-visible native surface of `GroudStation`
+  (`tmp/apk/dynamic/decompiled/sources/dji/midware/natives/GroudStation.java`)
+  is `native_calcCrc16/8`, `native_checkCRCForData`, `native_decodeData`,
+  `native_encodeData`, `native_getCRCFromData`, `native_hashFromString`,
+  `native_rcDataDeal`, `native_verifyCrc16/8`, `native_yuv422ToImage` — there is
+  no exposed setter through which Java (account state, an ATSHA204 read, a
+  server response) could inject a per-device/per-pair key or table.
+- I: taken together, within everything shipped in this APK, `simple_key` behaves
+  as a fixed build-time literal: nothing reads it except the two filter routines,
+  nothing writes it, and no Java-reachable path can replace it. The existing
+  caveat stands unchanged: the symbol is exported and its target is writable
+  memory, so a binary *outside this APK* (not examined here) could in principle
+  write through it — this pass narrows, but does not close, that possibility.
+- I: a second, structurally identical copy of the routine exists in
+  `tmp/apk/pilot_static/resources/lib/arm64-v8a/libGroudStation.so` at a
+  different offset (`simple_stream_filter` at `0x3530`, table fixed to `0x3e6c`)
+  — a different build bundled in the APK, not independent runtime evidence, but
+  consistent with the table being baked in at compile time across builds rather
+  than provisioned later.
+
+### Aircraft/RC binding, independent of RC master/slave
+
+- V: `DataRcSetConnectMaster.start()`, `DataRcGetConnectMaster`,
+  `DataRcGetSlaveList.start()`, `DataRcGetSearchMasters.start()`, and
+  `DataRcSetFrequency.start()` (all `dji/midware/data/model/P3/`) each build their
+  frame with `dVar2.l = DataConfig.EncryptType.NO.value();` explicitly — this
+  password/connect exchange is sent as **cleartext DUML**, not even passed through
+  SIMPLE.
+- V: `RcMasterSlaveView.java` (`dji/setting/ui/rc/`) and
+  `DataRcSetFrequency.FreqMode` (`MasterEnter/SlaveEnter/SubEnter`) confirm the
+  purpose: linking a second/subordinate RC to the primary RC for shared control —
+  RC-to-RC, not RC-to-aircraft.
+- V: full survey of `CmdSet.java`'s enum (`dji/midware/data/config/P3/`, all
+  cmdsets: COMMON, SPECIAL, CAMERA, FLYC, GIMBAL, CENTER, RC, WIFI, DM368, BATTERY,
+  SMARTBATTERY, and the remaining ones) for `Bind`/`Pair`/`Activ` finds exactly two
+  other matches: `CmdSet.WIFI`'s `SetMasterSlaveAuthCode(131)` /
+  `ScanMasterList(132)` / `ConnectMasterWithIdAuthCode(133)` / `GetAuthCode(137)`
+  (the Wi-Fi-RC analog of the same RC-to-RC master/slave scheme, for Wi-Fi-linked
+  products — not the P3 Pro's Lightbridge RC), and `CmdSet.SMARTBATTERY`'s
+  `GetPair(21)` / `SetPair(22)` / `Authentication(35)` (multi-battery pairing,
+  e.g. dual-battery systems — unrelated to the RF link). `ActiveStatus(50)`
+  (COMMON), `GetPushActiveRequest(97)`/`SetActiveResult(98)` (FLYC) are
+  DJI-account/SDK product activation, not RF link authentication.
+- I: no command set in this catalog implements a distinct aircraft<->single-RC
+  binding or authentication handshake. Combined with the RC master/slave finding,
+  static analysis of the DUML command catalog as implemented in the app finds
+  **no per-pair authentication of the aircraft<->RC radio link at the DUML layer**
+  — only the shared, apparently-hardcoded SIMPLE transform (whose own routine has
+  no MAC/replay check either, per the existing finding below). This does not
+  establish or rule out protection implemented purely in the FPGA/AD9363 physical
+  layer, independent of DUML — that is outside what a command-catalog/APK trace
+  can see.
+
+**Explicitly unaddressed by this pass (needs live hardware):** whether SIMPLE is
+actually exercised on the owner's real P3 link beyond the one recorded frame
+already in evidence above, and whether the RF/physical layer applies any
+protection of its own. Both require a live-hardware passive capture session; this
+was static analysis only, no capture was attempted, and none should be inferred
+from the above.
 
 ## Firmware match (2026-10-24)
 
@@ -221,7 +316,12 @@ SIMPLE alone has no demonstrated message-authentication tag or replay check in t
 examined routine. A changing sequence is not a secret per-pair key. Its presence does
 not establish resistance to deliberate command injection.
 
-To settle the system-level question, inspect cross-library references/writes to
-`simple_key`, confirm SIMPLE usage in a passive capture of the owner's P3, and trace
-aircraft/RC binding independently of RC master/slave connection. No need to disclose
-secret values to establish whether provisioning or session inputs are device-specific.
+Cross-library references/writes to `simple_key` and the independent trace of
+aircraft/RC binding are now done (see "XOR table provenance and aircraft/RC
+binding" above, issue #22): the table is read-only everywhere examined in this
+APK and has no Java-reachable setter; no DUML command set implements a distinct
+aircraft<->single-RC binding/authentication step; RC master/slave is RC-to-RC and
+sent in cleartext. **Still open and requiring live hardware, not attempted here:**
+confirm SIMPLE's actual use (beyond the one recorded frame already in evidence) on
+a passive capture of the owner's real P3 link, and whether the FPGA/AD9363
+physical layer applies any protection of its own independent of DUML.
