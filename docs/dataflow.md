@@ -343,3 +343,38 @@ Public RE community sources, not this repo's own analysis - see issue #36 for th
 - **DroneCAN/UAVCAN**: no evidence DJI's aircraft stack uses or was influenced by it. DJI's RoboMaster line (ground robots, unrelated product) does use CAN for its C610/C620 ESCs with its own open protocol, but that's a different product family, not the Phantom aircraft.
 - Net: nothing public contradicts the static finding that CAN1 on `m0900` carries relayed DUML rather than ESC/motor commands.
 4. `0x0800c808` has 94 callers and looks like a generic helper, not CAN-specific. Not named yet.
+
+### 7.10 `m0306`'s own CAN1 *and* CAN2 — FC side, separate chip from `m0900` (issue #40, 2026-10-24)
+
+Source: `firmware/unpacked/P3X_FW_V01.11.0020_m0306.bin`, Ghidra 12.2 headless, full pass
+(`scripts/re/m0306_ghidra_disasm.py`, `tmp/m0306_ghidra/m0306_dump.txt`, project archived
+`re/ghidra-projects/m0306_flight_controller.tar.gz`). This is the **flight controller's
+own** bxCAN silicon — a different chip from `m0900` (§7.1-7.9, the radio MCU) — asked for
+by issue #40 point 4 as a separate question from the already-settled "is CAN1 the
+motor/ESC bus" (§7.9: no, ESC is UART3+PWM1-4).
+
+- **V, both CAN1 (`0x40006400`) and CAN2 (`0x40006800`) are genuinely initialised**, not
+  one live + one dead like `m0900`'s SPI1/SPI2 (control-plane-re.md): each gets its own
+  `GPIO_PinAFConfig`-pattern call (AF9, the standard CANx alternate function on this family)
+  at `0x080353e6`-`0x080353fe` region, its own RCC clock-enable dispatch through
+  `0x0803addc` (shared selector: compares the base against CAN1/CAN2 and picks RCC bit 25
+  or 26, same StdPeriph shape as `m0900`'s `can_rcc_enable` at `0x08000620`), and its own
+  bit-timing (BTR-pattern) register write — CAN1 at `FUN_080351d0`, CAN2 at
+  `FUN_08035484`/`FUN_080353b2` (tail-jump chained, `b 0x08035484` at `0x080355c6`).
+- **I:** CAN1 here is plausibly the FC-side end of the *same* DUML-relay CAN bus `m0900`
+  already carries 0x412-0x415 on (§7.1-7.6) — the aircraft's radio MCU and flight
+  controller sharing one physical CAN bus is the simplest explanation consistent with
+  §7.9's external pinout evidence (only `CAN1_T`/`CAN1_R` pads are documented on the P3X FC
+  board — no public mention of a second CAN bus on that board).
+- **U — open, not resolved this pass:** what CAN2 carries. The firmware clearly brings it
+  up (same driver pattern as CAN1), but the public pinout docs §7.9 cites don't mention a
+  second CAN bus on the FC board, and tracing CAN2's actual message IDs/payload would need
+  the same RX-ISR-level work §7.7/§7.8 flags as still open for `m0900`'s CAN1 — not
+  attempted here (budget). Candidates: a second internal DUML/sensor bus (GPS/compass
+  module?), or dead-but-initialised code (StdPeriph CAN_Init() running on an unused
+  instance is a real possibility — rule it out the same way §7.9's `m0900` SPI1 check did,
+  by checking for callers of the TX/RX pump functions, not attempted here).
+- Full peripheral map from this pass (code-provenance.md has details): no SPI, no DMA, no
+  ADC referenced anywhere in `m0306` — this FC does not do direct-SPI sensor/FPGA access
+  the way `m0900` does; USART1/2/3/UART4/5/USART6 (all six, one shared init dispatcher) and
+  I2C1/2/3 are its other comms peripherals.

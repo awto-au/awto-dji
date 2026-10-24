@@ -299,3 +299,27 @@ it is a strong inference from the WiMAX basis, not proof. One forum post calls L
 "full custom ASIC", but the chip evidence (AD9363 SDR + Cyclone V, not a bespoke baseband
 ASIC) favours the WiMAX-family reading; "custom" more likely describes the system than a
 novel PHY algorithm.
+
+## `m0306` (A3 flight controller) — a second, separate control-plane MCU (issue #40)
+
+Same reversing approach as `m0900` above, applied to the **flight controller** instead of
+the radio MCU — a different chip, different firmware, different role (sensor fusion /
+actuator control, not RF). Full writeup: `docs/code-provenance.md` (chip ID, debug-symbol
+check, RTOS/library fingerprint) and `docs/dataflow.md` §7.10 (CAN1/CAN2). Summary:
+
+- **Chip:** STM32F427 (Cortex-M4), confirmed `0x08020000`-base, 192 KB SRAM1 — same
+  firmware-only SRAM-size method used for `m0900`'s STM32F103 ID, cross-checked against
+  public FC-board pinout docs that name the part directly.
+- **No debug symbols** — same empty result as `m0900`: no ELF/DWARF/`.symtab`/map-file
+  remnants in the 885 KB image.
+- **Stack, beyond "µC/OS confirmed":** µC/OS-**III** specifically (task-name strings), a
+  CMSIS `SystemInit()`-pattern HSE/PLL/FLASH-latency bring-up at `0x0802258c`, and the same
+  ST StdPeriph-shaped RCC-clock-enable dispatch table already identified in `m0900`'s SPI
+  driver — three distinct library layers on one chip, not just the RTOS.
+- **CAN bus angle:** both CAN1 and CAN2 are genuinely initialised (GPIO AF9, RCC enable,
+  bit-timing register writes) — unlike `m0900`'s dead `SPI1`. CAN1 is plausibly this
+  chip's end of the same DUML-relay CAN bus `m0900` already carries 0x412-0x415 on; what
+  CAN2 carries is open (`dataflow.md` §7.10).
+- **Full Ghidra pass:** 2745 functions / 122,341 instructions; project archived to
+  `re/ghidra-projects/m0306_flight_controller.tar.gz` (not discarded, per this project's
+  earlier Ghidra-project-loss lesson).
