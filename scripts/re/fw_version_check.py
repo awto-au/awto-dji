@@ -29,11 +29,17 @@ GETVERSION_CSET, GETVERSION_CID = 0x00, 0x01
 # Devices this repo has a live GetVersion receiver type for (issue #32 scope).
 # ofdm_radio = DeviceType.ofdm (added to duml_proto.py this session - was missing,
 # gap already documented at docs/app-upgrade-sequence.md:332).
+#
+# remote_controller uses DeviceType.osd (0x0e), NOT DeviceType.remote_controller (0x06):
+# docs/identity-queries.md:7,18,22 - on real RC USB-serial hardware, 0x0e answered
+# GetVersion/GetDeviceInfo/GetDeviceState with real data (hw="GL300C"), while 0x06 got
+# no reply to any of 10 queries including GetVersion. DJI's own naming calls 0x0e "OSD"
+# even though it is physically the RC handset's main MCU for this purpose.
 DEVICES = {
     "flight_controller": DeviceType.flight_controller,
     "gimbal": DeviceType.gimbal,
     "camera": DeviceType.camera,
-    "remote_controller": DeviceType.remote_controller,
+    "remote_controller": DeviceType.osd,
     "ofdm_radio": DeviceType.ofdm,
 }
 
@@ -58,26 +64,40 @@ DEFAULT_WAIT_S = 2.0
 
 
 def decode_common_version(payload):
-    """Port of app/packages/duml/lib/src/version.dart CommonVersion.fromPayload -
-    same byte offsets, so this must stay byte-for-byte identical to that decoder:
-    hardwareVersion = ASCII @ payload[1:17] (NUL-terminated), firmwareVersion =
-    bytes[24,23,22,21] dotted, loaderVersion = bytes[20,19,18,17] dotted, info =
-    LE uint32 @25 (bit31=isProduction, bit30=isSupportSafeUpgrade). Needs 29 bytes
-    minimum, matching CommonVersion.matches()."""
-    if len(payload) < 29:
+    """GetVersion response layout - offsets fixed this session (awto-dji#32), one byte
+    later than app/packages/duml/lib/src/version.dart CommonVersion.fromPayload's
+    offsets: that Dart decoder has an off-by-one (missing a second leading "unknown"
+    byte), confirmed against two independent sources:
+    1. o-gs/dji-firmware-tools' general_version_inquiry_dissector (externally RE'd,
+       unrelated to this repo's possibly-wrong-app APK decompile - see awto-dji#30),
+       /mnt/2tb/git/dji-firmware-tools/comm_dissector/wireshark/dji-dumlv1-general.lua
+       lines 120-160: response = unknown0(1B) + unknown1(1B) + hw(16B) + ldr(4B) +
+       app(4B) + flags(4B) [+ 1B or 4B trailer], hw starting at offset 2, not 1.
+    2. Two real captured GetVersion replies, captures/sessions/2026-10-24/duml_probe.log
+       (docs/identity-queries.md:18 for the first): with THESE (fixed) offsets, the
+       RC/GL300C reply's hw field decodes to a clean "GL300C" (the old offset produces
+       a garbled "\\x10GL300C"); an unprogrammed device's reply (same log, receiver
+       0x14) decodes loaderVersion AND firmwareVersion to "255.255.255.254" -
+       byte-for-byte the same placeholder pattern independently observed in the SD-card
+       upgrade log's own "[19 00]" lines (docs/firmware-upgrade-log-review.md:62-64).
+    Layout: hardwareVersion = ASCII @ payload[2:18] (NUL-terminated), firmwareVersion =
+    bytes[25,24,23,22] dotted, loaderVersion = bytes[21,20,19,18] dotted, info =
+    LE uint32 @26 (bit31=isProduction, bit30=isSupportSafeUpgrade). Needs 30 bytes
+    minimum (31/34-byte variants add a trailer the app firmware string doesn't need)."""
+    if len(payload) < 30:
         return None
-    hw_bytes = payload[1:17]
+    hw_bytes = payload[2:18]
     nul = hw_bytes.find(0)
     hw = hw_bytes[:nul if nul >= 0 else None].decode("ascii", "replace")
 
     def dotted(hi, lo):
         return ".".join(f"{payload[i]:02d}" for i in range(hi, lo - 1, -1))
 
-    info = int.from_bytes(payload[25:29], "little")
+    info = int.from_bytes(payload[26:30], "little")
     return {
         "hardwareVersion": hw,
-        "firmwareVersion": dotted(24, 21),
-        "loaderVersion": dotted(20, 17),
+        "firmwareVersion": dotted(25, 22),
+        "loaderVersion": dotted(21, 18),
         "isProduction": bool((info >> 31) & 1),
         "isSupportSafeUpgrade": bool((info >> 30) & 1),
     }
