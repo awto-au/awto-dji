@@ -170,69 +170,316 @@ UID-read summary across variants: STM32 UID literals exist only in P3X V01.11.00
 
 ## m0400 gimbal: firmware reversing (issue #41)
 
+**Redo of a shallow first pass** (commit `0c4234a`: 2/27 dispatch entries, peripherals as bare
+ref counts). This is the full pass: all 27 entries decoded, every GPIOA/B/C pin use traced to a
+peripheral, the SPI1 bus identified to an exact register map, CAN1/ADC1/TIM1/TIM3/TIM4 confirmed
+or refuted, and the DUML transport topology (3 UARTs, not 1) corrected.
+
 Image: `firmware/unpacked/P3X_FW_V01.11.0020_m0400.bin` (97032 B, V). Ini version `01.48.0000` (V).
 Loaded at `0x08008000` (I): reset vector `0x0800819d` lands inside the image (V).
-Tooling: `scripts/re/m0400_fingerprint.py`, `m0400_ghidra_disasm.py`, `m0400_literal_refs.py`,
-`m0400_cmd_table.py`. DumpARM.java got optional args (peripheral TSV, `vectors`, table spec).
-Ghidra project: `re/ghidra-projects/m0400_gimbal.tar.gz` (archived, not deleted).
+Tooling: `scripts/re/m0400_full_reversing.py` (`scripts/re/ghidra/DumpM0400Full.java`), run over
+`docs/data/stm32f407-register-map.tsv` (1414 RM0090 register labels, via `svd_to_labels.py` on
+`awto-dan/docs/embedded/reversing/stm32/svd/STM32F407.svd`). Full decompile of all 337 functions,
+dumped at `tmp/m0400_ghidra/m0400_full_dump.txt` (not committed, tmp/ is scratch - rerun the
+script to regenerate). Ghidra project re-archived: `re/ghidra-projects/m0400_gimbal.tar.gz`.
+Older single-purpose scripts (`m0400_ghidra_disasm.py`, `m0400_cmd_table.py`, etc.) are superseded
+by this one but left in place since they're already committed history.
 
 ### Image and library
 - V: no ELF, no `.symtab`/`.debug_*`, no compiler banner, no map tokens. Stripped raw image.
 - V: no ST StdPeriph/HAL/CMSIS/RTOS names, no `assert_failed` or source-path strings.
 - U: FunctionID/FLIRT not run. "No names" is not "no library".
-- V: Ghidra found 328 functions (18 vector-table ISRs, 27 table handlers), 22890 instructions.
+- V: Ghidra found 337 functions (18 vector-table ISRs, 27 table handlers, the rest `FUN_*`),
+  with the full STM32F407 SVD register map applied (1414/1414 labels placed, 0 skipped).
   No functions from `0x0801b660` to image end `0x0801fb08` (data or unexplored, U).
-- All functions are `FUN_*`. Nothing is named yet beyond the table-derived `vec_*`/`cmd_*`.
 
-### Peripheral map (F4 RM0090 bases; Ghidra literal xrefs, V)
+### Peripheral map (F4 RM0090 bases; Ghidra literal xrefs, V unless noted)
 - RCC `0x40023800` 18 refs, FLASH_IF `0x40023C00` 1 ref: both in clock-init `0x08011220`.
-- GPIOA `0x40020000` 80 refs; GPIOB 4; GPIOC 1.
-- USART1 `0x40011000` 11 refs (ISR `0x08011724`, IRQ37). USART2 `0x40004400` 14 refs (ISR `0x080117bc`, IRQ38).
-- USART3, SPI2, I2C1, DMA2, SDIO: 0 refs.
-- SPI1 `0x40013000` 12; DMA1 `0x40026000` 2; ADC1 `0x40012000` 7; CAN1 `0x40006400` 9.
-- TIM1 2; TIM3 1; TIM4 6. TIM2 `0x40000000` hits are float bit patterns (2.0f), not timers.
-- U: F1-layout literals (RCC `0x40021000`, FLASH `0x40022000`) exist but have no confirmed LDR site.
+- GPIOA `0x40020000` 80 refs; GPIOB 4 refs; GPIOC 1 ref. All attributed below, not left as counts.
+- USART1 `0x40011000` 11 refs; USART2 `0x40004400` 14 refs; **UART4 `0x40004C00`, not previously
+  found** (missing from the first pass's peripheral-base list entirely - it only checked
+  USART1/2/3). USART3, SPI2, I2C1, SDIO: 0 refs, genuinely unused.
+- SPI1 `0x40013000` 12 refs; ADC1 `0x40012000` 7 refs; CAN1 `0x40006400` 9 refs.
+- **DMA1 `0x40026000`: 2 refs, but both are a literal used to compute a DMA2 address
+  (`0x40026000` + `0x410` = `0x40026410` = DMA2_S0CR) - the base-literal scan missed this because
+  the compiler folded the offset into one constant that doesn't equal any scanned base exactly.
+  Confirmed from the raw literal pool (V): the real DMA engine in use is **DMA2 stream 0** (RX)
+  **and stream 3** (TX, `+0x48` = 3 x 0x18-byte stride), matching RM0090's SPI1 RX/TX DMA request
+  table. DMA1 itself has no real reference; DMA2 was never flagged by the base-literal scan
+  because its own bare base (`0x40026400`) never appears as a standalone literal - this method
+  undercounts whenever the compiler computes base+offset as one constant. Note for future passes.**
+- TIM1 2 refs, TIM3 1 ref, TIM4 6 refs - all three only resolved properly below (ref counts alone
+  were misleading for TIM1/TIM3, see "Timers").
+- **TIM2 `0x40000000`'s "40 refs" from the first pass is a false positive**, confirmed by reading
+  each hit (V): every one is `vmov.f32 sN,0x40000000` (the IEEE-754 bit pattern for float `2.0`),
+  or `orr`/`bic #0x40000000` (clearing/setting bit 30 of an unrelated word). `0x40000000` is both
+  the TIM2 base and the encoding of `2.0f`; naive scalar matching can't tell them apart. TIM2 has
+  zero real register accesses anywhere in this image.
+- U: F1-layout literals (RCC `0x40021000`, FLASH `0x40022000`) do have an LDR site this time (the
+  pin-descriptor loop in `0x08009a20`, entries at `0x0801b9d8`+`0xc*i`, resolve to `0x40021800`/
+  `0x40022000`-ish values) but what reads them is still not resolved - flagged, not guessed.
 
 ### Part (I)
 - V: 98 vector slots; F4 has 82 IRQs, F1 high-density has 60.
 - V: SP `0x2000fc40` inside F4 SRAM1 range.
 - I: 1 MB flash (flash read at `0x080C0000`). Exact part F405/F407/F415/F417 not resolved.
 
-### DUML dispatch
-- V: dispatcher `FUN_08016ff4`, loop `0x08017064`-`0x080170a4`. Rejects payload < 11 B (`cmp #0xb`).
-- V: loop matches `frame[0x0a]` (cmd id) vs entry+4 and `frame[0x09]` (cmd set) vs entry+5.
-- V: entry = `{u32 handler|1, u8 id, u8 set, 2 pad}`, 8 B, 0-terminated.
-- V: table `0x0801d46c`, 27 entries, terminator at `0x0801d544`.
-- V: `FUN_08016fac` (base literal `0x08016ff0` -> `0x0801d464`) has an empty table: first word at `0x0801d464` is 0, so it dispatches nothing.
-- Entries (set/id -> handler):
-  - 0x00/0x01 `0x08016254` Get Version. 0x00/0x07 `0x08016338`. 0x00/0x08 `0x08016cdc`.
-  - 0x00/0x09 `0x08016188`. 0x00/0x0a `0x080162e4`. 0x00/0x0b `0x08016840`. 0x00/0x0c `0x08016d30`.
-  - 0x00/0x0d `0x08016bf8`. 0x00/0x30 `0x08013fcc`.
-  - 0x01/0x01 `0x08016c78`. 0x03/0x42 `0x08016634`.
-  - 0x04/0x01 `0x08016564`. 0x04/0x06 `0x0801675c`. 0x04/0x07 `0x080168ac`. 0x04/0x08 `0x08016990` AutoCalibration.
-  - 0x04/0x0a `0x08015a50`. 0x04/0x0b `0x08015eb4`. 0x04/0x0c `0x08015c88` GimbalSpeedControl. 0x04/0x0d `0x08016eac`.
-  - 0x04/0x0e `0x080167e0`. 0x04/0x0f `0x08016a98`. 0x04/0x10 `0x080163c4`. 0x04/0x11 `0x08016930`.
-  - 0x04/0x13 `0x080161e8`. 0x04/0x14 `0x08015fe0`. 0x04/0x20 `0x08016e14`. 0x04/0x21 `0x08016e30`.
+### GPIOA/B/C: every pin traced to a peripheral (new, V unless noted)
+GPIOA's 80 refs are not one subsystem - they're five:
+1. **USART2** (`0x40009e0c`/`0x08009ee4`): 2 pins, AF7, feeds `FUN_08009e0c`.
+2. **UART4** (`0x08009be0`, base `DAT_08009cb0` = `0x40004C00` - new find, see "UARTs" below): 2
+   pins, AF8.
+3. **SPI1 hardware init** (`0x08010f68`): CS/CLK/MOSI/MISO pins via a config struct, plus DMA2
+   stream setup (`0x0800d1ac`/`0x0800d3a4`) for stream 0 and stream 0-0x48(=stream3).
+4. **Three bit-banged synchronous-serial engines, same two pins** (`0x0800e1d8`, `0x0800e358`,
+   `0x0800e5c0` - "write N bits then read M bytes", "write 6 bits then read 1 byte",
+   "write 6+8 bits, no read"). All three load the *same* GPIOA base from three different literal
+   pool slots (confirmed, V) and always toggle **PA5** (`GPIOA_BSRR` bit 5, clock) and sample
+   **PA7** (`GPIOA_IDR` bit 7, data) - i.e. one shared 2-wire bus, not three independent buses.
+   `MODER` bits for PA7 are flipped output->input mid-transaction (bit pattern `0x4000`/`0xC000` =
+   pin7's 2-bit field), confirming half-duplex on a single data pin. The 6-bit address field
+   (loop `for uVar2 = 5..0`) matches no single IMU vendor convention cleanly on its own, but
+   combined with the per-instance structure (one read-N, one read-1, one write-1) this is the
+   shape of a shared clock/data pair serving **multiple chip-selected slaves** - most plausibly
+   three magnetic rotary-position encoders, one per gimbal axis, sharing PA5/PA7 with separate CS
+   lines (I, functional shape only - no datasheet match attempted, no specific part named).
+5. **`FUN_08009a20`**: configures PA5/PA6/PA7/PA15 statically (the shared bus pins above plus two
+   more, `0x40`=PA6, `0x8000`=PA15) and a 3-entry pin-descriptor loop (`0x0801b9d8` + `0xc*i`,
+   3 entries) whose per-entry "peripheral" words resolve to the dead F1-layout literals noted
+   above, not real F4 addresses - **this loop's target is unresolved (U)**, flagged rather than
+   assumed to be the three CS lines it would need to be for the encoder-sharing story above.
 
-### Wire-to-code: the two confirmed commands
-- **0x04/0x08 AutoCalibration -> `0x08016990` (V).**
-  - Wire frame, issue #16 capture (V): `550e046602040074200408008c2f`. Attr `0x20`, payload `00`.
-  - Handler sets a state word to 3, then reads attr bits [6:5] (V). Nonzero means the reply is built.
-  - Reply: 14-byte frame, cmd set `0x04` and id `0x08` echoed, sent via `0x08016d94` (V).
-  - Afterwards the state goes to 5. The payload byte is not read on this path (V).
-- **0x04/0x0c GimbalSpeedControl -> `0x08015c88` (V).**
-  - Mode check: global `0x08015ea0`+4 vs request byte `+4 & 0x1f`. Mismatch sets flag `0xff` (V).
-  - Mode field from frame byte `+0x11` bit 7: 2 if set, else 0 (V).
-  - Three int16 at frame `+0x0b`, `+0x0d`, `+0x0f` scaled by `0.0017453292` (pi/180, V) into floats at global `+0x48`, `+0x4c`, `+0x50`.
-  - A setpoint outside [-pi, +pi] is replaced by `0.0`, not saturated. Checked for `+0x48` and `+0x50` (V). Constants at `0x08015ea4`-`0x08015eb0`.
-  - Reply path: not traced (U).
-- Not decoded: what the setpoints drive, and the wire payload layout beyond these offsets.
+GPIOB (4 refs): 2 pins, AF7, USART1's TX/RX (`FUN_08009d08`) - matches RM0090's PB6/PB7 = USART1
+AF7 exactly. GPIOC (1 ref): 1 pin, analog mode, ADC1 channel 10 (`FUN_08019068`) - matches
+RM0090's ADC1_IN10 = PC0 exactly.
+
+### SPI1: identified to an exact register map - InvenSense MPU-6500/9250/ICM-20608 family (V)
+`FUN_0800f01c` (IMU bring-up) writes, in order, via the SPI1-register helpers
+`FUN_0800f304`(write)/`FUN_0800f2d0`(read, sets bit `0x80` = read flag):
+- `0x6B = 0x80` (**PWR_MGMT_1**, DEVICE_RESET)
+- `0x68 = 0x07` (**SIGNAL_PATH_RESET**, reset gyro+accel+temp paths)
+- `0x6B = 0x00` (PWR_MGMT_1, clear sleep/select internal clock)
+- `0x6A = 0x10` (**USER_CTRL**, `I2C_IF_DIS` - disables the I2C side, SPI-only mode; this bit
+  only exists on the MPU-6500/9250/ICM-20608 family, not the older MPU-6050/3050)
+- `0x1A = 0x27` (**CONFIG**, DLPF setup)
+- `0x1B = 0x12` (**GYRO_CONFIG**: FS_SEL bits -> +-1000 dps)
+- `0x1C = 0x08` (**ACCEL_CONFIG**: AFS_SEL bits -> +-4 g)
+- `0x1D = 0x08` (**ACCEL_CONFIG2** - only present on the 6500/9250/ICM-20608 family, confirms the
+  sub-family alongside the I2C_IF_DIS bit above)
+- `0x37 = 0x50` (**INT_PIN_CFG**: LATCH_INT_EN + INT_ANYRD_2CLEAR)
+- `0x38 = 0x01` (**INT_ENABLE**: DATA_RDY_EN)
+- then reads back every register just written, plus `0x75` (**WHO_AM_I**) - the value isn't in
+  static firmware (it's the chip's runtime reply), but the address matches the same family.
+
+This is a register-address match against the public InvenSense datasheet, not a guess: 9 exact
+register numbers plus the bit used to force SPI-only mode and the register that only exists on
+this sub-family. Exact die (MPU-6500 vs MPU-9250 vs ICM-20608) not distinguished - all three share
+this register map; WHO_AM_I's value (not present in a stripped static image) is what would settle
+it.
+
+**DMA-fed burst read (V):** `vec_72` (IRQ72, a DMA2 stream0/stream3 completion ISR) processes a
+15-byte buffer at SRAM `0x20004294` as `[1 status byte][6 bytes accel XYZ][2 bytes temp][6 bytes
+gyro XYZ]` - exactly MPU's `0x3A` (INT_STATUS) through `0x48` (GYRO_ZOUT_L) burst-read region.
+Gyro channels are accumulated over 16 samples and divided by 16 (oversample-decimate); accel and
+temp are copied through raw each time. Output lands in a second SRAM struct at `0x20004248`
+(`DAT_0800d138`).
+
+### Timers: TIM4 confirmed (2 kHz tick), TIM11 confirmed (IMU pacing), TIM1/TIM3/TIM5/TIM6/TIM7/TIM8 dead
+`FUN_080115ec` is a **generic, shared timer-config helper** (writes PSC at the real RM0090 offset
+`0x28` and ARR at `0x2C`; has an `if` branch for the repetition-counter field that only TIM1/TIM8
+have, and skips the CCMR field for TIM6/TIM7, which lack it) - it recognizes TIM1 (`0x40010000`),
+TIM8 (`0x40010400`), TIM3 (`0x40000400`), TIM4 (`0x40000800`), TIM5 (`0x40000C00`), TIM6
+(`0x40001000`), TIM7 (`0x40001400`). **Only two real call sites exist in the whole image:**
+- `FUN_08009b3c` -> TIM4, PSC=20, ARR=2000. Its update-event ISR (`vec_46`, IRQ30) just sets a
+  flag word - no CCR/CCMR output-compare writes anywhere in its call tree. **Not a PWM generator
+  on this path** - it's a ~2 kHz tick (APB1 timer clock / 21 / 2000, consistent with the same
+  2 kHz implied by "oversample 16 at ~32 kHz" above) driving control-loop cadence, refuting the
+  PWM hypothesis for TIM4 specifically (I, confident; other channels not checked).
+- `FUN_0800f01c` (the IMU bring-up routine, see above) -> **TIM11** (`0x40014800` - the ref-count
+  table misleadingly suggested this was TIM1/TIM3; it is neither, confirmed by resolving the
+  actual literal). PSC=1, ARR=0xa41 (2625): at a typical 84 MHz APB2 timer clock this is ~32 kHz -
+  matches the 16x-oversample/2 kHz-output arithmetic above exactly (32 kHz / 16 = 2 kHz).
+- **TIM1, TIM3, TIM5, TIM6, TIM7, TIM8 appear only inside the shared helper's own comparison
+  chain - never at an actual call site.** Same category as the m0900 SPI1 precedent cited in the
+  task: a shared/library driver supports more peripherals than this firmware instantiates. Genuine
+  negative result, not a missed search.
+
+### CAN1: initialized, but not cross-checked against the FC bus (V for the local init, U for the cross-check)
+`FUN_080095b8` puts CAN1 into init mode, programs a bit-timing constant, programs filter banks
+(`FUN_0800a130`, `FUN_0800a24a`) and starts the peripheral (`FUN_0800a238(...,3,1)`). `FUN_0800a0f8`
+is a generic "enable CAN1 or CAN2 RCC clock" helper (branches on which CAN base is passed); only
+ever called with the CAN1 base in this image, so CAN2 is confirmed **not** instantiated on this
+chip specifically (0 CAN2 literal refs either). This settles that m0400's CAN1 is live, matching
+the broader finding (issues #36/#40) that the FC's CAN1/CAN2 are genuinely initialized. **Not
+settled in this pass:** whether m0400's CAN1 is wired to the *same physical bus* as the FC - that
+needs the FC-side doc's bus topology cross-referenced against this MCU's bit-timing constant and
+filter IDs, which wasn't done here (U, explicitly - would need the FC CAN docs open side by side).
+
+### ADC1: one channel, not per-motor current sensing (V)
+`FUN_08019068` configures exactly one ADC1 channel (channel 10 = PC0, matching RM0090's analog
+pin map). `FUN_08019014` oversamples 32 readings, sums them, and scales by `3300/4096` (`0xce4` =
+3300 decimal) - a plain millivolt conversion against a 3.3 V/4096-count reference. One channel,
+not three, **rules out independent per-axis motor current sensing** - this is a single shared
+rail/voltage monitor (I: which rail is U - no label on the ADC input net in this static image).
+
+### UARTs: three independent DUML ports, not one link + one spare (corrects the task's own framing)
+The first pass assumed "USART1 is the DUML link, find out what USART2 is for." That framing was
+wrong - **there are three UARTs running structurally identical DUML frame-assemblers, and a third
+UART (UART4, `0x40004C00`) that the first pass's peripheral scan never even listed:**
+- USART1 (GPIOB AF7), USART2 (GPIOA AF7), UART4 (GPIOA AF8) each have their own byte-at-a-time
+  frame-assembly state machine (3 near-identical functions, found by their RX ISRs feeding into
+  checksum+decode calls `FUN_08011a8c`/`FUN_08018c54`), each tagging its port with a different
+  constant (0, 1, or 2) when it hands a validated frame to...
+- **`FUN_08016ff4`**, which is both the 27-entry command dispatcher *and* a cross-port relay. It
+  checks `frame[5] & 0x1f == 4` (receiver-type field == gimbal) and `frame[5]>>5 == 0` (not an
+  ack-only frame): if both hold, it walks the `0x0801d46c` table and dispatches locally (the
+  table's own key check against `frame[9]`/`frame[10]` is the cmd-set/cmd-id match described
+  below). **Otherwise it forwards the raw, unmodified frame** to UART4's TX queue (port tag 0) or
+  USART2's TX queue (port tags 1 and 2) - i.e. m0400 is a **DUML relay between its three ports**,
+  not a single-link endpoint. (`FUN_08016fac`, walking the *other* table at `0x0801d464`, is
+  confirmed empty/dead - same as the first pass found.)
+- Which physical UART maps to which of the three port-tag values (0/1/2) was not individually
+  resolved in this pass (would need tracing each RX ISR's byte source into its own frame-assembler
+  instance) - U, but the relay topology itself (dispatch-or-forward, 3 ports) is V.
+
+### DUML dispatch: full 27/27 decode (was 2/27)
+- V: dispatcher/relay `FUN_08016ff4` (see above). Table `0x0801d46c`, 27 entries, 8 bytes each
+  (`{u32 handler|1, u8 id, u8 set, 2 pad}`), terminator at `0x0801d544`.
+- Entries (set/id -> handler, cmd-set names per `app/packages/duml/lib/src/catalog.dart`):
+  - **general (0x00)**: 0x01 `0x08016254` Get Version. 0x07 `0x08016338`. 0x08 `0x08016cdc`.
+    0x09 `0x08016188`. 0x0a `0x080162e4`. 0x0b `0x08016840`. 0x0c `0x08016d30`. 0x0d `0x08016bf8`.
+    0x30 `0x08013fcc`.
+  - **special (0x01)**: 0x01 `0x08016c78`.
+  - **flight-controller (0x03)**: 0x42 `0x08016634`.
+  - **gimbal (0x04)**: 0x01 `0x08016564`, 0x06 `0x0801675c`, 0x07 `0x080168ac`, 0x08 `0x08016990`
+    AutoCalibration, 0x0a `0x08015a50`, 0x0b `0x08015eb4`, 0x0c `0x08015c88` GimbalSpeedControl,
+    0x0d `0x08016eac`, 0x0e `0x080167e0`, 0x0f `0x08016a98`, 0x10 `0x080163c4`, 0x11 `0x08016930`,
+    0x13 `0x080161e8`, 0x14 `0x08015fe0`, 0x20 `0x08016e14`, 0x21 `0x08016e30`.
+
+**Reply-building pattern, common to most handlers (V):** when `frame[8] & 0x7f >> 5 != 0` (an ack
+bit requested), the handler calls `func_0x08016518` (rebuild header, swap sender/receiver, copy
+seq) then `FUN_08016d94` (patch the 10-bit length field, send). This is the same shape across
+~20 of the 27 entries - not reproduced per-handler below except where behavior differs.
+
+**flight-controller 0x42 -> `0x08016634` (V, upgraded from "unclear" to confirmed):** copies 4
+floats from frame `+0xb/+0xf/+0x13/+0x17` into a global, computes their sum of squares, and resets
+to the identity quaternion `(1,0,0,0)` if the norm^2 falls outside `[0.95, 1.05]`. This is a unit
+*quaternion* validity check - **the FC pushes its fused attitude quaternion to the gimbal
+unprompted over the FLYC cmd-set**, and m0400 sanity-checks it before using it. This is the
+cross-MCU attitude-reference input the gimbal needs for horizon-lock stabilization.
+
+**special 0x01 -> `0x08016c78` (I):** gated on a state word `!= 3`; copies a 4-byte word and a
+2-byte word from the frame into a global struct, and derives 2 one-bit flags from frame byte
+`+0xf` vs the struct's cached copy. Shape suggests a mode-select/handshake command, not traced to
+a wire capture - functional description only, no name assigned.
+
+**gimbal 0x01 -> `0x08016564` (I), 0x06 -> `0x0801675c` (I):** both take 3 or 4 signed 16-bit
+values centered on `0x400` (1024) - a joystick/RC-style input convention (unsigned 11-bit range,
+center 1024) - clamp to +-0x295 (661) or zero if out of an inner deadband window. 0x01 writes 3
+values straight into a setpoint array; 0x06 additionally gates on an encoding-type byte (calls
+`FUN_08019138` to decode an extended payload first) and writes 4 values through a different
+remap (`-0x3df`/`-0x421` offset branches) into a separate array, clearing a "pending" flag
+afterward - read as calibration/limit-table input rather than a live control value, not confirmed
+against a capture.
+
+**gimbal 0x07 -> `0x080168ac` (I), 0x0d -> `0x08016eac` (I):** 0x07 adjusts a signed byte
+accumulator (clamped `[-100, 'd'(100)]`) by frame byte `+0xb`, resets to 0 if that byte is 0 -
+looks like an incremental trim/offset adjust. 0x0d is a two-value enable/disable latch: frame
+value `0x2ab5` sets a bit in a flags word, `0x7ef2` clears the same bit - a magic-constant
+toggle, not a counter.
+
+**gimbal 0x0a -> `0x08015a50` (V, sibling of the already-confirmed 0x0c GimbalSpeedControl):**
+same mode-check/scale-by-pi/180 shape as 0x0c, same +-pi radian clamp-to-zero (not saturate), same
+reply pattern. Where 0x0c clamps only two of its three axes, 0x0a clamps only its first axis
+(`puVar2[0xb]`). A 4th int16 at frame `+0x11` is scaled by a second constant (`DAT_08015c74`) into
+a 4th setpoint, and a raw byte at `+0x14` is multiplied by 2000 into a 5th field (bounded to
+`[2000, 20000]`, replaced by 4000 if out of range) - this handler carries more state than 0x0c
+(5 fields vs 3), consistent with a superset/extended control command rather than a duplicate.
+
+**gimbal 0x0b -> `0x08015eb4` (V):** pure telemetry readback, no payload fields read from the
+request at all - builds a 17-byte reply comparing two global floats (`_DAT_08015fd4+0x7c` vs
+`_DAT_08015fd8+0x28`) to set a sign bit, and includes a scaled copy of one of them
+(`* fRam08015fdc`). Reply-only status query, not a control command.
+
+**gimbal 0x0f -> `0x08016a98` (V):** iterates a frame-encoded list of `(index, length)` pairs
+(up to 12 indices, length <= 8), copying each indexed field from a lookup table (`0x34`-byte
+stride, same table structure used by the general-0x07/0x10 handlers below) into the reply buffer -
+a generic "read back these N parameters by index" command, same table-driven shape as the
+general-set equivalents.
+
+**gimbal 0x10 -> `0x080163c4` (V) and general 0x07 -> `0x08016338` (V):** near-identical
+implementations of the *same* generic parameter-table copy engine (switch on a type byte -
+0/4=1 byte, 1/5=2 bytes, 2/6/8=4 bytes - copying from a `0x34`-byte-stride lookup table into the
+reply). general-0x07 is the broader one (handles up to 12 fields with an error code `0xe3` for an
+out-of-range index >= 0xc); gimbal-0x10 is the same logic without the dispatcher-reply-gating
+wrapper inlined. This is very likely a shared "get parameters by ID list" implementation reused
+between the general and gimbal command sets.
+
+**gimbal 0x11 -> `0x08016930` (I):** calls `FUN_0800dfd8` on a global and checks for return value
+9 (success) vs anything else (sets an error code `0xe6` and a different status pair) - looks like
+a "commit/apply pending config" acknowledgement wrapper around a state-machine check in
+`FUN_0800dfd8`, not traced further.
+
+**gimbal 0x13 -> `0x080161e8` (I):** copies a fixed 0xd8-byte (216-byte) block from one lookup
+structure to another (`FUN_08008adc`, a memcpy-shaped helper), then calls two no-argument
+functions (`FUN_080113ac`, `0x08010434`) before acking - reads as "reload/reset a fixed-size
+config block," block contents and the two follow-on calls not traced.
+
+**gimbal 0x14 -> `0x08015fe0` (V):** takes 3 signed 16-bit values (`+0xb/+0xd/+0xf`, in units of
+0.1 degrees - scaled by `0.1 * pi/180`) and a raw byte (`+0x12`, scaled by `0.1 * 2000.0 + 1.0` as
+a denominator), divides the three angle values by that denominator, and **integrates them into a
+persistent position struct** (`_DAT_0801617c + 0x54/0x58/0x5c`) rather than overwriting it -
+subtracting a reference triple (`_DAT_08016180`) first if a "relative mode" bit is set. This is
+an incremental/rate-limited position-target update (smoothing via the denominator term), distinct
+from the direct-setpoint shape of 0x0a/0x0c.
+
+**gimbal 0x20 -> `0x08016e14` (I), 0x21 -> `0x08016e30` (I):** 0x20 copies a 4-byte value and two
+single bytes from the frame into a global, no reply. 0x21 is gated on frame byte `+0xb == 0`, then
+copies 3 x (4-byte + 2 bytes, with a zeroed 3rd byte appended) from the frame into a 3-entry
+global array - shape matches "write 3 per-axis calibration/limit records," not confirmed against
+a capture.
+
+**general 0x08 -> `0x08016cdc`, 0x09 -> `0x08016188`, 0x0a -> `0x080162e4`, 0x0c -> `0x08016d30`
+(all I):** thin ack-only handlers, each just rebuilding the reply header with a fixed length code
+(0x10, 0x12, 0xe, 0x13) and, for 0x0c, copying a global word into the reply payload and clearing a
+4-bit field first. No meaningful request-side payload is read on any of these four - straight
+acknowledgements.
+
+**general 0x0b -> `0x08016840` (I):** same incremental trim-byte logic as gimbal-0x07 above
+(clamped `[-100,100]`, reset on 0), reusing the same global (`_DAT_08016920`/`_DAT_08016924`/
+`_DAT_08016928`/`_DAT_0801692c`) - this and gimbal-0x07 are the same underlying state exposed
+under two different (set, id) pairs.
+
+**general 0x0d -> `0x08016bf8` (I):** validates a payload field (`FUN_08019b3c`, then
+`FUN_08019c90` with a 0x10-byte bound) and sets an error byte `0xf4` on failure, otherwise clears
+a nibble field and copies in a fresh 0x10-byte block (`FUN_08019c54`) before acking - looks like a
+bounded-length config-block write with validation, mirrors 0x13's "reload a block" shape but with
+an explicit length/format check this time.
+
+**general 0x30 -> `0x08013fcc` (V):** a sub-dispatcher, not a leaf handler - branches on frame
+byte `+0xb` (values 1/2/3) to three separate functions (`0x08013774`, `0x08013c54`, `0x08013a18`),
+plus a 4th call (`0x080139ac`) gated on the ack-bit *and* `param_2 == 0x48` (payload length 0x48 =
+72 bytes) regardless of the `+0xb` switch. Those four sub-handlers were not decompiled in this
+pass (U) - flagged rather than assumed trivial, since 0x30 is structurally different from every
+other entry (it's the only one with its own internal dispatch).
 
 ### Get Version -> `0x08016254` (set 0x00 id 0x01)
 - V: copies 2 words from flash `0x080C0000` via `0x0800da3e(src, count, dst)` into stack.
 - V: stores word[1] (flash `+4`) into reply at frame `+0x12`.
 - V: writes constant `0x01300000` to a struct `+4` and `1` to `+8`. Meaning U.
 - U: flash `0x080C0000` contents. Outside the image, so not in this file.
+
+### Outbound push path (GetPushParams pitch/roll/yaw): partially traced, genuine open end
+Confirmed (V): the SPI1+DMA2 IMU burst read (`vec_72`, above) writes its decimated gyro / raw
+accel+temp result into SRAM struct `0x20004248` (`DAT_0800d138`). That is the only place this
+pass found writing that struct.
+**Not found (U, explicit negative result, not a shallow miss):** no other function in the 337-
+function decompile reads the symbol `DAT_0800d138` by name. This almost certainly means the
+consumer loads the same SRAM address (`0x20004248`) from a *different* literal-pool slot, which
+Ghidra names independently per pool entry rather than per target address - a per-symbol text
+search can't find that aliasing. What would settle it: a cross-reference pass keyed on the
+absolute address `0x20004248` (e.g. a Ghidra script walking all `DAT_*` symbols and grouping by
+resolved value, not by name) rather than grepping for one symbol's name. Not run in this pass.
 
 ## DJI GO 4 APK: checklist (not on disk, nothing downloaded)
 - Class/package names: upgrade (`Upgrade`, `Firmware`, `FwUpdate`), version/device info (`GetVersion`, `DeviceInfo`, `DeviceState`), activation (`Active`, `Activation`, `RealName`), module-id tables with `FPGA`, `68013`, `DM368`, `1765`.
