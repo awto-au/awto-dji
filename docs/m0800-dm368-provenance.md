@@ -245,6 +245,13 @@ below read directly as C. Tools: capstone, ARM mode; `readelf -s/-r`.
    - USB data flows to and from the FIFO without the 8051 touching it, so the FX2 cannot insert
      DUML either.
 
+6. **Control link is DUML on a UART, not USB.** `Enc_Serial_Init` opens `/dev/ttyS1`.
+   `Enc_Serial_PackAndSend` builds standard DUML: sync `0x55`, `CalCrc8` with seed `0x77`,
+   `CalCrc16` with seed `0x3692`. This is the same framing as m0900 (`m0900-can-channels.md`
+   §4). So the DM368 is an ordinary DUML node (I: receiver type 8, per the UEG table) for
+   version, loader, reboot, encode mode, stream enable and the encrypt check. The peer at the
+   other end of `ttyS1` is U.
+
 **Result.** On the air side, the H.264 elementary stream (Annex-B slices) reaches the FIFO
 master **unframed and alone**. V: the path is DM368 → USB EP2 → FX2 → 8-bit slave FIFO. I: the
 FIFO master is the air FPGA. DUML reaches the air FPGA separately, over m0900 USART3 (V route,
