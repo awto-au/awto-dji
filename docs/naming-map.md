@@ -14,11 +14,14 @@ across the existing docs is tracked in issue #54.
 
 ## Modules (`m####` → proposed name)
 
+Each row is a distinct processor, **except `air_fcldr` (m0305)** — a loadable RAM payload for the
+FC's STM32F427, not its own chip (see its row).
+
 | m-code | DJI tag | Proposed `side_role_chip` | Chip / role | Side |
 |---|---|---|---|---|
 | `m0100` | FC300X / CAMLDR | `air_cam_a9se` | Ambarella A9SE camera SoC (ThreadX + Linux) | air |
 | `m0306` | — | `air_fc_stm32f427` | Flight controller (µC/OS-III) | air |
-| `m0305` | — | `air_fcldr_stm32f427` | RAM-resident FC flash-loader: erase/program + OPTKEYR option-bytes + A/B boot-decision, image in via DUML-over-CAN (decompiled, V). Same silicon as `air_fc`; not a router | air |
+| `m0305` | — | `air_fcldr_stm32f427` | **Loadable** 2nd-stage flash-loader *image* for `air_fc` (same STM32F427) — not a distinct chip. Runs from SRAM only during an update; downloaded by the FC resident loader, then erase/program + OPTKEYR option-bytes + A/B boot-decision, image in via DUML-over-CAN (decompiled, V; `fc-bootloader.md`) | air |
 | `m0400` | GIMBAL0 | `air_gimbal` | Gimbal controller (chip **U**) | air |
 | `m0800` | DM368 | `air_venc_dm368` | DaVinci DM368 H.264 encoder (Linux) | air |
 | `m0900` | MCA1765 | `air_radio_stm32f103` | Lightbridge air MCU — **the air-side DUML router / gateway** (walks a dispatch table, forwards by receiver type; `dataflow.md` §3) | air |
