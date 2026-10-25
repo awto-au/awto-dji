@@ -29,10 +29,13 @@ Tags: **V** verified (reproducible from an address/script cited), **I** inferred
 3. **cmd `0x0c` GetDeviceStatus, decompiled fully**: board-dependent status word is
    `*(u32 *)0x080125e8` (new RAM/flash global, not yet further identified) for AD9363 boards
    (4/5), else `0`. §2.4.
-4. **cmd `0xfe` (`cmd_exec_set00_cmdFE`), decompiled fully**: mode 1 calls `FUN_080109a4`
-   (not traced further) and replies 1 status byte; **mode 2 writes a persistent one-byte field
-   at a global struct `[0x080010af4]+0x11c` and sends no reply at all** — a silent config-byte
-   setter. §2.4.
+4. **cmd `0xfe` (`cmd_exec_set00_cmdFE`) — resolved fully in a follow-up pass, and it's more
+   significant than first described**: mode 1 writes host-supplied payload bytes directly into
+   the live `radio_state_s` struct, then reloads the FPGA config from that struct and re-runs
+   the radio's full bring-up sequence (`radio_first_init`) — an engineering-style "push raw
+   radio state and force reload" command, not a simple status query; mode 2 silently writes one
+   host byte into `radio_state_s+0x11c` with no reply. No auth/validation gate found on either
+   mode. §2.4.
 5. **cmd `0xff` catchall, decompiled fully**: for receiver type `0x13` (FPGA) it is a literal
    hardcoded-string reply, `"WM32X A4_FPGA 20150902|01"` (26 B) — the same string the upstream
    map names `aWm32xA4Fpga201`, confirming the string is unchanged across firmware revisions;
@@ -147,27 +150,52 @@ The upstream map lists three names in address order right before the `cmd0E` blo
 
 From the new Ghidra project (§3), decompiled in full (60s timeout each, no truncation):
 
-**`cmd_exec_set00_cmdFE` (`0x08012592`, cmd `0xfe`)** — fully resolved structurally, semantics partial:
-```c
-void cmd_exec_set00_cmdFE(int param_1)
-{
-  if (*(short *)(param_1 + 0xb) == 1) {
-    FUN_080109a4(param_1 + 0xd);
-    *(undefined1 *)(param_1 + 0xb) = 0;
-    if (receiver_index_bits_5_6_of_byte8 in {1,2})
-      packet_make_response(..., 1);       // 1-byte status reply
+**`cmd_exec_set00_cmdFE` (`0x08012592`, cmd `0xfe`)** — fully resolved, both structurally and
+semantically, in a follow-up pass (2026-10-25). **This is not a minor status command — it's a
+direct write into the live `radio_state_s` struct that forces an FPGA reconfigure and a full
+radio re-init, outside the normal `0x0901`/`0x0902` Get/Set-Config and `0x12`/`0x13`
+start/stop commands.**
+
+- `0x080010af4` is not an uncatalogued global — it's a **pointer variable whose value is
+  `0x20001ab4`, the exact base address of the already-typed `radio_state_s` struct**
+  (confirmed: `mem.getInt` on `0x08010af4` reads `0x20001ab4` directly). Every write through
+  it in both modes below lands inside the live radio-state struct this project already types.
+- **Mode 1** (`FUN_080109a4`, fully decompiled):
+  ```c
+  void FUN_080109a4(undefined4 *payload)
+  {
+    radio_state_s *rs = (radio_state_s*)0x20001ab4;   // = DAT_08010af4's value
+    *(uint32*)rs       = payload[0];                  // first word of the struct <- host payload
+    *(uint8*)((int)rs+4) = *(uint8*)((int)payload+4);  // + one more host byte
+    FUN_08010286();            // if rs->first_init_flag (+0x109) != 0: run FUN_0800baf4(), then clear it
+    *(uint32*)((int)rs+5) = *(uint32*)((int)rs+1);     // internal copy, unaligned
+    fpga_cfg_load(rs);         // reload FPGA config FROM the struct just overwritten
+    FUN_0800e820();            // board-dependent calibration/atten lookup, writes rs+0x80-ish
+    radio_first_init();        // re-run the radio bring-up sequence
   }
-  else if (*(short *)(param_1 + 0xb) == 2) {
-    *(undefined1 *)(0x080010af4 + 0x11c) = *(undefined1 *)(param_1 + 0xd);
-    return;                                // silent — no reply at all
-  }
-}
-```
-Mode 1 = call-and-reply via `FUN_080109a4` (not traced — **I/U** for what it does); mode 2 = set
-a persistent one-byte field in a global at `0x080010af4+0x11c` with **no acknowledgement
-packet**. **V** structure, **I** the field's meaning (likely a persistent mode/config byte, not
-further identified — the base `0x080010af4` wasn't previously catalogued and is worth a
-dedicated trace in a future pass).
+  ```
+  So mode 1 takes host-supplied bytes, pokes them into the start of `radio_state_s`, conditionally
+  re-runs the one-shot first-init step (`FUN_08010286` gates on the `first_init_flag` at `+0x109`,
+  the same field the typed struct already names), reloads the FPGA from the now-modified struct,
+  and finally calls `radio_first_init()` again — i.e. **forces the radio through its full
+  bring-up sequence a second time with host-injected state**. The 1-byte reply only fires for
+  receiver-index 1/2. **V** (fully decompiled, every callee resolved).
+- **Mode 2** (already known, re-confirmed with the corrected base): silently writes one
+  host-supplied byte to `radio_state_s + 0x11c` — inside the struct's `pad_11c` gap, immediately
+  before the `0x0913`-written fields at `+0x128`/`+0x12a`/`+0x12c` — **no reply at all**.
+- **I**: this reads as an engineering/bring-up command — "push raw radio state and force a
+  reload" — rather than anything a normal flight session would send (normal operation goes
+  through the documented Get/Set Config and radio start/stop commands, which validate and
+  CRC-round-trip through flash page `0x7b00`; this command writes straight to the live struct
+  with no flash round-trip and no payload validation visible in either mode). Not proven to be
+  DJI-factory-only — no gating/auth check of any kind was found before either write — just
+  structurally distinct from every other named command in the table.
+- **U, still open**: `FUN_08010286`'s callee `FUN_0800baf4` (the actual first-init body) and
+  `FUN_0800e820`'s calibration-table semantics were read (see `scratchpad/m0900_followup5_dump.txt`)
+  but not fully traced to a board-level meaning; `radio_first_init`'s own body (pre-existing name,
+  not re-decompiled this pass).
+- Reproduce: `scratchpad/ghscripts/m0900_followup.py`/`_2.py`/`_3.py` (ad hoc, not committed) —
+  read the pointer value at `0x08010af4`, decompiled `FUN_080109a4`/`FUN_08010286`/`FUN_0800e820`.
 
 **`cmd_exec_set00_cmdFF` / "catchall" (`0x0801253a`, cmd `0xff`)** — resolved, and it is not a
 no-op:
@@ -205,9 +233,22 @@ void cmd_exec_set00_cmd0C_getdevicestatus(uint *param_1)
   // builds + sends the reply packet (gated on the usual index-bits-5/6 check)
 }
 ```
-`*(u32 *)0x080125e8` is a **new global this pass found and did not further identify** — it's
-inside `.rodata`/`.text` range (`0x080125e8`), i.e. likely a flash constant, not a RAM counter;
-worth a dedicated read in a future pass. **V** structure/branch, **U** what `0x080125e8` holds.
+**Resolved in the follow-up pass (2026-10-25):** `0x080125e8` is a pointer variable, not a
+direct status word — its value is `0x200000fc`, a RAM address. That address is read/written
+**exclusively** inside `fpga_boot_status` (pre-existing name, `0x0800cfd0`) — the known FPGA
+bring-up handshake state machine already referenced in `fpga-bringup.md` — and nowhere else (4
+refs total, all inside that one function). So for AD9363 boards (4/5), GetDeviceStatus is
+literally reporting the **live FPGA bring-up handshake status code** `fpga_boot_status` last
+wrote, not an opaque flash constant. **V** (pointer value read directly, confirmed single-writer
+by reference count).
+
+Also resolved: cmd `0xff`'s receiver-type-9 reply (`FUN_080126f8`) copies a **fixed 32-byte RAM
+blob** at `0x20004fc0-0x20004fe0` into the response — not a hardcoded string like the type-0x13
+case. The end-pointer (`0x080127d0` → `0x20004fe0`) is read in two places and **written nowhere**
+in the application code traced, meaning that 32-byte region is populated by the C-runtime
+`.data` initializer at boot (copied from flash), not computed at runtime. **U**: the blob's
+actual content/meaning — would need the flash `.data`-table entry for this RAM range, not
+chased this pass.
 
 **`duml_set03_id42_fwd` (`0x08012012`, cmd `0x42`)** and **`cmd_exec_osd_home_candidate`
 (`0x08011f98`, cmd `0x44`)** — decompiled text supporting §2.3's non-reconciliation, included
@@ -366,9 +407,15 @@ cross-checked §4.3); `0x200000a4` → `pa1_pulse_table_ptr_or_idx` (new, gates 
 
 ## 6. What stayed open despite the attempt
 
-- `FUN_080109a4` (cmdFE mode-1 callee), `FUN_080126f8` (cmdFF type-9 callee), and the global at
-  `0x080125e8` (cmd0C's AD9363-board status word) — none traced further this pass; good next
-  targets since the dispatch context for each is now fully known (§2.4).
+- **Resolved in the 2026-10-25 follow-up** (previously listed here as open): `FUN_080109a4`
+  (cmdFE mode-1 callee — turned out to be a direct `radio_state_s` write + FPGA reload + radio
+  re-init, §2.4), `FUN_080126f8` (cmdFF type-9 callee — a fixed 32-byte RAM blob copy, content
+  still unidentified), and the global at `0x080125e8` (resolved as a pointer to `fpga_boot_status`'s
+  own state variable, §2.4).
+- Still open from that same follow-up: `FUN_0800baf4` (the real first-init body gated by
+  `radio_state_s->first_init_flag`), `FUN_0800e820`'s calibration-table semantics, and the
+  content of the 32-byte RAM blob at `0x20004fc0` (would need the flash `.data`-init table, not
+  chased).
 - The `0x42`/`0x43`/`0x44` individual name↔address assignment within the "OSD family" trio
   (§2.3) — structurally confirmed as a family, not individually disambiguated.
 - `cmd_exec_flyc_unlimit_state` has no reconciling address in our table at all (§2.3) — reported

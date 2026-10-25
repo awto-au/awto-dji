@@ -4,6 +4,23 @@ Dated changelog of fact-corrections previously narrated inline in the docs. Each
 phrased as "initial understanding -> corrected finding." The docs now state only the
 corrected/current fact; this file preserves the history for reference.
 
+## 2026-10-25 (deeper follow-up)
+
+- **cmd `0xfe` (`air_router_stm32f103`, set 0x00) re-examined and found to be more significant
+  than first described:** initial understanding (from the completeness pass above) was "mode 1
+  calls an untraced helper and replies 1 status byte" -> fully traced: `0x080010af4` is a
+  pointer variable whose value is `0x20001ab4`, the exact base of the already-typed
+  `radio_state_s` struct, so mode 1 writes host-supplied payload bytes **directly into the live
+  radio-state struct**, then reloads the FPGA from it (`fpga_cfg_load`) and re-runs the radio's
+  full bring-up sequence (`radio_first_init`) — an engineering-style "push raw state and force
+  reload" command, not a status query. No authentication/validation gate was found on either
+  mode. Also resolved in the same pass: cmd `0x0c`'s previously-opaque status global
+  (`0x080125e8`) is a pointer to the already-known `fpga_boot_status` handshake state machine's
+  own variable, not a separate undocumented flash constant; cmd `0xff`'s type-9 reply copies a
+  fixed 32-byte RAM blob populated by the C-runtime `.data` initializer at boot (content still
+  unidentified). (`docs/air-router-io-and-naming.md` §2.4/§6, cross-referenced from
+  `docs/air-router-deep-dive.md`)
+
 ## 2026-10-25 (later still)
 
 - **`air_router_stm32f103` (m0900) completeness pass closes the I/O-inventory/naming gap left

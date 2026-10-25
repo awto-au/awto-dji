@@ -116,7 +116,7 @@ exactly as `dataflow.md` describes. Full walk (no gaps skipped):
 | 0x0d | 0x00 | 9 | `0x080124bc` | **Set Device Version** | `bl 0x080126b8`/`bl 0x080126d4`, two 16-byte fields → flash page `0x7800` — reply [0x12] | V. **Closes `fpga-upgrade-path.md`'s "0x7800... use not decoded"** |
 | 0x1b | 0x06 | 3 | `0x080124f0` | RC `GetPushGpsInfo` (cmdset6), receiver **type 3 = FC** | memcpy 0x1E (30) B of payload into RAM `0x20002601`, **then always forwards** via `packet_send` | V. New: same intercept-and-cache-while-forwarding pattern as the OSD-General fan-out (0x43), now shown for a GPS push addressed to the FC |
 | 0x2c | 0x09 | 9 | `0x080125dc` | **unnamed** (gap between 43 and 45 in apk cmdset9 list) | single instruction `b.w 0x080112da` — **tail-jumps straight into the inner-table matcher**, see §2 | V |
-| 0xfe | 0x00 | 9 | `0x08012592` | **unnamed** | sub-mode 1/2 on a u16 at payload+0; mode2 tail-calls `0x080109d4` with payload+2, mode1 calls `0x080109a4`; gated again on receiver-index bits 5-6 ==1/2 | V structure; semantics I (partial) |
+| 0xfe | 0x00 | 9 | `0x08012592` | **unnamed** | mode 1: writes host payload bytes directly into live `radio_state_s` (`0x20001ab4`), then `fpga_cfg_load()` + `radio_first_init()` — forces a full radio/FPGA re-bring-up with host-injected state; mode 2: silent 1-byte write to `radio_state_s+0x11c`, no reply. No auth gate found on either mode. See `air-router-io-and-naming.md` §2.4/§6 for the full trace | V, fully resolved (2026-10-25 follow-up) |
 | *(end)* | | | `0x00000000` | sentinel | table ends at `0x0801a200`, confirmed by direct read (zero handler) | V |
 
 Three records (`0x0e`, `0x0f`, `0xfe`, and partially `0xff`/`GetDeviceStatus`) have no name in
