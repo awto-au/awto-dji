@@ -169,6 +169,32 @@ DJI's own **`BUILD Jun 19 2017 21:40:20`** stamp (plus DJI/Onboard-SDK version s
 toolchain or SPL version string exists to read; library identity and version come from code
 structure (above), not metadata.
 
+## Full parameter defaults (834 params)
+
+`scripts/re/fc_param_table.py --defaults` dumps every FlycExportParam with its flash
+min/max/default (the limit block is three parallel views — float@+0x10, int32@+0x1c,
+uint32@+0x28 — picked by `type_id`). Output committed as `docs/data/m0306-param-defaults.tsv`
+(834 rows). Notable defaults for this project:
+
+| Parameter | min | max | default |
+|---|---|---|---|
+| `api_entry_cfg.baud_rate` (SDK UART) | 110 | 921600 | **230400** |
+| `api_entry_cfg.enable_api` | 0 | 1 | **0** (external control off) |
+| `api_entry_cfg.authority_level` | 0 | 10 | 0 |
+| `serial_api_cfg.input_pitch_limit` / `roll` | 0 | 6000 | 3500 |
+| `serial_api_cfg.input_yaw_rate_limit` | 0 | 15000 | 15000 |
+| `serial_api_cfg.input_vertical_velocity_limit` | 0 | 600 | 600 |
+| `fail_safe.protect_action` | 0 | 2 | **2** |
+| `advanced_function.fail_safe_protection_enabled` | 0 | 1 | 1 |
+| `flying_limit.max_height` (m) | 20 | 500 | 120 |
+| `flying_limit.max_radius` (m) | 15 | 500 | 30 |
+| `go_home.fixed_go_home_altitude` (m) | 20 | 500 | 30 |
+| `wp_setting.action_on_rc_lost` | 0 | 255 | 0 |
+
+Method note: these defaults are recoverable for **every** named `g_config.*` field the same way —
+the limit struct is always in flash — so any configurable speed, limit or enable-flag the FC
+ships with is in the committed TSV.
+
 ## How to reproduce
 
 ```
