@@ -4,11 +4,11 @@ Short, side-prefixed names so a bare `m####` or a bus is self-describing. **Draf
 edit the names before we adopt them repo-wide** (that roll-out is tracked in a GitHub issue).
 
 **Convention.**
-- **Modules carry the chip:** `<side>_<role>_<chip>` — e.g. `air_fc_stm32f427`, `air_lbmcu_stm32f103`.
+- **Modules carry the chip:** `<side>_<role>_<chip>` — e.g. `air_fc_stm32f427`, `air_radio_stm32f103`.
 - **Buses use the short role token only:** `<medium>_<side>_<roleA>_<roleB>` — the chip stays in the
-  module row so bus names stay short, and `side` disambiguates the two `lbmcu`s (air = STM32F103,
-  gnd = LPC1765). So the bus is `uart_air_lbmcu_fc`, not `uart_air_stm32f103_stm32f427`.
-- `air_` = aircraft, `gnd_` = RC. Role tokens: `cam fc fcupd gimbal venc vdec lbmcu fx2 fx3 fpga
+  module row so bus names stay short, and `side` disambiguates the two `radio`s (air = STM32F103,
+  gnd = LPC1765). So the bus is `uart_air_radio_fc`, not `uart_air_stm32f103_stm32f427`.
+- `air_` = aircraft, `gnd_` = RC. Role tokens: `cam fc fcupd gimbal venc vdec radio fx2 fx3 fpga
   ad9363`. Tags: **V** verified in code/strings, **I** inferred, **U** unknown.
 
 ## Modules (`m####` → proposed name)
@@ -20,9 +20,9 @@ edit the names before we adopt them repo-wide** (that roll-out is tracked in a G
 | `m0305` | — | `air_fcupd_stm32f427` | RAM-resident flash updater for the FC (A/B-capable) | air |
 | `m0400` | GIMBAL0 | `air_gimbal` | Gimbal controller (chip **U**) | air |
 | `m0800` | DM368 | `air_venc_dm368` | DaVinci DM368 H.264 encoder (Linux) | air |
-| `m0900` | MCA1765 | `air_lbmcu_stm32f103` | Lightbridge air MCU — DUML router | air |
+| `m0900` | MCA1765 | `air_radio_stm32f103` | Lightbridge air MCU — DUML router | air |
 | `m1300` | DM365 | `gnd_vdec_dm365` | DaVinci DM365 decoder — GL300a/HDMI RC only | gnd |
-| `m1400` | MCG1765A | `gnd_lbmcu_lpc1765` | Lightbridge ground MCU | gnd |
+| `m1400` | MCG1765A | `gnd_radio_lpc1765` | Lightbridge ground MCU | gnd |
 | `m1500` | — | `air_fx2_cy68013` | Cypress FX2LP (CY7C68013A) USB↔FIFO bridge (on the DM368) | air |
 | `m1600` | — | `gnd_fx2_cy68013` | Ground FX2LP (CY7C68013A) receiver USB fw — GL300a/HDMI RC | gnd |
 | `m1601` | — | `gnd_fx3_cyusb2014` | Cypress FX3 (CYUSB2014) phone USB — GL300b/c (owner's GL300C) | gnd |
@@ -44,11 +44,11 @@ Two-ended buses: `<medium>_<side>_<roleA>_<roleB>` (role tokens, not chips). Rat
 ### Aircraft-internal
 | Proposed | Endpoints | Medium / detail | Tag |
 |---|---|---|---|
-| `uart_air_lbmcu_fc` | `air_lbmcu_stm32f103` ↔ `air_fc_stm32f427` | USART1, 256000 8N1 DMA (`dataflow.md`) | V route, FC end I |
-| `uart_air_lbmcu_fpga` | `air_lbmcu_stm32f103` ↔ `air_fpga_cyclonev` | USART3, 257143 8N1 DMA, IDLE-framed | V; faces FPGA I |
-| `uart_air_lbmcu_aux` | `air_lbmcu_stm32f103` ↔ ? | USART2, 250000 (board code 7 only) | V; peer U |
-| `spi_air_lbmcu_fpga` | `air_lbmcu_stm32f103` ↔ `air_fpga_cyclonev` | SPI2, 4.5 MHz mode 1, 3-byte frames (+AD9363 relayed) | V |
-| `can_air_primary` | `air_fc_stm32f427` ↔ `air_lbmcu_stm32f103` ↔ `air_gimbal` ↔ `air_cam_a9se` ↔ center/ESC | CAN, std IDs 0x412/0x413 (cam/gimbal), 0x414/0x415 (rx type 30); FC CAN1 PD0/PD1 AF9 | V IDs; some nodes I |
+| `uart_air_radio_fc` | `air_radio_stm32f103` ↔ `air_fc_stm32f427` | USART1, 256000 8N1 DMA (`dataflow.md`) | V route, FC end I |
+| `uart_air_radio_fpga` | `air_radio_stm32f103` ↔ `air_fpga_cyclonev` | USART3, 257143 8N1 DMA, IDLE-framed | V; faces FPGA I |
+| `uart_air_radio_aux` | `air_radio_stm32f103` ↔ ? | USART2, 250000 (board code 7 only) | V; peer U |
+| `spi_air_radio_fpga` | `air_radio_stm32f103` ↔ `air_fpga_cyclonev` | SPI2, 4.5 MHz mode 1, 3-byte frames (+AD9363 relayed) | V |
+| `can_air_primary` | `air_fc_stm32f427` ↔ `air_radio_stm32f103` ↔ `air_gimbal` ↔ `air_cam_a9se` ↔ center/ESC | CAN, std IDs 0x412/0x413 (cam/gimbal), 0x414/0x415 (rx type 30); FC CAN1 PD0/PD1 AF9 | V IDs; some nodes I |
 | `can_air_fc2` | `air_fc_stm32f427` ↔ ? | FC CAN2, PB12/PB13 AF9 — second bus, role unclear | V bus, role U |
 | `iq_air_fpga_ad9363` | `air_fpga_cyclonev` ↔ air AD9363 | ~12-bit I/Q sample port, ~11.2 MHz | I |
 | `usb_air_venc_fx2` | `air_venc_dm368` ↔ `air_fx2_cy68013` | USB bulk EP2, raw H.264 (`m0800-dm368-provenance.md`) | V |
@@ -60,10 +60,10 @@ Two-ended buses: `<medium>_<side>_<roleA>_<roleB>` (role tokens, not chips). Rat
 ### RC-internal (GL300C)
 | Proposed | Endpoints | Medium / detail | Tag |
 |---|---|---|---|
-| `uart_gnd_lbmcu_fx3` | `gnd_lbmcu_lpc1765` ↔ `gnd_fx3_cyusb2014` | UART, 115200 8N1 DUML (`ground-fx3-m1601.md`) | V FX3 end; peer m1400 I |
-| `uart_gnd_lbmcu_fpga` | `gnd_lbmcu_lpc1765` ↔ gnd FPGA | DUML-over-UART; carries the Master-ID (`id-entry-point.md`) | V strings; I |
-| `spi_gnd_lbmcu_fpga` | `gnd_lbmcu_lpc1765` ↔ gnd FPGA | SPI0 @0x40020000, CS P2.9, ~4 MHz — register/control | V |
-| `gpio_gnd_lbmcu_fpga` | `gnd_lbmcu_lpc1765` ↔ gnd FPGA | config/reset/handshake strobes | V |
+| `uart_gnd_radio_fx3` | `gnd_radio_lpc1765` ↔ `gnd_fx3_cyusb2014` | UART, 115200 8N1 DUML (`ground-fx3-m1601.md`) | V FX3 end; peer m1400 I |
+| `uart_gnd_radio_fpga` | `gnd_radio_lpc1765` ↔ gnd FPGA | DUML-over-UART; carries the Master-ID (`id-entry-point.md`) | V strings; I |
+| `spi_gnd_radio_fpga` | `gnd_radio_lpc1765` ↔ gnd FPGA | SPI0 @0x40020000, CS P2.9, ~4 MHz — register/control | V |
+| `gpio_gnd_radio_fpga` | `gnd_radio_lpc1765` ↔ gnd FPGA | config/reset/handshake strobes | V |
 | `gpif_gnd_fpga_fx3` | gnd FPGA ↔ `gnd_fx3_cyusb2014` | 8-bit GPIF, PIB socket 2 — video | V |
 | `usb_gnd_fx3_phone` | `gnd_fx3_cyusb2014` ↔ phone | USB; `55 CC` chunks (0x5749 DUML, 0x574A video) | V |
 | `iq_gnd_fpga_ad9363` | gnd FPGA ↔ ground AD9363 | ~12-bit I/Q sample port | I |

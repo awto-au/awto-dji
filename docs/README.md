@@ -46,7 +46,7 @@ of fact-changes (docs state current facts only).
 - `prior-art.md` — positioning vs existing DJI RE (o-gs/dji-firmware-tools): what we reuse (extraction, decryption, the param-table/defaults dump = `dji_flyc_param_ed.py`), what's new here (SPL ID, I/O pin map, control-authority, sim/RC-loss, Linux→FC, FPGA), and that upstream already ships an `m0306` symbol map worth cross-checking (GPL-3.0, compatible).
 
 ## System data flow and buses (m0900-derived)
-- `naming-map.md` — **proposal (for review):** names for every module (`side_role_chip`, e.g. `air_fc_stm32f427`, `gnd_fx3_cyusb2014`) and bus (`medium_side_roleA_roleB`, e.g. `uart_air_lbmcu_fc`, `can_air_primary`), each tagged V/I/U.
+- `naming-map.md` — **proposal (for review):** names for every module (`side_role_chip`, e.g. `air_fc_stm32f427`, `gnd_fx3_cyusb2014`) and bus (`medium_side_roleA_roleB`, e.g. `uart_air_radio_fc`, `can_air_primary`), each tagged V/I/U.
 - `dataflow.md` — video / telemetry / control planes as Mermaid; where DUML is injected, forwarded, consumed in `m0900`; control + telemetry sequences; unknowns list. Every edge tagged verified / inferred / unknown.
 - `board-connections.md` — P01007.06 connection diagram from firmware + wiki (**not a schematic**); what a real schematic would confirm.
 - `fc-message-path.md` — m0306 (FC) message handling: it's AES-encrypted (decrypt with scripts/re/xv4_decrypt.py), its byte entry points (CAN1/2, USARTs), the DUML CRC16 validator, and why the (set,id) command map needs a Ghidra-scale trace next.
