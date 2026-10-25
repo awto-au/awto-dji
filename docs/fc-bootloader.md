@@ -226,3 +226,24 @@ path is now analysed.
   never uses 0-5. The other "type" seen (`FUN_2000723c`, values 3/5) is the DUML **sender device
   type**, a different field. So 0-5 are other modules' targets in DJI's shared updater enum, not FC
   banks — not exercised here (**U**, by design).
+
+## Can the resident loader be obtained elsewhere? (no — SWD only)
+
+Checked whether the resident loader (sectors 0–4, `0x08000000`) is already available:
+
+- **Not in any OTA package.** The o-gs/dji-firmware-tools wiki states the m0306 package "programs
+  the **application part**" of the STM32F427 — the bootloader is factory-only and ships in **no**
+  DJI firmware package, for any product. Confirmed locally: the P3 package has only `m0306` (app) +
+  `m0305` (RAM updater) for device-type 3; `m0305` holds no `0x08000000` flash vector table.
+- **No published dump found.** No community release of the P3 FC bootloader surfaced; the documented
+  route to full flash is **SWD/ST-Link on the board's SWD pins** (per the same wiki). Any copy that
+  exists is a private SWD dump.
+- **We already have most of its logic.** `m0305` carries the full boot-decision (A/B validate+boot),
+  flash driver and DUML/CAN update path, so a sectors-0–4 dump would add mainly the thin reset/copy
+  stub that bootstraps `m0305`.
+- **One thing may be unique to it.** A Hackaday Naza-M teardown found a DJI bootloader holding a
+  "secret seed" used for authentication — i.e. the resident loader *can* hold auth material absent
+  from the app/updater. On the P3 FC this is unverified (**U**), but it is the one concrete reason
+  the resident loader is worth a SWD dump beyond completeness. (Scope note: the interest here is the
+  boot chain and a clean replacement, not DJI activation/licensing or geofence defeat, which stay
+  out of scope per `autonomy-onboard-plan.md`.)
