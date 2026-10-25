@@ -71,3 +71,27 @@ Pulled upstream's `P3X_FW_V01.07.0060_m0306.map` (vendored at
 
 Sources: [o-gs/dji-firmware-tools](https://github.com/o-gs/dji-firmware-tools),
 [MrBurnsAT/phantom-firmware-tools](https://github.com/MrBurnsAT/phantom-firmware-tools).
+
+## DJI runs one shared FC platform (measured across products)
+
+DJI reuses a large common codebase across its drone line. Measured directly from upstream's IAR
+symbol maps by counting identical symbol names between the **P3 FC** (`P3X…m0306`, 1227 publics)
+and the **Phantom 4 FC** (`wm220_0306`, 3133 publics): **202 names are byte-identical**. That is a
+floor — static/inlined functions never reach a publics map, and names drift slightly across
+versions. The shared set is the platform core, not incidental:
+
+- **RTOS:** 66 `OS_*` — the entire Micrium µC/OS-III port (scheduler, pend lists, task management).
+- **DUML stack:** `crc8_table`, `crc16_table` — the same protocol engine seen in every module.
+- **SDK / activation:** `dji_sdk_set_key`, `check_activation_authority`.
+- **Control-mode framework:** `kctrl_init_API`.
+- **Platform:** `Reset_Handler`/`HardFault_Handler`/…, `SystemInit`, `CPU_CntLeadZeros`, version/HAL
+  infrastructure (`hal_push_mc_version`, `log_version_info`).
+
+The P4 map (3133) is ~2.5x the P3 map (1227): the newer aircraft *grew* code (vision positioning,
+obstacle avoidance) on the same base rather than being rewritten. Same story the module IDs tell
+(every FC is `0306`, every air radio `0900`, across P3/P4/Spark/Mavic). Practical use: a function
+named in the richer P4 map but absent from the sparse P3 map is a naming candidate for the same
+function in our image, matched by structure/string refs.
+
+Reproduce: `awk '/Publics by Value/{p=1;next} p&&/^ [0-9]{4}:/{print $2}' <map> | sort -u`, then
+`comm -12` the two name lists (maps under `docs/symbols/upstream/`, from o-gs/dji-firmware-tools).

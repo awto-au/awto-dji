@@ -22,3 +22,10 @@ Notable toolchain/RTOS facts this map settles:
 - **Compiler/linker: IAR** (`__iar_program_start`) — resolves the earlier "compiler: U".
 - **RTOS: Micrium uC/OS-III** (`OS_StatTaskInit`, `OS_CPU_SysTickHandler`, ...) — matches our finding.
 - `SystemInit` @ 0x08022596 / `system_init` @ 0x080203F4 (clock bring-up) in the V01.07.0060 image.
+
+## wm220_0306_v03.02.35.05_m0306.map
+
+Phantom 4 flight controller symbol map, same source/licence (upstream file
+`symbols/wm220_0306_v03.02.35.05_20170525.pro.map`). Kept for the cross-product code-sharing
+comparison in `docs/prior-art.md` (P3 FC vs P4 FC share 202 identical symbol names). Upstream's
+work; renamed locally for brevity.
