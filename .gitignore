@@ -22,6 +22,10 @@ build/
 # Scratch / logs (never firmware images - those are DATA NOT IN THE REPO, see HANDOVER.md)
 tmp/
 
+# Large capture artifacts kept on disk for web/cloud agents to read, never committed
+# (git history can't shrink back down once these are in it - see captures/README.md)
+capture_local/
+
 # Renode capture outputs (generated when running renode/scripts/*.resc)
 m0900-capture.log
 *-capture.txt

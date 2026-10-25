@@ -7,6 +7,9 @@ firmware unpack) stays in `tmp/` - see root CLAUDE.md.
 - `sessions/<date>/` - per-session logs from live-hardware scripts (AOA relay, identity
   queries, gimbal sends, app logcat captures), one README per session.
 - Top-level `*.pcapng`/`*.txt` below - USB captures of vendor tools (Assistant 2, tshark).
+- `../capture_local/` (repo root, gitignored) - oversized captures from the same sessions
+  (multi-GB relay logs, raw video) that stay on disk for agents to read but never get
+  committed; git history can't shrink back down once something that big is in it.
 
 Raw USB captures (USBPcap via tshark) of vendor tools talking to the aircraft/controller.
 
