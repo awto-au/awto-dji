@@ -145,3 +145,8 @@ addr	name	note	source
 0x0803aac4	usb_fs_bringup	GPIOA PA11/PA12 AF10 = USB OTG_FS (DM/DP); DJI Assistant2/upgrade link to FC	ghidra+io
 0x08034bcc	uart_table_init	loops a 100B-entry UART port table (RAM 0x20020a24, <=2 active), calls uart_port_init per filled entry	ghidra+io
 0x08034c26	uart_port_init	per-UART bring-up: GPIO TX/RX pins + usart_open; descriptor {idx@0,base@4,baud@8,txpin@0xc,rxpin@0xd} is runtime-filled	ghidra+io
+0x0808527a	uid96_read	reads STM32 96-bit UID (0x1FFF7A10) into a buffer	ghidra+io
+0x080596ea	id10_build	builds FC 10-byte device identity from base + UID[0] (identity/serial, not a secret)	ghidra+io
+0x08047c2c	is_prod_activated	product activation check (app-side)	upstream-map
+0x08047d5e	check_activation_authority	activation authority check (app-side)	upstream-map
+0x0805a964	dji_sdk_set_key	Onboard-SDK activation key set (key supplied externally, not loader-derived)	upstream-map

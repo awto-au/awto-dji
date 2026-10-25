@@ -247,3 +247,33 @@ Checked whether the resident loader (sectors 0–4, `0x08000000`) is already ava
   the resident loader is worth a SWD dump beyond completeness. (Scope note: the interest here is the
   boot chain and a clean replacement, not DJI activation/licensing or geofence defeat, which stay
   out of scope per `autonomy-onboard-plan.md`.)
+
+## Is a loader-resident secret actually needed? (searched the app — no evidence)
+
+Patching needs no secret (no signature; the module AES key is public), so the only reason to want
+the loader is a possible secret/seed (cf. the Naza-M precedent). Searched the m0306 app for the
+three ways such a secret would surface:
+
+- **Reads from non-flash / never-written storage:** the app reads the **STM32 96-bit UID**
+  (`0x1FFF7A10`, `uid96_read` @ 0x0808527a) — but its only consumer is `id10_build` (@ 0x080596ea),
+  which builds the FC's **device identity** (base + `UID[0]`). Identity/serial, **not** a key. **No**
+  reads of the STM32 **OTP** (`0x1FFF7800`), **option bytes**, or **system-memory ROM** (scanned, 0
+  refs each).
+- **Reads into / calls the loader flash (`0x08000000–0x0801FFFF`):** ~93 word references exist
+  (the `Loader = [V…]` version read and shared data), but none resolves to a **secret** handoff; the
+  activation path is app-side (`is_prod_activated`, `check_activation_authority`, `dji_sdk_set_key`)
+  with the SDK key **supplied externally**, not derived from the loader.
+
+**Conclusion:** no app-side evidence that a loader-resident secret is required — consistent with the
+no-signature finding. The patch/replacement path needs nothing from the loader; the loader stays a
+completeness item (any seed like the Naza-M's is unverified here, **U**, and only confirmable by a
+SWD dump).
+
+### Approach-B hijack candidates (already present in the app)
+
+For the surgical-patch dump, besides a null param callback there are existing entry points to
+repurpose: many `nullsub_*` stub handlers (e.g. `nullsub_23` @0x08046640, numerous others), and two
+intriguing config entries — `api_entry_cfg.cheat_backdoor` and
+`config_status.factory_output_test_request` — a factory/test path is a lower-safety-impact slot to
+trigger a diagnostic payload. What each does is unverified (**U**); worth a look as the cleanest
+trigger when building Approach B.
