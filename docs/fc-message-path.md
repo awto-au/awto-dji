@@ -98,6 +98,33 @@ the onboard-agent and the patch paths; (2) the continuous-setpoint command path 
 `serial_open_nav`) payload; (3) which bus the requests arrive on (USART vs CAN) using the SVD
 MMIO labels.
 
+## Control-authority gate decompiled (2026-10-25) — answers the sender-check question
+
+`fc_api_ctrl_mode_status_request_handler` (0x08055680) is the grant/refuse logic. To grant
+external control it requires, in order:
+1. `fc_ctrl_register_requester` (0x0805cb70) resolves the sender via `fc_sender_channel_lookup`
+   (0x0804748c); returns 0 (reject) only if that is `0xff` (unknown channel/device). It indexes
+   a per-device-type table by `(sender>>16)&0x1f` and records the requester. **Validity check,
+   not an identity allowlist.**
+2. No other active "agency" holds control (or it is the same requester).
+3. **`fc_ctrl_gate_mode_read` (0x08064d38) == 2** — a single RAM mode byte at `0x200001d5`,
+   written by `fc_ctrl_mode_set_a/b` (0x08064c9c/0x08064d9c) from the RC/flight-mode state.
+   Its value is even printed in `SEND ACK REQ CMD REFUSE`.
+
+On grant it sets the agency holder, `*(mode_struct+0x20)=1`, and ACKs 2; otherwise ACKs 1.
+
+**Answer to "can the FC be controlled from an onboard sender":** structurally yes — the FC
+accepts a control request from any sender that (a) arrives on a channel its lookup accepts and
+(b) while the mode-gate byte is 2. It does **not** check the requester against an identity
+allowlist. The deciding factor is the mode gate (RC switch / flight mode), not the origin.
+- **Companion-agent path:** the A9-originated request must come in on an accepted channel and
+  the mode gate must read 2. Both are testable on hardware.
+- **Patch path:** the gate is one compare (`== 2`) behind `fc_ctrl_gate_mode_read`; but the
+  module is AES-encrypted and whole-image load integrity (m0305/bootloader) is not yet assessed.
+
+Not yet done: the continuous-setpoint (joystick / `serial_open_nav`) payload, and what sets the
+mode byte to 2 (confirm it is the RC mode switch).
+
 ## Next step (proper disassembly, not one-line scans)
 
 Trace from a byte entry point to the dispatch, following indirect calls:

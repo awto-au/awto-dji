@@ -25,3 +25,10 @@ addr	name	note	source
 0x08056b40	fc_api_mission_fm_pause	log: call api_mission_fm_pause_handler	ghidra+strings
 0x0808527a	uid96_read	STM32 96-bit UID read 0x1FFF7A10	air_modules.tsv
 0x080596ea	id10_build	10-byte id record + UID word0	air_modules.tsv
+0x08055680	fc_api_ctrl_mode_status_request_handler	grant/refuse external-control "agency"; gate = mode byte==2, no sender allowlist	ghidra
+0x0805cb70	fc_ctrl_register_requester	maps sender->per-device slot via 0x0804748c (0xff=reject), records requester	ghidra
+0x0804748c	fc_sender_channel_lookup	returns slot index for a sender/channel, 0xff if invalid	ghidra
+0x08064d38	fc_ctrl_gate_mode_read	returns mode byte 0x200001d5; ==2 required to grant control	ghidra
+0x08064c9c	fc_ctrl_mode_set_a	writes mode gate byte 0x200001d5	ghidra
+0x08064d9c	fc_ctrl_mode_set_b	writes mode gate byte 0x200001d5	ghidra
+0x0805ca9a	fc_ctrl_send_ack	sends control-request ACK (2=grant,1=refuse)	ghidra
