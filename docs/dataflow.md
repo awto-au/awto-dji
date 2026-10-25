@@ -34,20 +34,20 @@ flowchart LR
     APP["App / DJI GO"]
   end
   subgraph RC["RC ground side (GL300C)"]
-    FX3["FX3 m1601 phone USB"]
-    M1400["m1400 LPC1765"]
-    GFPGA["Ground FPGA m2000/m2001/m2002"]
+    FX3["FX3 m1601 phone USB<br/>`gnd_fx3_cyusb2014`"]
+    M1400["m1400 LPC1765<br/>`gnd_rc_lpc1765`"]
+    GFPGA["Ground FPGA m2000/m2001/m2002<br/>`gnd_fpga_cyclonev_r0/r1/r2`"]
     GAD["Ground AD9363"]
   end
-  RF(("2.4 GHz OFDM link"))
+  RF(("2.4 GHz OFDM link<br/>`rf_air_gnd`"))
   subgraph AIR["Aircraft"]
     AAD["Air AD9363"]
-    AFPGA["Air FPGA m1900"]
-    M0900["m0900 STM32F103 72 MHz"]
-    DM368["DM368 m0800 encoder"]
-    FX2A["FX2LP m1500 (air)"]
-    CAM["Camera A9SE m0100"]
-    FC["Flight controller m0306 (STM32F427, SPL, uC/OS-III)"]
+    AFPGA["Air FPGA m1900<br/>`air_fpga_cyclonev`"]
+    M0900["m0900 STM32F103 72 MHz<br/>`air_router_stm32f103`"]
+    DM368["DM368 m0800 encoder<br/>`air_venc_dm368`"]
+    FX2A["FX2LP m1500 (air)<br/>`air_fx2_cy68013`"]
+    CAM["Camera A9SE m0100<br/>`air_cam_a9se`"]
+    FC["Flight controller m0306 (STM32F427, SPL, uC/OS-III)<br/>`air_fc_stm32f427`"]
   end
 
   CAM ==>|"U: H.264 bus"| DM368
@@ -88,6 +88,35 @@ flowchart LR
 - Edge 10/17: that USART3 faces the air FPGA/link is **I**. `packet_send` sends receiver types 2, 6, 13, 14, 16, 20, 22 out USART3 on every board code (section 3). The USART3-to-FPGA wiring needs a schematic.
 - Edge 9/18 (`m0900-can-channels.md`): `packet_send` routes types 3, 5, 10, 11, 12, 18, 21, 23 to `uart_send(1)` = **USART1 on every board** (V); the far end being the FC is **I** (receiver type 3). CAN 0x412/0x413 carries camera/gimbal (types 1, 4, 8, 15); CAN 0x414/0x415 carries only type 30.
 - The docs' "CENTER UART 256000 8N1 to FC" **is** reproduced: CENTER = USART1 (section 5, item 1).
+
+## 2a. Message flow in words
+
+Same edges as the section 2 mermaid, as a words-only walkthrough. Canonical names from
+`naming-map.md`. V/I/U per-hop as in the diagram; nothing here claims more than the diagram does.
+
+**Control (phone → FC).** Phone → (V) `gnd_fx3_cyusb2014` USB, bare DUML → (V, FX3 end; peer
+`gnd_rc_lpc1765` I) `uart_gnd_rc_fx3` 115200 UART → `gnd_rc_lpc1765` → (I) ground FPGA, UART DUML
+→ (I) `rf_air_gnd` 2.4 GHz OFDM → (I) ground FPGA's air counterpart, `air_fpga_cyclonev` → (V)
+`uart_air_router_fpga` USART3 257143 baud, DMA → `air_router_stm32f103` (m0900) → (V route; FC
+end I) `uart_air_router_fc` USART1, `uart_send` port 1, types 3/5/10/11/12 → `air_fc_stm32f427`.
+
+**Telemetry (FC → phone), using OSD General (set 0x03 id 0x43) as the concrete example.**
+`air_fc_stm32f427` → (V m0900 side; FC source I) `uart_air_router_fc` USART1 256228 baud →
+`air_router_stm32f103`, which **re-addresses and forwards twice** (both V, decompiled):
+- byte5 → type 2 (app), CRC16 recomputed → (V) `uart_air_router_fpga` USART3 257143 baud →
+  `air_fpga_cyclonev` → (I) `rf_air_gnd` → (I) ground FPGA → (I) `uart_gnd_rc_fpga` DUML-over-UART
+  → `gnd_rc_lpc1765` → (V FX3 end; peer I) `uart_gnd_rc_fx3` 115200 UART → `gnd_fx3_cyusb2014` →
+  (V) `usb_gnd_fx3_phone`, chunk `55 CC 5749` → phone.
+- byte5 → type 1 (camera), CRC16 recomputed → (V) `can_air_primary` std ID `0x412` →
+  `air_cam_a9se`. (Not drawn in the section 2 diagram; from the section 3 router trace.)
+
+**Video (camera → phone).** `air_cam_a9se` → (U medium) H.264 bus → `air_venc_dm368` → (V)
+`usb_air_venc_fx2` bulk EP2, raw H.264 → `air_fx2_cy68013` → (V config; peer=FPGA I)
+`fifo_air_fx2_fpga` 8-bit slave FIFO, AUTO → `air_fpga_cyclonev` → (I) `rf_air_gnd` → (I) ground
+FPGA → (V) `gpif_gnd_fpga_fx3` 8-bit GPIF, PIB socket 2 → `gnd_fx3_cyusb2014` → (V)
+`usb_gnd_fx3_phone`, chunk `55 CC 574A` → phone.
+
+Keep this in sync with the section 2 mermaid; an edge added/changed there should be reflected here.
 
 ## 3. Where DUML is injected and removed — m0900 as a router
 
