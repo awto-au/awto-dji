@@ -133,3 +133,8 @@ addr	name	note	source
 0x0806d78e	rcc_ahb2_periph_reset_cmd	SPL RCC_AHB2PeriphResetCmd: RCC->AHB2RSTR(+0x14)	ghidra+io
 0x0806d7b6	rcc_apb1_periph_reset_cmd	SPL RCC_APB1PeriphResetCmd: RCC->APB1RSTR(+0x20)	ghidra+io
 0x0806d7ca	rcc_apb2_periph_reset_cmd	SPL RCC_APB2PeriphResetCmd: RCC->APB2RSTR(+0x24)	ghidra+io
+0x0803ae02	can_init	SPL CAN_Init(CANx,CAN_InitTypeDef): MCR INRQ handshake, BTR=SJW<<30|BS1<<16|BS2<<20|presc-1 from struct	ghidra+io
+0x0803addc	can_deinit	SPL CAN_DeInit: RCC_APB1PeriphResetCmd(CAN1RST 0x2000000 / CAN2RST 0x4000000)	ghidra+io
+0x0803b5d8	usart_init	SPL USART_Init: calls RCC_GetClocksFreq, BRR via 25*apbclock divider + OVER8 fractional	ghidra+io
+0x0806396c	gpio_init	SPL GPIO_Init(GPIOx,GPIO_InitTypeDef): 16-pin loop over MODER/OSPEEDR/OTYPER/PUPDR	ghidra+io
+0x08063a54	gpio_pin_af_config	SPL GPIO_PinAFConfig(GPIOx,pinsrc,AF): AFR[src>>3] nibble = AF<<((src&7)*4)	ghidra+io
