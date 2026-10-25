@@ -125,6 +125,24 @@ allowlist. The deciding factor is the mode gate (RC switch / flight mode), not t
 Not yet done: the continuous-setpoint (joystick / `serial_open_nav`) payload, and what sets the
 mode byte to 2 (confirm it is the RC mode switch).
 
+## Built-in flight simulator in the FC (2026-10-25) — ideal bench target
+
+The FC (m0306) contains a full simulator, the same one DJI Assistant 2 drives over USB:
+- **Start/stop/suspend handler** `fc_sim_start_handler` (0x080585ec): a sub-command byte plus an
+  **initial fix (latitude/longitude/altitude as f64, GPS satellite count)**; agrees or refuses
+  with a reason code (1-6). Logs `Simulator: Agree to run, longti/lati/alti/svn`. A second
+  `[SIM]` handler cluster at 0x08095xxx mirrors it (navigation side).
+- **While running** the flight stack runs on synthetic sensors: `g_real.config_status.fill_from_simulator`,
+  `g_cfg_debug.simulator_initial_lati/longti`, `simulator_gps_Date/svn/hdop`, `simulator_mvo_flag`.
+- **Motors optional**: `g_cfg_debug.simulator_check_motor` (run the loop without spinning props).
+- **Geo-limits off in sim**: `g_config.airport_limit_cfg.cfg_sim_disable_limit`.
+- Also present: fault/data injection (`g_config.fdi_inject.imu/compass`, `[whitelist]>test data injected`).
+
+Implication for the onboard-agent work: the agent can be validated end-to-end **in the FC's own
+simulator** — start sim with a chosen home fix, request agency, open nav, stream waypoints/
+setpoints, and watch the FC's simulated state response — with no real flight. This is the
+natural first integration target before any powered test.
+
 ## The "agency" model is a priority mutex, not security (2026-10-25)
 
 The control-authority code is exclusive-access arbitration, not authentication:

@@ -35,3 +35,9 @@ addr	name	note	source
 0x08064c9c	fc_ctrl_arbitrate	picks active control device by priority predicates; writes gate byte 0x200001d5	ghidra
 0x08064c88	fc_ctrl_src1_pred	predicate for control device code 1	ghidra
 0x08064c92	fc_ctrl_src2_pred_api	predicate for device code 2 (API/nav): active iff bit2 of flags 0x200001d6	ghidra
+0x080585ec	fc_sim_start_handler	simulator start/stop/suspend; args initial lat/long/alt (f64) + gps svn; refuse reason 1-6	ghidra+strings
+0x080587f2	fc_sim_handler_2	simulator subsystem handler	ghidra+strings
+0x08059276	fc_sim_handler_3	simulator subsystem handler	ghidra+strings
+0x08095298	fc_sim_handler_navi	[SIM] simulator handler (navi side)	ghidra+strings
+0x080955e8	fc_sim_handler_navi2	[SIM] simulator handler	ghidra+strings
+0x08095b3c	fc_sim_handler_navi3	[SIM] simulator start ([SIM]try to start simulator)	ghidra+strings
