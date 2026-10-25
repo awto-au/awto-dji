@@ -160,3 +160,34 @@ V01.11.0020 image, of which **13 resolved to a function with high/med confidence
 
 So string-anchoring is good for validation and for handler functions, but the full control-mode
 map is the case that actually wants Version Tracking against the P4 binary.
+
+## P3 vs P4 flight controller (same platform, bigger device + new sensing)
+
+From the two FC maps (addresses/sizes are facts from the maps; the exact MCU part is bounded, not
+pinned — that needs the P4 binary's vector table or a PCB teardown):
+
+- **Code/RAM size:** P4 `.text` = 0x1265D4 (~1.2 MB) vs P3 ~0x85D34 (~548 KB) — P4 FC is ~2.3x the
+  code (needs ≥2 MB flash). P4 data/bss symbols sit around a **0x2040_0000 RAM base** reaching
+  ~0x2045D870 (~400 KB), far beyond the P3 F427's ~196 KB at 0x2000_0000. So the **P4 FC is a
+  larger-memory part than the P3's STM32F427** (or F427 + external RAM) — same STM32F4-family
+  platform code (shared `Reset_Handler`/`SystemInit`/IAR/µC/OS), a bigger device. Exact part: **U**.
+- **Sensors — same parts, more of them + redundancy:** both use **MPU-6500** (`mpu6500_driver_init`),
+  **IST8303** and **HMC5883** compasses. P4 adds `imu_groups`, `init_all_gyro_acc` and **three**
+  high-freq gyro channels (`rec_high_freq_gyro_data_0/1/2`), **dual barometers**
+  (`get_ex_baro1/2_raw`), IMU **temperature control** (`gyro_acc_tmp_ctl_init`) and vibration
+  detection — i.e. redundant, heated IMUs vs the P3's single set.
+- **New FC features in P4 (absent in P3):** obstacle avoidance and vision — `rec_svo_avoid_run`
+  (stereo visual odometry), `link_vo_msg_callback`, `rec_vision_tof_run`, `hal_add_tof`,
+  `hal_add_ultrasonic`, front/back radar (`rec_radar_avoid_front/back_run`),
+  `sdk_ctrl_set_avoid_obstacle_enable`, `avoid_cfg`/`avoid_obstacle_limit_cfg`; **RTK**
+  (`handle_app_to_rtk_pack`, `rec_gs_rtk_data_run`, `miss_rtk`); nav-system residual fusion
+  (`rec_ns_data_residuals_run`). This is what the extra ~700 KB of code is.
+
+### Why the DJI names are consistent ("standardised") across products
+
+The upstream maps carry DJI's *own* symbol names, and they line up across P3/P4 because it is **one
+shared codebase** (202 identical symbols, same functions). They reached the RE community two ways:
+DJI firmware **logs its own function names** in debug strings (the convention our string-anchored
+port exploits), from which names are recoverable; and at least one **symbol-bearing artefact** (the
+IAR linker map — note `__iar_program_start`) was obtained. So "standardised" = one source tree +
+DJI's consistent internal naming, captured from the binaries' own strings and a leaked/shipped map.
