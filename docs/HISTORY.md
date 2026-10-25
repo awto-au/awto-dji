@@ -4,6 +4,21 @@ Dated changelog of fact-corrections previously narrated inline in the docs. Each
 phrased as "initial understanding -> corrected finding." The docs now state only the
 corrected/current fact; this file preserves the history for reference.
 
+## 2026-10-25 (dataflow.md diagram correction: RX from the link side does not hit dispatch)
+
+- **Found and fixed a real error, not just an addition.** `dataflow.md`'s own router diagram
+  (§3) showed `0x080103f8` (USART3's RX pump) feeding into `DISP` (`duml_dispatch`), the same as
+  every other RX pump. That's wrong: `0x080103f8` (`fpga_uart_to_fc_relay`,
+  `air-router-deep-dive.md` §6a) never calls `duml_dispatch` at all — it parses a complete frame
+  and calls `send_usart1` **unconditionally**, with no receiver-type check. Corrected the diagram
+  and added an explicit note: **TX is demultiplexed by receiver type** (`packet_send`'s routing
+  table genuinely splits traffic across USART1/3/CAN by type), but **RX from the link side is
+  not** — every frame that arrives via USART3 or the SPI-sourced OFDM payload path goes to the FC
+  regardless of its actual receiver byte. This is consistent with the already-established CAN
+  pass-through precedent (camera/gimbal traffic also passes through `m0900` uninspected), not a
+  new or surprising pattern once stated — but it had never been stated, and the diagram actively
+  claimed the opposite. (`docs/dataflow.md` §3)
+
 ## 2026-10-25 (UART/SPI inventory + speed cross-check, air+ground)
 
 - **Built the first full UART/SPI inventory across the whole air+ground DUML mesh and checked

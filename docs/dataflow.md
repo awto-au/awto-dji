@@ -133,7 +133,7 @@ flowchart TD
   U3["USART3 RX DMA 256 B, IDLE IRQ 0x0800ac42"]
   U2["USART2 RX board 7 only, IRQ 0x0800abe4"]
   CANRX["CAN RX0 IRQ 0x0800b23d, std ID 0x413 and 0x415"]
-  PUMP["RX pumps 0x08012626 USART1, 0x0801148c CAN 0x413, 0x08011882 CAN 0x415, 0x080103f8 USART3 + framer 0x08011a8e"]
+  PUMP["RX pumps feeding dispatch: 0x08012626 USART1, 0x0801148c CAN 0x413, 0x08011882 CAN 0x415 + framer 0x08011a8e (0x080103f8/USART3+SPI corrected below - it does NOT feed dispatch)"]
   DISP["dispatch 0x0801198a table 0x0801a120"]
   H43["set 0x03 id 0x43/0x44 handlers 0x08011ed5 0x08011f99: rewrite receiver, CRC16 0x08011eae, resend"]
   H42["set 0x03 id 0x42 handler 0x08012013: receiver becomes type 4, resend"]
@@ -148,9 +148,13 @@ flowchart TD
   SPI["SPI2 4.5 MHz to FPGA regs and AD9363"]
 
   U1 --> PUMP
-  U3 --> PUMP
   U2 --> PUMP
   CANRX --> PUMP
+  U3 --> RELAY
+  OFDMRX["ofdm_link_rx_statemachine 0x0800f978: polls FPGA via SPI2 reg 0xe9, ofdm_payload_descramble"]
+  OFDMRX --> RELAY
+  RELAY["0x080103f8 fpga_uart_to_fc_relay: parse DUML, no dispatch - blind forward"]
+  RELAY -->|"every complete frame, unconditional"| O1
   PUMP --> DISP
   DISP -->|"match 0x43 0x44"| H43
   DISP -->|"match 0x42"| H42
@@ -174,6 +178,36 @@ Notes (all V unless marked):
 - Handlers for set 0x03 ids 0x42/0x43/0x44 are keyed to receiver type 9 (m0900 itself). They rewrite byte 5 (0x43: to type 2 then type 1; 0x42: to type 4), recompute the CRC16 (seed 0x3692) and call `packet_send`. Reading: **FC pushes land on m0900, which fans them out to the app via USART3 and to camera/gimbal via CAN 0x412**. Sender of these pushes is not checked in the dispatch (FC is **I**; arrival port most likely USART1, I).
 - Set 0x09 handlers (`docs/symbols/m0900_V01.11.0020.tsv`): cmd 05 FPGA read, 06 write (hi==0xFE: FPGA reg, else AD9363), 07 read, 12 radio SET, 13 radio GET. Replies go through `packet_make_response` then `packet_send`.
 - Which physical port a given inbound packet arrived on is lost at the dispatch (no port field in the record): replies are routed by receiver type, not by arrival port.
+
+### TX is multiplexed by receiver type; RX from the link side is NOT demultiplexed — a real asymmetry, not an oversight (2026-10-25)
+
+Worth stating plainly rather than leaving implicit, since the two directions look different and
+that's correct, not a documentation gap:
+
+- **Outbound (m0900 → link), demultiplexed by receiver type**: `packet_send`'s routing table
+  (`0x080118e4`) inspects the DUML receiver byte and picks one of several outputs per type —
+  USART3, USART1, or one of two CAN queues. This is real demultiplexing: different logical
+  destinations genuinely go to different physical buses.
+- **Inbound (link → m0900), on the two paths that feed `fpga_uart_to_fc_relay`
+  (`0x080103f8` — USART3's RX ring, and `ofdm_link_rx_statemachine`'s SPI-sourced ring,
+  `air-router-deep-dive.md` §6a), there is NO demultiplexing at all.** This function parses each
+  byte stream for a complete DUML frame and, the instant one assembles, calls `send_usart1`
+  **unconditionally** — it never inspects the frame's receiver byte, never calls `duml_dispatch`,
+  never branches on type. Every frame that arrives this way goes to the FC, full stop, regardless
+  of who it's actually addressed to.
+- **This is consistent with, not contradicted by, the already-established CAN precedent**: §6 of
+  this doc and `air-router-deep-dive.md` §6 already show `m0900` passes camera/gimbal CAN traffic
+  (types 1/4/8/15) through **without inspecting it at all** — "pure pass-through," verified
+  negative. The same pattern repeats here: `m0900` isn't trying to be a smart router on the way
+  in from the link side; it hands the FC (or the CAN bus, for the other known pass-through) the
+  whole raw stream and lets the receiving node filter by its own address. That's a legitimate,
+  simpler design — the FC's own DUML stack is what's expected to drop frames not addressed to it
+  — but it does mean **the FC receives every downlink frame regardless of its receiver byte**,
+  not just the ones meant for it.
+- **Not yet checked**: whether `air_fc` actually does that filtering (drops frames not addressed
+  to its own receiver type) or whether some of this traffic is meant to reach the FC *specifically
+  so it can re-forward it further* (the FC has its own CAN bus to camera/gimbal, per
+  `naming-map.md`'s `can_air_fc2`, out of `m0900`'s scope to confirm). This is open, not assumed.
 
 ### Injection and removal points
 
