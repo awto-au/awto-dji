@@ -4,6 +4,10 @@ Analysis and planning docs for the awto-dji project (talking to a DJI Phantom 3 
 directly, for a device the operator owns). Grouped by topic; start with `../HANDOVER.md` for
 the current state and next steps, and `../CLAUDE.md` for agent onboarding.
 
+**`SAFETY.md`** — the single source for all safety, flight-gating, geofence/NFZ, RF-power and
+repair-scope rules. Technical docs link here and do not repeat them. **`HISTORY.md`** — dated log
+of fact-changes (docs state current facts only).
+
 ## Protocol & control plane (the practical path)
 - [usb-test-matrix.md](usb-test-matrix.md) — per-port bench evidence, open USB tests, and a cached-descriptor watcher for cable/power correlation.
 - [fx3-usb-modes.md](fx3-usb-modes.md) — ground USB firmware's alternate bulk interfaces, GPIO/configuration mode selection, and the currently verified PC serial path; PC bulk access remains unverified.
