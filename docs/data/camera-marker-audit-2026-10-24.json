@@ -1,0 +1,175 @@
+{
+  "sys_image": "tmp/air/amba_P3X0020/P3X_FW_V01.11.0020_m0100_part_sys.a9s",
+  "sys_sha256": "fdbb688ea2d2fa14095328f4a89ddd211938496e662358a7f1dc16c016e53746",
+  "sys_load_base": "0xe600000",
+  "rootfs_image": "tmp/air/amba_P3X0020/P3X_FW_V01.11.0020_m0100_part_rfs.a9s",
+  "rootfs_sha256": "c20ef3942bf49aa1c2c78e539b5a91da464044ed040023a8ed20f026fd4bd962",
+  "rootfs_files_reconstructed": 335,
+  "rootfs_symlinks": 415,
+  "rootfs_limit": "Existing UBIFS walker; no independent decompression/CRC audit. Negative searches are bounded to reconstructed bytes.",
+  "sys_strings": [
+    {
+      "name": "0x40003000.dji",
+      "file_offset": "0x72d24",
+      "va": "0xe672d24",
+      "literal_loads": [
+        "0xe80d1d0"
+      ]
+    },
+    {
+      "name": "CameraLogCur.log",
+      "file_offset": "0x72ce0",
+      "va": "0xe672ce0",
+      "literal_loads": [
+        "0xe80cf40"
+      ]
+    },
+    {
+      "name": "CameraLogOld.log",
+      "file_offset": "0x72cf4",
+      "va": "0xe672cf4",
+      "literal_loads": [
+        "0xe80d014"
+      ]
+    },
+    {
+      "name": "c:\\autoexec.ash",
+      "file_offset": "0x35f5c",
+      "va": "0xe635f5c",
+      "literal_loads": []
+    },
+    {
+      "name": "d:\\autoexec.ash",
+      "file_offset": "0x35f6c",
+      "va": "0xe635f6c",
+      "literal_loads": []
+    },
+    {
+      "name": "P3X_FW_DEBUG",
+      "file_offset": "0x8128c",
+      "va": "0xe68128c",
+      "literal_loads": [
+        "0xe8a6bf8"
+      ]
+    },
+    {
+      "name": "P3X_FW_DEBUG_2",
+      "file_offset": "0x8129c",
+      "va": "0xe68129c",
+      "literal_loads": [
+        "0xe8a6c3c"
+      ]
+    },
+    {
+      "name": "P3X_FW_LOOP",
+      "file_offset": "0x812ac",
+      "va": "0xe6812ac",
+      "literal_loads": [
+        "0xe8a6c8c"
+      ]
+    },
+    {
+      "name": "c:\\DjiAgingFun_300X",
+      "file_offset": "0x55604",
+      "va": "0xe655604",
+      "literal_loads": [
+        "0xe806624",
+        "0xe806768"
+      ]
+    },
+    {
+      "name": "c:\\DjiBoard",
+      "file_offset": "0x556cc",
+      "va": "0xe6556cc",
+      "literal_loads": [
+        "0xe8069c8",
+        "0xe806a84"
+      ]
+    },
+    {
+      "name": "c:\\DjiCheckVideo",
+      "file_offset": "0x55b6c",
+      "va": "0xe655b6c",
+      "literal_loads": [
+        "0xe80738c"
+      ]
+    },
+    {
+      "name": "c:\\Dji97986986_300X",
+      "file_offset": "0x55d94",
+      "va": "0xe655d94",
+      "literal_loads": [
+        "0xe807708",
+        "0xe8077e8"
+      ]
+    },
+    {
+      "name": "c:\\Dji97986986R_300X",
+      "file_offset": "0x55da8",
+      "va": "0xe655da8",
+      "literal_loads": [
+        "0xe80771c",
+        "0xe807834"
+      ]
+    },
+    {
+      "name": "c:\\amba_mtp.txt",
+      "file_offset": "0x7a9a34",
+      "va": "0xeda9a34",
+      "literal_loads": [
+        "0xea46ce8",
+        "0xea4717c",
+        "0xea47490",
+        "0xea47c14",
+        "0xea47c48"
+      ]
+    }
+  ],
+  "rootfs_marker_hits": [],
+  "linux_path_references": [
+    {
+      "path": "/etc/init.d/S50service",
+      "name": "/tmp/fuse_a/.exist"
+    },
+    {
+      "path": "/usr/local/share/script/ap_start.sh",
+      "name": "/tmp/fuse_d/MISC/wifi.conf"
+    },
+    {
+      "path": "/usr/local/share/script/bt_start.sh",
+      "name": "/tmp/fuse_d/MISC/wifi.conf"
+    },
+    {
+      "path": "/usr/local/share/script/bt_start.sh",
+      "name": "/tmp/fuse_d/MISC/bt.conf"
+    },
+    {
+      "path": "/usr/local/share/script/bt_start.sh",
+      "name": "/tmp/fuse_a/.exist"
+    },
+    {
+      "path": "/usr/local/share/script/p2p_start.sh",
+      "name": "/tmp/fuse_d/MISC/wifi.conf"
+    },
+    {
+      "path": "/usr/local/share/script/tcp_script.sh",
+      "name": "/tmp/fuse_d/MISC/tcp_tuner.sh"
+    },
+    {
+      "path": "/usr/local/share/script/wifi_start.sh",
+      "name": "/tmp/fuse_d/MISC/wifi.conf"
+    },
+    {
+      "path": "/usr/local/share/script/wpa_event.sh",
+      "name": "/tmp/fuse_d/MISC/wifi.conf"
+    }
+  ],
+  "autoexec_table": {
+    "va": "0xed8c074",
+    "count": 2,
+    "registration_call": "0xe8130c4",
+    "table_loads": [
+      "0xe8130bc"
+    ]
+  }
+}

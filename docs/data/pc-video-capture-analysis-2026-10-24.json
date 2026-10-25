@@ -1,0 +1,52 @@
+{
+  "source": "captures/sessions/2026-10-23/aoa_relay_server.log",
+  "output": "tmp/camera-video.h264",
+  "channel": "0x574a",
+  "input_bytes": 487671,
+  "video_bytes": 405568,
+  "channel_packets": {
+    "0x5749": 11,
+    "0x574a": 211
+  },
+  "channel_payload_bytes": {
+    "0x5749": 4232,
+    "0x574a": 405568
+  },
+  "discarded_bytes": 76095,
+  "final_incomplete_bytes": 0,
+  "connection_boundaries": 2,
+  "nal_types": {
+    "1": 299,
+    "9": 20
+  },
+  "missing_for_independent_decode": [
+    "SPS",
+    "PPS",
+    "IDR"
+  ],
+  "decode": {
+    "decoded_frames": 0,
+    "streams": [
+      {
+        "codec_name": "h264",
+        "width": 0,
+        "height": 0
+      }
+    ],
+    "returncode": 0,
+    "diagnostics": [
+      "[h264 @ <address>] non-existing PPS 0 referenced",
+      "    Last message repeated 3 times",
+      "[h264 @ <address>] no frame!",
+      "    Last message repeated 6 times",
+      "    Last message repeated 5 times",
+      "    Last message repeated 2 times",
+      "    Last message repeated 4 times",
+      "    Last message repeated 1 times",
+      "    Last message repeated 9 times",
+      "[h264 @ <address>] non-existing PPS 3 referenced",
+      "    Last message repeated 7 times",
+      "    Last message repeated 8 times"
+    ]
+  }
+}

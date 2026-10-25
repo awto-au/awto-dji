@@ -1,0 +1,318 @@
+{
+  "image": "firmware/unpacked/C1_FW_V01.06.0000/C1_FW_V01.06.0000_m1601.bin",
+  "sha256": "703d211d04bafa27f7c8fa95ec336d814440a7950740562bb28601bfdaa764a0",
+  "device_descriptors": [
+    {
+      "file_offset": "0x28494",
+      "va": "0x40030460",
+      "usb_version": "0x200",
+      "device_class": "0x0",
+      "vid_pid": "2ca3:1004",
+      "configuration_count": 1,
+      "pointer_locations": [
+        "0x40006e6c"
+      ],
+      "literal_loads": [
+        "0x400068ec",
+        "0x40006b5c",
+        "0x40006b68"
+      ]
+    }
+  ],
+  "configuration_descriptors": [
+    {
+      "file_offset": "0x109bc",
+      "va": "0x40011780",
+      "total_length": 64,
+      "interface_count": 2,
+      "configuration_value": 1,
+      "attributes": "0xc0",
+      "interfaces": [
+        {
+          "number": 0,
+          "alternate": 0,
+          "endpoint_count": 2,
+          "class": "0xff",
+          "subclass": "0xf0",
+          "protocol": "0x0",
+          "endpoints": [
+            {
+              "address": "0x1",
+              "transfer_type": 2,
+              "max_packet": 512
+            },
+            {
+              "address": "0x81",
+              "transfer_type": 2,
+              "max_packet": 512
+            }
+          ]
+        },
+        {
+          "number": 1,
+          "alternate": 0,
+          "endpoint_count": 0,
+          "class": "0xff",
+          "subclass": "0xf0",
+          "protocol": "0x1",
+          "endpoints": []
+        },
+        {
+          "number": 1,
+          "alternate": 1,
+          "endpoint_count": 2,
+          "class": "0xff",
+          "subclass": "0xf0",
+          "protocol": "0x1",
+          "endpoints": [
+            {
+              "address": "0x3",
+              "transfer_type": 2,
+              "max_packet": 512
+            },
+            {
+              "address": "0x83",
+              "transfer_type": 2,
+              "max_packet": 512
+            }
+          ]
+        }
+      ],
+      "pointer_locations": [
+        "0x40006e74"
+      ],
+      "literal_loads": [
+        "0x40006940"
+      ]
+    },
+    {
+      "file_offset": "0x10a1c",
+      "va": "0x400117e0",
+      "total_length": 64,
+      "interface_count": 2,
+      "configuration_value": 1,
+      "attributes": "0xc0",
+      "interfaces": [
+        {
+          "number": 0,
+          "alternate": 0,
+          "endpoint_count": 2,
+          "class": "0xff",
+          "subclass": "0xf0",
+          "protocol": "0x0",
+          "endpoints": [
+            {
+              "address": "0x1",
+              "transfer_type": 2,
+              "max_packet": 64
+            },
+            {
+              "address": "0x81",
+              "transfer_type": 2,
+              "max_packet": 64
+            }
+          ]
+        },
+        {
+          "number": 1,
+          "alternate": 0,
+          "endpoint_count": 0,
+          "class": "0xff",
+          "subclass": "0xf0",
+          "protocol": "0x1",
+          "endpoints": []
+        },
+        {
+          "number": 1,
+          "alternate": 1,
+          "endpoint_count": 2,
+          "class": "0xff",
+          "subclass": "0xf0",
+          "protocol": "0x1",
+          "endpoints": [
+            {
+              "address": "0x3",
+              "transfer_type": 2,
+              "max_packet": 64
+            },
+            {
+              "address": "0x83",
+              "transfer_type": 2,
+              "max_packet": 64
+            }
+          ]
+        }
+      ],
+      "pointer_locations": [
+        "0x40006e78"
+      ],
+      "literal_loads": [
+        "0x40006954"
+      ]
+    },
+    {
+      "file_offset": "0x10a9c",
+      "va": "0x40011860",
+      "total_length": 46,
+      "interface_count": 1,
+      "configuration_value": 1,
+      "attributes": "0xc0",
+      "interfaces": [
+        {
+          "number": 0,
+          "alternate": 0,
+          "endpoint_count": 4,
+          "class": "0xff",
+          "subclass": "0x0",
+          "protocol": "0x0",
+          "endpoints": [
+            {
+              "address": "0x2",
+              "transfer_type": 2,
+              "max_packet": 64
+            },
+            {
+              "address": "0x86",
+              "transfer_type": 2,
+              "max_packet": 64
+            },
+            {
+              "address": "0x4",
+              "transfer_type": 2,
+              "max_packet": 64
+            },
+            {
+              "address": "0x88",
+              "transfer_type": 2,
+              "max_packet": 64
+            }
+          ]
+        }
+      ],
+      "pointer_locations": [
+        "0x40006eb4"
+      ],
+      "literal_loads": [
+        "0x40006be0"
+      ]
+    },
+    {
+      "file_offset": "0x10adc",
+      "va": "0x400118a0",
+      "total_length": 32,
+      "interface_count": 1,
+      "configuration_value": 1,
+      "attributes": "0xc0",
+      "interfaces": [
+        {
+          "number": 0,
+          "alternate": 0,
+          "endpoint_count": 2,
+          "class": "0xff",
+          "subclass": "0x0",
+          "protocol": "0x0",
+          "endpoints": [
+            {
+              "address": "0x2",
+              "transfer_type": 2,
+              "max_packet": 512
+            },
+            {
+              "address": "0x86",
+              "transfer_type": 2,
+              "max_packet": 512
+            }
+          ]
+        }
+      ],
+      "pointer_locations": [
+        "0x40006ebc"
+      ],
+      "literal_loads": [
+        "0x40006dc0"
+      ]
+    },
+    {
+      "file_offset": "0x10afc",
+      "va": "0x400118c0",
+      "total_length": 46,
+      "interface_count": 1,
+      "configuration_value": 1,
+      "attributes": "0xc0",
+      "interfaces": [
+        {
+          "number": 0,
+          "alternate": 0,
+          "endpoint_count": 4,
+          "class": "0xff",
+          "subclass": "0x0",
+          "protocol": "0x0",
+          "endpoints": [
+            {
+              "address": "0x2",
+              "transfer_type": 2,
+              "max_packet": 512
+            },
+            {
+              "address": "0x86",
+              "transfer_type": 2,
+              "max_packet": 512
+            },
+            {
+              "address": "0x4",
+              "transfer_type": 2,
+              "max_packet": 512
+            },
+            {
+              "address": "0x88",
+              "transfer_type": 2,
+              "max_packet": 512
+            }
+          ]
+        }
+      ],
+      "pointer_locations": [
+        "0x40006eb0"
+      ],
+      "literal_loads": [
+        "0x40006bcc"
+      ]
+    },
+    {
+      "file_offset": "0x10b5c",
+      "va": "0x40011920",
+      "total_length": 32,
+      "interface_count": 1,
+      "configuration_value": 1,
+      "attributes": "0xc0",
+      "interfaces": [
+        {
+          "number": 0,
+          "alternate": 0,
+          "endpoint_count": 2,
+          "class": "0xff",
+          "subclass": "0x0",
+          "protocol": "0x0",
+          "endpoints": [
+            {
+              "address": "0x2",
+              "transfer_type": 2,
+              "max_packet": 64
+            },
+            {
+              "address": "0x86",
+              "transfer_type": 2,
+              "max_packet": 64
+            }
+          ]
+        }
+      ],
+      "pointer_locations": [
+        "0x40006ec0"
+      ],
+      "literal_loads": [
+        "0x40006dd4"
+      ]
+    }
+  ]
+}

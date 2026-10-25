@@ -1,0 +1,317 @@
+{
+  "sd_device_by_id": "/dev/disk/by-id/usb-Ambarell_A9_DSC_EVK_Platf_0001-0:0-part1",
+  "mount": "/run/media/dan/8765-4321",
+  "source": "MISC/LOG/P3X_FW_LOG_AB.txt",
+  "bytes": 73682,
+  "sha256": "ba4e138007ac1376cee9f7e209889e6f2b5e2e4c92be343904ad742382e1ccc8",
+  "attachment_bytes": 73680,
+  "attachment_sha256": "302187adccaff96ebea3a23ce2645c990b312d325c8da228c8feab72ec879d3d",
+  "attachment_is_exact_prefix": true,
+  "extra_sd_bytes_hex": "0d0a",
+  "boots": 41,
+  "successes": 8,
+  "cancelled_version_checks": 32,
+  "explicit_packet_failures": 0,
+  "root_entries": [
+    "0x40003000.dji",
+    "DCIM",
+    "MISC",
+    "System Volume Information"
+  ],
+  "sessions": [
+    {
+      "index": 1,
+      "header": "[00012460]========== remo-con disconnect. boot(15) ============",
+      "packet": "[00012593]Packet [C:\\P3X_FW_V01.09.0060.bin] detected, card sn [0x39b111d7].",
+      "outcome": "[00417154]Packet upgrade finish successfully.",
+      "last_line": "[00417154]Packet upgrade finish successfully."
+    },
+    {
+      "index": 2,
+      "header": "[00012300]========== 2016.11.11 17:53:52. boot(15) ============",
+      "packet": "[00012337]Packet [C:\\P3X_FW_V01.09.0060.bin] detected, card sn [0x39b111d7].",
+      "outcome": "[00014086]Packet upgrade cancelled at version checking.",
+      "last_line": "[00014086]Packet upgrade cancelled at version checking."
+    },
+    {
+      "index": 3,
+      "header": "[00012303]========== 2016.11.11 18:00:14. boot(15) ============",
+      "packet": "[00012338]Packet [C:\\P3X_FW_V01.09.0060.bin] detected, card sn [0x39b111d7].",
+      "outcome": "[00014053]Packet upgrade cancelled at version checking.",
+      "last_line": "[00014053]Packet upgrade cancelled at version checking."
+    },
+    {
+      "index": 4,
+      "header": "[00012326]========== 2016.11.11 18:08:25. boot(15) ============",
+      "packet": "[00012364]Packet [C:\\P3X_FW_V01.09.0060.bin] detected, card sn [0x39b111d7].",
+      "outcome": "[00014365]Packet upgrade cancelled at version checking.",
+      "last_line": "[00014365]Packet upgrade cancelled at version checking."
+    },
+    {
+      "index": 5,
+      "header": "[00012332]========== 2016.11.11 18:14:48. boot(15) ============",
+      "packet": "[00012371]Packet [C:\\P3X_FW_V01.09.0060.bin] detected, card sn [0x39b111d7].",
+      "outcome": "[00014232]Packet upgrade cancelled at version checking.",
+      "last_line": "[00014232]Packet upgrade cancelled at version checking."
+    },
+    {
+      "index": 6,
+      "header": "[00012406]========== remo-con disconnect. boot(15) ============",
+      "packet": "[00012445]Packet [C:\\P3X_FW_V01.09.0060.bin] detected, card sn [0x39b111d7].",
+      "outcome": "[00076784]Packet upgrade finish successfully.",
+      "last_line": "[00076784]Packet upgrade finish successfully."
+    },
+    {
+      "index": 7,
+      "header": "[00012428]========== remo-con disconnect. boot(15) ============",
+      "packet": "[00012468]Packet [C:\\P3X_FW_V01.09.0060.bin] detected, card sn [0x39b111d7].",
+      "outcome": "[00014161]Packet upgrade cancelled at version checking.",
+      "last_line": "[00014161]Packet upgrade cancelled at version checking."
+    },
+    {
+      "index": 8,
+      "header": "[00012452]========== 2016.11.13 09:29:53. boot(15) ============",
+      "packet": "[00012492]Packet [C:\\P3X_FW_V01.09.0060.bin] detected, card sn [0x39b111d7].",
+      "outcome": "[00014591]Packet upgrade cancelled at version checking.",
+      "last_line": "[00014591]Packet upgrade cancelled at version checking."
+    },
+    {
+      "index": 9,
+      "header": "[00012460]========== 2016.11.13 10:01:30. boot(15) ============",
+      "packet": "[00012502]Packet [C:\\P3X_FW_V01.09.0060.bin] detected, card sn [0x39b111d7].",
+      "outcome": "[00014538]Packet upgrade cancelled at version checking.",
+      "last_line": "[00014538]Packet upgrade cancelled at version checking."
+    },
+    {
+      "index": 10,
+      "header": "[00012469]========== 2016.11.13 10:31:28. boot(15) ============",
+      "packet": "[00012522]Packet [C:\\P3X_FW_V01.09.0060.bin] detected, card sn [0x39b111d7].",
+      "outcome": "[00014559]Packet upgrade cancelled at version checking.",
+      "last_line": "[00014559]Packet upgrade cancelled at version checking."
+    },
+    {
+      "index": 11,
+      "header": "[00012477]========== 2016.12.03 19:24:18. boot(15) ============",
+      "packet": "[00012526]Packet [C:\\P3X_FW_V01.10.0090.bin] detected, card sn [0x39b111d7].",
+      "outcome": "[00714970]Packet upgrade finish successfully.",
+      "last_line": "[00714970]Packet upgrade finish successfully."
+    },
+    {
+      "index": 12,
+      "header": "[00012630]========== 2016.12.03 20:00:46. boot(15) ============",
+      "packet": "[00012684]Packet [C:\\P3X_FW_V01.10.0090.bin] detected, card sn [0x39b111d7].",
+      "outcome": "[00014938]Packet upgrade cancelled at version checking.",
+      "last_line": "[00014938]Packet upgrade cancelled at version checking."
+    },
+    {
+      "index": 13,
+      "header": "[00012522]========== remo-con disconnect. boot(15) ============",
+      "packet": "[00012569]Packet [C:\\P3X_FW_V01.10.0090.bin] detected, card sn [0x39b111d7].",
+      "outcome": "[00014618]Packet upgrade cancelled at version checking.",
+      "last_line": "[00014618]Packet upgrade cancelled at version checking."
+    },
+    {
+      "index": 14,
+      "header": "[00012510]========== remo-con disconnect. boot(15) ============",
+      "packet": "[00012563]Packet [C:\\P3X_FW_V01.10.0090.bin] detected, card sn [0x39b111d7].",
+      "outcome": "[00014460]Packet upgrade cancelled at version checking.",
+      "last_line": "[00014460]Packet upgrade cancelled at version checking."
+    },
+    {
+      "index": 15,
+      "header": "[00012528]========== remo-con disconnect. boot(15) ============",
+      "packet": "[00012576]Packet [C:\\P3X_FW_V01.10.0090.bin] detected, card sn [0x39b111d7].",
+      "outcome": "[00014724]Packet upgrade cancelled at version checking.",
+      "last_line": "[00014724]Packet upgrade cancelled at version checking."
+    },
+    {
+      "index": 16,
+      "header": "[00013301]========== remo-con disconnect. boot(15) ============",
+      "packet": "[00013355]Packet [C:\\P3X_FW_V01.10.0090.bin] detected, card sn [0x39b111d7].",
+      "outcome": "[00015640]Packet upgrade cancelled at version checking.",
+      "last_line": "[00015640]Packet upgrade cancelled at version checking."
+    },
+    {
+      "index": 17,
+      "header": "[00013425]========== remo-con disconnect. boot(15) ============",
+      "packet": "[00013478]Packet [C:\\P3X_FW_V01.10.0090.bin] detected, card sn [0x39b111d7].",
+      "outcome": "[00015503]Packet upgrade cancelled at version checking.",
+      "last_line": "[00015503]Packet upgrade cancelled at version checking."
+    },
+    {
+      "index": 18,
+      "header": "[00013431]========== remo-con disconnect. boot(15) ============",
+      "packet": "[00013482]Packet [C:\\P3X_FW_V01.10.0090.bin] detected, card sn [0x39b111d7].",
+      "outcome": "[00015697]Packet upgrade cancelled at version checking.",
+      "last_line": "[00015697]Packet upgrade cancelled at version checking."
+    },
+    {
+      "index": 19,
+      "header": "[00013539]========== remo-con disconnect. boot(15) ============",
+      "packet": "[00013593]Packet [C:\\P3X_FW_V01.10.0090.bin] detected, card sn [0x39b111d7].",
+      "outcome": "[00015843]Packet upgrade cancelled at version checking.",
+      "last_line": "[00015843]Packet upgrade cancelled at version checking."
+    },
+    {
+      "index": 20,
+      "header": "[00013453]========== remo-con disconnect. boot(15) ============",
+      "packet": "[00013506]Packet [C:\\P3X_FW_V01.10.0090.bin] detected, card sn [0x39b111d7].",
+      "outcome": "[00015622]Packet upgrade cancelled at version checking.",
+      "last_line": "[00015622]Packet upgrade cancelled at version checking."
+    },
+    {
+      "index": 21,
+      "header": "[00013542]========== remo-con disconnect. boot(15) ============",
+      "packet": "[00013596]Packet [C:\\P3X_FW_V01.10.0090.bin] detected, card sn [0x39b111d7].",
+      "outcome": "[00015928]Packet upgrade cancelled at version checking.",
+      "last_line": "[00015928]Packet upgrade cancelled at version checking."
+    },
+    {
+      "index": 22,
+      "header": "[00013576]========== 2017.03.20 13:58:14. boot(15) ============",
+      "packet": "[00013633]Packet [C:\\P3X_FW_V01.10.0090.bin] detected, card sn [0x39b111d7].",
+      "outcome": "[00016023]Packet upgrade cancelled at version checking.",
+      "last_line": "[00016023]Packet upgrade cancelled at version checking."
+    },
+    {
+      "index": 23,
+      "header": "[00013470]========== 2017.03.20 13:59:13. boot(15) ============",
+      "packet": "[00013528]Packet [C:\\P3X_FW_V01.10.0090.bin] detected, card sn [0x39b111d7].",
+      "outcome": "[00015785]Packet upgrade cancelled at version checking.",
+      "last_line": "[00015785]Packet upgrade cancelled at version checking."
+    },
+    {
+      "index": 24,
+      "header": "[00012568]========== remo-con disconnect. boot(15) ============",
+      "packet": "[00012628]Packet [C:\\P3X_FW_V01.11.0020.bin] detected, card sn [0x39b111d7].",
+      "outcome": "[00677142]Packet upgrade finish successfully.",
+      "last_line": "[00677142]Packet upgrade finish successfully."
+    },
+    {
+      "index": 25,
+      "header": "[00012593]========== 2017.10.08 11:33:09. boot(15) ============",
+      "packet": "[00012653]Packet [C:\\P3X_FW_V01.11.0020.bin] detected, card sn [0x39b111d7].",
+      "outcome": "[00014966]Packet upgrade cancelled at version checking.",
+      "last_line": "[00014966]Packet upgrade cancelled at version checking."
+    },
+    {
+      "index": 26,
+      "header": "[00012588]========== 2017.10.08 11:33:44. boot(15) ============",
+      "packet": "[00012649]Packet [C:\\P3X_FW_V01.11.0020.bin] detected, card sn [0x39b111d7].",
+      "outcome": "[00015048]Packet upgrade cancelled at version checking.",
+      "last_line": "[00015048]Packet upgrade cancelled at version checking."
+    },
+    {
+      "index": 27,
+      "header": "[00012603]========== 2017.10.08 11:34:49. boot(15) ============",
+      "packet": "[00012665]Packet [C:\\P3X_FW_V01.11.0020.bin] detected, card sn [0x39b111d7].",
+      "outcome": "[00015225]Packet upgrade cancelled at version checking.",
+      "last_line": "[00015225]Packet upgrade cancelled at version checking."
+    },
+    {
+      "index": 28,
+      "header": "[00012626]========== remo-con disconnect. boot(15) ============",
+      "packet": "[00012687]Packet [C:\\P3X_FW_V01.11.0020.bin] detected, card sn [0x39b111d7].",
+      "outcome": "[00015164]Packet upgrade cancelled at version checking.",
+      "last_line": "[00015164]Packet upgrade cancelled at version checking."
+    },
+    {
+      "index": 29,
+      "header": "[00012634]========== remo-con disconnect. boot(15) ============",
+      "packet": "[00012698]Packet [C:\\P3X_FW_V01.11.0020.bin] detected, card sn [0x39b111d7].",
+      "outcome": "[00015177]Packet upgrade cancelled at version checking.",
+      "last_line": "[00015177]Packet upgrade cancelled at version checking."
+    },
+    {
+      "index": 30,
+      "header": "[00012553]========== 2018.08.03 15:48:07. boot(15) ============",
+      "packet": "[00012619]Packet [C:\\P3X_FW_V01.11.0020.bin] detected, card sn [0x39b111d7].",
+      "outcome": "[00015450]Packet upgrade cancelled at version checking.",
+      "last_line": "[00015450]Packet upgrade cancelled at version checking."
+    },
+    {
+      "index": 31,
+      "header": "[00012645]========== remo-con disconnect. boot(15) ============",
+      "packet": "[00012712]Packet [C:\\P3X_FW_V01.11.0020.bin] detected, card sn [0x39b111d7].",
+      "outcome": "[00015228]Packet upgrade cancelled at version checking.",
+      "last_line": "[00015228]Packet upgrade cancelled at version checking."
+    },
+    {
+      "index": 32,
+      "header": "[00012684]========== remo-con disconnect. boot(15) ============",
+      "packet": "[00012750]Packet [C:\\P3X_FW_V01.11.0020.bin] detected, card sn [0xd656311f].",
+      "outcome": "[00094479]Packet upgrade finish successfully.",
+      "last_line": "[00094479]Packet upgrade finish successfully."
+    },
+    {
+      "index": 33,
+      "header": "[00012802]========== remo-con disconnect. boot(15) ============",
+      "packet": "[00012872]Packet [C:\\P3X_FW_V01.11.0020.bin] detected, card sn [0xd656311f].",
+      "outcome": "[00015348]Packet upgrade cancelled at version checking.",
+      "last_line": "[00015348]Packet upgrade cancelled at version checking."
+    },
+    {
+      "index": 34,
+      "header": "[00012691]========== remo-con disconnect. boot(15) ============",
+      "packet": "[00012759]Packet [C:\\P3X_FW_V01.11.0020.bin] detected, card sn [0xd656311f].",
+      "outcome": "[00015394]Packet upgrade cancelled at version checking.",
+      "last_line": "[00015394]Packet upgrade cancelled at version checking."
+    },
+    {
+      "index": 35,
+      "header": "[00012706]========== 2023.09.30 13:27:52. boot(15) ============",
+      "packet": "[00012778]Packet [C:\\P3X_FW_V01.11.0020.bin] detected, card sn [0xd656311f].",
+      "outcome": "[00015344]Packet upgrade cancelled at version checking.",
+      "last_line": "[00015344]Packet upgrade cancelled at version checking."
+    },
+    {
+      "index": 36,
+      "header": "[00026771]========== remo-con disconnect. boot(15) ============",
+      "packet": "[00026952]Packet [C:\\P3X_FW_V01.11.0030.bin] detected, card sn [0xd656311f].",
+      "outcome": "[00336316]Packet upgrade finish successfully.",
+      "last_line": "[00336316]Packet upgrade finish successfully."
+    },
+    {
+      "index": 37,
+      "header": "[00012733]========== remo-con disconnect. boot(15) ============",
+      "packet": "[00012802]Packet [C:\\P3X_FW_V01.11.0030.bin] detected, card sn [0xd656311f].",
+      "outcome": "[00015483]Packet upgrade cancelled at version checking.",
+      "last_line": "[00015483]Packet upgrade cancelled at version checking."
+    },
+    {
+      "index": 38,
+      "header": "[00013443]========== 2023.09.30 14:17:04. boot(15) ============",
+      "packet": "[00013519]Packet [C:\\P3X_FW_V01.11.0030.bin] detected, card sn [0xd656311f].",
+      "outcome": "[00016527]Packet upgrade cancelled at version checking.",
+      "last_line": "[00016527]Packet upgrade cancelled at version checking."
+    },
+    {
+      "index": 39,
+      "header": "[00012757]========== remo-con disconnect. boot(15) ============",
+      "packet": "[00012832]Packet [C:\\P3X_FW_V01.10.0090.bin] detected, card sn [0xd656311f].",
+      "outcome": "[01461797]Packet upgrade finish successfully.",
+      "last_line": "[01461797]Packet upgrade finish successfully."
+    },
+    {
+      "index": 40,
+      "header": "[00012781]========== remo-con disconnect. boot(15) ============",
+      "packet": "[00012860]Packet [C:\\P3X_FW_V01.10.0090.bin] detected, card sn [0xd656311f].",
+      "outcome": "[01551481]Packet upgrade finish successfully.",
+      "last_line": "[01551481]Packet upgrade finish successfully."
+    },
+    {
+      "index": 41,
+      "header": "[00012813]========== remo-con disconnect. boot(15) ============",
+      "packet": "[00012897]Packet [C:\\P3X_FW_V01.10.0090.bin] detected, card sn [0xd656311f].",
+      "outcome": "no terminal outcome",
+      "last_line": "[00017782]Waiting for user confirm..."
+    }
+  ],
+  "camera_log": {
+    "reported_size": 42466,
+    "copied_prefix_bytes": 32768,
+    "read_error": "[Errno 5] Input/output error",
+    "complete": false,
+    "prefix_sha256": "527148da53ae4ca73295e0dbc14a7fb242cec23778840a3136ae32aba8140176"
+  }
+}

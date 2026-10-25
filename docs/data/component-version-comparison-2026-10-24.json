@@ -1,0 +1,48 @@
+{
+  "official_aircraft_release": "1.11.20",
+  "official_source": "https://www.dji.com/downloads/products/phantom-3-pro",
+  "local_reference": "P3X_FW_V01.11.0020",
+  "comparison_scope": "last completed historical SD upgrade vs local reference; not a live inventory",
+  "rows": [
+    {
+      "module": "0306",
+      "label": "FC application",
+      "latest_reference_ini": "02.04.5170",
+      "latest_reference_log_format": "2.4.20.50",
+      "last_completed_sd_report": "2.4.20.28",
+      "same_version": false
+    },
+    {
+      "module": "0400",
+      "label": "Gimbal",
+      "latest_reference_ini": "01.48.0000",
+      "latest_reference_log_format": "1.48.0.0",
+      "last_completed_sd_report": "1.48.0.0",
+      "same_version": true
+    },
+    {
+      "module": "1200",
+      "label": "ESC 0",
+      "latest_reference_ini": "01.12.0000",
+      "latest_reference_log_format": "1.12.0.0",
+      "last_completed_sd_report": "1.11.0.0",
+      "same_version": false
+    },
+    {
+      "module": "0100",
+      "label": "Camera",
+      "latest_reference_ini": "01.32.5432",
+      "latest_reference_log_format": "1.32.5432",
+      "last_completed_sd_report": "1.32.5432",
+      "same_version": true
+    },
+    {
+      "module": "0900",
+      "label": "Air encoder",
+      "latest_reference_ini": "04.01.0000",
+      "latest_reference_log_format": "4.1.0.0",
+      "last_completed_sd_report": "3.0.0.10",
+      "same_version": false
+    }
+  ]
+}

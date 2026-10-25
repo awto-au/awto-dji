@@ -1,0 +1,59 @@
+{
+  "source": "captures/sessions/2026-10-23/aoa_relay_server.log",
+  "output": "tmp/old-capture-bootstrapped.h264",
+  "channel": "0x574a",
+  "input_bytes": 487671,
+  "video_bytes": 405568,
+  "bootstrap": {
+    "source": "tmp/apk/manifest/res/raw/iframe_1280x720_ins.h264",
+    "bytes": 607,
+    "sha256": "605e3784bf358ae813bb0aada505bb974056e317c7e8915d6b2fbfbc4cad3375",
+    "note": "External decoder-start picture; not captured aircraft footage"
+  },
+  "channel_packets": {
+    "0x5749": 11,
+    "0x574a": 211
+  },
+  "channel_payload_bytes": {
+    "0x5749": 4232,
+    "0x574a": 405568
+  },
+  "discarded_bytes": 76095,
+  "final_incomplete_bytes": 0,
+  "connection_boundaries": 2,
+  "nal_types": {
+    "1": 299,
+    "5": 8,
+    "7": 1,
+    "8": 1,
+    "9": 20
+  },
+  "missing_for_independent_decode": [],
+  "decode": {
+    "decoded_frames": 44,
+    "streams": [
+      {
+        "codec_name": "h264",
+        "width": 1280,
+        "height": 720,
+        "nb_read_frames": "44"
+      }
+    ],
+    "returncode": 0,
+    "diagnostics": [
+      "[h264 @ <address>] error while decoding MB 75 29, bytestream -40",
+      "[h264 @ <address>] error while decoding MB 62 29, bytestream -25",
+      "[h264 @ <address>] error while decoding MB 75 29, bytestream -21",
+      "[h264 @ <address>] left block unavailable for requested intra mode",
+      "[h264 @ <address>] error while decoding MB 0 30, bytestream 781",
+      "[h264 @ <address>] error while decoding MB 74 29, bytestream -32",
+      "[h264 @ <address>] error while decoding MB 63 30, bytestream -9",
+      "[h264 @ <address>] error while decoding MB 78 29, bytestream -41",
+      "[h264 @ <address>] error while decoding MB 2 16, bytestream -5",
+      "[h264 @ <address>] Frame num change from 9 to 1",
+      "    Last message repeated 1 times",
+      "[h264 @ <address>] error while decoding MB 58 17, bytestream -6"
+    ],
+    "frames_beyond_bootstrap": 43
+  }
+}
