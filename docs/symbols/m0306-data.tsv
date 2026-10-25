@@ -1,0 +1,9 @@
+addr	name	note
+0x080ef3d8	g_ctrl_arb_rom	ROM arbitration table, stride 0xc: [0]{code=1,pred=fc_ctrl_src1_pred} [1]{code=2(API/nav),pred=fc_ctrl_src2_pred_api}
+0x080ef734	g_duml_crc16_table	DUML CRC16 lookup table (used by duml_crc16 0x0804f024)
+0x08043b90	g_cmd_handler_tbl_sim	handler-ptr table; index0 = fc_sim_cmd_wrapper -> fc_sim_start_handler
+0x200001cd	g_nav_failsafe_state	nav/RC-lost failsafe state struct (fc_nav_failsafe_exec 0x08065272)
+0x200001d5	g_ctrl_active_device	active control device code; grant gate requires ==2 (API/nav). read by fc_ctrl_gate_mode_read
+0x200001d6	g_ctrl_src_flags	control-source eligibility bits: bit1=device1, bit2=device2(API/nav). drives fc_ctrl_arbitrate
+0x20021387	g_rc_lost_action	stored RC-lost action (valid 1|2); written by fc_set_rc_lost_action +0x1af
+0x20023664	g_ctrl_agency	control-agency struct: +0=active flag, +3=holder device id, +0x20=granted flag (fc_api_ctrl_mode_status_request_handler)

@@ -125,6 +125,23 @@ allowlist. The deciding factor is the mode gate (RC switch / flight mode), not t
 Not yet done: the continuous-setpoint (joystick / `serial_open_nav`) payload, and what sets the
 mode byte to 2 (confirm it is the RC mode switch).
 
+## Which DJI tool drives the P3 simulator (2026-10-25)
+
+The simulator lives in the FC and is driven by DUML cmdset 0x0b, so it is transport-agnostic
+(USB or the radio link). What actually drives it:
+- **DJI Mobile SDK (v4), `DJISimulator`** — the SDK supports the Phantom 3 and its simulator API
+  starts the FC's simulator over the normal app link. This is the DJI-blessed way to drive the
+  P3 sim.
+- **DJI Assistant 2 For Phantom** (PC, USB) exists but does **not** officially support the P3 in
+  the normal connect-as-product flow (`usb-tools-test-2026-10-23.md`); its hidden debug mode
+  (`"DJI Assistant 2.exe" debug`) exposes a simulator menu
+  (`supportSimulatorRelease || debug==1`), unconfirmed to work for P3.
+- **DJI GO / GO 4** does not expose a simulator for the P3.
+So: officially via the Mobile SDK; no first-party GUI tool drives the P3 sim in its normal flow.
+Because the command is plain DUML (0x0b), our own tooling can drive it over USB or the link.
+
+Data symbols / structs for the control path are named in `docs/symbols/m0306-data.tsv`.
+
 ## Simulator command + RC-loss behaviour (2026-10-25)
 
 **Simulator command.** cmdset **0x0b (SIMULATOR)** (repo APK map, `docs/data/apk-dynamic-cmdset-ids.tsv`):
