@@ -59,6 +59,20 @@ talk to it, and whether firmware is accepted — kept apart because they are eas
   challenge/response** value (`[DJI_ENCRYPT] response_mac[…]`), §2 above. Unrelated to the network
   MAC; not a network address and not freely settable.
 
+### Does the ATSHA204 hold a hard Ethernet MAC (to lock the GMAC)? — no evidence on the P3
+
+Tested the idea that the secure element stores a provisioned network MAC that the GMAC uses:
+- **V** The A9 has a GMAC (`ST GMAC Registers`, `Rx/Tx GMAC` — Synopsys/ST Ethernet controller).
+- **V** The network MAC comes from **`/proc/ambarella/board_info`** (`wifi1_mac` read from it), with a
+  **random fallback** when empty/`00:00:00:00:00:00` (`printf "%02X:…" $RANDOM > /tmp/wifi1_mac`).
+  Nothing reads a MAC out of the ATSHA204.
+- **V** The ATSHA204 stores **SN + board number + the crypto secret**; every `204`/`DjiEncrypt`
+  string is the *crypto* MAC (`get mac from 204`, `check a9 mac`), never a network address.
+- **Conclusion:** on the P3 the Ethernet/Wi-Fi MAC is **not** sourced from the ATSHA204 — it is
+  `board_info`-provisioned or random, independent of the secure element. (What ultimately populates
+  `board_info` — NAND/factory env vs anything else — is **U**; it is not the ATSHA204 in the code
+  seen. A secure-element-stored MAC may be a pattern on other products, but is not evidenced here.)
+
 ### The A9 has Ethernet + Wi-Fi (a full network stack)
 
 **V** The camera Linux brings up **`eth0` at `192.168.1.12`** (`ifconfig eth0 … up`), bridges it
