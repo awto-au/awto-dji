@@ -65,9 +65,22 @@ live trace or deep per-driver decompilation).
 ## Software identity
 
 - **RTOS: Micrium µC/OS-III.** **V** — `uC/OS-III Idle Task`, `... Stat Task`, `... Tick Task`.
-- **HAL: DJI's own, not ST.** **V** — no `stm32f4xx_hal_*`, `_ll_`, `stdperiph`/SPL or
-  `system_stm32` strings anywhere; drivers are DJI `hal_*` (`hal_compass_add`, `comm_imu_init`).
-  The one clear ST borrow is the RCC clock-readback library (above).
+- **Register library: ST Standard Peripheral Library (SPL / StdPeriph).** **V** — by *code
+  structure*, the decisive evidence, not strings. The firmware contains SPL's
+  `RCC_AHB1/AHB2/APB1/APB2PeriphClockCmd` and `...PeriphResetCmd` family
+  (`0x0806d716`–`0x0806d7ca`), each the canonical SPL shape `fn(uint32_t periph_mask,
+  FunctionalState NewState)` writing `RCC->AHB1ENR/APB1ENR/…RSTR` (offsets 0x30/0x34/0x40/0x44 and
+  0x10/0x14/0x20/0x24), plus `RCC_GetClocksFreq` filling a 4-field `RCC_ClocksTypeDef` through the
+  `APBAHBPrescTable[]` global. That `(mask, NewState)` clock-command signature is unique to SPL:
+  **LL** (`stm32f4xx_ll_*`) splits each into two argument-less `LL_*_EnableClock/DisableClock`
+  functions, and **HAL** uses per-peripheral inline `__HAL_RCC_*_CLK_ENABLE()` macros — neither
+  shape appears. This also fits the timeline: the P3 FC codebase is ~2014, before ST's LL existed.
+  **Correction to earlier notes:** the library is *not* "DJI's own raw HAL" and *not* LL/HAL — it
+  is ST SPL. The `hal_*` strings (`hal_compass_add`, `comm_imu_init`) are DJI's *application-level*
+  sensor/driver abstraction sitting **on top of** SPL, a separate layer from the MCU register lib.
+  (No `stm32f4xx_hal_*`, `_ll_`, `stdperiph` or `assert_param` strings survive — but that only means
+  a release build with `USE_FULL_ASSERT` off, so string absence proves nothing either way; the
+  function structure above is what settles it.)
 - **Sensor fusion / estimation: DJI FDI-AHRS.** **V** — `FDI ACC/AHRS/BARO/GPS/CTRL` subsystems
   with turn-on events, impact/vibration detection. **No** Kalman/EKF, Madgwick or Mahony strings;
   the attitude/nav estimator is DJI's in-house FDI ("fault detection & isolation" + AHRS), not a
@@ -91,5 +104,7 @@ strings -n5 m0306_decrypted.bin | grep -iE 'uC/OS|FDI (AHRS|ACC|BARO)|mpu6500|IS
 strings -n5 m0306_decrypted.bin | grep -iE 'betaflight|ardupilot|px4|kalman|stm32f4xx_hal'   # empty
 ```
 
-Ghidra side (clock readback decompile): `scripts/re/ghidra/fc_clk.py` on the project built by
-`scripts/re/ghidra/fc_setup.py`.
+Ghidra side: `scripts/re/ghidra/fc_setup.py` builds the project; `fc_clk.py` decompiles the RCC
+clock readback; `fc_lib_id.py` decompiles the function cluster around it and shows the SPL
+`RCC_*PeriphClockCmd(mask, NewState)` / `RCC_GetClocksFreq` idiom that identifies the register
+library as ST StdPeriph (vs LL/HAL).

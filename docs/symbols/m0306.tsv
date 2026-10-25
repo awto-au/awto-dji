@@ -124,4 +124,12 @@ addr	name	note	source
 0x080a8a34	fc_MIS_critical	string-tag (batch1)	ghidra+strings
 0x080a92aa	fc_HOTPOINT_normal	string-tag (batch1)	ghidra+strings
 0x080aa398	fc_MISSION_DATA_ERROR	string-tag (batch1)	ghidra+strings
-0x0806d5f0	rcc_get_clocks_freq	ST RCC_GetClocksFreq readback (SYSCLK=HSE/PLLM*PLLN/PLLP, then AHB/APB presc table); proves ST RCC lib borrowed despite DJI hal_*	ghidra+io
+0x0806d5f0	rcc_get_clocks_freq	SPL RCC_GetClocksFreq: fills RCC_ClocksTypeDef (SYSCLK/HCLK/PCLK1/PCLK2) via APBAHBPrescTable - StdPeriph idiom	ghidra+io
+0x0806d716	rcc_ahb1_periph_clock_cmd	SPL RCC_AHB1PeriphClockCmd(mask,NewState): RCC->AHB1ENR(+0x30) set/clr	ghidra+io
+0x0806d72a	rcc_ahb2_periph_clock_cmd	SPL RCC_AHB2PeriphClockCmd: RCC->AHB2ENR(+0x34)	ghidra+io
+0x0806d752	rcc_apb1_periph_clock_cmd	SPL RCC_APB1PeriphClockCmd: RCC->APB1ENR(+0x40)	ghidra+io
+0x0806d766	rcc_apb2_periph_clock_cmd	SPL RCC_APB2PeriphClockCmd: RCC->APB2ENR(+0x44)	ghidra+io
+0x0806d77a	rcc_ahb1_periph_reset_cmd	SPL RCC_AHB1PeriphResetCmd: RCC->AHB1RSTR(+0x10)	ghidra+io
+0x0806d78e	rcc_ahb2_periph_reset_cmd	SPL RCC_AHB2PeriphResetCmd: RCC->AHB2RSTR(+0x14)	ghidra+io
+0x0806d7b6	rcc_apb1_periph_reset_cmd	SPL RCC_APB1PeriphResetCmd: RCC->APB1RSTR(+0x20)	ghidra+io
+0x0806d7ca	rcc_apb2_periph_reset_cmd	SPL RCC_APB2PeriphResetCmd: RCC->APB2RSTR(+0x24)	ghidra+io
