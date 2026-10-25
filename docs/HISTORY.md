@@ -4,6 +4,29 @@ Dated changelog of fact-corrections previously narrated inline in the docs. Each
 phrased as "initial understanding -> corrected finding." The docs now state only the
 corrected/current fact; this file preserves the history for reference.
 
+## 2026-10-25 (UART/SPI inventory + speed cross-check, air+ground)
+
+- **Built the first full UART/SPI inventory across the whole air+ground DUML mesh and checked
+  every claimed link's speed on both ends.** Finding, stated plainly for the first time: almost
+  no hop has ever had both ends independently measured and compared — every link but one has at
+  most one side with a real measured number, the other assumed to match because the link
+  visibly works. This isn't a new error, just never surfaced as a single picture before.
+- **`air_venc`'s (DM368, m0800) `/dev/ttyS1` baud confirmed at 115200**, not assumed — traced
+  `Enc_Serial_Init` → `Serial_Create` → the actual baud-enum lookup table inside `libcommon.so`
+  (keys 0-4 → `B9600/19200/38400/115200/230400`). **Its peer was never identified at all** — not
+  "assumed to match" like the other links, genuinely no chip has been named. Three live
+  candidates recorded, none eliminated: the A9 camera SoC over a local UART (which has its own,
+  separately-undermapped "UART channels + IPC channel" for DUML per `air-id-and-stream-survey.md`),
+  a dedicated UART↔CAN bridge chip on the camera/gimbal board (unlocated in any firmware
+  examined), or unconnected/debug-only (judged less likely — the link is live at boot with a
+  real command/ack protocol, unlike the confirmed-dead `AddSerialDataToFrame`).
+- **Independently re-verified "DUML is not spliced into the video stream" from scratch**, not by
+  re-reading the prior session's conclusion: fresh tooling (`pyelftools`+`capstone` against the
+  real `encode_usb` binary) decompiled `AddSerialDataToFrame` directly (it calls `printf`/`puts`
+  — debug logging, resolved via the dynamic symbol table) and searched the entire `.text` section
+  for any call to it. Zero callers found. The original finding holds up under independent
+  re-derivation. (`docs/uart-spi-speed-crosscheck.md`, `docs/m0800-dm368-provenance.md` §7)
+
 ## 2026-10-25 (systematic STM32 pass on air_router, closing the gap with air_fc)
 
 - **`air_router_stm32f103` (m0900) got its first systematic (not opportunistic)

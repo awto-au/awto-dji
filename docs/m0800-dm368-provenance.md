@@ -249,8 +249,13 @@ below read directly as C. Tools: capstone, ARM mode; `readelf -s/-r`.
    `Enc_Serial_PackAndSend` builds standard DUML: sync `0x55`, `CalCrc8` with seed `0x77`,
    `CalCrc16` with seed `0x3692`. This is the same framing as m0900 (`m0900-can-channels.md`
    §4). So the DM368 is an ordinary DUML node (I: receiver type 8, per the UEG table) for
-   version, loader, reboot, encode mode, stream enable and the encrypt check. The peer at the
-   other end of `ttyS1` is U.
+   version, loader, reboot, encode mode, stream enable and the encrypt check.
+   **Baud, V (2026-10-25):** `Serial_Create("/dev/ttyS1", 3, 1, 0)` — traced the baud-enum `3`
+   through `libcommon.so`'s own lookup table (keys `0-4` → `B9600/19200/38400/115200/230400`) to
+   **115200**, not assumed. **The peer at the other end of `ttyS1` is still U** — see
+   `uart-spi-speed-crosscheck.md` for the full air+ground inventory and the three live
+   candidates (A9 over a local UART, a dedicated UART↔CAN bridge chip, or unconnected/debug) —
+   none eliminated this session.
 
 **Result.** On the air side, the H.264 elementary stream (Annex-B slices) reaches the FIFO
 master **unframed and alone**. V: the path is DM368 → USB EP2 → FX2 → 8-bit slave FIFO. I: the
