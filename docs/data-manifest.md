@@ -15,6 +15,7 @@ hash, so the analysis is fully reproducible without redistributing proprietary d
 | `P3X_FW_V01.11.0020.bin` | `cecc3acdb09bb416f15feeff409220493b3b1b74344b736aa566ce3e197e7149` | 66,233,768 | Phantom 3 Pro firmware container (aircraft side) |
 | `WM610_FW_V01.11.01.50.bin` | `bc2d8e1d2a110c4573d7d3b9af935ad3b61c48db8e5f9d3745fdf2c51310540e` | 73,350,122 | Inspire 1 / WM610 (same LB family; cross-ref) |
 | `c1.bin` | `38de9e3fe0664fb43b85c11eabeed0c026dd15f80d402091ac68a0364f23d942` | 30,046,440 | C1 ground RC firmware container |
+| `Phantom_3_Professional_Firmware_v1.3.20__en.zip` (official, `dl.djicdn.com/downloads/phantom_3/en/`) | `1e2e587daf55ce46f54872b6caadbc330a2402cb59e71c330d3f1a635ebbfc64` | 55,965,540 | contains `P3X_FW_V01.03.0020.bin` (`788a14cb...f69c15`, 95,876,112): last combined aircraft + RC package, so the RC modules are publicly downloadable. `m1601` 02.00.0002 = `4eb9d11374336047542ece7ace7a4be050fc03d87a2810aed281b6c1cda0a114` (184,036 B); `m2001` = same SHA as `c1_m2001.bin` |
 
 Unpack with dji-firmware-tools `dji_xv4_fwcon.py` → per-module `.bin`. Key modules analysed
 (verify after unpack):
@@ -50,3 +51,9 @@ No FPGA-derived artifacts are kept: the earlier `m2001.bt` / `routes.txt` came f
 
 Scripts in `scripts/fpga/` that consumed them are void. Every doc cites exact offsets
 so results can be re-derived against your own verified unpack.
+
+## Reverse-engineering reference inputs (not stored)
+
+- **STM32F427 SVD** (peripheral/register map for m0306 Ghidra MMIO labels): `raw.githubusercontent.com/cmsis-svd/cmsis-svd-data/main/data/STMicro/STM32F427.svd` (2,222,473 B). 1574 registers flattened to address labels by `scripts/re/ghidra/fc_setup.py`.
+- **Ghidra 11.4 PUBLIC** headless, JDK 21. m0306 imported as Raw Binary, `ARM:LE:32:Cortex`, base `0x08020000` (decrypt first with `scripts/re/xv4_decrypt.py`).
+- **DJI module AES key** for `encrypt_type=1`: from o-gs/dji-firmware-tools `dji_xv4_fwcon.py` (public).

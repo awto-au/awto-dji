@@ -88,6 +88,21 @@ All the analysis docs cite exact offsets so you can re-derive against your own u
 4. **Over-the-air SDR capture** → (a) settle the air-encryption question, (b) run
    Berlekamp-Massey on an all-0s / repetitive-telemetry capture to recover the scrambler
    (`known-plaintext-plan.md`, `alternative-approaches.md`).
+5. **m0900 CAN channels (traced 2026-10-24, `docs/m0900-can-channels.md`).** The 0x20002538 queue
+   is CAN StdId 0x414 (TX), paired with RX 0x415. Only DUML receiver type 30 is routed to it.
+   FC-type traffic goes out **USART1** (CENTER), not CAN; this corrects `dataflow.md`. Open:
+   whether 0x414/0x415 is live on the bus (passive 1 Mbit/s CAN sniff) and which board type 30 is.
+7. **Ground FX3 (`m1601`) traced (2026-10-24, `docs/ground-fx3-m1601.md`).** On the phone link
+   every RC->phone USB chunk is `55 CC <u16 type> <u32 len>`, with `0x5749` = DUML and `0x574A` =
+   video. This was verified in the 10-23 capture and **corrects** the "no demux header" note.
+   All DUML enters the FX3 on a 115200 UART (I: from m1400), video on the FPGA parallel port, and
+   the uplink is bare DUML phone -> FX3 -> UART. Next: add the demuxer to the app AOA transport,
+   and re-check `m1601` 02.00.0006 from the C1 package.
+6. **m0800 DM368 provenance (2026-10-24, `docs/m0800-dm368-provenance.md`).** It is TI DVSDK
+   4.02.00.06 (DM368), mostly unchanged; DJI changes are U-Boot env/boot defaults, UBL clock
+   tables, a few kernel drivers (ADV761x HDMI receiver, I2C recovery), FX2 USB drivers, and the
+   `encode_usb` app (TI encode demo reworked). Disassembly: the DM368 sends raw H.264 slices (no header, no DUML) over USB EP2 into the AUTOOUT FX2, so DUML and video must meet in the air FPGA (I). Next: extract TI's
+   DM368 DVSDK installer for the PSP 03.21 kernel and the encode demo, then diff at function level.
 5. Build out the Flutter app-to-bird UI on top of `app/packages/duml` + `rust/awto_dji_core`.
 
 ## Reproduce the key MCU proofs (with your own `c1_m1400.bin`)

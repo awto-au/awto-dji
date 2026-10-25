@@ -59,13 +59,13 @@ addr	kind	name	note	source
 0x0800b0a4	func	uart_send	args (port 1/2/3, buf, len): copies into per-port TX FIFO then starts DMA (port1 buf 0x200001d0, port2 0x200004d0, port3 0x200007d0)	disasm (verified)
 0x0800b536	func	spi2_init	SPI2 master, 8-bit, CPOL0 CPHA1, soft NSS, BR /8 (4.5 MHz at PCLK1 36), MSB first; PB13/PB15 AF_PP, PB14 input, PB12 CS output high	disasm (verified; Renode CR1=0x355)
 0x0800b31c	func	can_init	CAN1: PA11 RX IPU, PA12 TX AF_PP, prescaler 3, SJW 1tq, BS1 6tq, BS2 5tq => 1 Mbit/s at PCLK1 36 MHz; ABOM+AWUM; called only if board in {2,4,5,6}	disasm (verified)
-0x0800b3ec	func	can_queue_init	(obj, std_id, is_tx, size, buf): ring for one CAN id; init at 0x080113a8 with 0x412 TX and 0x413 RX	disasm
+0x0800b3ec	func	can_queue_init	(obj, std_id, is_tx, size, buf): ring for one CAN id; TX => table 0x200015d0+0x34, RX => exact-match filter (bank = RX count) + table 0x200015d0; callers 0x080113a8 (0x412 TX, 0x413 RX; board-gated) and 0x08011828 (0x414 TX, 0x415 RX; ungated)	disasm
 0x0800b468	func	can_enqueue_and_tx	enqueue bytes into queue obj then CAN_Transmit up to 8 B with StdId=obj[0] when TX idle	disasm
 0x0800b23c	func	can_rx0_handler	CAN RX0 IRQ (vector 20): match StdId to queue objects, push bytes	disasm
 0x0800ab86	func	usart1_irq	IDLE IRQ: stop DMA ch5, count = 0x200 - remaining, copy to RX FIFO, re-arm	disasm
 0x0800ac42	func	usart3_irq	IDLE IRQ: same pattern, buffer size 0x100	disasm
 0x0801198a	func	duml_dispatch	walks 8-byte records at 0x0801a120 [handler,type,index,set,id] matching pkt[5] pkt[9] pkt[10]; no match => tail-call packet_send (forward)	disasm (verified)
-0x080118e4	table	packet_send_route_tbb	31-byte tbb indexed by pkt[5]&0x1f: types 2,6,13,14,16,20,22 => uart_send(3); 1,4,8,15 => 0x0801141c; 3,5,10,11,12,18,21,23 => 0x08011938; 17 => 0x0801195c; 30 => 0x0801190e; others dropped	disasm (verified)
+0x080118e4	table	packet_send_route_tbb	31-byte tbb indexed by pkt[5]&0x1f: types 2,6,13,14,16,20,22 => uart_send(3); 1,4,8,15 => 0x0801141c; 3,5,10,11,12,18,21,23 => 0x08011938 (=> 0x0801261c uart_send(1), all boards); 17 => 0x0801195c (USART1 / board 7 path A); 30 => 0x0801190e (CAN 0x414 / board 7 USART1); others dropped	disasm (verified)
 0x0801141c	func	route_path_a	boards 2/4/5/6: CAN queue 0x20002330; board 7: type 8 idx 1 or 7 => USART1 else USART2	disasm (verified)
 0x08011eae	func	duml_crc16_fix	recompute DUML CRC16 (seed 0x3692) over pkt[0..len-3] and store at tail	disasm
 0x08011ed4	func	duml_set03_id43_fwd	dispatch key 0x43030009: rewrite receiver type to 2 then 1, fix CRC, packet_send (fan-out of FC OSD push)	disasm (verified)
@@ -94,3 +94,12 @@ addr	kind	name	note	source
 0x080127be	func	read_stm32_uid	copies 12 bytes from 0x1FFFF7E8; single caller 0x08011110	disasm (verified)
 0x0801279a	func	load_cfg_page	reads 256 B from flash offset 0x7b00, validates via 0x08011e7a	disasm
 0x08012690	func	flash_write_magic	flash write of 4 bytes at offset 0x7400 (helper 0x0800bc2c); returns 1 if all bytes written	disasm (inferred write)
+0x08011828	func	can_aux_init	can_queue_init 0x414 TX obj 0x20002538 (64 B) + 0x415 RX obj 0x20002554 (64 B); parser 0x20002570 bufsize 64; no board gate; called from 0x0800db9c	disasm (verified)
+0x08011876	func	can414_send	can_enqueue_and_tx(0x20002538,...); only reached from packet_send type 30 (0x0801194a)	disasm (verified)
+0x08011882	func	can415_pump	drain ring 0x20002558 -> parser 0x20002570 -> duml_dispatch; no link watchdog	disasm (verified)
+0x0801148c	func	can413_pump	drain ring 0x20002350 (boards 2/4/5/6) or 0x20000053 USART2 (board 7) -> parser 0x20002368 -> duml_dispatch; watchdog 0x96 -> 0x0800c320(8)	disasm (verified)
+0x08012626	func	usart1_pump	drain ring 0x2000002b -> parser 0x20002620 -> duml_dispatch; watchdog 0x258 -> 0x0800c320(4)	disasm (verified)
+0x0801261c	func	send_usart1	uart_send(1, pkt, len)	disasm (verified)
+0x08011a7e	func	duml_parser_init	(parser, buf, frame_cb, bufsize); all channels use frame_cb 0x08011be7	disasm (verified)
+0x08011a8e	func	duml_parser_feed	byte state machine: 0x55 sync, 10-bit len <= bufsize, version 0/1, CRC8 seed 0x77 (0x08011e0e), body then frame_cb; returns 2 on good frame	disasm (verified)
+0x08011be6	func	duml_crc16_check	CRC16 seed 0x3692 over len-2 vs last u16	disasm (verified)
