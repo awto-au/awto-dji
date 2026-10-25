@@ -9,7 +9,37 @@ This is bench reverse-engineering on an aircraft the operator owns. **Flight is 
 and stays behind the project's A–E props-off work order (`autonomy-onboard-plan.md`). The dump app
 below is a **diagnostic that never touches motors** (see Safety).
 
-## Why a replacement is accepted (established by RE — see `fc-bootloader.md`, `fc-io-inventory.md`)
+## Two approaches — patch the stock image (B) before a clean-room replacement (A)
+
+**Approach B (preferred for the bootloader dump): surgically patch the stock m0306.** Keep the
+entire working DJI firmware; **append** a small payload in the free flash at the end of the app
+region and **redirect one hook** to it. Far less work and far lower risk than a rewrite — every DJI
+driver, control loop and failsafe stays intact; the payload is dormant until explicitly triggered.
+Verified specifics:
+
+- **Free space:** the image is 0x0DD200 B and occupies `0x08020000–0x080FD200`; the app region
+  (sectors 5–11) runs to `0x08100000`, leaving **`0x080FD200–0x08100000` = 11.5 KB free** — ample
+  for a dump payload (a few hundred bytes of Thumb).
+- **Hook — a parameter callback:** each FlycExportParam entry has a `callback` function pointer at
+  **+0x38**; **30 params already carry a real code callback** (e.g. `config_parameter.assistant_timeout`
+  → `0x0804672f`), proving it is a live on-write hook. Repoint **one** param's callback to the
+  payload — pick a param that currently has a **null** callback (807 of them) so no stock behaviour
+  is lost — and a DUML `SetParamsByIndex` (0x03 0xf2) on that index invokes the payload. (Equivalently,
+  repurpose an unneeded DUML command handler's dispatch entry — your "command not needed".)
+- **Payload:** read `0x08000000–0x0801FFFF` and stream it out in chunks via the **stock** DUML TX —
+  because the image is kept whole, the payload calls existing functions at their real addresses
+  (`duml_send 0x0804f862`, `duml_crc16 0x0804f024`). Recovers the resident loader.
+- **Repackage:** append payload at `0x080FD200`, patch the one callback word, recompute the transfer
+  CRC + container MD5 (the `0x77557755` marker and vectors are untouched), re-encrypt AES, repack
+  xV4 (`dji_xv4_fwcon.py` / `scripts/re/xv4_pack.py`), flash via the normal DUML upgrade.
+- **To confirm first:** that `SetParamsByIndex` actually invokes `entry->callback` on write (the 30
+  live callbacks strongly imply it — verify by decompiling that handler / in the FC Sim).
+
+**Approach A (the clean-room replacement below)** remains the path for the eventual *autonomy*
+firmware, where we want our own control code — not for the dump. Do B first; it de-risks packaging
+and the loader dump without reimplementing anything.
+
+## Why a replacement (or patch) is accepted (established by RE — see `fc-bootloader.md`, `fc-io-inventory.md`)
 
 - **No signature.** The FC image is protected only by xV4 AES-128 (public key) + container MD5 +
   transfer CRC + `FIRM_MATCH` (version/hardware) + the `0x77557755` valid-image marker. A correctly
