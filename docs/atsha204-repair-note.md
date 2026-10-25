@@ -1,10 +1,30 @@
 # Repair note: a failed ATSHA204 component-auth chip
 
-Scope: **repairing an owned board whose ATSHA204 authentication chip has failed.** When that chip
-dies, the host MCU's component-auth check fails and the board refuses to operate even though
-everything else is fine. This note records what the chip does and the process to stub its check so
-the owner can revive the board. It is deliberately architectural (where the check is, how patching
-works), not a turnkey patch — the exact byte offset must be found per firmware version.
+Scope: **repairing an owned board whose ATSHA204 authentication chip has failed.** This note records
+what the chip does, **what actually blocks when it fails (which is less than it first seems)**, and
+the process to stub the check if needed. Architectural (where the check is, how patching works), not
+a turnkey patch — the exact offset must be found per firmware version.
+
+## Hardware-level block, or only DJI-software? (important — mostly the latter)
+
+Two **different** mechanisms are easy to conflate; only one is the ATSHA204:
+
+- **ATSHA204 component auth** runs in the aircraft's *own* firmware (A9 `DjiEncryptCheckSN`/
+  `CheckA9Mac`), so it is on-device, not merely the phone app. **But the only enforcement our RE
+  actually shows from it is client/app authorization:** `DjiMsgAuthorizedMac` — "`cam_server`
+  rejects clients whose MAC is not authorized." Whether a *failed/absent* ATSHA204 halts boot or
+  flight is **NOT established** here (**U**) — we have the check and what it compares (SN + board
+  number vs the A9 NAND copy), not the mismatch consequence. So do **not** assume a dead chip bricks
+  the aircraft; its demonstrated teeth are DJI-software/client-facing.
+- **DJI product activation** is the separate thing that *does* gate the hardware: the FC firmware
+  carries `Product not activation, stop motor!` — a firmware-enforced **motor gate** tied to DJI's
+  online/app activation. This is **not** the ATSHA204; a stub of the ATSHA204 does not touch it, and
+  activation is satisfied by the normal DJI flow, not by the security chip.
+
+Bottom line: the ATSHA204 is an anti-counterfeit on-device check whose visible effect is app/client
+authorization; it is **not shown** to block flight. Before stubbing anything for a "failed chip",
+first confirm the chip failure is actually what's blocking you (vs activation, or the NAND-copy
+side), by decompiling the `CheckA9Mac`/`CheckSN` mismatch path.
 
 **What this is / is not.** The ATSHA204 is **anti-counterfeit component authentication** — a
 SHA-256 challenge/response that proves a part is genuine DJI (`link-security.md`: "the one real
