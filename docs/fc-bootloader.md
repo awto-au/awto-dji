@@ -89,11 +89,35 @@ STM32F4: CCM @ 0x10000000), with essentially no strings (pure code). **Decompile
   above.
 
 So `m0305` is the RAM-side half of the boot/upgrade system: delivered in, it reconfigures clocks,
-speaks DUML to receive firmware, erases/programs flash (app, and — by its table — potentially the
-loader `0x08000000` and bank2), can rewrite option bytes, and can validate+boot either of two image
-slots. The *resident* loader at `0x08000000` (what launches `m0305`) is still the one piece not in
-hand; a SWD dump would close it out. **I** (strong) that `m0305` is loaded/used by that resident
-loader during update.
+speaks DUML to receive firmware, erases/programs flash, can rewrite option bytes, and can
+validate+boot either of two image slots. The *resident* loader at `0x08000000` (what launches
+`m0305`) is still the one piece not in hand; a SWD dump would close it out. **I** (strong) that
+`m0305` is loaded/used by that resident loader during update.
+
+### `m0305` command set vs a classic bootloader — and the A/B slot layout
+
+The handlers match a standard field-update bootloader, and the erase targets pin the slot map via
+the F427 2 MB dual-bank sector layout (bank1 = sectors 0–11, bank2 = 12–23; sectors 0–3 =16 KB,
+4 =64 KB, 5–11 =128 KB):
+
+| bootloader op | m0305 | note |
+|---|---|---|
+| Unlock | `FUN_20001660`-area writes `FLASH_KEYR` 0x45670123/0xCDEF89AB | flash write-enable |
+| OB Unlock / Write | `FUN_20007d0c` → OPTKEYR unlock + writes an option byte (0x55 marker) unless already 'U' | touches option bytes |
+| Erase | `FUN_20007c28`(start,end sectors); `FUN_20008c88`: **type 6 → sectors 5–11 = `0x08020000` bank-1 app slot**, **type 7 → sectors 12–23 = `0x08100000` bank-2 slot**; **sectors 0–4 (`0x08000000` loader) never erased** | per-slot erase, loader preserved |
+| Program | word-program via `FLASH_CR` PG (program path) | writes the received image |
+| Verify | per-slot **validate** `FUN_20007a30`/`200081f0` = blank-check + marker-word match (image word == expected constant) + vector-table sanity | marker+sanity, **not** a full-image CRC at boot |
+| Go / Boot | `FUN_20007ec0`/`20007edc`: set MSP=vector[0], jump vector[1] | boot slot A, else slot B |
+| **Read Memory** | **absent** | no flash read-out/dump command found |
+
+So the slots are **bank-1 app (`0x08020000`) and bank-2 (`0x08100000`) = true dual-bank A/B**, with
+the loader (sectors 0–4) kept out of the erase path. **Verify** exists but is a marker-word + blank
++ vector sanity check at boot (the transfer itself is CRC'd during `TranslateData`, the
+`FM_CRC_WRONG` path) — there is **no full-image-CRC or host-"verify-digest" command**. **Read** —
+unlike the ST system bootloader's Read Memory (0x11) — has **no equivalent here**: `m0305` reads
+flash only internally (blank/marker/boot), with no command to stream flash back out. So even in
+update mode you cannot dump the image over DUML/CAN; reading it still needs SWD. **V** (the handlers
+decompiled; absence of a read-out command).
 
 ## Reproduce
 ```
