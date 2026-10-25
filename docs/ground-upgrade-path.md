@@ -116,12 +116,23 @@ Air-side counterpart: `docs/fpga-upgrade-path.md`, `docs/fpga-bringup.md`.
 a **second FX2/FX3 bridge chip** (DJI reuses FX2LP as a generic USB bridge elsewhere: `m1500`,
 `m1600`), or something else (an LPC boot-ROM mode was floated and ruled out below).
 
-- **V.** All three descriptor strings are **literal UTF-16LE constants inside m1400's own
-  compiled image** (`P3X_FW_V01.03.0020_m1400.bin`, an earlier bundled copy — exact addresses
-  will differ in the owner's `C1_FW_V01.06.0000`, but DJI's own string constants are stable
-  across builds): `'DJI  CONFIF  '`, `'DJI    CONTROLLER'`, `'0001A0000000'`, plus class tags
-  `'VCOM'`/`'MSCM'` and a second serial `'0001AA000000'`. `strings` also finds bare `USBS`/`USBC`
-  (USB Mass Storage Class Bulk-Only-Transport signatures) elsewhere in the image.
+- **V, on two independent legs.** (1) A `strings`/UTF-16LE scan of `P3X_FW_V01.03.0020`'s
+  *bundled* m1400 copy found the literal constants `'DJI  CONFIF  '`, `'DJI    CONTROLLER'`,
+  `'0001A0000000'`, `'VCOM'`, `'MSCM'`, `'0001AA000000'`, plus bare `USBS`/`USBC` (USB Mass
+  Storage Class Bulk-Only-Transport signatures) — **but this is a different, older build**
+  (its build-date string doesn't match the operator's `WM320_A7_LPC1 20170828/00` at all, so
+  do not cite it as the operator's own firmware). (2) The IDA symbol map for the **correct,
+  exact version** (`C1_FW_V01.06.0000_m1400.map`, 718 entries, from `docs/symbols/upstream/`)
+  independently names string-literal symbols `aDjiConfif` (`0002F397`), `aVcom` (`0002F3F1`),
+  `aMscm` (`0002F3FB`) — IDA's own auto-labels for literals it found in *this exact build*, not
+  something carried over from (1). The real `C1_FW_V01.06.0000_m1400.bin` bytes are not
+  currently in this analysis environment (only its `.map`/`.idc` symbol files survived from an
+  earlier session) — the full string **content** and the surrounding VCOM/MSCM handling code
+  for this exact version are not yet re-confirmed; re-obtaining the actual binary would close
+  that gap. No Ghidra project exists for m1400 at all (only `scripts/re/mcu_trace.py`, a
+  lighter capstone-based disassembler) — unlike the STM32 modules (`m0306`/`m0900`/`m0100`),
+  which were all taken through full Ghidra decompiler projects; `stm32-reversing-process.md` is
+  explicitly STM32-scoped and doesn't name m1400 as a target for that exact checklist.
 - **Settles it: this rules out a second bridge chip.** A separate FX2/FX3 (or any other) bridge
   would hold its own descriptor strings in its own firmware/EEPROM, not inside m1400's compiled
   code. Finding them here means **m1400 implements its own USB device stack** directly.
