@@ -41,3 +41,6 @@ addr	name	note	source
 0x08095298	fc_sim_handler_navi	[SIM] simulator handler (navi side)	ghidra+strings
 0x080955e8	fc_sim_handler_navi2	[SIM] simulator handler	ghidra+strings
 0x08095b3c	fc_sim_handler_navi3	[SIM] simulator start ([SIM]try to start simulator)	ghidra+strings
+0x08044dfa	fc_set_rc_lost_action	DUML set RC-lost action (payload+0xb, valid {1,2}, else reject 3); stores at +0x1af	ghidra+strings
+0x08065272	fc_nav_failsafe_exec	main RC-lost/nav failsafe state machine (quits wp/hotpoint/follow, runs go-home/land)	ghidra+strings
+0x0805893e	fc_sim_cmd_wrapper	wrapper calling fc_sim_start_handler; entry in handler-ptr table 0x08043b90	ghidra

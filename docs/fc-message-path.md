@@ -125,6 +125,34 @@ allowlist. The deciding factor is the mode gate (RC switch / flight mode), not t
 Not yet done: the continuous-setpoint (joystick / `serial_open_nav`) payload, and what sets the
 mode byte to 2 (confirm it is the RC mode switch).
 
+## Simulator command + RC-loss behaviour (2026-10-25)
+
+**Simulator command.** cmdset **0x0b (SIMULATOR)** (repo APK map, `docs/data/apk-dynamic-cmdset-ids.tsv`):
+id1 heartbeat, id2 RequestMainControllerParams, id3 push params, **id4 SimulateFlightCommend**,
+id6 push flight status, id7-12 wind/area/air/force/temp/gravity, id13 CrashShutDown, id14 CtrlMotor,
+id15-20 physics (mass/inertia/motor/battery/freq), id255 ResetAll. The FC start handler
+`fc_sim_start_handler` (0x080585ec) takes **{sub-cmd, initial latitude/longitude/altitude as f64,
+GPS satellite count}** and agrees or refuses (reason 1-6). Exact start id (handshake id2 vs id4)
+is not cleanly isolated from the stripped dispatch — confirm with one Assistant-2 capture.
+
+**RC-loss behaviour — answering "can it fly a mission / not RTH when RC fails":**
+- The RC-lost action is **configurable**: `fc_set_rc_lost_action` (0x08044dfa) stores an action
+  value validated to {1,2}; plus params `g_config.fail_safe.protect_action`,
+  `g_config.advanced_function.fail_safe_protection_enabled` (failsafe can be disabled),
+  `g_config.go_home.go_home_when_running_gs`, `g_config.go_home.fixed_go_home_altitude`.
+- **Stock waypoint missions do NOT continue through RC loss**: `[WP] RC lost, quit waypoint
+  mission and exec main rc lost action` — the mission aborts and `fc_nav_failsafe_exec`
+  (0x08065272) runs the configured failsafe (go-home/land). Same for hotpoint/follow-me.
+- So "keep going even if RC fails" is **not** a stock waypoint option. Two ways to get it:
+  1. Disable/benign-set the failsafe (`fail_safe_protection_enabled=0` or RC-lost action set so
+     it does not go-home), **and** drive via the **onboard agency** (device 2) streaming your
+     own go-to setpoints — then there is no RC command source to "lose" and the FC's own
+     waypoint-abort path is not in use. Caveat: a go-home failsafe asserts a higher-priority
+     control source and would preempt the API, so it must be configured off for continuation.
+  2. (last resort, not pursued) patch the failsafe trigger.
+- "Fly to here and land" is directly supported: go-home/auto-land (`ACT_GO_HOME`,
+  `landing.API_landed`) and `fixed_go_home_altitude` give the climb-to-altitude/straight-home/land.
+
 ## Built-in flight simulator in the FC (2026-10-25) — ideal bench target
 
 The FC (m0306) contains a full simulator, the same one DJI Assistant 2 drives over USB:
