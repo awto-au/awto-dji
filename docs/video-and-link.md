@@ -75,7 +75,7 @@ not marketing copy:
 
 ### Control channel for the video chain (DUML)
 
-The transcoders and radio MCUs are themselves DUML devices, with their own command
+The transcoders and `air_router_stm32f103`/`gnd_rc_lpc1765` MCUs are themselves DUML devices, with their own command
 sets seen in the dissector:
 
 - `cmd_set` **0x08 — DM36x** transcoder control: `DM36x Gnd Ctrl Info Send/Recv`,
@@ -160,7 +160,7 @@ as data. The DJI GO app draws vector OSD from it; the Lightbridge ground unit's 
 They are multiplexed onto the downlink, never pixel-composited:
 
 - **Air:** FC (`m0306`) emits telemetry DUML; camera (A9SE `m0100`) emits H.264; the air
-  video encoder (DM368 `m0800`) + air radio MCU (`m0900`) + air FPGA (`m1900`) multiplex
+  video encoder (DM368 `m0800`) + `air_router_stm32f103` (`m0900`) + air FPGA (`m1900`) multiplex
   **video + telemetry + control as separate logical channels** into the OFDM frames.
 - **Ground:** ground FPGA (`m2000/01/02`) demuxes -> video to the DM365 decoder (`m1300`)
   -> FX2LP USB (`m1600`) -> app; telemetry DUML -> ground MCU (`m1400`) -> app.

@@ -104,7 +104,7 @@ isn't re-walked.
 
 The "Breakthrough" section's `GL300C`/`WM320 A7_LPC1 20170828/00` reply at receiver `0x0e`
 raised an architecture question: does m0306 locally fabricate that identity, or genuinely
-forward the request to the real radio MCU? Two concrete findings, neither fully closing it:
+forward the request to the real `air_router_stm32f103`? Two concrete findings, neither fully closing it:
 
 - **V, decompiled `duml_resp_send` (`0x0806d334`), existing Ghidra project
   (`scratchpad/ghproj/m0306`).** The reply-builder's sender byte is built from the *request's
@@ -131,7 +131,7 @@ forward the request to the real radio MCU? Two concrete findings, neither fully 
   `fc_param_table.py` uses for the other 834 entries) to get its RAM address, then trace who
   reads/writes *that* address — not attempted this session.
 - **Net effect: narrowed, not solved.** The reply's claimed sender (`0x0e`) is now explained
-  (permissive echo, V). Whether the reply's *content* is live-forwarded from the real radio MCU
+  (permissive echo, V). Whether the reply's *content* is live-forwarded from the real `air_router_stm32f103`
   over an internal bus, or populated from a cached/shared RAM table the FC maintains about
   paired components, remains **U** — but "stale copy-pasted string" is now ruled out, and a
   real WM610-communication mechanism (not previously documented) is confirmed to exist.
@@ -185,20 +185,20 @@ power-cycle of the aircraft.
   **`GL300C`** / **`WM320 A7_LPC1 20170828/00`** — byte-identical to what the RC itself
   reports at the same receiver over its own port (`docs/identity-queries.md`).
   **Correction to the architecture model**: receiver `0x0e` on this port is not the
-  flight controller - it is the aircraft's own OFDM/radio MCU (an m0900-family chip,
+  flight controller - it is the aircraft's own `air_router_stm32f103` (an m0900-family chip,
   same firmware build as the RC's), reached the same way DUML reaches the RC's radio
   MCU. The "front USB port = flight controller" framing in this doc's title and earlier
-  sections needs qualifying: USB on this port reaches the radio MCU by default; the FC
+  sections needs qualifying: USB on this port reaches `air_router_stm32f103` by default; the FC
   itself may sit behind it, not be it.
 - **V**: a receiver sweep (camera `0x01`, FLYC `0x03`, gimbal `0x04`, center board
   `0x05`, remote controller `0x06`, and indexed variants) against the *same live,
   confirmed-responsive* port got **no reply from anything except `0x0e`** - bracketed
   by two more `0x0e` pings that both succeeded, so the silence on other receivers isn't
   the link dying mid-sweep. Whether that's because this port's DUML only routes to the
-  radio MCU (not relayed onward to FLYC/camera/gimbal), or those other receiver
+  `air_router_stm32f103` (not relayed onward to FLYC/camera/gimbal), or those other receiver
   addresses are simply wrong for this bus, is **U**.
 - **U**: GetSerialNum (`00/51`, payload `04`/FlycNum) at `0x0e` got no reply - consistent
-  with `0x0e` being the radio MCU, which (like the RC) doesn't implement that query.
+  with `0x0e` being `air_router_stm32f103`, which (like the RC) doesn't implement that query.
   The aircraft's own serial/FlycNum still needs a receiver that reaches the FC, which
   this port hasn't shown yet.
 - Reproduce: `python3 -I scripts/re/duml_watch.py /dev/ttyACM11 --minutes 10`, then

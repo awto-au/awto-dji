@@ -74,7 +74,7 @@ and **I only in the sense of word meaning** ("A"="air"). No firmware string spel
 **(a) Issue #9, is P01007.06 the air or RC board? Leans air (I).**
 - The wiki-sourced board facts (W, `rf-sdr-and-repair.md`): P01007.06 has an `STM32F103CBU6` MCU, Cyclone V
   `5CEFA4U19I7`, and its `CENTER` connector goes to the ESC center board.
-- V: the air radio MCU is STM32F103 (m0900); the RC radio MCU is LPC1765 (m1400, `MCG1765A`, `ground-upgrade-path.md`).
+- V: the air-side MCU is STM32F103 (`air_router_stm32f103`, m0900); the RC's is LPC1765 (`gnd_rc_lpc1765`, m1400, `MCG1765A`, `ground-upgrade-path.md`).
   No STM32 is in any RC module list entry.
 - I: an STM32F103 + `CENTER` to the ESC board = the aircraft's board. The wiki calling it the "OFDM Receiver board"
   (the aircraft receives the uplink) does not contradict this. U: the wiki text itself; no schematic.

@@ -8,8 +8,9 @@
 
 What goes into and out of the Lightbridge FPGA, and the bus types/widths. Interface
 *types* and control signals are documented (dji-firmware-tools OFDM-receiver-board wiki
-+ the module map); exact **widths are not published** and the radio MCU is stripped, so
-widths are the chips' standard buses, flagged as such. Confirming the exact widths is a
++ the module map); exact **widths are not published** and the adjoining MCU
+(`air_router_stm32f103` / `gnd_rc_lpc1765`) is stripped, so widths are the chips' standard
+buses, flagged as such. Confirming the exact widths is a
 logic-analyzer job (see end).
 
 ## Ground (remote controller) FPGA — Cyclone V `5CEFA4` (wiki-sourced; not confirmed by any bitstream)

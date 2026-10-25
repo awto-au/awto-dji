@@ -5,7 +5,7 @@
 - Tags: **V** verified in m0900 code or Renode; **W** wiki-sourced (service pads, parts, connector names), not independently checked; **I** inferred; **U** unknown.
 - Rates: `docs/data/m0900-buses.tsv`. Flow-level view: `docs/dataflow.md`.
 - The FPGA part `5CEFA4U19I7` is wiki-sourced (W). The ground firmware ships Cyclone V (m2000/m2002) and Cyclone III/IV-format (m2001) images (`fpga-images.md`); no bitstream-derived pin or net is used here.
-- Board role: still open, but **the MCU on this board is confidently `air_router_stm32f103`** (it is STM32F103; the RC's only radio MCU, m1400, is LPC1765 — `naming-map.md`). Whether the *whole PCB* sits in the aircraft or the RC chassis is separate from that chip ID and is still **I, leans air** (`fpga-air-vs-ground.md` §"Still open (a)", `rf-sdr-and-repair.md` calls it the "OFDM Receiver board" yet wires `CENTER` to the ESC center board). The diagram follows the task framing (m0900 + Cyclone V + AD9363 + FX2LP on one board); the FPGA/FX2 nodes below are not given a canonical `air_`/`gnd_` name pending that resolution.
+- Board role: still open, but **the MCU on this board is confidently `air_router_stm32f103`** (it is STM32F103; the RC's own MCU, m1400 (`gnd_rc_lpc1765`), is LPC1765 — `naming-map.md`). Whether the *whole PCB* sits in the aircraft or the RC chassis is separate from that chip ID and is still **I, leans air** (`fpga-air-vs-ground.md` §"Still open (a)", `rf-sdr-and-repair.md` calls it the "OFDM Receiver board" yet wires `CENTER` to the ESC center board). The diagram follows the task framing (m0900 + Cyclone V + AD9363 + FX2LP on one board); the FPGA/FX2 nodes below are not given a canonical `air_`/`gnd_` name pending that resolution.
 
 ## Diagram
 

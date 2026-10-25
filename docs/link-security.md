@@ -131,10 +131,10 @@ source.
 
 ## Firmware crypto search — nothing for the link
 
-Searched `m0900` (radio MCU), `m0100`/`m0101` (camera) for
+Searched `m0900` (`air_router_stm32f103`), `m0100`/`m0101` (camera) for
 `aes|cipher|encrypt|scrambl|key|session|nonce|handshake`:
 
-- `m0900` radio MCU: nothing (stripped bare-metal).
+- `air_router_stm32f103` (m0900): nothing (stripped bare-metal).
 - `m0100` camera: the only AES/key hits are **Wi-Fi/Bluetooth/TLS** — `wpa_supplicant`
   `CCMP`/`TKIP`, `hostapd`, OpenSSL certs. Those are the camera's Wi-Fi/app/cloud crypto,
   **not** the Lightbridge RF link.

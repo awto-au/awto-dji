@@ -72,7 +72,8 @@ families differ.
 ## What this says about the link (I)
 
 - **Both FPGAs present the same shape:** an 8-bit synchronous slave-FIFO master towards a
-  Cypress USB chip (raw video), a low-speed serial DUML port towards a radio MCU, an SPI
+  Cypress USB chip (raw video), a low-speed serial DUML port towards its adjoining MCU
+  (`air_router_stm32f103` on the air side, `gnd_rc_lpc1765` on the ground side), an SPI
   register slave towards the same MCU, and the AD9363 on the other side. The mux and demux of
   video and DUML is FPGA logic; neither Cypress chip nor DaVinci adds DUML to video (V both
   ends).

@@ -11,7 +11,7 @@ third-party RTOS (µC/OS)**.
 - `strings` + targeted grep — toolchain/library name fingerprints.
 - **radare2 5.5.0** — disassembly; read Cortex-M vector tables to identify the chip and
   the RTOS context-switch handlers. (Load raw image with `-a arm -b 16 -m <base>`; bases
-  from the dji-firmware-tools README: FC `0x08020000`, radio MCU `0x08008000`.)
+  from the dji-firmware-tools README: FC `0x08020000`, `air_router_stm32f103` `0x08008000`.)
 - `binwalk` — signature/entropy scan of the big camera image.
 - (Ghidra would give full decompilation but isn't installed; radare2 + the vector-table
   method is enough to establish provenance.)
@@ -27,7 +27,7 @@ third-party RTOS (µC/OS)**.
 
 ## Chips (from Cortex-M vector tables)
 
-- **`m0900` radio MCU** — Cortex-M3 (STM32F103): initial SP `0x20004cb8`, reset into app
+- **`air_router_stm32f103` (m0900)** — Cortex-M3 (STM32F103): initial SP `0x20004cb8`, reset into app
   at `0x08008200` (bootloader occupies `0x08000000`–`0x08008000`).
 - **`m0306` A3 flight controller** — Cortex-M4-class **STM32F4**: initial SP `0x2002ff00`
   (~192–256 KB SRAM), app at `0x08020000`.
@@ -39,7 +39,7 @@ third-party RTOS (µC/OS)**.
 | **`m0306` A3 flight controller** | **µC/OS** (Micrium RTOS) | `uC/OS` string; PendSV (`0x0802c79f`) + SysTick (`0x08029de3`) handlers populated = µC/OS preemptive scheduler |
 | `m0101` camera loader | **ThreadX** (Express Logic RTOS) + IAR | strings |
 | `m0100` camera | **Linux**, glibc, busybox, OpenSSL, wpa_supplicant, zlib, libjpeg, dropbear, ThreadX | strings (see license-compliance.md) |
-| `m0900` radio MCU | none named — small bare-metal (likely ST StdPeriph/CMSIS + custom) | disासm + strings |
+| `air_router_stm32f103` (m0900) | none named — small bare-metal (likely ST StdPeriph/CMSIS + custom) | disासm + strings |
 | `m0400` gimbal | none named — bare-metal | strings |
 
 **Conclusion.** The flight-critical A3 controller is DJI *application* code running on the

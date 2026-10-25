@@ -171,7 +171,7 @@ Firmware module SHA-256:
 Its `.ini` identifies receiver USB `IG810 LB2_CY2014_RX ground`. The executable has
 a sectioned Cypress `CY` boot header and ARM instructions. **I:** this is the Cypress
 FX3-family USB processor; the exact chip marking is not established from this match.
-It is separate from the ATSHA204 secure element and the `m1400` radio MCU.
+It is separate from the ATSHA204 secure element and `m1400` (`gnd_rc_lpc1765`).
 
 ### Code references
 

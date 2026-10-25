@@ -6,6 +6,13 @@ corrected/current fact; this file preserves the history for reference.
 
 ## 2026-10-25
 
+- **Terminology: "radio MCU" retired across 13 docs** -> replaced with the canonical
+  `naming-map.md` names (`air_router_stm32f103` for the air-side m0900; `gnd_rc_lpc1765` for
+  the ground-side m1400/m1401), since "radio MCU" pre-dated the naming scheme and wasn't a
+  module name. While fixing it, found and corrected a genuine fact error in
+  `control-plane-re.md` (not just terminology): one line claimed the ground MCU was "same
+  STM32F103 family" as the air MCU -> it is NXP LPC1765/LPC1549, a different vendor/family
+  entirely (the doc's own later section already had this right; the early mention was stale).
 - **m1401 (ground radio, LPC1549 variant) analysed for the first time:** was previously noted
   only as "LPC1549 variant of m1400... not analysed further" -> a separate, richer upstream
   symbol map (`C1_FW_V01.06.0000_m1401.map`/`.idc`, o-gs/dji-firmware-tools) already vendored

@@ -24,7 +24,7 @@ Takeaways:
 
 - **The flight-critical stack is proprietary *application* code — but not from scratch.**
   Disassembly (see `code-provenance.md`) shows the A3 flight controller runs the **µC/OS**
-  commercial RTOS (Micrium); the gimbal and STM32 radio MCU are bare-metal on vendor
+  commercial RTOS (Micrium); the gimbal and `air_router_stm32f103` are bare-metal on vendor
   libraries. No GPL obligation (µC/OS/ThreadX were commercial at the P3 era), but the
   code is clearly built on third-party foundations, not written entirely in-house.
 - **The camera and video-encoder SoCs are Linux** and therefore carry real obligations:
