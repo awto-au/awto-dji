@@ -139,3 +139,24 @@ P4 FC (`wm220_0306`) is the same **STM32F4 family** as the P3 (shared `Reset_Han
 `SystemInit`, IAR, µC/OS); the exact part needs the P4 vector table from its binary. Its map is the
 richer naming source (3133 vs 1227 publics), so it is the better VT/port reference for the control
 and nav layers.
+
+## String-anchored name port: result
+
+Implemented the no-VT port (`scripts/re/port_symbols.py` + `scripts/re/ghidra/fc_port_names.py`),
+leaning on DJI's convention that a function logs its own name ("call <fn>"). Against the P3
+V01.07.0060 map (same product line → same log strings): 50 names anchored to a string in our
+V01.11.0020 image, of which **13 resolved to a function with high/med confidence** (output:
+`docs/symbols/m0306-ported.tsv`).
+
+- **Mutual validation:** 11 of the 13 land on addresses we had *independently* derived
+  (`api_ctrl_mode_serial_open_nav_handler` @ 0x08055b9c, `..._cmd_status_request` @ 0x08055cb8, the
+  `api_mission_*` hotpoint/follow-me set, `app_mission_hp_start_handler` @ 0x08055e2e). The port and
+  our own analysis confirm each other, and we gain DJI's canonical names (dropping our `fc_` prefix).
+- **Limitations (honest):** the method only catches functions that log their own name; two false
+  positives where a caller's log string names a callee (`hal_compass_add`, `app_pre_malloc_ack`)
+  were dropped by hand. The **flight-mode controllers** (`ctrl_navi_*`, `kctrl_init_*`) did **not**
+  resolve — their names live in a state-name *table* with no direct code xref in a `-noanalysis`
+  pass; locating them needs the {fn_ptr,name_ptr} table walk or a full analysis run (future work).
+
+So string-anchoring is good for validation and for handler functions, but the full control-mode
+map is the case that actually wants Version Tracking against the P4 binary.
