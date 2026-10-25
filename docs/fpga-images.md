@@ -14,6 +14,7 @@ Family evidence: pluribus `docs/cyclonev-compressed-rbf.md`, `scripts/fpga_famil
 
 ## Observations
 
+- Air/ground assignment (m1900 = air, m2000/01/02 = ground) is V from the package split + MCU routing + DJI's own in-firmware `FPGA.A`/`FPGA.G` module-name table in `m0100` — see `fpga-air-vs-ground.md`.
 - Air FPGA is one shared bitstream: P3 and Inspire 1 `m1900` are byte-identical (sources: `P3X_FW_V01.11.0020`, `WM610_FW_V01.11.01.50`).
 - Ground FPGA has three board-revision variants (`m2000/01/02`, versions 2107/2107/2109) from `C1_FW_V01.06.0000`; they differ ~55% from each other.
 - The three ground images are not the same family: m2000/m2002 are Cyclone V streams, m2001 is Cyclone III/IV-format.

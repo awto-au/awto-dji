@@ -27,9 +27,9 @@ Convention: `air_` = aircraft, `gnd_` = remote controller. Tags: **V** verified 
 
 Notes: `m1300`/`m1600` exist only on the GL300a/HDMI RC; the owner's **GL300C** uses `m1601`
 (`gnd_fx3`) and drops the DM365 (`ground-fx3-m1601.md`). Air/ground FPGA split is V from the DUML
-device-type enum (19/20), the module tags (FPGAA/FPGAG) and the `HD transmission FPGA air/gnd side`
-strings; which of `m2000/01/02` sits on which RC board revision is still open (see the FPGA
-air-vs-ground investigation).
+device-type enum (19/20), the module tags (FPGAA/FPGAG) and DJI's own in-firmware `FPGA.A`/`FPGA.G`
+name table in `m0100` (`fpga-air-vs-ground.md` R1); which of `m2000/01/02` sits on which RC board
+revision is still open (`fpga-air-vs-ground.md`).
 
 ## Buses (proposed name → endpoints / medium)
 

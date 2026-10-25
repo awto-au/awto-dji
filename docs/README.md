@@ -31,6 +31,7 @@ of fact-changes (docs state current facts only).
   `license-compliance.md`.
 - `fpga-images.md`, `fpga-interfaces.md`, `bitstream-to-verilog.md` — FPGA bitstream RE.
   `fpga-images.md` has the family verdicts and per-chip emulator availability; `m1900`/`m2000`/`m2002` appear encrypted. The earlier m2001 Mistral decode is void (#114): retired to `debris/m2001-decomp-findings.md`, `debris/fpga-emulation-plan.md`.
+- `fpga-air-vs-ground.md` — which FPGA image is air vs ground: m1900 = air, m2000/01/02 = ground, V at package + MCU-routing + DJI's own in-firmware `FPGA.A`/`FPGA.G` name table; open sub-questions (#9 board role, which rev per RC, m2001 family) + a cheapest-first prove-it plan.
 
 ## RF / SDR / recovery strategy
 - `minimal-recovery.md` — eliminate the complex FPGA; recover only the small DJI-specific bits.
