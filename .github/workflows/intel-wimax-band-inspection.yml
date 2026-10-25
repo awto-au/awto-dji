@@ -8,6 +8,7 @@ on:
       - scripts/re/intel_wimax_band_scan.py
       - scripts/re/intel_wimax_entropy.py
       - scripts/re/intel_wimax_deep.py
+      - scripts/re/intel_wimax_signature.py
   workflow_dispatch:
 permissions:
   contents: read
@@ -53,6 +54,15 @@ jobs:
             python3 scripts/re/intel_wimax_deep.py "$FW" > "/tmp/$NAME-deep.json"
             python3 -c 'import sys,json;d=json.load(open(sys.argv[1]));print(d["name"],"groups",d["frequency_groups"],"strings",d["notable_strings_count"]);print(json.dumps(d["frequency_instances"][:3])[:2500])' "/tmp/$NAME-deep.json"
           done
+      - name: Examine secure boot signing structure
+        shell: bash
+        run: |
+          set -euo pipefail
+          for FW in /tmp/intel-fw/*.sbcf; do
+            NAME=$(basename "$FW" .sbcf)
+            python3 scripts/re/intel_wimax_signature.py "$FW" > "/tmp/$NAME-signature.json"
+            python3 -c 'import sys,json;d=json.load(open(sys.argv[1]));print(d["name"],"RSA",d["rsa_candidates"],"trailing",d["trailing_headers"][:3])' "/tmp/$NAME-signature.json"
+          done
       - name: Upload metadata only
         uses: actions/upload-artifact@v4
         with:
@@ -61,3 +71,4 @@ jobs:
             /tmp/*-report.json
             /tmp/*-entropy.json
             /tmp/*-deep.json
+            /tmp/*-signature.json
