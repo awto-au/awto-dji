@@ -45,6 +45,7 @@ the current state and next steps, and `../CLAUDE.md` for agent onboarding.
 ## System data flow and buses (m0900-derived)
 - `dataflow.md` — video / telemetry / control planes as Mermaid; where DUML is injected, forwarded, consumed in `m0900`; control + telemetry sequences; unknowns list. Every edge tagged verified / inferred / unknown.
 - `board-connections.md` — P01007.06 connection diagram from firmware + wiki (**not a schematic**); what a real schematic would confirm.
+- `fc-message-path.md` — m0306 (FC) message handling: it's AES-encrypted (decrypt with scripts/re/xv4_decrypt.py), its byte entry points (CAN1/2, USARTs), the DUML CRC16 validator, and why the (set,id) command map needs a Ghidra-scale trace next.
 - `autonomy-onboard-plan.md` — architecture + safety plan for an onboard-Linux autonomy agent driving the stock FC with setpoints: component map, the verified-capture rule for control semantics, the watchdog/authority/geofence safety model, and the A–E work order.
 - `linux-to-fc-path.md` — whether the camera A9 Linux and the DM368 Linux can reach the FC: yes, via netlink→rpmsg→camera RTOS DUML router (type 3 → UART ch0) or DM368 ttyS1; neither Linux originates FC traffic in stock firmware.
 - `fpga-pinout-model.md` — each FPGA's external buses derived from the chips around it (FX2/FX3 slave-FIFO settings, m0900/m1400 SPI+GPIO, UART DUML, AD9363), with I/O estimates and how to confirm on hardware.
