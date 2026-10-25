@@ -8,7 +8,7 @@ edit the names before we adopt them repo-wide** (that roll-out is tracked in a G
 - **Buses use the short role token only:** `<medium>_<side>_<roleA>_<roleB>` — the chip stays in the
   module row so bus names stay short, and `side` disambiguates the two `radio`s (air = STM32F103,
   gnd = LPC1765). So the bus is `uart_air_radio_fc`, not `uart_air_stm32f103_stm32f427`.
-- `air_` = aircraft, `gnd_` = RC. Role tokens: `cam fc fcupd gimbal venc vdec radio fx2 fx3 fpga
+- `air_` = aircraft, `gnd_` = RC. Role tokens: `cam fc fcldr gimbal venc vdec radio fx2 fx3 fpga
   ad9363`. Tags: **V** verified in code/strings, **I** inferred, **U** unknown.
 
 ## Modules (`m####` → proposed name)
@@ -17,10 +17,10 @@ edit the names before we adopt them repo-wide** (that roll-out is tracked in a G
 |---|---|---|---|---|
 | `m0100` | FC300X / CAMLDR | `air_cam_a9se` | Ambarella A9SE camera SoC (ThreadX + Linux) | air |
 | `m0306` | — | `air_fc_stm32f427` | Flight controller (µC/OS-III) | air |
-| `m0305` | — | `air_fcupd_stm32f427` | RAM-resident flash updater for the FC (A/B-capable) | air |
+| `m0305` | — | `air_fcldr_stm32f427` | RAM-resident FC flash-loader: erase/program + OPTKEYR option-bytes + A/B boot-decision, image in via DUML-over-CAN (decompiled, V). Same silicon as `air_fc`; not a router | air |
 | `m0400` | GIMBAL0 | `air_gimbal` | Gimbal controller (chip **U**) | air |
 | `m0800` | DM368 | `air_venc_dm368` | DaVinci DM368 H.264 encoder (Linux) | air |
-| `m0900` | MCA1765 | `air_radio_stm32f103` | Lightbridge air MCU — DUML router | air |
+| `m0900` | MCA1765 | `air_radio_stm32f103` | Lightbridge air MCU — **the air-side DUML router / gateway** (walks a dispatch table, forwards by receiver type; `dataflow.md` §3) | air |
 | `m1300` | DM365 | `gnd_vdec_dm365` | DaVinci DM365 decoder — GL300a/HDMI RC only | gnd |
 | `m1400` | MCG1765A | `gnd_radio_lpc1765` | Lightbridge ground MCU | gnd |
 | `m1500` | — | `air_fx2_cy68013` | Cypress FX2LP (CY7C68013A) USB↔FIFO bridge (on the DM368) | air |
