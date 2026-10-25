@@ -221,6 +221,12 @@ truncated/garbled "CONFIG") - the lsusb database label "Mavic Mini MR1SD25 Remot
 controller" is almost certainly a generic cached USB-ID-database string DJI reused across
 RC hardware revisions, not evidence this is actually Mavic Mini hardware.
 
+**Resolved (2026-10-25):** this is `gnd_rc_lpc1765`'s (m1400) **own on-chip USB device
+stack**, not the FX3 (`gnd_fx3_cyusb2014`) and not a second bridge chip — the manufacturer/
+product/serial strings above are literal constants inside m1400's own compiled image, and
+the port's `VCOM`/`MSCM` class-tag pair matches this doc's own FC-side pattern exactly. Full
+finding: `ground-upgrade-path.md` §"Q5: the RC's own micro-USB port".
+
 - **V.** `scripts/probe_fc_usb.py` run against `/dev/ttyACM4` (the RC port): same result as
   the aircraft port - 0 bytes passive, 0 bytes on Get-Version to all four `TARGETS`.
 - **V.** Retried Get-Version addressed to receiver `0x06` (RC devicetype, per this repo's

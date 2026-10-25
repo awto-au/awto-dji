@@ -6,6 +6,14 @@ corrected/current fact; this file preserves the history for reference.
 
 ## 2026-10-25
 
+- **RC's own micro-USB port (`2ca3:0008`) identity:** initial understanding was open between
+  three hypotheses — m1400's own USB peripheral, a second Cypress FX2/FX3 bridge chip (DJI
+  reuses FX2LP elsewhere), or an LPC boot-ROM/ISP mode -> **resolved**: the manufacturer/
+  product/serial descriptor strings (`DJI  CONFIF  `, `DJI    CONTROLLER`, `0001A0000000`) and
+  `VCOM`/`MSCM` class tags are literal constants inside m1400's own compiled image, ruling out
+  a second bridge chip; answering a real DUML GetVersion rules out a bare boot-ROM mode. Matches
+  the aircraft FC's identical `VCOM`/`MSCM` pattern — both MCUs run their own on-chip USB stack
+  independently. (`docs/ground-upgrade-path.md` §Q5, `docs/fc-usb-port.md`)
 - **FC activation-gate addresses:** initial understanding cited `is_prod_activated` 0x08047c2c /
   `check_activation_authority` 0x08047d5e / `dji_sdk_set_key` 0x0805a964 -> corrected: those are
   from a *different build's* symbol map (V01.07.0060) and land in an unrelated MD5 routine in the

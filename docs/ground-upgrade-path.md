@@ -107,6 +107,41 @@ Air-side counterpart: `docs/fpga-upgrade-path.md`, `docs/fpga-bringup.md`.
 - LPC internal ISP ROM exists in the chip but is not part of the package (verified by absence). Whether the DJI bootloader receives the DUML
   Update Transmit data: **unknown** (same open question as m0900).
 
+## Q5: the RC's own micro-USB port — m1400's own on-chip stack, not a second bridge chip
+
+`fc-usb-port.md` captured a second DJI USB identity live, distinct from the phone-facing FX3
+(`gnd_fx3_cyusb2014`, `m1601`): `2ca3:0008`, manufacturer `DJI  CONFIF  `, product
+`DJI    CONTROLLER`, serial `0001A0000000`, answering DUML GetVersion with build
+`WM320_A7_LPC1 20170828/00`. Open question was whether this is **m1400's own USB peripheral**,
+a **second FX2/FX3 bridge chip** (DJI reuses FX2LP as a generic USB bridge elsewhere: `m1500`,
+`m1600`), or something else (an LPC boot-ROM mode was floated and ruled out below).
+
+- **V.** All three descriptor strings are **literal UTF-16LE constants inside m1400's own
+  compiled image** (`P3X_FW_V01.03.0020_m1400.bin`, an earlier bundled copy — exact addresses
+  will differ in the owner's `C1_FW_V01.06.0000`, but DJI's own string constants are stable
+  across builds): `'DJI  CONFIF  '`, `'DJI    CONTROLLER'`, `'0001A0000000'`, plus class tags
+  `'VCOM'`/`'MSCM'` and a second serial `'0001AA000000'`. `strings` also finds bare `USBS`/`USBC`
+  (USB Mass Storage Class Bulk-Only-Transport signatures) elsewhere in the image.
+- **Settles it: this rules out a second bridge chip.** A separate FX2/FX3 (or any other) bridge
+  would hold its own descriptor strings in its own firmware/EEPROM, not inside m1400's compiled
+  code. Finding them here means **m1400 implements its own USB device stack** directly.
+- **Rules out "just an LPC boot-ROM/ISP mode" too, independently**: the port answers a real DUML
+  GetVersion with the *application's* build string — a bare ROM-level ISP bootloader doesn't
+  speak DUML (an application-layer protocol m1400's own firmware implements). The full running
+  app is behind this port.
+- **Matches the aircraft FC's pattern exactly.** `fc-usb-port.md`'s front micro-USB port carries
+  the identical `VCOM`/`MSCM` class-tag pair. DJI wrote the same composite CDC-VCOM +
+  Mass-Storage-Class USB device into **both** the STM32F427 (FC) and LPC1765 (RC) application
+  firmware independently, from a shared template — neither MCU delegates to a bridge chip for
+  its own-port USB identity.
+- **New, unresolved by this pass:** `MSCM` implies this port also exposes **mass storage** (a
+  flight/RC log, mirroring the FC side's `DJI DATA LOG 2.00` SCSI inquiry string) — what it
+  actually serves up here is not yet traced. The second serial `'0001AA000000'` (vs the primary
+  `'0001A0000000'`) is also unexplained — possibly a second logical unit/interface.
+- Reproduce: `strings -n4` + a UTF-16LE ASCII-run scan (`(?:[\x20-\x7e]\x00){4,}`) over the
+  m1400 image; no `0x2008c0xx` LPC17xx USB-peripheral-base literal dword was found by a flat
+  scan (base likely reached via `MOVW`/`MOVT` or a literal pool, not yet traced).
+
 ## Other modules (header .ini + magic bytes)
 
 - `m1400` 04.10.0006: "LPC1765 GROUND LB2" (this doc).
