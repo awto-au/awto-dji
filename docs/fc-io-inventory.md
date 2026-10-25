@@ -121,24 +121,36 @@ literal pool):
 | **CAN2** | PB12 (RX), PB13 (TX) | AF9 | `can2_bringup` 0x080353b2 | **V** second CAN bus (CAN2EN clock set) |
 | **SDIO** | PC8–11 (D0–D3), PC12 (CK), PD2 (CMD) | AF12 | `sdio_bringup` 0x08039f92 | **V** SD/eMMC flight-data logger |
 | **USB OTG_FS** | PA11 (DM), PA12 (DP) | AF10 | `usb_fs_bringup` 0x0803aac4 | **V** DJI Assistant 2 / firmware-upgrade link to the FC (the pins prove OTG_**FS**, not HS) |
-| **UARTs** | base + baud from a per-port descriptor | — | `usart_open` 0x080343cc via `uart_table_init` 0x08034bcc | generic open; see runtime-table note below |
+| **UART (SDK/API)** | base from flash LUT `USARTx[8]`@0x803bfd8 | — | `usart_open` 0x080343cc | **V** Onboard-SDK/external-control port, **230400 baud default** (`api_entry_cfg.baud_rate`, max 921600); API off by default |
 
 Pin config word for these buses is `0x01000302` = `GPIO_Mode_AF`, `GPIO_Speed_100MHz`,
 `GPIO_OType_PP`, `GPIO_PuPd_UP`. **DJI uses SPL correctly** — the bring-up order is the textbook
 `GPIO_PinAFConfig → GPIO_Init → <periph>_DeInit → <periph>_Init` sequence.
 
-### Why UART baud / port roles are U (runtime-table-driven)
+### UART base + baud: flash LUT + parameter defaults (correcting an earlier note)
 
-Traced one level up: `uart_table_init` (0x08034bcc) walks a **100-byte-per-entry UART port table
-whose base pointer `0x20020a24` is in RAM**, not flash. Each entry holds `{idx@0, USART base@4,
-baud@8, TX pin@0xc, RX pin@0xd}`, and `uart_port_init` (0x08034c26) configures the pins and calls
-`usart_open` from it. Because the table lives in RAM it is **populated at runtime** — so the USART
-base, baud and TX/RX pins are *not* flash constants and cannot be read statically from this image.
-The same pattern explains the GPIO caller census: most `GPIO_Init`/`GPIO_PinAFConfig` calls take
-their port/pin/AF from loop iterators over descriptor tables, not literals. So *which* USART is
-GPS / RC / OSD and at what baud stays **U** without either tracing the code that fills `0x20020a24`
-or a live read. The buses whose config *is* a compile-time literal — CAN1, CAN2, SDIO, USB — are
-the ones mapped above. SPI CS lines and TIM PSC/ARR sit behind the same runtime descriptors.
+An earlier draft said the UART config "lives in RAM and can't be recovered." That was wrong. The
+RAM at `0x2002xxxx` is only the **live, editable config image** (`g_config`) and the driver
+objects; the actual values come from **flash**:
+
+- **Base:** there is a flash lookup table `USARTx[8]` at `0x803bfd8` = {USART1, USART2, USART3,
+  UART4, UART5, USART6, UART7, UART8} in order. `uart_port_init` (0x08034c26) selects a base from
+  it by port index. **V.**
+- **Baud:** the SDK/API serial port baud is the named parameter
+  `g_config.api_entry_cfg.baud_rate` (0x200215d0). Its default/min/max are flash constants in the
+  FlycExportParam limit struct, stored as **IEEE floats**: **default 230400, min 110, max 921600**.
+  Related params: `api_entry_cfg.channel` default 19, `api_entry_cfg.enable_api` default **0 (the
+  external control API is OFF until explicitly enabled)**. **V.**
+
+So **the Onboard-SDK / external-control UART runs at 230400 baud by default (configurable to
+921600)** — the port a companion computer would drive. `g_config` is a RAM copy loaded from those
+flash defaults (or from dataflash if the owner changed them), which is why the descriptor pointer
+`uart_table_init` (0x08034bcc) walks (`0x20020a24`, a 100-byte-per-entry driver-object array) is a
+RAM address — it holds live state, not the source of truth.
+
+Still genuinely **U**: the baud of the *internal* UARTs (GPS, RC, OSD) — those are set by their
+own drivers and have no single named `*.baud` parameter here; recovering each needs tracing that
+driver's `usart_open` argument. SPI CS lines and TIM PSC/ARR likewise sit behind their drivers.
 
 **SPL caller census** (how many call sites each identified SPL function has, from
 `fc_spl_callers.py`): `GPIO_Init` 11, `GPIO_PinAFConfig` 8, `RCC_AHB1PeriphClockCmd` 13,

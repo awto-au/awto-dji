@@ -7,3 +7,5 @@ addr	name	note
 0x200001d6	g_ctrl_src_flags	control-source eligibility bits: bit1=device1, bit2=device2(API/nav). drives fc_ctrl_arbitrate
 0x20021387	g_config_fail_safe_protect_action	RC-lost/failsafe action (==g_config.fail_safe.protect_action; written by fc_set_rc_lost_action); see m0306-params.tsv
 0x20023664	g_ctrl_agency	control-agency struct: +0=active flag, +3=holder device id, +0x20=granted flag (fc_api_ctrl_mode_status_request_handler)
+0x0803bfd8	g_usart_base_lut	flash LUT USARTx[8]: [0]USART1 [1]USART2 [2]USART3 [3]UART4 [4]UART5 [5]USART6 [6]UART7 [7]UART8; port index -> base	io
+0x200215d0	g_config.api_entry_cfg.baud_rate	SDK/API serial baud; FlycExportParam float limits min=110 max=921600 default=230400	param
