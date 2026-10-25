@@ -286,16 +286,31 @@ tick scheduler outward.
   This is architecturally sensible: the FPGA is the OFDM modem that carries the RF link to the
   ground, so inbound ground→air traffic landing on USART3 getting bounced to the FC on USART1
   is exactly what "the MCU is just the router" (this project's one-paragraph model) predicts.
-- **U, not resolved despite a real attempt:** the **first** ring (base `0x20000144`) is not fed
-  by any of the three UART RX IRQs (checked and ruled out by exact address arithmetic), nor by
-  a static literal matching the CAN RX dispatch table's expected entry value (`can_rx0_handler`
-  selects a per-CAN-ID ring from a table at `0x200015d0`, but that table is populated at
-  runtime — its entries aren't present in the static image, so a literal scan can't find them).
-  Ruling this in or out needs tracing the CAN filter *registration* calls (inside `can_init`,
-  `0x0800b31c`, or its callers) to see what ring address gets registered for which CAN ID — not
-  attempted this pass; the registration call's argument would need register/stack tracking
-  through the decompiler, not a literal scan.
+- **V, first ring fully resolved (2026-10-25, same day) — this is the better answer.** Ruled
+  out CAN first: traced `can_queue_init`'s 4 real call sites (`FUN_080113a8` registers CAN IDs
+  `0x412`/`0x413`; `can_aux_init` registers `0x414`/`0x415`) and none registers `0x20000144` —
+  every CAN RX/TX ring is accounted for and none of them is this one, so CAN is ruled out
+  entirely, not just "not found by a literal scan." The actual source: **`FUN_0800e008`**
+  pushes into this exact ring (`DAT_0800e27c+0x2c` = `0x20000118+0x2c` = `0x20000144`, confirmed
+  by address arithmetic). `FUN_0800e008` is a payload descrambler/validator — XORs an 0x38-byte
+  buffer against a repeating 8-byte key, runs a two-stage chained checksum (`FUN_08011e54`,
+  seeded `0x55aa`), and on success copies a field into the radio-config area and pushes a
+  28-byte (`0x1c`) chunk of the payload into this ring. Its **sole caller is `FUN_0800f978`**,
+  which is unmistakably the live AD9363/OFDM link's own receive state machine: it polls
+  `spi_fpga_raw_read(0xe9)` (an FPGA status register), branches on demod-lock state, calls
+  `FUN_0800f6a0()` ("has a new frame arrived") and only then calls `FUN_0800e008` with the
+  just-arrived frame. **Conclusion: the first ring is fed directly by demodulated over-the-air
+  payloads coming off the real radio link (via the FPGA's SPI status/data interface), not a
+  UART or CAN bus at all.** Combined with the USART3 finding above: `fpga_uart_to_fc_relay`
+  drains **two independent RF-sourced paths** — one the FPGA's UART framing, one the FPGA's SPI
+  payload/status interface — and relays both, verbatim, to the FC. This is about as complete a
+  confirmation of "yes, `air_router` forwards RF-link traffic to the FC" as static analysis can
+  give without a live RF capture. Also worth flagging for later: `FUN_0800e008`'s XOR-key +
+  chained-checksum scheme is exactly the shape of a link-level descrambler/authenticator and is
+  worth a dedicated trace of its own (key source, whether it's a fixed constant or
+  pairing-derived) — not attempted this pass.
 - Reproduce: `scratchpad/ghscripts/m0900_fun80103f8.py`, `m0900_ring_writers.py`,
+  `m0900_can_init_trace.py`, `m0900_can_queue_init_callers.py`, `m0900_fun0800e008_callers.py`,
   `m0900_check_usart3_ctx.py`, `m0900_all_ring_pushers.py` (all ad hoc, not committed).
 
 ## 7. Chip ID / identity — no new readers found

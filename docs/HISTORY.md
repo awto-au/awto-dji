@@ -4,6 +4,22 @@ Dated changelog of fact-corrections previously narrated inline in the docs. Each
 phrased as "initial understanding -> corrected finding." The docs now state only the
 corrected/current fact; this file preserves the history for reference.
 
+## 2026-10-25 (second ring resolved — RF link confirmed, not a bus guess)
+
+- **`fpga_uart_to_fc_relay`'s first ring, previously open, fully resolved.** Ruled out CAN
+  entirely first (traced all 4 real `can_queue_init` call sites — `0x412`/`0x413`/`0x414`/
+  `0x415` — none registers this ring's address). The actual source is `FUN_0800e008`
+  (named `ofdm_payload_descramble`): an XOR-with-repeating-key + chained-checksum validator
+  whose sole caller, `FUN_0800f978` (`ofdm_link_rx_statemachine`), is the live AD9363/OFDM
+  radio link's own receive poll loop (polls an FPGA status register, checks demod-lock state,
+  processes newly-arrived frames). **Both of `fpga_uart_to_fc_relay`'s rings are now confirmed
+  RF-sourced** — one via the FPGA's UART framing (USART3), one via the FPGA's SPI
+  status/payload interface — and both get relayed verbatim to the FC on USART1. This is the
+  strongest evidence yet, independent of the retracted log, that `air_router` really does
+  forward radio-link traffic to the flight controller. Flagged for a future pass: the
+  descrambler's XOR key and checksum scheme are worth tracing on their own (fixed vs.
+  pairing-derived). (`docs/air-router-deep-dive.md` §6a, `docs/symbols/m0900_V01.11.0020.tsv`)
+
 ## 2026-10-25 (RF-to-FC relay found)
 
 - **A real, code-confirmed USART3 (FPGA/radio UART) → USART1 (FC UART) relay inside
