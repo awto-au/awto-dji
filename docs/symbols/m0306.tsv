@@ -1,9 +1,27 @@
 addr	name	note	source
-0x08021964	reset_handler	vector reset (SP 0x2002ff00)	vector table
-0x0804f024	duml_crc16	DUML CRC16 (table 0x080ef734); 17 call sites	ghidra+capstone
-0x080304fc	duml_frame_crc_ok	CRC16-trailer check; 0 refs (inlined elsewhere)	capstone
-0x08028d18	duml_resp_build	builds DUML response (0xAA markers), recrc, send	ghidra
-0x0804f862	duml_send	DUML transmit; 16 call sites	ghidra
-0x08031062	event_loop_0x29xx	internal event dispatcher, 10 switches on u16 type 0x29xx (NOT duml set/id)	ghidra
-0x0808527a	uid96_read	copies STM32 96-bit UID 0x1FFF7A10	air_modules.tsv
+0x08021964	reset_handler	vector reset (SP 0x2002ff00)	vector
+0x0804f024	duml_crc16	DUML CRC16 (table 0x080ef734)	ghidra
+0x0804f042	duml_frame_crc_ok	real DUML CRC16 trailer validator (4 callers)	ghidra
+0x0804f862	duml_send	DUML transmit (16 callers)	ghidra
+0x08028d18	duml_resp_build	build DUML response + crc + send	ghidra
+0x0806d334	duml_resp_send	send ACK/response for a received packet (handler tail)	ghidra
+0x0806f84c	duml_build_send	DUML build+send helper (49 callers)	ghidra
+0x08031062	event_loop_0x29xx	internal 0x29xx event dispatcher (not duml set/id)	ghidra
+0x08044d2a	fc_real_name_info_handler	REAL_NAME_INFO get/set (sub_cmd at payload+0)	ghidra+strings
+0x08046e86	fc_sdk_set_key	log: [SDK/USER] sdk_set_key %s	ghidra+strings
+0x08055b2e	fc_api_ctrl_mode_emergency_brake_handler	log: [USER]Warning api_ctrl_mode_emergency_brake_handler fail	ghidra+strings
+0x08055b9c	fc_api_ctrl_mode_serial_open_nav	log: call api_ctrl_mode_serial_open_nav_handler	ghidra+strings
+0x08055cb8	fc_api_ctrl_mode_cmd_status_request	log: call api_ctrl_mode_cmd_status_request	ghidra+strings
+0x08055d48	fc_api_mission_planner_wp_set_info	log: call api_mission_planner_wp_set_info_handle	ghidra+strings
+0x08055d8a	fc_api_mission_planner_wp_data_upload	log: call api_mission_planner_wp_data_upload_handle	ghidra+strings
+0x08055dbe	fc_api_mission_planner_wp_request_cmd	log: call api_mission_planner_wp_request_cmd_handle	ghidra+strings
+0x0805637e	fc_api_mission_handler_hp_stop	log: call api_mission_handler_hp_stop_handler	ghidra+strings
+0x080563e0	fc_api_mission_hp_pause	log: call api_mission_hp_pause_handler	ghidra+strings
+0x08056472	fc_api_mission_hp_set_default_vel	log: call api_mission_hp_set_default_vel_handler	ghidra+strings
+0x08056552	fc_api_mission_hp_set_radius	log: call api_mission_hp_set_radius_handler	ghidra+strings
+0x08056932	fc_api_mission_hp_set_radius_2	log: call api_mission_hp_set_radius_handler	ghidra+strings
+0x0805697e	fc_api_mission_fm_init_start	log: call api_mission_fm_init_start_handler	ghidra+strings
+0x08056ada	fc_api_mission_fm_stop	log: call api_mission_fm_stop_handler	ghidra+strings
+0x08056b40	fc_api_mission_fm_pause	log: call api_mission_fm_pause_handler	ghidra+strings
+0x0808527a	uid96_read	STM32 96-bit UID read 0x1FFF7A10	air_modules.tsv
 0x080596ea	id10_build	10-byte id record + UID word0	air_modules.tsv

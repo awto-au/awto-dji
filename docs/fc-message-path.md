@@ -70,6 +70,34 @@ Findings:
   surface. So the DUML command dispatch is **table-driven** (handler lookup by set/id), which is
   why it shows no switch and the validator has no refs.
 
+## FC external-control API recovered (2026-10-25, Ghidra + decrypted strings)
+
+The decrypted image keeps `[SDK/USER]`/`[USER]` debug strings that name each handler. Naming
+functions from the string they log (`scripts/re/ghidra/fc_apimap.py`, 15 handlers) gives the
+FC's **onboard/external control surface** — this is the DJI Onboard-SDK-style API baked into
+the FC (`docs/symbols/m0306.tsv`):
+
+- **Control authority / mode**: `fc_api_ctrl_mode_cmd_status_request` (0x08055cb8),
+  `fc_api_ctrl_mode_serial_open_nav` (0x08055b9c, "open navigation" = external control),
+  `fc_api_ctrl_mode_emergency_brake_handler` (0x08055b2e). Logs show a request/grant model:
+  `REV REQ CMD AND SET AGENCY`, `SEND ACK REQ CMD REFUSE` — the FC can *refuse* a control
+  request, and tracks an "agency" (who holds control).
+- **Go-to / waypoint**: `fc_api_mission_planner_wp_set_info` (0x08055d48),
+  `..._wp_data_upload` (0x08055d8a), `..._wp_request_cmd` (0x08055dbe).
+- **Hotpoint / Follow-me missions**, `GH_SET_TAKEOFF_HEIGHT`, `ACT.Takeoff`, `landing.API_landed`.
+- **Activation / key**: `fc_sdk_set_key` (0x08046e86), `reg_user_activation` — an activation
+  gate likely sits in front of the control API (consistent with DJI SDK activation).
+
+So the FC **does** expose position/waypoint and external-navigation control, behind a
+request→grant "agency" authority model with activation. This maps onto the companion-agent
+plan: drive these `api_ctrl_mode_*` / `api_mission_planner_*` handlers.
+
+**Still open (next):** (1) read `fc_api_ctrl_mode_cmd_status_request` to see **what it checks
+before granting** — sender device-type, activation state, RC mode — the key question for both
+the onboard-agent and the patch paths; (2) the continuous-setpoint command path (joystick /
+`serial_open_nav`) payload; (3) which bus the requests arrive on (USART vs CAN) using the SVD
+MMIO labels.
+
 ## Next step (proper disassembly, not one-line scans)
 
 Trace from a byte entry point to the dispatch, following indirect calls:
