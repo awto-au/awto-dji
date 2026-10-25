@@ -36,7 +36,7 @@ base-address word in the image); the *role* column is **I** unless noted.
 | **CAN2** | 0x40006800 | 2 | second CAN bus |
 | FLASH_IF | 0x40023c00 | 3 | internal-flash program/erase (param save) |
 | FSMC | 0xA0000000 | 3 | external memory bus — only 3 base loads, no init path found; likely minimal/unused (**I**) |
-| USB_OTG_HS | 0x40040000 | 2 | USB device (**I**: DJI Assistant 2 / upgrade + sim link to the FC) |
+| USB OTG_FS | — | — | **V** USB device on PA11/PA12 AF10 (see pin map) — DJI Assistant 2 / upgrade + sim link to FC. (The two base-word loads to the OTG_HS base `0x40040000` don't match a USB init path and are likely spurious; the pins prove OTG_FS.) |
 | TIM1/3/4/5/6/7/8/9/10/11/12/13/14 | — | 1–2 each | motor PWM out (TIM1/TIM8 adv.), misc time-bases |
 | USART1/2/3, UART4/5/7/8, USART6 | — | 1 each | serial links (GPS, RC/DBUS, OSD, debug — individual mapping **U**) |
 | SPI1/2/3/4/5/6 | — | 1 each | sensor buses (**I**: IMU/baro on SPI; exact CS **U**) |
@@ -120,16 +120,32 @@ literal pool):
 | **CAN1** | PD0 (RX), PD1 (TX) | AF9 | `can1_bringup` 0x08035100 | **V** primary inter-MCU link (FC ↔ m0900/gimbal; the 0x41x CAN IDs) |
 | **CAN2** | PB12 (RX), PB13 (TX) | AF9 | `can2_bringup` 0x080353b2 | **V** second CAN bus (CAN2EN clock set) |
 | **SDIO** | PC8–11 (D0–D3), PC12 (CK), PD2 (CMD) | AF12 | `sdio_bringup` 0x08039f92 | **V** SD/eMMC flight-data logger |
-| **UARTs** | base + baud from a per-port descriptor | — | `usart_open` 0x080343cc | generic open; baud is a runtime field (`descriptor+8`), **not** a compile-time literal |
+| **USB OTG_FS** | PA11 (DM), PA12 (DP) | AF10 | `usb_fs_bringup` 0x0803aac4 | **V** DJI Assistant 2 / firmware-upgrade link to the FC (the pins prove OTG_**FS**, not HS) |
+| **UARTs** | base + baud from a per-port descriptor | — | `usart_open` 0x080343cc via `uart_table_init` 0x08034bcc | generic open; see runtime-table note below |
 
 Pin config word for these buses is `0x01000302` = `GPIO_Mode_AF`, `GPIO_Speed_100MHz`,
 `GPIO_OType_PP`, `GPIO_PuPd_UP`. **DJI uses SPL correctly** — the bring-up order is the textbook
 `GPIO_PinAFConfig → GPIO_Init → <periph>_DeInit → <periph>_Init` sequence.
 
-Still **U**: *which* USART carries GPS / RC / OSD and at what baud — `usart_open` takes those from
-a higher-level port descriptor table, so recovering them is one more trace up (the descriptor
-table), cheap but not yet done. SPI CS lines and TIM PSC/ARR likewise sit behind descriptor/config
-structs.
+### Why UART baud / port roles are U (runtime-table-driven)
+
+Traced one level up: `uart_table_init` (0x08034bcc) walks a **100-byte-per-entry UART port table
+whose base pointer `0x20020a24` is in RAM**, not flash. Each entry holds `{idx@0, USART base@4,
+baud@8, TX pin@0xc, RX pin@0xd}`, and `uart_port_init` (0x08034c26) configures the pins and calls
+`usart_open` from it. Because the table lives in RAM it is **populated at runtime** — so the USART
+base, baud and TX/RX pins are *not* flash constants and cannot be read statically from this image.
+The same pattern explains the GPIO caller census: most `GPIO_Init`/`GPIO_PinAFConfig` calls take
+their port/pin/AF from loop iterators over descriptor tables, not literals. So *which* USART is
+GPS / RC / OSD and at what baud stays **U** without either tracing the code that fills `0x20020a24`
+or a live read. The buses whose config *is* a compile-time literal — CAN1, CAN2, SDIO, USB — are
+the ones mapped above. SPI CS lines and TIM PSC/ARR sit behind the same runtime descriptors.
+
+**SPL caller census** (how many call sites each identified SPL function has, from
+`fc_spl_callers.py`): `GPIO_Init` 11, `GPIO_PinAFConfig` 8, `RCC_AHB1PeriphClockCmd` 13,
+`RCC_APB1PeriphClockCmd` 11, `RCC_APB2PeriphClockCmd` 7, `CAN_Init` 2, `USART_Init` 1 (the single
+generic open path), `usart_open` 1. Every one of these call sites is now decodable against the SPL
+signature — the literal-argument ones are mapped here; the iterator-fed ones resolve only once the
+runtime descriptor tables are populated.
 
 ## Build metadata (answering "is there linker info in the file?")
 

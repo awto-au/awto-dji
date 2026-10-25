@@ -142,3 +142,6 @@ addr	name	note	source
 0x080353b2	can2_bringup	GPIOB PB12/PB13 AF9 + CAN2EN clock + CAN_Init on CAN2	ghidra+io
 0x08039f92	sdio_bringup	PC8-12(D0-D3,CK)+PD2(CMD) AF12 = SDIO (SD/eMMC data logger)	ghidra+io
 0x080343cc	usart_open	generic UART open: USART_Init with base+baud from a per-port descriptor (param_1+4 base, +8 baud)	ghidra+io
+0x0803aac4	usb_fs_bringup	GPIOA PA11/PA12 AF10 = USB OTG_FS (DM/DP); DJI Assistant2/upgrade link to FC	ghidra+io
+0x08034bcc	uart_table_init	loops a 100B-entry UART port table (RAM 0x20020a24, <=2 active), calls uart_port_init per filled entry	ghidra+io
+0x08034c26	uart_port_init	per-UART bring-up: GPIO TX/RX pins + usart_open; descriptor {idx@0,base@4,baud@8,txpin@0xc,rxpin@0xd} is runtime-filled	ghidra+io
