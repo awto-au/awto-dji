@@ -8,6 +8,14 @@ Air-side counterpart: `docs/fpga-upgrade-path.md`, `docs/fpga-bringup.md`.
 ## Chip identity (m1400 = LPC1765, not STM32) [fw+spec]
 
 Settles the conflict with `docs/control-plane-re.md` (which said the remote MCU is STM32F103; now corrected).
+
+## Ground OS status (explicit)
+
+- Ground MCU m1400: µC/OS-III, not Linux, not bare-metal (V, PendSV/SysTick + string fingerprint).
+- Ground video decoder m1300 (DM365): image starts `Salted__` (encrypted, not decrypted). Its OS is
+  **not checked**, so "ground unit Linux-free" is **not established**.
+- Air-side m0800 is also DM365 and runs Linux (`air-id-and-stream-survey.md`, camera-linux notes).
+  Do not assume m1300 is bare-metal because the MCU is.
 - Vector word 0 = `0x10007F60`, word 1 = `0x00023BA9` (reset, flash `0x23BA8`). SP is inside the LPC176x
   32 KB local SRAM (`0x10000000-0x10007FFF`); STM32 would be `0x2000xxxx`. (verified, image vector table)
 - Header: `LPC1765 GROUND LB2`; source path `@LPC17xx_LIB\lpc17xx_rtc.c`; IAP entry `0x1FFF1FF1` (see Q3). (verified)

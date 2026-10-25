@@ -2,6 +2,8 @@
 
 Reviewed 2026-10-24 against the locally unpacked DJI GO 4 v4.3.64 APK.
 V = verified in the named artifact; I = inference; U = unresolved.
+- Framing: DUML findings here are actuation risk over the wired interfaces (USB, UART,
+  AOA), not vulnerabilities. Keep wording consistent with this.
 The analysis below omits table bytes and device secrets. The shared, bundled SIMPLE
 protocol table is now implemented in the Dart codec at the operator's request;
 it is not a recovered per-device secret. No hardware commands sent for this work.

@@ -188,6 +188,7 @@ step is **V**):
 3. Looks for `C:/P3X_FW_V??.??.????.bin` (or legacy `C:/FC300XFw.bin`) on the card
    (`AmbaFS_fopen`), reads and validates the header (length/crc32/ver_num/ver_date/img_len/
    mem_addr fields), rejects on model-name mismatch (`FC300X` check) or bad CRC.
+   - No signature check in this path: header fields, model name and CRC32 only (V).
 4. Reads the firmware's own embedded partition-table info (`no partition info in firmware!`
    if absent), gets/allocates the current NAND partition table (`Can't get ptb, erase it`),
    backs up media partitions first (`Back up partion data`, `AmbaFS_CreateBootArea`).
