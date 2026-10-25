@@ -6,6 +6,20 @@ corrected/current fact; this file preserves the history for reference.
 
 ## 2026-10-25
 
+- **`air_router_stm32f103` (m0900) deep dive closes five open items:** (1) `dataflow.md`'s
+  "16-bit-id table, how reached: U" -> it's a nested dispatch level, reached by one outer-table
+  stub (`0x080125dc`) tail-jumping into the inner matcher. (2) `fpga-upgrade-path.md`'s RAM flag
+  `0x200000c8` "consumer not decoded" -> the IWDG-feed gate; setting it forces a hardware reset.
+  (3) Flash page `0x7b00` "use not decoded" -> a live DUML get/set/commit triplet backing the
+  `radio_state_S` RAM struct. (4) Flash page `0x7800` "use not decoded" -> written by Set
+  Device Version (`0x0D`). (5) `dataflow.md` §5a's cmdset-9 SetFPGA/Set9363 naming "mismatch"
+  -> not a mismatch; cmd `0x04` has its own dedicated handler, an earlier trace just hadn't
+  checked it separately from `0x06`. Full command-table walk also gives a verified-negative
+  result for CAN camera/gimbal payload semantics (m0900 never inspects them — confirmed pure
+  pass-through, not just untraced). Update-Transmit mystery narrowed (hand-off mechanism fully
+  traced) but not solved (what the absent bootloader does with it is still U).
+  (`docs/air-router-deep-dive.md`, cross-referenced from `dataflow.md`, `fpga-upgrade-path.md`,
+  `fpga-bringup.md`)
 - **Terminology: "radio MCU" retired across 13 docs** -> replaced with the canonical
   `naming-map.md` names (`air_router_stm32f103` for the air-side m0900; `gnd_rc_lpc1765` for
   the ground-side m1400/m1401), since "radio MCU" pre-dated the naming scheme and wasn't a

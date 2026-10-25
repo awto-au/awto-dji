@@ -11,12 +11,12 @@ Dispatch key = `(cmd_id << 24) | (cmd_set << 16) | receiver_type`. Receiver type
 
 | cmd | name (dissector) | handler | receiver 9 (MCU self-update) | receiver 0x13 (FPGA) |
 |---|---|---|---|---|
-| 0x07 | Enter Loader | `0x08012320` | writes marker `OOXX` to flash page at offset `0x7400` via `0x08012690`/`0x0800bc2c`; error 0xF6 if the write fails; after the reply sets RAM flag `0x200000c8` (consumer not decoded) | only boards 4/5: radio quiesce `0x08010286`, then FPGA upgrade-mode handshake `0x0800d112` (status 0 ok, 5/8/9 fail) |
+| 0x07 | Enter Loader | `0x08012320` | writes marker `OOXX` to flash page at offset `0x7400` via `0x08012690`/`0x0800bc2c`; error 0xF6 if the write fails; after the reply sets RAM flag `0x200000c8` — **resolved 2026-10-25** (`air-router-deep-dive.md` §3): "stop feeding the IWDG" flag, forces a hardware reset a few ticks later | only boards 4/5: radio quiesce `0x08010286`, then FPGA upgrade-mode handshake `0x0800d112` (status 0 ok, 5/8/9 fail) |
 | 0x08 | Update Confirm | `0x080123b8` | not handled | reply = `[status from 0x0800d1ea, block size 0x0200]` (512 B) |
-| 0x09 | Update Transmit | **no handler** | - | **no handler**; type 9 and 0x13 are not forwarded by `packet_send` either (drop target `0x08011988`) |
+| 0x09 | Update Transmit | **no handler** | - | **no handler**; type 9 and 0x13 are not forwarded by `packet_send` either (drop target `0x08011988`) — hand-off mechanism now fully traced, `air-router-deep-dive.md` §5; what the bootloader does after is still U |
 | 0x0A | Update Finish | `0x080123e6` | not handled | `0x0800d206`: see below |
-| 0x0B | Reboot Chip | `0x08012428` | not decoded | not decoded |
-| 0x0C / 0x0D | Get Device State / Set Device Version | `0x08012458` / `0x080124bc` | not decoded | not decoded |
+| 0x0B | Reboot Chip | `0x08012428` | **resolved 2026-10-25**: same watchdog-reboot primitive as Enter Loader's success path, with a host-supplied timeout (`air-router-deep-dive.md` §1b/§3) | not decoded |
+| 0x0C / 0x0D | Get Device State / Set Device Version | `0x08012458` / `0x080124bc` | `0x0C` partial (board/receiver-type-dependent reply); `0x0D` **resolved 2026-10-25**: writes two 16-byte fields to flash page `0x7800` via `0x080126b8`/`0x080126d4`, reply `[0x12]` (`air-router-deep-dive.md` §1b) | not decoded |
 
 (verified: table, handlers, flow. Meanings of "block size" and the status codes are inferred.)
 
@@ -30,15 +30,21 @@ Dispatch key = `(cmd_id << 24) | (cmd_set << 16) | receiver_type`. Receiver type
   The two compared bytes look like a 16-bit checksum/version computed by the FPGA (inferred).
 - Compares RAM `0x200000f4` with `0x010007ec` (a device/version word) in Confirm and Finish (meaning unknown).
 - **Where the FPGA image bytes travel is unknown.** The app has no Update Transmit handler and does
-  not forward type 0x13. Candidates: handled in the bootloader after Enter Loader, or sent to the FPGA
-  by a path that does not pass through m0900. Not testable without the bootloader.
+  not forward type 0x13. **Narrowed 2026-10-25** (`air-router-deep-dive.md` §5): the app→bootloader
+  hand-off itself is now fully traced — Enter Loader success arms the IWDG then stops feeding it,
+  forcing a hardware reset (not a jump/vector rewrite). What the bootloader does with the `OOXX`
+  marker after that reset remains the open part; not testable without the bootloader image.
 
 ## Stored pages next to the bootloader (flash offsets from 0x08000000)
 
 - `0x7400`: upgrade marker `OOXX` (written by Enter Loader, receiver 9)
-- `0x7800`: second page with the same write/read helpers (`0x080126b8`, `0x080126d4`), use not decoded
+- `0x7800`: **resolved 2026-10-25**: written by DUML `set 0x00 cmd 0x0D` (Set Device Version) via
+  `0x080126b8`/`0x080126d4`, two 16-byte fields (`air-router-deep-dive.md` §1b)
 - `0x7b00`: 256-byte config page loaded by `0x0801279a`, validated by `0x08011e7a` (CRC assumed, not
-  verified), copied into the RAM struct at `0x200019b8`; board 6/7 fall back to defaults in flash
+  verified), copied into the RAM struct at `0x200019b8`; board 6/7 fall back to defaults in flash.
+  **Resolved 2026-10-25**: backs a live DUML get/set/commit triplet (inner-table ids
+  `0x0901`/`0x0902`/`0x0903`, reached via `set 0x09 cmd 0x2c` → `air-router-deep-dive.md` §1a/§2) —
+  a persisted snapshot of the live `radio_state_S` RAM struct at `0x20001ab4`.
 
 ## Chip ID
 

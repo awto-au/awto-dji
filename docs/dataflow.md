@@ -125,7 +125,7 @@ Evidence is all in m0900 code (V). Sender and wire-level framing inside the link
 - m0900 is a **DUML router**, not just a radio configurator.
 - Frame: byte 0 = 0x55, byte 5 = receiver (low 5 bits type, high 3 bits index), byte 9 = cmd set, byte 10 = cmd id.
 - Dispatch `0x0801198a` walks the 8-byte records at `0x0801a120` (`[handler|1, type, index, set, id]`). Match: handler runs (packet is **consumed** here). No match: tail-call `packet_send` (`0x080118d0`): packet is **forwarded** by receiver type.
-- Table `0x0801a0d8-0x0801a110` (ids `0x0901..0x0914`, `[handler|1, id16]`) is a second, 16-bit-id table. How it is reached is not traced (U).
+- Table `0x0801a0d8-0x0801a110` (ids `0x0901..0x0914`, `[handler|1, id16]`) is a second, 16-bit-id table. **Resolved 2026-10-25** (`air-router-deep-dive.md` §2): not a separate entry point — a *nested dispatch level*. The outer table's record for `cmd 0x2c / set 0x09 / type 9` is a one-instruction stub (`0x080125dc: b.w 0x080112da`) that tail-jumps into this table's matcher, which re-reads a 16-bit sub-id two bytes into that command's own payload.
 
 ```mermaid
 flowchart TD
@@ -260,30 +260,23 @@ sequenceDiagram
 7. **Ground path to the phone (GL300C):** **resolved 2026-10-24** (`ground-fx3-m1601.md`). The phone talks only to the FX3 (`m1601`: iAP2 for iPhone, AOA host for Android). DUML runs FX3 ⇄ UART 115200 ⇄ (I: m1400); video runs ground FPGA → FX3 GPIF. **Ground AD9363 config path**: still U.
 8. **Air over-the-air encryption** is not ruled out (`what-is-actually-secret.md` LAYER CAVEAT). MCU-layer DUML cleartext is shown; the link layer is not.
 9. FPGA-to-AD9363 SPI rate, data-port mode (LVDS vs CMOS), width: U. Fref 40 MHz: I.
-10. ~~Second CAN TX queue `0x20002538` ID word~~ **resolved**: StdId 0x414 (TX), paired with RX 0x415 (obj `0x20002554`, ring `0x200024b8+0xa0`, pump `0x08011882`, same parser callback and dispatch). Only receiver type 30 is routed to it, and whether it is live on a real bus is U (`m0900-can-channels.md`). Still open: how table `0x0801a0d8` (id16 dispatch) is reached.
+10. ~~Second CAN TX queue `0x20002538` ID word~~ **resolved**: StdId 0x414 (TX), paired with RX 0x415 (obj `0x20002554`, ring `0x200024b8+0xa0`, pump `0x08011882`, same parser callback and dispatch). Only receiver type 30 is routed to it, and whether it is live on a real bus is U (`m0900-can-channels.md`). ~~Still open: how table `0x0801a0d8` (id16 dispatch) is reached.~~ **Resolved 2026-10-25** (see item 2 above, `air-router-deep-dive.md` §2).
 11. HSE 12 MHz is a compiled literal; crystal on the board not read: I.
 12. Why SPI2 runs /8 (4.5 MHz) while PCLK1/2 would be 18 MHz: reason not recorded.
 
-## 5a. Cross-check against the DJI GO 4 APK's cmdset-9 names - numbering does not match (2026-10-23)
+## 5a. Cross-check against the DJI GO 4 APK's cmdset-9 names (2026-10-23; resolved 2026-10-25)
 
 Per the revised scope decision in `apk-analysis.md` section 0 (numeric facts from the
 dynamically-unpacked dex only, never DJI's code), `docs/data/apk-dynamic-cmdset-ids.tsv` names
 cmdset 9 (app's internal name: `OSD`; this doc's/dissector's name: `HD Link`) commands `SetFPGA`
-(4), `GetFPGA`(5), `Set9363`(6), `Get9363`(7) - **four separate named commands**, not the single
-combined-write-with-discriminator-byte scheme this doc's own firmware trace found.
+(4), `GetFPGA`(5), `Set9363`(6), `Get9363`(7) - four separate named commands.
 
-- **V, does not reconcile cleanly.** This doc's own `m0900` dispatcher trace (section above,
-  `0x08012103`) found: cmd `05`=FPGA read, `06`=write (one command, internally distinguishing
-  FPGA-register-vs-AD9363 via payload byte `hi==0xFE`), `07`=another read variant, `12`/`13`=radio
-  SET/GET. `GetFPGA`(5) and `Get9363`(7) line up with the firmware's `05`/`07` reads, but
-  `SetFPGA`(4) does not match the firmware's combined write at `06`, and the firmware's
-  single-command-with-discriminator-byte design doesn't match having two separately named
-  `Set*` commands in the app's enum.
-- **U, not resolved:** whether this reflects (a) a different/later HD-Link generation's protocol
-  than what this specific `m0900` firmware (`P3X_FW_V01.11.0020`) implements, (b) this
-  particular APK version carrying dead/unused enum constants for a feature P3 doesn't support,
-  or (c) an error in the original firmware-side numbering note above. Flagged rather than
-  assumed - do not treat the two sources as confirming each other on this specific point.
+- **Resolved** (`air-router-deep-dive.md` §1b): the apparent mismatch was an earlier trace
+  stopping at cmd `06` without separately checking `04`. A full dispatch-table walk found
+  **cmd `0x04` is its own dedicated handler** (`0x080120e2`, direct `spi_fpga_raw_write`, no
+  AD9363 branch) distinct from cmd `0x06` (`0x08012122`, AD9363 write with a legacy FPGA-write
+  fallback for `hi==0xFE`). The firmware does have four separate handlers at 04/05/06/07,
+  matching the apk's four separately-named commands — not a numbering mismatch after all.
 - **I, still useful regardless:** cmdset 9 overall is confirmed real and rich - 58 named
   commands including signal quality, sweep frequency, channel status, MCS (modulation/coding
   scheme) control, LBT (listen-before-talk), link-mode, image-transmission-mode, reverse-link

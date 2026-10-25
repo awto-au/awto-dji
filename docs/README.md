@@ -65,6 +65,7 @@ of fact-changes (docs state current facts only).
 - `ground-fx3-m1601.md` — GL300C ground USB (Cypress FX3, `m1601`): iPhone iAP2 and Android AOA roles, DMA channels, the UART DUML session, and the `55 CC <type> <len>` RC->phone chunk header (`0x5749` DUML, `0x574A` video); tools `scripts/re/fx3_m1601.py`, `scripts/re/aoa_chunk_decode.py`.
 - `m0800-dm368-provenance.md` — m0800 (air DM368) decrypted and compared with public TI DVSDK 4.02 / linuxutils / U-Boot / UBL / mainline 2.6.32.17 sources; what is unchanged TI code and what DJI modified (`scripts/re/ref_string_diff.py`).
 - `m0900-can-channels.md` — the two CAN DUML links (0x412/0x413 camera/gimbal, 0x414/0x415 receiver type 30 only) and the correction that FC-type traffic goes out USART1, not CAN; `scripts/re/m0900_can_channels.py` asserts it.
+- `air-router-deep-dive.md` — full `air_router_stm32f103` (m0900) command surface, the complete dispatch table (37 records) walked end to end: closes the 16-bit nested-table reach, the watchdog-reboot primitive (RAM flag `0x200000c8`), flash pages `0x7800`/`0x7b00`'s use, and the cmdset-9 SetFPGA/Set9363 naming mismatch; narrows the Update-Transmit hand-off mechanism (still open: what the absent bootloader does with it); confirms CAN camera/gimbal traffic is pure pass-through, verified negative.
 - `data/m0900-buses.tsv` — clock tree, SPI2, USART1/2/3, CAN1 rates with arithmetic and code addresses; unused buses listed.
 
 ## Provenance
