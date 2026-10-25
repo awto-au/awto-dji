@@ -263,6 +263,14 @@ relying on, the now-retracted `fc-usb-duml.md` "Breakthrough" log). Found a genu
 previously-uncatalogued relay path by tracing a scratchpad ring-buffer trail from the main
 tick scheduler outward.
 
+**Headline, one sentence:** `air_router` polls the FPGA **over SPI** for data the FPGA has
+already demodulated off the live RF link from the ground, runs it through a descrambler
+(`ofdm_payload_descramble` — currently a no-op XOR plus a real checksum, see below), and relays
+the result straight to the flight controller over USART1 — all without that traffic ever
+passing through `air_router`'s own DUML command table. A second, independent path does the
+same thing for data arriving on the FPGA's UART interface (USART3) instead of its SPI
+interface. The two paths and the key are detailed bullet by bullet below.
+
 - **V, fully traced.** `FUN_080103f8` (not previously named) is called every other tick from
   the main scheduler (`FUN_080105da`, the same function that drives the FPGA bring-up state
   machine). It drains two software ring buffers via the generic ring helpers (`FUN_0800c24c`
