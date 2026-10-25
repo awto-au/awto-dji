@@ -124,3 +124,4 @@ addr	name	note	source
 0x080a8a34	fc_MIS_critical	string-tag (batch1)	ghidra+strings
 0x080a92aa	fc_HOTPOINT_normal	string-tag (batch1)	ghidra+strings
 0x080aa398	fc_MISSION_DATA_ERROR	string-tag (batch1)	ghidra+strings
+0x0806d5f0	rcc_get_clocks_freq	ST RCC_GetClocksFreq readback (SYSCLK=HSE/PLLM*PLLN/PLLP, then AHB/APB presc table); proves ST RCC lib borrowed despite DJI hal_*	ghidra+io
