@@ -4,6 +4,22 @@ Dated changelog of fact-corrections previously narrated inline in the docs. Each
 phrased as "initial understanding -> corrected finding." The docs now state only the
 corrected/current fact; this file preserves the history for reference.
 
+## 2026-10-25 (RF-to-FC relay found)
+
+- **A real, code-confirmed USART3 (FPGA/radio UART) → USART1 (FC UART) relay inside
+  `air_router`, found while chasing whether RF/CAN forwarding to the RC exists** (independent
+  of, and not relying on, the retracted `duml_watch.log`). `FUN_080103f8` (named
+  `fpga_uart_to_fc_relay`), called every other tick from the main scheduler, drains two ring
+  buffers through the DUML parser and relays any complete frame straight to `send_usart1` —
+  bypassing `air_router`'s own dispatch table entirely. One of the two rings is an exact
+  address-level match for `usart3_irq`'s own RX push target, and USART3 is the already-known
+  "FPGA UART" — so inbound traffic on the radio-facing UART gets bounced verbatim to the FC.
+  The other ring's source was traced as far as ruling out all three UART RX IRQs and the
+  static CAN-ID dispatch table (which is populated at runtime, not visible in the static
+  image) — genuinely still open, not yet a CAN/RF source confirmed. Also incidentally named
+  `usart2_irq` (previously unnamed) while ruling out the UART IRQs as the second ring's source.
+  (`docs/air-router-deep-dive.md` §6a, `docs/symbols/m0900_V01.11.0020.tsv`)
+
 ## 2026-10-25 (retraction)
 
 - **`captures/sessions/2026-10-24/duml_watch.log` retracted, per operator instruction — stop

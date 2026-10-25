@@ -256,6 +256,48 @@ re-fan-out at `0x43`, GPS push tap at `0x1b/0x06`) while camera/gimbal traffic n
 new work is possible here without a bus capture or the camera/gimbal firmware's own CAN TX
 code (`m0900-can-channels.md` §6 already proposes both next steps; unchanged).
 
+## 6a. A real USART3 (FPGA/radio UART) → USART1 (FC UART) relay, traced end to end (2026-10-25)
+
+Chasing whether `air_router` forwards traffic over RF/CAN to the RC (independent of, and not
+relying on, the now-retracted `fc-usb-duml.md` "Breakthrough" log). Found a genuine,
+previously-uncatalogued relay path by tracing a scratchpad ring-buffer trail from the main
+tick scheduler outward.
+
+- **V, fully traced.** `FUN_080103f8` (not previously named) is called every other tick from
+  the main scheduler (`FUN_080105da`, the same function that drives the FPGA bring-up state
+  machine). It drains two software ring buffers via the generic ring helpers (`FUN_0800c24c`
+  count / `FUN_0800c294` pop / `FUN_0800c274` push — all three already used by the known CAN
+  and USART1 pumps), feeds each popped byte to `duml_parser_feed`, and on a complete frame
+  (`iVar4==2`) calls **`send_usart1`** directly — **bypassing `air_router`'s own dispatch
+  table (`duml_dispatch`) entirely**. This is a raw byte relay, not a routed/interpreted
+  forward.
+- **V, source of the second ring identified.** The two rings live inside one shared
+  per-UART IRQ context array based at `DAT_0800ae6c` (value `0x20000017`); `usart1_irq`,
+  `FUN_0800abe4` (unnamed — this is **USART2's** own RX IRQ, by the same pattern and by its
+  ring landing at `0x20000053`, matching the pre-existing `can413_pump` board-7 tsv note
+  verbatim), and `usart3_irq` each push into their own slot at `+0x14`/`+0x3c`/`+0x64`
+  respectively. **`usart3_irq`'s push target (`DAT_0800ae6c+100` = `0x2000007b`) is an exact,
+  address-level match for this relay's second ring.** `usart3_irq`'s own DMA source
+  (`DAT_0800ae98` = `0x40004800`) is USART3's peripheral base — the UART this project already
+  tags "FPGA UART" (`fpga-bringup.md`, `air-router-io-and-naming.md` §4.1).
+  **Conclusion: bytes received on the FPGA/radio-facing UART (USART3) that parse as a complete
+  DUML frame are relayed, verbatim, straight out the FC-facing UART (USART1) — a real,
+  code-confirmed RF/radio-side-to-FC bridge, independent of `air_router`'s own command table.**
+  This is architecturally sensible: the FPGA is the OFDM modem that carries the RF link to the
+  ground, so inbound ground→air traffic landing on USART3 getting bounced to the FC on USART1
+  is exactly what "the MCU is just the router" (this project's one-paragraph model) predicts.
+- **U, not resolved despite a real attempt:** the **first** ring (base `0x20000144`) is not fed
+  by any of the three UART RX IRQs (checked and ruled out by exact address arithmetic), nor by
+  a static literal matching the CAN RX dispatch table's expected entry value (`can_rx0_handler`
+  selects a per-CAN-ID ring from a table at `0x200015d0`, but that table is populated at
+  runtime — its entries aren't present in the static image, so a literal scan can't find them).
+  Ruling this in or out needs tracing the CAN filter *registration* calls (inside `can_init`,
+  `0x0800b31c`, or its callers) to see what ring address gets registered for which CAN ID — not
+  attempted this pass; the registration call's argument would need register/stack tracking
+  through the decompiler, not a literal scan.
+- Reproduce: `scratchpad/ghscripts/m0900_fun80103f8.py`, `m0900_ring_writers.py`,
+  `m0900_check_usart3_ctx.py`, `m0900_all_ring_pushers.py` (all ad hoc, not committed).
+
 ## 7. Chip ID / identity — no new readers found
 
 Re-checked (literal-pool scan for `0x1FFFF7E8`, `0xE0042000` DBGMCU, and the full table in §1):
