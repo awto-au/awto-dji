@@ -4,6 +4,27 @@ Dated changelog of fact-corrections previously narrated inline in the docs. Each
 phrased as "initial understanding -> corrected finding." The docs now state only the
 corrected/current fact; this file preserves the history for reference.
 
+## 2026-10-25 (systematic STM32 pass on air_router, closing the gap with air_fc)
+
+- **`air_router_stm32f103` (m0900) got its first systematic (not opportunistic)
+  `stm32-reversing-process.md` pass, via a background agent, reviewed and spot-checked (4
+  claims decompiled and confirmed directly) before merging.** Confirmed register library as ST
+  StdPeriph/SPL via 3 independent call-signature idioms plus a new, reproducible 9-entry
+  NVIC/IRQn table whose values match the real STM32F103 vector table exactly. Re-ran the
+  existing 152-address literal-pool sweep to completion and triaged all of it for the first
+  time: 42 (28%) are proven false positives (value lies outside the actual 20 KB SRAM range, so
+  they can't be real pointers — they're data-table bytes that coincidentally decode as RAM
+  addresses). Of the 24 globals in the `0x200000a0-0x200001fe` cluster (previously 4 named), 13
+  now carry a real type or resolved role: 4 new Ghidra `Structure` types applied at their RAM
+  addresses with flash-side pointers retyped to match (`PA1FaultCounters`, `AntennaQuadrantState`
+  — an address-exact match to the upstream map's quadrant-state cluster, now with real field
+  semantics — `FpgaSensorAvgState`, `FlycDetectSampler`) plus 7 plain-typed globals and 17
+  function renames. 3 cluster addresses honestly left **U** (inside one large, not-fully-
+  decomposed FPGA/radio state machine) rather than guessed. Confirmed explicitly that step 6
+  (parameter-table extraction) does not apply to this chip — its config is one opaque 252-byte
+  blob, no `FlycExportParam`-equivalent array exists. (`docs/air-router-stm32-full-pass.md`,
+  `docs/symbols/m0900-structs.h`, `docs/symbols/m0900_V01.11.0020.tsv`)
+
 ## 2026-10-25 (XOR key traced — it's zero)
 
 - **`ofdm_payload_descramble`'s 8-byte XOR key, traced to source.** Located at

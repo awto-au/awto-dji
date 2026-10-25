@@ -107,3 +107,34 @@ addr	kind	name	note	source
 0x08011a7e	func	duml_parser_init	(parser, buf, frame_cb, bufsize); all channels use frame_cb 0x08011be7	disasm (verified)
 0x08011a8e	func	duml_parser_feed	byte state machine: 0x55 sync, 10-bit len <= bufsize, version 0/1, CRC8 seed 0x77 (0x08011e0e), body then frame_cb; returns 2 on good frame	disasm (verified)
 0x08011be6	func	duml_crc16_check	CRC16 seed 0x3692 over len-2 vs last u16	disasm (verified)
+0x200000a4	ram	pa1_fault_counters	PA1FaultCounters{fail_count,call_count}: fail_count>10 forces GPIOA ODR bit1 high directly; call_count gates pa1_pulse_strobe at 0x4b(75), both zeroed together	systematic pass (air-router-stm32-full-pass.md), spot-checked
+0x0800b808	func	pa1_fault_counter_tick	increments both PA1FaultCounters fields; no caller found this pass	systematic pass, spot-checked
+0x200000ac	ram	exti_cb1_ptr	single-slot EXTI/pending-flag callback pointer	systematic pass
+0x0800b8a2	func	exti_cb1_set	setter for exti_cb1_ptr	systematic pass
+0x0800b830	func	exti_cb1_dispatch	checks DAT_0800b8dc pending flag, clears it, calls *exti_cb1_ptr	systematic pass
+0x200000b0	ram	exti_cb_table	4-slot EXTI/pending-flag callback table	systematic pass
+0x0800ba14	func	exti_cb_table_set	setter(index 0..3, cb) for exti_cb_table	systematic pass
+0x0800b8f2	func	exti_cb_table_dispatch	tests 4 distinct 0x40000000-family pending flags, clears, dispatches matching slot	systematic pass
+0x200000c0	ram	exti_cb2_ptr	another single-slot callback pointer; no dispatcher found this pass	systematic pass
+0x0800bac8	func	exti_cb2_set	setter for exti_cb2_ptr	systematic pass
+0x200000c4	ram	antenna_quadrant_state	AntennaQuadrantState{applied_a,requested_a,applied_b,requested_b}; address-exact match to upstream active_quadrant_state/quadrant_state/active_quadrant_num/quadrant_num	systematic pass + upstream map cross-check, spot-checked
+0x0800bb1c	func	quadrant_state_apply	applies requested_a/requested_b into two 32-bit regs, writes back applied_a/applied_b	systematic pass, spot-checked
+0x0800bd82	func	iwdg_stop_set	sets iwdg_stop_feed_flag=1	systematic pass, spot-checked
+0x0800bd74	func	iwdg_feed_if_active	feeds IWDG (0xAAAA) only if iwdg_stop_feed_flag==0	systematic pass, spot-checked
+0x200000cc	ram	fpga_sensor_avg_state	FpgaSensorAvgState{ring_index,cached_avg}; 10-sample moving average, ring at fpga_sensor_avg_ring	systematic pass
+0x0800be36	func	fpga_sensor_avg_update	computes new sample via float-lib chain, pushes into ring, recomputes mean every 10th call; called by cmd_exec_set09_cmd13's reply path	systematic pass
+0x20001638	ram	fpga_sensor_avg_ring	float[10] ring backing fpga_sensor_avg_state	systematic pass
+0x0800bff4	func	gpiob4_read_cache	returns gpiob4_state_cache byte	systematic pass
+0x0800bffa	func	gpiob4_write	sets gpiob4_state_cache and toggles GPIOB ODR bit4 to match	systematic pass
+0x200000e4	ram	assoc_table_init_flag	lazy-init flag for a 20x6-byte generic keyed table	systematic pass
+0x0800c440	func	assoc_table_lookup_or_insert	generic byte-keyed lookup-or-insert into a 20-slot table; table base/callers not traced	systematic pass
+0x20000104	ram	rcc_clock_cache_scalar	cached derived clock value; consumer not traced	systematic pass
+0x0800ddfa	func	rcc_clock_calc_cached	RCC_GetClocksFreq-shaped helper computing one scaled clock value into rcc_clock_cache_scalar	systematic pass
+0x2000019c	ram	flyc_detect_sampler	FlycDetectSampler{ring_index,sample_timer}; formalizes air-router-deep-dive.md's existing cmd0xda note	systematic pass
+0x08011368	func	flyc_detect_ring_read	reads next flyc_detect_ring slot, advances ring_index	systematic pass
+0x08011324	func	flyc_detect_ring_write	on sample_timer>0x46(70): samples the current DUML cmd 0xda packet into flyc_detect_ring, resets sample_timer	systematic pass
+0x20001f08	ram	flyc_detect_ring	byte[0x34] (13 x 4-byte records) ring backing flyc_detect_sampler	systematic pass
+0x200001bc	ram	duml_notify_seq_counter	shared u16 DUML seq for 5 cmdset0/cmd0x7c notification senders (0x08011682/0x080116e8/0x08011738/0x08011786/0x080117d2); which events map to which sender not traced	systematic pass
+0x200001c0	ram	route_counter_generic	plain increment-only u32 counter, incremented by FUN_080118b8; purpose not traced	systematic pass
+0x0800f510	func	fpga_dual_temp_filter_update	reads FPGA regs 0xc5/0xc6, 10-sample-averages two channels into radio_state_s+0x10d/0x10e (pad_10f region), optionally triggers a calibration lookup via FUN_08014258	systematic pass
+0x0800aa34	func	nvic_init_wrapper	3-arg NVIC_Init-style wrapper (IRQn, preempt_prio, sub_prio); call-site IRQn args match the real F103 vector table exactly (see air-router-stm32-full-pass.md §1) - the strongest confirmation this chip uses StdPeriph/SPL, not HAL/LL	systematic pass
