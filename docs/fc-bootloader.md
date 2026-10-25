@@ -44,22 +44,25 @@ verify** flow (not a slot swap): `FM_NONSEQUENCE`(240), `FM_LENGTH_WRONG`(241), 
 `system upgrade,stop motor!`), `FLASH_FLUSHING`(253). The DUML `cmd_reboot_mc_request_rcv`
 (`0x08042124` in the V01.07.0060 map) is the reboot-into-loader entry (`sender%d request mc reboot`).
 
-## It is single-slot, not dual-bank A/B
+## Slots: the APP is single-image, but the LOADER/UPDATER supports two (CORRECTED)
 
 The STM32F427 die is **always 2 MB dual-bank** silicon — even "1 MB"-marked SKUs are the same part
-with the top bank unlabelled/fused (and usually still reachable). So A/B *could* be done on the
-hardware. But the firmware does **not** do it:
+with the top bank unlabelled/fused (and usually still reachable). So A/B is possible on the hardware.
 
-- **V** No reference to the **bank-2 base `0x08100000`** anywhere in the app image (scanned); the
-  only flash-region constants are `0x08000000` (×1) and the app base `0x08020000` (×2).
-- **V** No `slot` / `bank` / `partition` / `active` / `backup` / `rollback` strings; the app is
-  linked at a single fixed base `0x08020000`.
-- **V** No separate loader module and no second app image in the package.
+**At the application level, it is single-image** — **V**: the m0306 app has no reference to the
+bank-2 base `0x08100000` (only `0x08000000` ×1 and the app base `0x08020000` ×2), no
+`slot`/`bank`/`partition`/`active`/`backup`/`rollback` strings, and is linked at the one fixed base
+`0x08020000`.
 
-So the scheme is **immutable factory bootloader + one updatable app slot**, with validate-before-
-commit (CRC + `FIRM_MATCH` + motor-stopped gate) in the loader. A failed flash is recovered through
-the loader, which is the point of keeping the loader out of the OTA set. The F427's second bank is
-**unused by the app** (no evidence it is used for data/log either; **I**: likely idle).
+**But the loader/updater (`m0305`, decompiled — see below) does implement a two-image scheme.** An
+earlier draft here concluded "single-slot, no A/B" from the app alone; that was premature and is
+**corrected**: `m0305` carries a runtime region table over {loader `0x08000000`, app `0x08020000`,
+bank2 `0x08100000`} and has **two independent validate+boot paths** — a blank/erased check
+(all-`0xFFFFFFFF`) and a "set MSP = vector[0], jump to vector[1]" boot routine for **each of two
+slots** (table+0x14 and table+0x30). So the boot architecture can hold and select a second image
+(A/B, or main + golden/recovery). Which bank each slot maps to, and the switch/rollback policy, are
+**U** (the table is populated at runtime; needs a dump with live values or more trace). What is
+solid: the capability and the mechanism exist in the loader, even though the running app ignores it.
 
 ### The resident bootloader is NOT identified (and what `m0305` is)
 
@@ -69,13 +72,28 @@ The resident flash bootloader — the "Loader" at `0x08000000` whose version the
 signature? bank-2 use?) needs a **SWD dump of `0x08000000–0x0801FFFF`** from the board. **U.**
 
 The package *does* carry a separate **`m0305`** module (~43 KB, AES-encrypted like the rest,
-MD5-OK) sitting beside the FC app. It is **not** the resident bootloader: its vector table is
-**SP `0x1000e4e8` (CCM RAM @ 0x10000000), reset `0x200002c9` (main SRAM @ 0x20000000)** — a
-**RAM-resident image linked to run from SRAM**, and it has **essentially no strings** (pure code).
-That is the classic shape of a **RAM-loaded flash-programming / update stub** (you cannot execute
-from flash while erasing/writing it, so the programmer runs from RAM). **I** (strong): `m0305` is the
-FC's RAM-resident updater/flash-programmer helper, part of the upgrade machinery; its exact role is
-unconfirmed without decompiling it (no strings to anchor on). It confirms STM32F4 (CCM @ 0x10000000).
+MD5-OK) sitting beside the FC app. Vector table **SP `0x1000e4e8` (CCM RAM @ 0x10000000), reset
+`0x200002c9` (main SRAM @ 0x20000000)** → a **RAM-resident image linked to run from SRAM** (confirms
+STM32F4: CCM @ 0x10000000), with essentially no strings (pure code). **Decompiled** (base
+`0x20000000`, `scripts/re/ghidra/m0305_flash.py` + `m0305_regions.py`), it is the FC's
+**RAM-resident bootloader/updater** — more than a dumb programmer. **V:**
+
+- **Full STM32 flash driver:** `FLASH_Unlock` (writes `FLASH_KEYR` = `0x45670123`/`0xCDEF89AB`,
+  `FUN_20001660`-area), **option-byte unlock** (`FLASH_OPTKEYR` = `0x08192A3B`/`0x4C5D6E7F`), sector
+  erase (`FUN_2000156c`: sets `FLASH_CR` SNB/SER/PSIZE/STRT, polls BSY), status decode
+  (`FUN_200015d8` → busy/error/EOP codes that map to the DUML `FLASH_*_WRONG` results), `FLASH_Lock`.
+- **Its own clock init** (`FUN_20003398`: HSE→PLL, `FLASH_ACR`=`0x705` = 5 WS + I/D-cache + prefetch).
+- **DUML over CAN** (CAN1/CAN2 bases + the `0x55` SOF and CRC16 `0x3692` table present) — it receives
+  the image on the FC's CAN link.
+- **Two-image boot/select** over a region table {loader/app/bank2} — the A/B-capable logic described
+  above.
+
+So `m0305` is the RAM-side half of the boot/upgrade system: delivered in, it reconfigures clocks,
+speaks DUML to receive firmware, erases/programs flash (app, and — by its table — potentially the
+loader `0x08000000` and bank2), can rewrite option bytes, and can validate+boot either of two image
+slots. The *resident* loader at `0x08000000` (what launches `m0305`) is still the one piece not in
+hand; a SWD dump would close it out. **I** (strong) that `m0305` is loaded/used by that resident
+loader during update.
 
 ## Reproduce
 ```
