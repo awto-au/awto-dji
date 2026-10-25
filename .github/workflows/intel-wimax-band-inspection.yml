@@ -7,6 +7,7 @@ on:
       - .github/workflows/intel-wimax-band-inspection.yml
       - scripts/re/intel_wimax_band_scan.py
       - scripts/re/intel_wimax_entropy.py
+      - scripts/re/intel_wimax_deep.py
   workflow_dispatch:
 permissions:
   contents: read
@@ -43,6 +44,15 @@ jobs:
             python3 scripts/re/intel_wimax_entropy.py "$FW" > "/tmp/$NAME-entropy.json"
             python3 -c 'import json,sys; d=json.load(open(sys.argv[1])); print(d["name"],"whole entropy",d["whole_file_entropy"],"segments",[(s["target"],s["length"],s["entropy"]) for s in d["segments"]])' "/tmp/$NAME-entropy.json"
           done
+      - name: Deep frequency and code-signature inspection
+        shell: bash
+        run: |
+          set -euo pipefail
+          for FW in /tmp/intel-fw/*.sbcf; do
+            NAME=$(basename "$FW" .sbcf)
+            python3 scripts/re/intel_wimax_deep.py "$FW" > "/tmp/$NAME-deep.json"
+            python3 -c 'import sys,json;d=json.load(open(sys.argv[1]));print(d["name"],"groups",d["frequency_groups"],"strings",d["notable_strings_count"]);print(json.dumps(d["frequency_instances"][:3])[:2500])' "/tmp/$NAME-deep.json"
+          done
       - name: Upload metadata only
         uses: actions/upload-artifact@v4
         with:
@@ -50,3 +60,4 @@ jobs:
           path: |
             /tmp/*-report.json
             /tmp/*-entropy.json
+            /tmp/*-deep.json
