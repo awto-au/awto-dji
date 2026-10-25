@@ -6,6 +6,7 @@ on:
     paths:
       - .github/workflows/intel-wimax-band-inspection.yml
       - scripts/re/intel_wimax_band_scan.py
+      - scripts/re/intel_wimax_entropy.py
   workflow_dispatch:
 permissions:
   contents: read
@@ -33,8 +34,19 @@ jobs:
             python3 scripts/re/intel_wimax_band_scan.py --json "$FW" > "/tmp/$NAME-report.json"
             python3 -c 'import json,sys;d=json.load(open(sys.argv[1]));print("=== ",d["file"]," ===");print(json.dumps(d,indent=2)[:15000])' "/tmp/$NAME-report.json"
           done
+      - name: Entropy by 4 KiB window
+        shell: bash
+        run: |
+          set -euo pipefail
+          for FW in /tmp/intel-fw/*.sbcf; do
+            NAME=$(basename "$FW" .sbcf)
+            python3 scripts/re/intel_wimax_entropy.py "$FW" > "/tmp/$NAME-entropy.json"
+            python3 -c 'import json,sys; d=json.load(open(sys.argv[1])); print(d["name"],"whole entropy",d["whole_file_entropy"],"segments",[(s["target"],s["length"],s["entropy"]) for s in d["segments"]])' "/tmp/$NAME-entropy.json"
+          done
       - name: Upload metadata only
         uses: actions/upload-artifact@v4
         with:
           name: intel-wimax-band-report
-          path: /tmp/*-report.json
+          path: |
+            /tmp/*-report.json
+            /tmp/*-entropy.json
