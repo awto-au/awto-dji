@@ -182,3 +182,35 @@ paths are structured and gated:
 dump or verify the installed firmware over DUML — only `GetVersion`(0x01) reports the Loader/Firmware
 version numbers. Reading the actual bytes (to verify, or to pull the immutable loader at
 `0x08000000`) needs **SWD/JTAG** on the board, not the DUML link. **V** (absence of a read-mem cmd).
+
+## Does this apply to the other chips? (the universal constraint, two solutions)
+
+The reason the FC updater runs from RAM is a hardware rule: **the flash-programming code can never
+execute from the flash region being erased/programmed** — the flash bus stalls during an
+erase/write, so instruction fetch from it would hang. Every self-flashing MCU here obeys it; they
+differ in *where* the programmer runs:
+
+| Chip | How it flashes itself | Evidence |
+|---|---|---|
+| **STM32F427 FC** (m0306/m0305) | **downloads a RAM-resident programmer** (`m0305`) that runs from SRAM; full driver (KEYR unlock, erase, program, OPTKEYR), dual-bank A/B, DUML-over-CAN | decompiled, this doc |
+| **STM32 gimbal** (m0400) | **loader + app**, generic DUML update cmds: `packet_exec_gener_enter_loader` / `_update_transmit` / `_update_finish` / `_update_confirm` / `_reboot_chip`, `store_boot_loader` | upstream m0400 map |
+| **STM32F103 air radio** (m0900) | same STM32 family pattern presumed; its loader isn't in the (sparse) map | `update_board_version` only — **U** on the loader |
+| **NXP LPC1765 ground radio** (m1400) | **on-chip ROM IAP** — programmer lives in the LPC boot ROM (`iap_entry` @ `0x1FFF1FF1`), so it runs from ROM, not user flash; **no RAM download needed**. Data still staged in RAM (`Chip_IAP_CopyRamToFlash`). | upstream m1400 map: `Chip_IAP_EraseSector/CopyRamToFlash/BlankCheckSector/Compare/PreSectorForReadWrite`, `iap_entry` |
+
+So: the **RAM-resident downloaded programmer is an STM32-family solution** (ST has no flash-program
+ROM, so DJI ships the programmer as code and runs it from SRAM). The **LPC uses NXP's ROM IAP**
+instead — same constraint, met by the silicon vendor's boot ROM. On the **verify/read** question
+across chips: the LPC's ROM IAP exposes **`Chip_IAP_Compare` (verify)** and `BlankCheckSector`
+directly, and LPC memory is ordinarily readable; the STM32 FC updater has only its marker+blank
+validate and no read-out (above).
+
+**Documentation status:** the LPC `Chip_IAP_*` names are NXP's standard **LPCOpen** library (so that
+layer is "documented" by the vendor and carried verbatim in the symbol map). The DJI-specific pieces
+— the `m0305` RAM-resident FC updater, the FC dual-bank A/B slot map, the type-6/7 targets — are
+**not** covered by o-gs/dji-firmware-tools (which handles the container + parameters, not loader
+internals), so the analysis in this doc is original RE. The gimbal's `packet_exec_gener_*` update
+command names do appear in the upstream map.
+
+**Remaining open (U):** `m0305` target types 0–5 (6/7 confirmed), the air-radio (m0900) loader, and
+the resident FC loader at `0x08000000` (needs an SWD dump). Everything else in the FC boot/upgrade
+path is now analysed.
