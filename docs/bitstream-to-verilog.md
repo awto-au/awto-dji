@@ -1,7 +1,7 @@
 # Methodology: FPGA bitstream → structural netlist → (toward) Verilog
 
 How to reverse the P3's Lightbridge FPGA from its bitstream, honestly scoped. The target
-is Cyclone V for the air `m1900` (e50f-family by header/PRAM CRC) and ground `m2000`/`m2002`; ground `m2001` is Cyclone III/IV-format (best match EP4CGX150). All of these except m2001 appear ENCRYPTED, so no bitstream has been lifted (see `fpga-images.md`, `m2001-decomp-findings.md`). This is
+is Cyclone V for the air `m1900` (e50f-family by header/PRAM CRC) and ground `m2000`/`m2002`; ground `m2001` is Cyclone III/IV-format (best match EP4CGX150). All of these except m2001 appear ENCRYPTED, so no bitstream has been lifted (see `fpga-images.md`, `debris/m2001-decomp-findings.md`). This is
 interoperability RE of an owned device; it is analysis only.
 
 ## The pipeline

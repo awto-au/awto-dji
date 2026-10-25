@@ -2,7 +2,7 @@
 
 > **Update (2026-10-24, pluribus #114):** the claim that Mistral decoded `m2001` (LUT masks,
 > DSP/M10K, routes) is void: `m2001` is not a Cyclone V stream and the decode was noise
-> (`m2001-decomp-findings.md`). No FPGA netlist exists. The minimal strategy is unaffected and
+> (`debris/m2001-decomp-findings.md`). No FPGA netlist exists. The minimal strategy is unaffected and
 > is the only live route: re-implement the standard WiMAX datapath and solve the LFSR from a
 > known-plaintext capture.
 

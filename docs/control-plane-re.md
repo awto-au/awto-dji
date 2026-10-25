@@ -90,7 +90,7 @@ Reliable routes instead: (a) **static** — the SPI driver is already located
 (`~0x08001b70`, ST StdPeriph); trace its callers to the AD9361 register table/sequence;
 (b) **on-hardware SWD** capture of the live SPI during link bring-up. The emulator is
 better used for *stimulus generation in co-simulation* (drive the recovered FPGA netlist),
-per `fpga-emulation-plan.md`, than for booting the MCU to completion.
+per `debris/fpga-emulation-plan.md`, than for booting the MCU to completion.
 
 **Debug interfaces (evidence in code):** the `m2001` FPGA fabric exposes standard JTAG
 (`TCK`/`TMS`/`TDI` nodes) — a Cyclone-V config/boundary-scan interface — but there is **no

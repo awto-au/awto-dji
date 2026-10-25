@@ -33,7 +33,7 @@ method — honestly separating "shown" from "needs more work / tooling".
    **emulate `m0900`'s init and capture the SPI writes**, then decode against UG-570 ->
    exact centre frequency / channel bandwidth / sample rate. Tool: **Renode** (full STM32F103
    peripheral models incl. SPI; Unicorn is CPU-only and diverged — see
-   `fpga-emulation-plan.md`). Renode is now **built from source + validated** and the capture
+   `debris/fpga-emulation-plan.md`). Renode is now **built from source + validated** and the capture
    harness exists in `renode/` (custom platform + AD9363 SPI-tap peripheral; see
    `docs/phy-params.md`); the gating input is now just the `m0900` firmware image. Alternative:
    statically reverse the driver's BBPLL/clock math (harder, noisier).

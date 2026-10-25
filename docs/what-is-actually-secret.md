@@ -52,4 +52,4 @@ the ID, reading telemetry, and driving the bird over the normal (already-authent
 all run on cleartext channels. The ID is "hidden" only in the trivial sense of being
 unlabeled bytes to spot in the stream. Everything else called "hidden" earlier is obscurity
 (effort), not secrecy (keys) — see `link-security.md`, `minimal-recovery.md`,
-`m2001-decomp-findings.md`.
+`debris/m2001-decomp-findings.md`.

@@ -32,8 +32,8 @@ of fact-changes (docs state current facts only).
 ## Firmware & hardware
 - `firmware-overview.md`, `binary-analysis.md`, `kernel-analysis.md`, `code-provenance.md`,
   `license-compliance.md`.
-- `fpga-images.md`, `fpga-interfaces.md`, `fpga-emulation-plan.md`, `bitstream-to-verilog.md`,
-  `m2001-decomp-findings.md` — FPGA bitstream RE. The earlier m2001 Mistral decode is void (#114); `fpga-images.md` has the family verdicts, `m1900`/`m2000`/`m2002` appear encrypted.
+- `fpga-images.md`, `fpga-interfaces.md`, `bitstream-to-verilog.md` — FPGA bitstream RE.
+  `fpga-images.md` has the family verdicts and per-chip emulator availability; `m1900`/`m2000`/`m2002` appear encrypted. The earlier m2001 Mistral decode is void (#114): retired to `debris/m2001-decomp-findings.md`, `debris/fpga-emulation-plan.md`.
 
 ## RF / SDR / recovery strategy
 - `minimal-recovery.md` — eliminate the complex FPGA; recover only the small DJI-specific bits.

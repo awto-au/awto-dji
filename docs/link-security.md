@@ -38,7 +38,7 @@ Consequence: **there is nothing cryptographically secret in this link.** No payl
 needs: re-implement a documented-family (WiMAX/LTE) PHY, read a cleartext address, solve one
 unkeyed scrambler. **None of it requires the FPGA netlist, the Mistral ALM model, or
 silicon** — those answer "how is the modem built", not "how do we talk to it". The FPGA
-analysis (`m2001-decomp-findings.md`, `fpga-emulation-plan.md`) stands as architecture, not
+analysis (`debris/m2001-decomp-findings.md`, `debris/fpga-emulation-plan.md`) stands as architecture, not
 as a dependency of the link goal.
 
 ### Caveat: compressed video is already near-random — entropy is not encryption

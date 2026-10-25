@@ -26,16 +26,15 @@ Built from firmware evidence (m0900 `P3X_FW_V01.11.0020`, app base `0x08008000`)
 ## 2. Overview — three planes plus shared RF link
 
 - Blue thick = video. Green solid = telemetry (aircraft to app). Red dashed = control (app to aircraft). Grey dotted = configuration. Dark thick = shared RF path (all planes ride it).
-- DM365 position between ground FPGA and FX2LP is **I**: `fpga-interfaces.md` draws FPGA to FX2LP directly, `video-and-link.md` puts DM365 between.
+- Ground RC shown is the owner's **GL300C**: phone USB = **FX3 m1601**, DM365 (`m1300`) removed (`ground-fx3-m1601.md`). The GL300a/HDMI variant instead uses FX2LP `m1600` + DM365 `m1300` — not drawn.
 
 ```mermaid
 flowchart LR
   subgraph PHONE["Phone"]
     APP["App / DJI GO"]
   end
-  subgraph RC["Remote controller ground side"]
-    FX2["FX2LP CY7C68013A m1600"]
-    DM365["DM365 m1300"]
+  subgraph RC["RC ground side (GL300C)"]
+    FX3["FX3 m1601 phone USB"]
     M1400["m1400 LPC1765"]
     GFPGA["Ground FPGA m2000/m2001/m2002"]
     GAD["Ground AD9363"]
@@ -46,27 +45,29 @@ flowchart LR
     AFPGA["Air FPGA m1900"]
     M0900["m0900 STM32F103 72 MHz"]
     DM368["DM368 m0800 encoder"]
+    FX2A["FX2LP m1500 (air)"]
     CAM["Camera A9SE m0100"]
-    FC["Flight controller m0306"]
+    FC["Flight controller m0306 (STM32F427, SPL, uC/OS-III)"]
   end
 
-  CAM ==>|"U: H.264 bus unknown"| DM368
-  DM368 ==>|"U: parallel/FIFO/USB unknown"| AFPGA
+  CAM ==>|"U: H.264 bus"| DM368
+  DM368 ==>|"V: USB bulk EP2"| FX2A
+  FX2A ==>|"I: 8-bit slave FIFO, AUTO"| AFPGA
   AFPGA <-->|"I: I/Q ~12-bit port, 11.2 MHz"| AAD
   AAD <-->|"I: 2404-2480 MHz, 39 ch"| RF
   RF <-->|"I: same"| GAD
   GAD <-->|"I: I/Q ~12-bit port"| GFPGA
-  GFPGA ==>|"I: H.264, bus unknown"| DM365
-  DM365 ==>|"I: slave FIFO 8 or 16-bit"| FX2
-  FX2 ==>|"I: USB 2.0 AOA"| APP
+  GFPGA ==>|"V: 8-bit GPIF, PIB sock 2"| FX3
+  FX3 ==>|"V: USB chunk 55 CC 574A H.264"| APP
 
   FC -->|"V m0900 side: USART1 256228 baud, RX ring 0x2000002b"| M0900
-  M0900 -->|"V: USART3 8N1 257143 baud actual, DMA"| AFPGA
+  M0900 -->|"V: USART3 8N1 257143 baud, DMA"| AFPGA
   GFPGA -->|"I: UART DUML"| M1400
-  M1400 -->|"U: path to FX2LP/phone"| FX2
+  M1400 -->|"V: 115200 UART (peer m1400 I)"| FX3
+  FX3 -->|"V: USB chunk 55 CC 5749 DUML"| APP
 
-  APP -.->|"I: USB AOA"| FX2
-  FX2 -.->|"U: path to m1400"| M1400
+  APP -.->|"V: USB bare DUML"| FX3
+  FX3 -.->|"V: 115200 UART (peer m1400 I)"| M1400
   M1400 -.->|"I: UART DUML"| GFPGA
   AFPGA -.->|"V: USART3 8N1 257143 baud, IDLE-framed DMA RX"| M0900
   M0900 -.->|"V: USART1 uart_send port 1, types 3 5 10 11 12, every board"| FC
@@ -75,15 +76,17 @@ flowchart LR
   AFPGA ---|"V: AD9363 SPI relayed by FPGA, rate U"| AAD
   M1400 ---|"V: GPIO strobes, no SSP"| GFPGA
 
-  linkStyle 0,1,6,7,8 stroke:#1f77b4,stroke-width:3px
-  linkStyle 2,3,4,5 stroke:#444444,stroke-width:3px
-  linkStyle 9,10,11,12 stroke:#2ca02c,stroke-width:2px
-  linkStyle 13,14,15,16,17 stroke:#d62728,stroke-width:2px,stroke-dasharray:5 3
-  linkStyle 18,19,20 stroke:#888888,stroke-width:1px,stroke-dasharray:2 2
+  linkStyle 0,1,2,7,8 stroke:#1f77b4,stroke-width:3px
+  linkStyle 3,4,5,6 stroke:#444444,stroke-width:3px
+  linkStyle 9,10,11,12,13 stroke:#2ca02c,stroke-width:2px
+  linkStyle 14,15,16,17,18 stroke:#d62728,stroke-width:2px,stroke-dasharray:5 3
+  linkStyle 19,20,21 stroke:#888888,stroke-width:1px,stroke-dasharray:2 2
 ```
 
-- Edge 10/16: that USART3 faces the air FPGA/link is **I**. Evidence: `packet_send` sends receiver types 2, 6, 13, 14, 16, 20, 22 (app, RC, ground modules) out USART3 on every board code (section 3). The USART3 to FPGA wiring needs a schematic.
-- Edge 9/17 (**corrected 2026-10-24**, `m0900-can-channels.md`): `packet_send` routes type 3 (and 5, 10, 11, 12, 18, 21, 23) to `0x0801261c` = `uart_send(1)` = **USART1 on every board** (V). That the far end is the FC is **I** (receiver type 3). An earlier version of this doc said these types went to CAN on boards 2/4/5/6, which was a misread `tbb` target. CAN 0x412/0x413 carries camera/gimbal (types 1, 4, 8, 15); CAN 0x414/0x415 carries only type 30.
+- Air video (edges 0-2): DM368 sends raw H.264 over USB bulk EP2 into the air FX2 (`m1500`), which bridges an 8-bit slave FIFO to the air FPGA — V for the USB and FIFO config, I that the FIFO peer is the FPGA (`m0800-dm368-provenance.md` §5/§7).
+- Ground video/DUML split (edges 7-8, 12-15): the ground FPGA feeds the FX3 video on an 8-bit GPIF port and DUML on a 115200 UART (peer m1400, I); the FX3 interleaves both to the phone as `55 CC`-tagged USB chunks (`ground-fx3-m1601.md`). V in FX3 code and a capture.
+- Edge 10/17: that USART3 faces the air FPGA/link is **I**. `packet_send` sends receiver types 2, 6, 13, 14, 16, 20, 22 out USART3 on every board code (section 3). The USART3-to-FPGA wiring needs a schematic.
+- Edge 9/18 (`m0900-can-channels.md`): `packet_send` routes types 3, 5, 10, 11, 12, 18, 21, 23 to `uart_send(1)` = **USART1 on every board** (V); the far end being the FC is **I** (receiver type 3). CAN 0x412/0x413 carries camera/gimbal (types 1, 4, 8, 15); CAN 0x414/0x415 carries only type 30.
 - The docs' "CENTER UART 256000 8N1 to FC" **is** reproduced: CENTER = USART1 (section 5, item 1).
 
 ## 3. Where DUML is injected and removed — m0900 as a router

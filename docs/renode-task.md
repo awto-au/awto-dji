@@ -47,7 +47,7 @@ source tree is. Build from source so these are editable.
 4. Decode the sequence against UG-570 -> BBPLL / sample-rate / RF-PLL (centre freq) / RX-TX
    bandwidth / gain. Write the result to `docs/phy-params.md` with the raw sequence + decode.
 5. (Optional) attach a Verilated subnetlist of the FPGA LFSR/framing as a Renode peripheral
-   for the co-sim described in `docs/fpga-emulation-plan.md`.
+   for the co-sim described in `docs/debris/fpga-emulation-plan.md`.
 
 ## Deliverable
 

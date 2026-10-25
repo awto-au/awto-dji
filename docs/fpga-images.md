@@ -30,3 +30,14 @@ Family evidence: pluribus `docs/cyclonev-compressed-rbf.md`, `scripts/fpga_famil
 
 - The Artosyn-ASIC board revision has no FPGA bitstream (logic hardened into the AR8001 ASIC; see `control-plane-re.md`).
 - No ground or air FPGA netlist exists. Next: decode m2001 as a Cyclone IV GX payload (compression format); obtain the key or an oracle for the encrypted images; physical part marking / JTAG IDCODE confirms the family.
+
+## Running a decoded stream — emulator availability per chip
+
+No netlist exists yet, so this is method, not current capability.
+
+- **MCUs m0900 (STM32F103) / m1400 (LPC1765):** Renode models the peripherals, runs unmodified firmware, and co-sims Verilated HDL peripherals — the right tool (write a `.repl`). QEMU has partial STM32 board models.
+- **Cyclone-V FPGA:** Project Mistral is the bitstream→netlist decoder (same project family as IceStorm/Trellis/prjxray). It maps LAB/LUT/FF/routing but not DSP/M10K internals yet. No tool runs a foreign `.rbf` as opaque silicon without decoding it first; full fidelity = load the de-packed bitstream on a matching 5CEBA4/e50f board.
+- **A9SE / DM368 / DM365:** no full emulator (QEMU user-mode, CPU only).
+- **AD9363 / FX2LP:** behavioral models, attachable to Renode.
+
+Once a stream decodes: decode→netlist→Verilator sim, black-boxing DSP/M10K, with MCU firmware in Renode as stimulus and a known all-0s payload; reconcile sim output against a real capture to constrain the black boxes. Fuller writeup (premise void — assumes a decoded netlist that does not exist): `debris/fpga-emulation-plan.md`.
