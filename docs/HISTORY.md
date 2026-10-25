@@ -4,6 +4,24 @@ Dated changelog of fact-corrections previously narrated inline in the docs. Each
 phrased as "initial understanding -> corrected finding." The docs now state only the
 corrected/current fact; this file preserves the history for reference.
 
+## 2026-10-25 (how does a ground DUML command reach camera/gimbal — investigated, left open)
+
+- **Traced the chain from app to `air_fc`, then hit a genuine dead end past that point —
+  recorded as open, not guessed at.** Confirmed half: app → RF → air FPGA → `air_router` →
+  `fpga_uart_to_fc_relay` → `air_fc`, unconditionally, no receiver-type filtering at `m0900`
+  (already documented, §6a of `air-router-deep-dive.md`). Checked whether `air_fc` itself
+  filters by receiver type before processing a command: no evidence found in three places
+  (dispatch table keys, an individual handler, the reply builder) — consistent with no filter,
+  but the actual top-level dispatch-table-walking function was never located, so a gate
+  upstream of everything checked isn't ruled out.
+- **Checked and ruled out the obvious forwarding candidate.** `air_fc` has a real, live second
+  CAN bus (`CAN2`) registered into a generic named-device table under `"can"` — but that
+  table's other members are `"uart"`, `"usb"`, `"esc"`, the classic shape of a firmware-
+  update/ESC-programming transport abstraction, not a DUML-by-type router. Does not answer how
+  camera/gimbal-addressed traffic actually gets forwarded.
+- Recorded in `dataflow.md` §5 item 13 as genuinely open, with what was checked and ruled out
+  stated explicitly so this isn't re-derived from scratch next time.
+
 ## 2026-10-25 (dataflow.md diagram correction: RX from the link side does not hit dispatch)
 
 - **Found and fixed a real error, not just an addition.** `dataflow.md`'s own router diagram

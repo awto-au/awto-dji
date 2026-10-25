@@ -297,6 +297,33 @@ sequenceDiagram
 10. ~~Second CAN TX queue `0x20002538` ID word~~ **resolved**: StdId 0x414 (TX), paired with RX 0x415 (obj `0x20002554`, ring `0x200024b8+0xa0`, pump `0x08011882`, same parser callback and dispatch). Only receiver type 30 is routed to it, and whether it is live on a real bus is U (`m0900-can-channels.md`). ~~Still open: how table `0x0801a0d8` (id16 dispatch) is reached.~~ **Resolved 2026-10-25** (see item 2 above, `air-router-deep-dive.md` §2).
 11. HSE 12 MHz is a compiled literal; crystal on the board not read: I.
 12. Why SPI2 runs /8 (4.5 MHz) while PCLK1/2 would be 18 MHz: reason not recorded.
+13. **How a ground-originated DUML command addressed to camera (type 1) or gimbal (type 4)
+    actually reaches them, past `air_fc`. Genuinely open — not just untraced, actively
+    investigated this session and the obvious candidate was ruled out.** The confirmed part of
+    the chain: app → RF → air FPGA → `air_router` via USART3/SPI → `fpga_uart_to_fc_relay`
+    (§3a above) → `air_fc` over USART1, **unconditionally, regardless of receiver byte** (no
+    demultiplexing happens at `m0900`, confirmed). What happens at `air_fc` next is unresolved:
+    - Checked whether `air_fc`'s own command dispatch filters by receiver type before acting:
+      **no evidence found in three places checked** — the dispatch table itself (keyed purely on
+      `(cmd, cmd_set)`, no type field), an individual command handler (`FUN_080455aa`, never
+      touches the receiver byte), and the reply builder `duml_resp_send` (permissively echoes
+      the receiver byte back rather than gating on it). The actual top-level function that walks
+      the dispatch table has not been located (no literal-pool reference to its base address —
+      same "reached via computed/PC-relative addressing" obstacle hit elsewhere in this project),
+      so a gate could still exist upstream of everything checked; not ruled out, just not found.
+    - Checked the obvious forwarding candidate: `air_fc` has a real second CAN bus (`CAN2`,
+      `can2_bringup`, confirmed live hardware init) registered into a generic named-device table
+      (`FUN_0804f5ee`, an 8-slot registry) under the name `"can"`. **Ruled out as the DUML-
+      forwarding mechanism**: the table's other three members are named `"uart"`, `"usb"`, and
+      `"esc"` — that combination is the shape of a generic firmware-update/ESC-programming
+      transport abstraction, not a DUML-by-receiver-type router. `naming-map.md`'s own
+      `can_air_fc2` entry already listed this bus's role as unclear; it's still unclear, now for
+      a more specific, checked reason rather than an unexamined gap.
+    - **Net state: unknown, not "probably CAN2."** Whether `air_fc` forwards non-FC-addressed
+      frames anywhere at all — a different CAN bus, a UART, or simply processes/replies to them
+      locally regardless of address (consistent with the "no filter found" result above) — is
+      unresolved. (`docs/air-router-deep-dive.md` §6a for the confirmed `air_router`-side half of
+      this chain; this item covers only what happens after `air_fc`.)
 
 ## 5a. Cross-check against the DJI GO 4 APK's cmdset-9 names (2026-10-23; resolved 2026-10-25)
 
