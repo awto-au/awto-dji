@@ -125,6 +125,18 @@ allowlist. The deciding factor is the mode gate (RC switch / flight mode), not t
 Not yet done: the continuous-setpoint (joystick / `serial_open_nav`) payload, and what sets the
 mode byte to 2 (confirm it is the RC mode switch).
 
+## Struct typing (2026-10-25)
+
+Core structs defined in Ghidra (/fc) and applied; layouts in `docs/symbols/m0306-structs.h`:
+- **DumlFrame** (0x0c hdr): sof/len/crc8/sender/receiver/seq/cmd_type/cmd_set/cmd_id, payload@+0x0b.
+- **CtrlAgency** @0x20023664: active(+0), holder_id(+3), granted(+0x20).
+- **CtrlMode** @0x200001d5: active_device(+0; ==2=>API), src_flags(+1; bit1/bit2).
+- **FlycExportParam** (60B) applied as an 808-entry array at the param table 0x080ab66c
+  (nameptr/valptr/valsize/type_id/limits[36]/attribute/callback).
+
+Globals + functions + structs are now named in docs/symbols/ (m0306.tsv, m0306-params.tsv,
+m0306-data.tsv, m0306-structs.h), ready for a decompiled-source export pass.
+
 ## Which DJI tool drives the P3 simulator (2026-10-25)
 
 The simulator lives in the FC and is driven by DUML cmdset 0x0b, so it is transport-agnostic
