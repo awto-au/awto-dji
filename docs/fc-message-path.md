@@ -127,6 +127,20 @@ mode byte to 2 (confirm it is the RC mode switch).
 
 ## Struct typing (2026-10-25)
 
+Typing the pointer *variables* (not just the data) propagates member names into every function
+that touches them - the decompiler then shows `->field`, which reveals each function's role and
+drives further naming:
+- `CtrlAgency *` applied at the agency pointer (0x080559b8) -> agency functions render
+  `->active` / `->holder_id` / `->granted`.
+- `DumlFrame *` set as arg0 of the raw-frame handlers -> they render `cmd_set`/`cmd_id`/`payload`.
+- The 834 parameter **labels** already propagate config names (`g_config.*`) to every absolute
+  access across the firmware, with no struct needed.
+Next propagation batch: apply `DumlFrame *` across the full command-handler set so all of them
+read in terms of cmd_set/cmd_id/payload, then name the remaining handlers by the command they
+service.
+
+
+
 Core structs defined in Ghidra (/fc) and applied; layouts in `docs/symbols/m0306-structs.h`:
 - **DumlFrame** (0x0c hdr): sof/len/crc8/sender/receiver/seq/cmd_type/cmd_set/cmd_id, payload@+0x0b.
 - **CtrlAgency** @0x20023664: active(+0), holder_id(+3), granted(+0x20).
