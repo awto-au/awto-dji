@@ -92,8 +92,12 @@ live trace or deep per-driver decompilation).
   so "no Kalman" is **V for the name**, **I for the method**.)
 - **No borrowed open-source flight-control code.** **V** (absence) — zero
   Betaflight/Cleanflight/MultiWii/Baseflight/iNav/ArduPilot/PX4 strings. The FC is DJI-original.
-- **Compiler/toolchain: U.** No `GCC`/`ARMCC`/`IAR`/`Keil` build-ID string survives in the
-  stripped image (see "Build metadata" below — a raw `.bin` keeps no `.comment`/symbol table).
+- **Compiler/toolchain: IAR Embedded Workbench.** No build-ID string survives in our stripped
+  `.bin`, but the upstream IAR linker symbol map for the adjacent build V01.07.0060
+  (`docs/symbols/upstream/`) contains `__iar_program_start` — the IAR C startup entry. **V for
+  V01.07.0060; I (strong) for our V01.11.0020** (same firmware line). This also matches the hand
+  structure of the code (hardware `UDIV`, no `__aeabi_*` helper calls). Supersedes the earlier
+  "compiler: U".
 
 ## SPL version
 

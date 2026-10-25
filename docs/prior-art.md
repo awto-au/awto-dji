@@ -36,6 +36,28 @@ Searched upstream's tool list, README and symbols; none of these are covered the
   (`comm_dissector`), not handler-semantic.
 - **Linux→FC path** (rpmsg/DjiMsg router) and the **FPGA pinout model**.
 
+## Cross-check done: upstream's m0306 symbol map (vendored)
+
+Pulled upstream's `P3X_FW_V01.07.0060_m0306.map` (vendored at
+`docs/symbols/upstream/`, GPL-3.0, attributed). It is a genuine **IAR linker symbol table** —
+3483 *original DJI build symbols*, not RE guesses. Outcome:
+
+- **Validation:** the control-authority handler names we derived independently
+  (`api_ctrl_mode_status_request_handler`, `..._serial_open_nav_handler`,
+  `..._emergency_brake_handler`, `api_init_dji_api_protocol`) appear **verbatim** in the map (our
+  TSV carries them with an `fc_` prefix). DJI's own symbols confirm our control-path analysis.
+  `flyc_params`, `g_config__api_entry_cfg`, `wp_setting.action_on_rc_lost`, `local_simulator`,
+  `g_debug.sim_flag` likewise match our findings.
+- **New facts it settled:** compiler is **IAR** (`__iar_program_start`); RTOS **µC/OS-III**
+  confirmed (`OS_*`); `system_init`/`SystemInit` located (the clock bring-up we couldn't pin).
+- **Confirms our additive scope:** the map has **no SPL function names** — our StdPeriph
+  identification and `GPIO_Init`/`CAN_Init`/`RCC_*ClockCmd` naming are not in it.
+- **Adoption candidates** (real DJI names we hadn't assigned): `kctrl_init_*` (takeoff, landing,
+  gps_atti, waypoint, go_home), `ctrl_navi_waypoint_mission`, `ctrl_navi_go_home`, `ctrl_gps_atti`,
+  `cmd_mission_waypoint_*_rcv`, `api_mission_planner_wp_*_handler`, `api_mission_hp_*_handler`,
+  `get_gohome_stage`/`get_go_home_state`. Locate each in our V01.11.0020 image by its string refs
+  (addresses differ by revision), then add to `m0306.tsv` with `source=upstream-map`.
+
 ## Recommended course (avoid duplicating; spend effort on the new layers)
 
 1. **Cross-check our function names against upstream's `P3X_FW_V01.07.0060_m0306.map`** rather than
