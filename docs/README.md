@@ -42,6 +42,8 @@ the current state and next steps, and `../CLAUDE.md` for agent onboarding.
 - `renode-task.md` — **TASK**: build Renode from source, emulate `m0900`, capture the AD9363 config (closes the PHY-params open item).
 - `phy-params.md` — result slot + capture method for the above. Tooling in `../renode/` is **built and validated**; the capture is blocked only on the `m0900` firmware image (not in repo).
 
+- `prior-art.md` — positioning vs existing DJI RE (o-gs/dji-firmware-tools): what we reuse (extraction, decryption, the param-table/defaults dump = `dji_flyc_param_ed.py`), what's new here (SPL ID, I/O pin map, control-authority, sim/RC-loss, Linux→FC, FPGA), and that upstream already ships an `m0306` symbol map worth cross-checking (GPL-3.0, compatible).
+
 ## System data flow and buses (m0900-derived)
 - `dataflow.md` — video / telemetry / control planes as Mermaid; where DUML is injected, forwarded, consumed in `m0900`; control + telemetry sequences; unknowns list. Every edge tagged verified / inferred / unknown.
 - `board-connections.md` — P01007.06 connection diagram from firmware + wiki (**not a schematic**); what a real schematic would confirm.
