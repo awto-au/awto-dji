@@ -4,6 +4,7 @@ Scope: **repairing an owned board whose ATSHA204 authentication chip has failed.
 what the chip does, **what actually blocks when it fails (which is less than it first seems)**, and
 the process to stub the check if needed. Architectural (where the check is, how patching works), not
 a turnkey patch — the exact offset must be found per firmware version.
+Change history: see docs/HISTORY.md.
 
 ## Hardware-level block, or only DJI-software? (important — mostly the latter)
 
@@ -36,8 +37,7 @@ documented intent here is a dead auth chip on a board you own, not counterfeitin
 
 ## Where the auth lives (from RE) — it is on more than one board
 
-The ATSHA204 appears on **at least two boards**; the primary one is the **camera/A9**, not the RC
-(an earlier draft of this note wrongly implied RC-only):
+The ATSHA204 appears on **at least two boards**; the primary one is the **camera/A9**, not the RC:
 
 - **Camera / A9 (`m0100`) — the primary board authentication.** A full `DjiEncrypt*` subsystem:
   `DjiEncryptInit` (I2C, config-zone lock), **`DjiEncryptCheckA9Mac`** (nonce/MAC check between the

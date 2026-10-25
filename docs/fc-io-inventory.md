@@ -8,6 +8,7 @@ Peripherals, clocks, sensors and software identity of the Phantom 3 Pro flight c
 Tags: **V** verified in this firmware, **I** inferred, **U** unknown / needs-tooling. The
 project's honesty convention (`CLAUDE.md`) applies: exact baud/CS/prescaler values that the
 firmware computes at runtime are marked **U**, not guessed.
+Change history: see docs/HISTORY.md.
 
 ## MCU
 
@@ -78,7 +79,7 @@ live trace or deep per-driver decompilation).
   | `GPIO_Init` / `GPIO_PinAFConfig` | 0x0806396c / 0x08063a54 | 16-pin loop over `MODER/OSPEEDR/OTYPER/PUPDR` with the `GPIO_InitTypeDef` field order {Pin,Mode,Speed,OType,PuPd}; standalone 3-arg `GPIO_PinAFConfig(GPIOx,src,AF)`. HAL folds AF into `HAL_GPIO_Init` and its struct is {Pin,Mode,Pull,Speed,Alternate}; LL differs again. |
 
   This also fits the timeline: the P3 FC codebase is ~2014, before ST's LL library existed.
-  **Correction to earlier notes:** the register library is *not* "DJI's own raw HAL" and *not*
+  The register library is *not* "DJI's own raw HAL" and *not*
   LL/HAL — it is ST SPL. The `hal_*` strings (`hal_compass_add`, `comm_imu_init`) are DJI's
   *application-level* sensor/driver abstraction sitting **on top of** SPL, a separate layer from
   the MCU register library. (No `stm32f4xx_hal_*`, `_ll_`, `stdperiph` or `assert_param` strings
@@ -87,7 +88,7 @@ live trace or deep per-driver decompilation).
 - **Sensor fusion / estimation: DJI FDI-AHRS.** **V** — `FDI ACC/AHRS/BARO/GPS/CTRL` subsystems
   with turn-on events, impact/vibration detection. **No** Kalman/EKF, Madgwick or Mahony strings;
   the attitude/nav estimator is DJI's in-house FDI ("fault detection & isolation" + AHRS), not a
-  named open filter. Earlier docs' mention of Butterworth-type filtering stands as the signal
+  named open filter. Butterworth-type filtering is the signal
   conditioning; the estimator itself is proprietary. (Absence of a string ≠ absence of the math,
   so "no Kalman" is **V for the name**, **I for the method**.)
 - **No borrowed open-source flight-control code.** **V** (absence) — zero
@@ -96,8 +97,7 @@ live trace or deep per-driver decompilation).
   `.bin`, but the upstream IAR linker symbol map for the adjacent build V01.07.0060
   (`docs/symbols/upstream/`) contains `__iar_program_start` — the IAR C startup entry. **V for
   V01.07.0060; I (strong) for our V01.11.0020** (same firmware line). This also matches the hand
-  structure of the code (hardware `UDIV`, no `__aeabi_*` helper calls). Supersedes the earlier
-  "compiler: U".
+  structure of the code (hardware `UDIV`, no `__aeabi_*` helper calls).
 
 ## SPL version
 
@@ -131,10 +131,9 @@ Pin config word for these buses is `0x01000302` = `GPIO_Mode_AF`, `GPIO_Speed_10
 `GPIO_OType_PP`, `GPIO_PuPd_UP`. **DJI uses SPL correctly** — the bring-up order is the textbook
 `GPIO_PinAFConfig → GPIO_Init → <periph>_DeInit → <periph>_Init` sequence.
 
-### UART base + baud: flash LUT + parameter defaults (correcting an earlier note)
+### UART base + baud: flash LUT + parameter defaults
 
-An earlier draft said the UART config "lives in RAM and can't be recovered." That was wrong. The
-RAM at `0x2002xxxx` is only the **live, editable config image** (`g_config`) and the driver
+The RAM at `0x2002xxxx` is only the **live, editable config image** (`g_config`) and the driver
 objects; the actual values come from **flash**:
 
 - **Base:** there is a flash lookup table `USARTx[8]` at `0x803bfd8` = {USART1, USART2, USART3,

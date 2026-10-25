@@ -3,6 +3,7 @@
 What the P3 FC (STM32F427, module m0306) uses for boot and firmware update, and whether it is a
 dual-slot design. Tags: **V** verified in firmware/package, **I** inferred, **U** unknown.
 Companion to `app-upgrade-sequence.md` (that doc is the *app/phone* side; this is the *FC* side).
+Change history: see docs/HISTORY.md.
 
 ## There is a separate bootloader ("Loader"), factory-fixed
 
@@ -44,7 +45,7 @@ verify** flow (not a slot swap): `FM_NONSEQUENCE`(240), `FM_LENGTH_WRONG`(241), 
 `system upgrade,stop motor!`), `FLASH_FLUSHING`(253). The DUML `cmd_reboot_mc_request_rcv`
 (`0x08042124` in the V01.07.0060 map) is the reboot-into-loader entry (`sender%d request mc reboot`).
 
-## Slots: the APP is single-image, but the LOADER/UPDATER supports two (CORRECTED)
+## Slots: the APP is single-image, but the LOADER/UPDATER supports two
 
 The STM32F427 die is **always 2 MB dual-bank** silicon — even "1 MB"-marked SKUs are the same part
 with the top bank unlabelled/fused (and usually still reachable). So A/B is possible on the hardware.
@@ -54,9 +55,8 @@ bank-2 base `0x08100000` (only `0x08000000` ×1 and the app base `0x08020000` ×
 `slot`/`bank`/`partition`/`active`/`backup`/`rollback` strings, and is linked at the one fixed base
 `0x08020000`.
 
-**But the loader/updater (`m0305`, decompiled — see below) does implement a two-image scheme.** An
-earlier draft here concluded "single-slot, no A/B" from the app alone; that was premature and is
-**corrected**: `m0305` carries a runtime region table over {loader `0x08000000`, app `0x08020000`,
+**But the loader/updater (`m0305`, decompiled — see below) does implement a two-image scheme.**
+`m0305` carries a runtime region table over {loader `0x08000000`, app `0x08020000`,
 bank2 `0x08100000`} and has **two independent validate+boot paths** — a blank/erased check
 (all-`0xFFFFFFFF`) and a "set MSP = vector[0], jump to vector[1]" boot routine for **each of two
 slots** (table+0x14 and table+0x30). So the boot architecture can hold and select a second image

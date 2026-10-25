@@ -2,6 +2,7 @@
 
 Honest positioning of this project's m0306 (Phantom 3 flight controller) work against the public
 DJI RE ecosystem, so we don't re-derive what already exists and we know what is genuinely new.
+Change history: see docs/HISTORY.md.
 
 ## The existing projects
 
@@ -176,8 +177,7 @@ two independent ways:
   and RAM symbols at `0x20400540`–`0x2045D870`, with `.bss` = 0x60100 (384 KB). That is exactly the
   SAM E70/S70/V70 layout — flash @ `0x00400000` (2 MB), SRAM @ `0x20400000` (384 KB) — and nothing
   like an STM32 (flash @ `0x08000000`, SRAM @ `0x20000000`). The ATSAME70**Q21** is the 2 MB-flash /
-  384 KB-SRAM part, matching both figures. (This is the data an earlier draft saw as "0x2040_0000
-  RAM base" and wrongly withdrew assuming STM32 — it was the SAM E70 signature all along.)
+  384 KB-SRAM part, matching both figures.
 
 So between the P3 and P4, DJI **changed CPU vendor and core**: STM32F427 (Cortex-M4F, ST) →
 ATSAME70Q21 (Cortex-M7, Microchip). The P4 `.text` is ~1.2 MB vs the P3's ~548 KB (~2.3x). That the
