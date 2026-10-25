@@ -95,3 +95,47 @@ function in our image, matched by structure/string refs.
 
 Reproduce: `awk '/Publics by Value/{p=1;next} p&&/^ [0-9]{4}:/{print $2}' <map> | sort -u`, then
 `comm -12` the two name lists (maps under `docs/symbols/upstream/`, from o-gs/dji-firmware-tools).
+
+## Shared patterns across the other chips (measured from upstream maps)
+
+Does the FC's design recur in the other MCUs? Checked the upstream symbol maps for the camera
+(A9), ground radio (NXP LPC1765), air radio (STM32F103) and gimbal (STM32). Yes — two patterns are
+company-wide, over heterogeneous silicon:
+
+- **DUML protocol engine** — `crc8_table`/`crc16_table` appear in the **gimbal** (m0400) and the
+  **ground LPC radio** (m1400, NXP); the **camera** (m0100, A9) carries the `DjiMsg*` router
+  strings; the FC has both tables. Same 0x55 / CRC8-0x77 / CRC16-0x3692 stack on STM32, NXP LPC and
+  Ambarella alike.
+- **Parameter system (named params + defaults + range validation + get/set/restore over DUML)** —
+  the *concept* recurs, instantiated per subsystem rather than one shared table:
+  - FC: `flyc_params` (FlycExportParam) + `cfg write index`/`max write allow` validation.
+  - Gimbal: `gimb_user_param_*`, `gimb_user_param_restore_default`,
+    `gimb_user_param_all_restore_defaults`, `packet_exec_gimb_resume_default_param`.
+  - Ground LPC radio: `param_buf`, `cmd_param`, and a `Wrong Parameter` validation string.
+  So "parameter validation for a config message" is a DJI house pattern, not FC-only.
+
+RTOS, by contrast, is chosen per silicon (and the choice is visible in the symbols):
+- **Micrium µC/OS** on the STM32 FC **and** the NXP LPC ground radio (`OS_CPU_*`, `OS_IdleTask`,
+  `OS_TS_GET` in m1400) — DJI standardised µC/OS across its MCU subsystems.
+- **ThreadX** on the Ambarella A9 camera (`_tx_thread_*`), where the vendor BSP dictates it.
+
+## Handling this correctly in Ghidra (multi-program project + Version Tracking)
+
+The right structure is **one Ghidra project holding each module as its own program** (our
+V01.11.0020 m0306, plus reference builds), not separate projects. Two ways to pull in upstream's
+names:
+
+1. **Version Tracking (VT)** — Ghidra's built-in version-diff. It correlates two *binaries*
+   (exact-function, symbol-name, data-flow matchers) and ports names/comments/types across a
+   version gap. To use it we need the *binary* of a symbol-bearing build (e.g. P3 FC V01.07.0060,
+   or P4 `wm220_0306`), load it, apply upstream's `.map`/`.idc`, then VT-correlate to our image.
+   VT handles same-component pairs well (P3 FC ↔ P4 FC); cross-arch modules (A9 vs LPC) live in the
+   same project but as separate programs with their own language spec — VT does not cross arch.
+2. **String-anchored name port** (no VT, no reference binary needed) — parse the upstream `.map`,
+   and for each named function match it into our image by the debug strings it references
+   (version-robust, since addresses move but string refs don't). Cheaper for our one target.
+
+P4 FC (`wm220_0306`) is the same **STM32F4 family** as the P3 (shared `Reset_Handler`,
+`SystemInit`, IAR, µC/OS); the exact part needs the P4 vector table from its binary. Its map is the
+richer naming source (3133 vs 1227 publics), so it is the better VT/port reference for the control
+and nav layers.

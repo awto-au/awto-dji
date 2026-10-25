@@ -29,3 +29,12 @@ Phantom 4 flight controller symbol map, same source/licence (upstream file
 `symbols/wm220_0306_v03.02.35.05_20170525.pro.map`). Kept for the cross-product code-sharing
 comparison in `docs/prior-art.md` (P3 FC vs P4 FC share 202 identical symbol names). Upstream's
 work; renamed locally for brevity.
+
+## Cross-chip maps (for the shared-pattern comparison in prior-art.md)
+
+Same source/licence (o-gs/dji-firmware-tools, GPL-3.0); vendored for the cross-chip pattern check:
+- `C1_FW_V01.06.0000_m1400_ground-LPC.map` — ground radio, NXP LPC1765 (shows crc8_table, param_buf, uC/OS OS_CPU_*).
+- `P3X_FW_V01.11.0030_m0400_gimbal.map` — gimbal STM32 (crc8/crc16_table, gimb_user_param_* with restore-defaults).
+- `P3X_FW_V01.07.0060_m0900_air-radio.map` — air radio STM32F103.
+The camera A9 map (`P3X_FW_V01.08.0080_m0100_part_sys`, ~22k lines, ThreadX `_tx_*`, `DjiMsg*`) is
+referenced by URL rather than vendored due to size.
