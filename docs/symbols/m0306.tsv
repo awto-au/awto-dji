@@ -1,0 +1,9 @@
+addr	name	note	source
+0x08021964	reset_handler	vector reset (SP 0x2002ff00)	vector table
+0x0804f024	duml_crc16	DUML CRC16 (table 0x080ef734); 17 call sites	ghidra+capstone
+0x080304fc	duml_frame_crc_ok	CRC16-trailer check; 0 refs (inlined elsewhere)	capstone
+0x08028d18	duml_resp_build	builds DUML response (0xAA markers), recrc, send	ghidra
+0x0804f862	duml_send	DUML transmit; 16 call sites	ghidra
+0x08031062	event_loop_0x29xx	internal event dispatcher, 10 switches on u16 type 0x29xx (NOT duml set/id)	ghidra
+0x0808527a	uid96_read	copies STM32 96-bit UID 0x1FFF7A10	air_modules.tsv
+0x080596ea	id10_build	10-byte id record + UID word0	air_modules.tsv

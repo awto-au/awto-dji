@@ -53,6 +53,23 @@ traffic out its USART1, `m0900-can-channels.md`) into one of these — most like
   **whether the handler checks the sender byte** (the key question for both the companion-agent
   and the FC-patch paths) are **U** from static work so far.
 
+## Ghidra pass (2026-10-25): setup done, DUML primitives named, dispatch is table-driven
+
+Decrypted m0306 imported into Ghidra 11.4 (Raw Binary, ARM:LE:32:Cortex, base 0x08020000),
+auto-analysis = **3969 functions**. STM32F427 SVD applied (1574 MMIO registers labeled) and
+known symbols seeded — tooling in `scripts/re/ghidra/` (fc_setup.py applies SVD+names,
+fc_dispatch.py hunts the dispatcher), named set in `docs/symbols/m0306.tsv`.
+
+Findings:
+- `duml_crc16` (0x0804f024) has 16 call sites; `duml_send` (0x0804f862) 16; `duml_resp_build`
+  (0x08028d18) builds + CRCs + sends a response. These are the DUML primitives (V).
+- The DUML frame validator (0x080304fc) has **zero references** — inlined at each call site,
+  not a shared callee.
+- The only large `switch`-based function in the crc16 call graph, `FUN_08031062` (10 switches),
+  dispatches an **internal event queue keyed on u16 type codes 0x29xx** — not the DUML (set,id)
+  surface. So the DUML command dispatch is **table-driven** (handler lookup by set/id), which is
+  why it shows no switch and the validator has no refs.
+
 ## Next step (proper disassembly, not one-line scans)
 
 Trace from a byte entry point to the dispatch, following indirect calls:

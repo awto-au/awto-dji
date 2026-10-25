@@ -51,3 +51,9 @@ No FPGA-derived artifacts are kept: the earlier `m2001.bt` / `routes.txt` came f
 
 Scripts in `scripts/fpga/` that consumed them are void. Every doc cites exact offsets
 so results can be re-derived against your own verified unpack.
+
+## Reverse-engineering reference inputs (not stored)
+
+- **STM32F427 SVD** (peripheral/register map for m0306 Ghidra MMIO labels): `raw.githubusercontent.com/cmsis-svd/cmsis-svd-data/main/data/STMicro/STM32F427.svd` (2,222,473 B). 1574 registers flattened to address labels by `scripts/re/ghidra/fc_setup.py`.
+- **Ghidra 11.4 PUBLIC** headless, JDK 21. m0306 imported as Raw Binary, `ARM:LE:32:Cortex`, base `0x08020000` (decrypt first with `scripts/re/xv4_decrypt.py`).
+- **DJI module AES key** for `encrypt_type=1`: from o-gs/dji-firmware-tools `dji_xv4_fwcon.py` (public).
