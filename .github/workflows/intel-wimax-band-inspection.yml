@@ -1,0 +1,29 @@
+name: Intel WiMAX frequency table inspection
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download archived firmware
+        shell: bash
+        run: |
+          curl -fL --retry 3 -o /tmp/firmware-intelwimax.deb 'https://deb.debian.org/debian/pool/non-free/f/firmware-nonfree/firmware-intelwimax_20210315-3_all.deb'
+          mkdir -p /tmp/intel-fw
+          dpkg-deb -x /tmp/firmware-intelwimax.deb /tmp/intel-fw
+          find /tmp/intel-fw -name '*.sbcf' -exec sha256sum '{}' ';'
+      - name: Scan firmware (structural only)
+        shell: bash
+        run: |
+          FW=$(find /tmp/intel-fw -name 'i6050-fw-usb-1.5.sbcf' | head -n 1)
+          test -n "$FW"
+          python3 scripts/re/intel_wimax_band_scan.py --json "$FW" > /tmp/intel-fw-report.json
+          python3 -c 'import json; d=json.load(open("/tmp/intel-fw-report.json")); print(json.dumps(d, indent=2)[:18000])'
+      - name: Upload metadata only
+        uses: actions/upload-artifact@v4
+        with:
+          name: intel-wimax-band-report
+          path: /tmp/intel-fw-report.json
