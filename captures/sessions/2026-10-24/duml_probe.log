@@ -171,3 +171,20 @@ opened /dev/ttyACM11 115200 8N1 RTS=1 DTR=0
 > set=00 id=ff  550d04330a1401274000ff91a5
   (no reply)
 44 raw bytes received
+
+=== 2026-10-24T13:57:39 /dev/serial/by-id/usb-DJI_DJI_CONTROLLER_0001A0000000-if00 --receiver 1400 --cmd 0:0x0b --payload 000100e8030000 --wait 1.5 ===
+opened /dev/serial/by-id/usb-DJI_DJI_CONTROLLER_0001A0000000-if00 115200 8N1 RTS=1 DTR=0
+> set=00 id=0b  5514046d0a0e002740000b000100e8030000f466
+  (no reply)
+0 raw bytes received
+
+=== 2026-10-24T20:16:03 /dev/ttyACM11 --cmd 0:11 --payload 0001e8030000 --wait 3 ===
+opened /dev/ttyACM11 115200 8N1 RTS=1 DTR=0
+> set=00 id=0b  551304030a0e002740000b0001e80300009534
+  (no reply)
+0 raw bytes received
+
+=== 2026-10-24T20:16:11 /dev/ttyACM11 --listen 2 --heartbeat ===
+opened /dev/ttyACM11 115200 8N1 RTS=1 DTR=0
+listening 2.0s with 0.5 s heartbeat ...
+0 raw bytes received

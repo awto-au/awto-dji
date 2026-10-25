@@ -1,0 +1,172 @@
+USB MANAGER STATE (dumpsys usb):
+{
+  device_manager={
+    handler={
+      current_functions=ACCESSORY
+      current_functions_applied=true
+      screen_locked=false
+      connected=true
+      configured=true
+      current_accessory={
+        manufacturer=DJI
+        model=T600
+        description=DJI
+        version=v1.2.3.4
+        uri=www.dji.com
+        serial=12345678
+      }
+      host_connected=false
+      source_power=false
+      sink_power=true
+      usb_charging=true
+      hide_usb_notification=false
+      audio_accessory_connected=false
+      kernel_state=CONFIGURED
+      kernel_function_list=accessory,adb
+    }
+    USB Event Log=UsbDeviceManager activity
+    USB Event=[
+      10-24 01:53:50:295 USB UEVENT: {SUBSYSTEM=android_usb, SEQNUM=6531, ACTION=change, USB_STATE=CONNECTED, DEVPATH=/devices/virtual/android_usb/android0}
+      10-24 01:53:50:297 USB UEVENT: {SUBSYSTEM=android_usb, SEQNUM=6532, ACTION=change, USB_STATE=CONFIGURED, DEVPATH=/devices/virtual/android_usb/android0}
+      10-24 01:53:57:236 USB intent: Intent { act=android.hardware.usb.action.USB_STATE flg=0x31000000 xflg=0x4 (has extras) }
+      10-24 01:53:58:192 USB UEVENT: {SUBSYSTEM=android_usb, SEQNUM=7288, ACTION=change, USB_STATE=CONNECTED, DEVPATH=/devices/virtual/android_usb/android0}
+      10-24 01:53:58:195 USB UEVENT: {SUBSYSTEM=android_usb, SEQNUM=7289, ACTION=change, USB_STATE=CONFIGURED, DEVPATH=/devices/virtual/android_usb/android0}
+      10-24 01:53:58:196 USB intent: Intent { act=android.hardware.usb.action.USB_STATE flg=0x31000000 xflg=0x4 (has extras) }
+      10-24 01:53:58:197 USB intent: Intent { act=android.hardware.usb.action.USB_STATE flg=0x31000000 xflg=0x4 (has extras) }
+      10-24 01:53:58:209 USB UEVENT: {SUBSYSTEM=misc, MAJOR=10, SEQNUM=7297, ACTION=change, ACCESSORY=START, DEVNAME=usb_accessory, MINOR=23, DEVPATH=/devices/virtual/misc/usb_accessory}
+      10-24 01:53:58:578 USB UEVENT: {SUBSYSTEM=android_usb, SEQNUM=7419, ACTION=change, USB_STATE=CONNECTED, DEVPATH=/devices/virtual/android_usb/android0}
+      10-24 01:53:58:582 USB intent: Intent { act=android.hardware.usb.action.USB_STATE flg=0x31000000 xflg=0x4 (has extras) }
+      10-24 01:53:58:583 USB UEVENT: {SUBSYSTEM=android_usb, SEQNUM=7426, ACTION=change, USB_STATE=CONFIGURED, DEVPATH=/devices/virtual/android_usb/android0}
+      10-24 01:53:58:584 USB intent: Intent { act=android.hardware.usb.action.USB_STATE flg=0x31000000 xflg=0x4 (has extras) }
+      10-24 01:53:58:778 USB intent: Intent { act=android.hardware.usb.action.USB_ACCESSORY_HANDSHAKE flg=0x11000000 xflg=0x4 (has extras) }
+      10-24 01:54:08:212 USB intent: Intent { act=android.hardware.usb.action.USB_ACCESSORY_HANDSHAKE flg=0x11000000 xflg=0x4 (has extras) }
+    ]
+  }
+  host_manager={
+    num_connects=0
+  }
+  port_manager={
+    is_simulation_active=false
+    usb_ports={
+      port={
+        id=port0
+        supported_modes=dual
+        supports_compliance_warnings=false
+        supports_power_profiles=false
+      }
+      status={
+        connected=true
+        current_mode=ufp
+        power_role=sink
+        data_role=device
+        role_combinations=[
+          {
+            power_role=source
+            data_role=host
+          }
+          {
+            power_role=sink
+            data_role=device
+          }
+        ]
+        contaminant_presence_status=not detected
+        usb_data_status=enabled
+        is_power_transfer_limited=false
+        usb_power_brick_status=unknown
+        compliance_warning_status=[]
+        power_profile_status= mPortSinkPowerProfiles={} , mPortSourcePowerProfiles={} , mPartnerSinkPowerProfiles={} , mPartnerSourcePowerProfiles={} , mPortSinkPowerProfileMatches={} , mPortSourcePowerProfileMatches={}
+      }
+      can_change_mode=true
+      can_change_power_role=false
+      can_change_data_role=false
+      connected_at_millis=17816
+      last_connect_duration_millis=0
+    }
+    usb_hal_version=20
+  }
+  alsa_manager={
+    cards_parser=-1
+  }
+  settings_manager={
+    user_settings={
+      user_id=0
+      device_attached_activities={
+        activity={
+          package_name=com.android.mtp
+          class_name=com.android.mtp.ReceiverActivity
+        }
+        filters=[
+          {
+            vendor_id=-1
+            product_id=-1
+            class=255
+            subclass=255
+            protocol=0
+            manufacturer_name=null
+            product_name=null
+            serial_number=null
+          }
+          {
+            vendor_id=-1
+            product_id=-1
+            class=6
+            subclass=1
+            protocol=1
+            manufacturer_name=null
+            product_name=null
+            serial_number=null
+          }
+        ]
+      }
+      accessory_attached_activities=[
+        {
+          activity={
+            package_name=au.awto.dji.awto_dji_app
+            class_name=au.awto.dji.awto_dji_app.MainActivity
+          }
+          filters={
+            manufacturer=DJI
+            model=T600
+            version=null
+          }
+        }
+        {
+          activity={
+            package_name=dji.go.v4
+            class_name=dji.pilot.main.activity.DJIAoaActivity
+          }
+          filters={
+            manufacturer=DJI
+            model=T600
+            version=null
+          }
+        }
+      ]
+    }
+    profile_group_settings={
+      parent_user_id=0
+      accessory_preferences={
+        filter={
+          manufacturer=DJI
+          model=T600
+          version=v1.2.3.4
+        }
+        user_package={
+          user_id=0
+          package_name=au.awto.dji.awto_dji_app
+        }
+      }
+      USB Event Log=UsbProfileGroupSettingsManager activity
+      USB Event=10-24 01:53:58:761 accessoryAttached: Intent { act=android.hardware.usb.action.USB_ACCESSORY_ATTACHED flg=0x11000000 (has extras) }
+    }
+  }
+  permissions_manager={
+    user_permissions={
+      user_id=0
+      accessory_permissions={
+        accessory_description=DJI Inspire 1
+        uids=10165
+      }
+    }
+  }
+}

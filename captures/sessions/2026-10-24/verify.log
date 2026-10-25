@@ -1,0 +1,24 @@
+2026-10-24T14:03:53 === verify gimbal.angle watch=gimbal.pitch->-10.0 x3 overrides={'pitch': -10.0, 'roll': 0.0, 'yaw': 0.0} ===
+2026-10-24T14:03:54 [0] baseline pitch=-37.4 (8 pushes)
+2026-10-24T14:03:54 [0] sent gimbal.angle {'pitch': -10.0, 'roll': 0.0, 'yaw': 0.0} -> 551704380204016c40040a000000009cff2c012400214b
+2026-10-24T14:03:56 [0] after pitch=-37.4 (was -37.4) err=27.40 NOT REACHED (21 pushes)
+2026-10-24T14:03:57 [1] baseline pitch=-37.4 (9 pushes)
+2026-10-24T14:03:57 [1] sent gimbal.angle {'pitch': -10.0, 'roll': 0.0, 'yaw': 0.0} -> 551704380204036c40040a000000009cff2c01240075db
+2026-10-24T14:03:59 [1] after pitch=-37.4 (was -37.4) err=27.40 NOT REACHED (20 pushes)
+2026-10-24T14:04:00 [2] baseline pitch=-37.4 (8 pushes)
+2026-10-24T14:04:00 [2] sent gimbal.angle {'pitch': -10.0, 'roll': 0.0, 'yaw': 0.0} -> 551704380204056c40040a000000009cff2c0124009863
+2026-10-24T14:04:02 [2] after pitch=-37.4 (was -37.4) err=27.40 NOT REACHED (20 pushes)
+2026-10-24T14:04:02 === 0/3 confirmed by telemetry (not just sent) ===
+2026-10-24T14:10:35 === verify gimbal.absAngle watch=gimbal.pitch->-10.0 x2 overrides={'pitch': -10.0, 'roll': 0.0, 'yaw': 0.0} ===
+2026-10-24T14:10:36 [0] baseline pitch=-37.7 (9 pushes)
+2026-10-24T14:10:36 [0] sent gimbal.absAngle {'pitch': -10.0, 'roll': 0.0, 'yaw': 0.0} -> 551504a90204016c400414000000009cff060a2919
+2026-10-24T14:10:38 [0] after pitch=-37.8 (was -37.7) err=27.80 NOT REACHED (17 pushes)
+2026-10-24T14:10:39 [1] baseline pitch=-37.8 (9 pushes)
+2026-10-24T14:10:40 [1] sent gimbal.absAngle {'pitch': -10.0, 'roll': 0.0, 'yaw': 0.0} -> 551504a90204036c400414000000009cff060a7312
+2026-10-24T14:10:42 [1] after pitch=-37.8 (was -37.8) err=27.80 NOT REACHED (23 pushes)
+2026-10-24T14:10:42 === 0/2 confirmed by telemetry (not just sent) ===
+2026-10-24T14:48:01 === verify gimbal.angle watch=gimbal.pitch->-10.0 x1 overrides={'pitch': -10.0, 'roll': 0.0, 'yaw': 0.0} ===
+2026-10-24T14:48:02 [0] baseline pitch=-39.7 (3 pushes)
+2026-10-24T14:48:02 [0] sent gimbal.angle {'pitch': -10.0, 'roll': 0.0, 'yaw': 0.0} -> 551704380204016c40040a000000009cff2c012400214b
+2026-10-24T14:48:05 [0] after pitch=-39.7 (was -39.7) err=29.70 NOT REACHED (12 pushes)
+2026-10-24T14:48:05 === 0/1 confirmed by telemetry (not just sent) ===

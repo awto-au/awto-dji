@@ -1,0 +1,14 @@
+2026-10-24T14:00:25 === verify pitch=-10.0 roll=0.0 yaw=0.0 x3 ===
+2026-10-24T14:00:26 [0] no gimbal pushes seen in 1.0s baseline window - is the gimbal/relay actually live? stopping.
+2026-10-24T14:00:26 === 0/3 moves confirmed by telemetry (not just sent) ===
+2026-10-24T14:01:31 === verify pitch=-10.0 roll=0.0 yaw=0.0 x3 ===
+2026-10-24T14:01:32 [0] baseline pitch/roll/yaw = (-37.0, 0.2, 22.6) (9 pushes)
+2026-10-24T14:01:32 [0] sent pitch=-10.0 roll=0.0 yaw=0.0
+2026-10-24T14:01:34 [0] after=(-37.0, 0.2, 22.6) delta=(+0.0,+0.0,+0.0) target_err=49.8 NOT REACHED (19 pushes)
+2026-10-24T14:01:35 [1] baseline pitch/roll/yaw = (-37.0, 0.2, 22.6) (8 pushes)
+2026-10-24T14:01:35 [1] sent pitch=-10.0 roll=0.0 yaw=0.0
+2026-10-24T14:01:37 [1] after=(-37.1, 0.1, 22.5) delta=(-0.1,-0.1,-0.1) target_err=49.7 NOT REACHED (10 pushes)
+2026-10-24T14:01:38 [2] baseline pitch/roll/yaw = (-37.0, 0.1, 22.5) (11 pushes)
+2026-10-24T14:01:38 [2] sent pitch=-10.0 roll=0.0 yaw=0.0
+2026-10-24T14:01:40 [2] after=(-37.0, 0.2, 22.4) delta=(+0.0,+0.1,-0.1) target_err=49.6 NOT REACHED (19 pushes)
+2026-10-24T14:01:40 === 0/3 moves confirmed by telemetry (not just sent) ===

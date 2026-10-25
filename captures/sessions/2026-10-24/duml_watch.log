@@ -582,3 +582,6 @@
 2026-10-24T12:08:37   reply: 551304030e0a4c2980000c00000000000088d9 crc=ok
 2026-10-24T12:08:37   reply: 551304030e0a4d2980000c000000000000198c crc=ok
 2026-10-24T12:08:37 stopped after 1 connect(s), 574 pings sent
+2026-10-24T19:45:22 === watching /dev/ttyACM5 115200 8N1, heartbeat every 0.5s, Ctrl+C to stop ===
+2026-10-24T19:45:22 connected (#1)
+2026-10-24T19:45:46 stopped after 1 connect(s), 48 pings sent
