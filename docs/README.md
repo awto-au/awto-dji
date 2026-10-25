@@ -45,6 +45,7 @@ the current state and next steps, and `../CLAUDE.md` for agent onboarding.
 ## System data flow and buses (m0900-derived)
 - `dataflow.md` — video / telemetry / control planes as Mermaid; where DUML is injected, forwarded, consumed in `m0900`; control + telemetry sequences; unknowns list. Every edge tagged verified / inferred / unknown.
 - `board-connections.md` — P01007.06 connection diagram from firmware + wiki (**not a schematic**); what a real schematic would confirm.
+- `autonomy-onboard-plan.md` — architecture + safety plan for an onboard-Linux autonomy agent driving the stock FC with setpoints: component map, the verified-capture rule for control semantics, the watchdog/authority/geofence safety model, and the A–E work order.
 - `linux-to-fc-path.md` — whether the camera A9 Linux and the DM368 Linux can reach the FC: yes, via netlink→rpmsg→camera RTOS DUML router (type 3 → UART ch0) or DM368 ttyS1; neither Linux originates FC traffic in stock firmware.
 - `fpga-pinout-model.md` — each FPGA's external buses derived from the chips around it (FX2/FX3 slave-FIFO settings, m0900/m1400 SPI+GPIO, UART DUML, AD9363), with I/O estimates and how to confirm on hardware.
 - `ground-fx3-m1601.md` — GL300C ground USB (Cypress FX3, `m1601`): iPhone iAP2 and Android AOA roles, DMA channels, the UART DUML session, and the `55 CC <type> <len>` RC->phone chunk header (`0x5749` DUML, `0x574A` video); tools `scripts/re/fx3_m1601.py`, `scripts/re/aoa_chunk_decode.py`.
