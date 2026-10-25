@@ -55,6 +55,7 @@ the current state and next steps, and `../CLAUDE.md` for agent onboarding.
 - `data/m0900-buses.tsv` — clock tree, SPI2, USART1/2/3, CAN1 rates with arithmetic and code addresses; unused buses listed.
 
 ## Provenance
+- [dji-go-p3-evidence-audit-2026-10-25.md](dji-go-p3-evidence-audit-2026-10-25.md) - original DJI GO identity (`dji.pilot`), verified 3.1.8 / 3.1.83 artifacts, firmware-upgrade reassessment and the P3 applicability ledger; corrects #30's enterprise-Pilot premise and supersedes GO 4 extrapolations.
 - `code-provenance.md`, `license-compliance.md`, `data-manifest.md` — the downloaded inputs (firmware/APK/tools) with SHA-256s; **none of the bytes are stored here** (copyright/size) — re-fetch + verify.
 
 ## Safety / scope

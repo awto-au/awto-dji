@@ -1,5 +1,10 @@
 # APK vs public dissector: cmdset/cmdid coverage comparison, upgrade + flight command sequencing
 
+> **Applicability correction, 2026-10-25:** the 723-row inventory is GO 4 4.3.64
+> shared middleware, not the capabilities of one P3 aircraft. Its IDs remain useful;
+> product applicability, inferred command sequences and global negative findings
+> are superseded where noted below. See the [2026-10-25 P3 evidence audit](dji-go-p3-evidence-audit-2026-10-25.md).
+
 Status tags: **V** verified here, **I** inferred, **U** unknown. Scope: see `apk-analysis.md`
 section 0 for the dynamic-unpack scope decision this builds on - numeric protocol facts only,
 never DJI's code. Sources: `docs/data/apk-dynamic-cmdset-ids.tsv` (723 rows, from the
@@ -22,9 +27,7 @@ Reproduce: `python3 -I scripts/re/extract_apk_cmdset.py` then
 - **I.** Every other cmdset shows the opposite pattern - the dissector has *more* entries than
   this one APK snapshot (e.g. Flight Control: APK 114 vs dissector 191, Wi-Fi: 32 vs 64). That's
   expected: the dissector aggregates command IDs across many product generations and APK
-  versions over years; this is one version's snapshot for one product. Those `dissector_only`
-  rows are mostly newer-product commands this P3-era APK never defines, not real gaps in the
-  tool. The vision-system result inverts that pattern, which is why it stands out as
+  versions over years; this is one multi-product GO 4 version's snapshot. The `dissector_only` rows do not establish whether a command is newer, older or supported by P3; those product/version attributions require separate evidence. The vision-system result inverts that pattern, which is why it stands out as
   genuinely interesting rather than expected noise.
 
 ## Real discrepancy caught: "JoyStick" ID mismatch (not yet resolved)
@@ -38,13 +41,11 @@ Reproduce: `python3 -I scripts/re/extract_apk_cmdset.py` then
   `FunctionControl` does match at 42/0x2A.
 - **U, unresolved:** whether `JoyStick(142)` is a newer/SDK-level joystick API distinct from the
   real low-level stick command (which this APK's enum may simply not name, falling through as
-  unlabelled/`Other`), or a genuine naming collision. Needs a live capture of DJI GO 4 actually
-  flying (not available this session - aircraft was stationary) or arm64 native analysis to
-  resolve, not a Java-enum read.
+  unlabelled/`Other`), or a genuine naming collision. Classic GO 3.1.8 also has JoyStick(142) and FunctionControl(42), so this is not resolved by app selection. P3 applicability needs a relevant classic-GO trace, public SDK evidence or firmware analysis; a GO 4 capture on another product cannot settle P3 behaviour.
 
-## Firmware upgrade command sequence (real IDs, `CmdSet.COMMON` / cmdset 0)
+## Firmware upgrade command inventory (real IDs, not execution order)
 
-**V**, from the dynamically-unpacked enum (`dji-analysis.md` section 0 scope):
+**V**, from the dynamically-unpacked enum (`apk-analysis.md` section 0 scope):
 
 | id | name | role (I, from naming + dissector cross-ref) |
 |---|---|---|
@@ -56,22 +57,21 @@ Reproduce: `python3 -I scripts/re/extract_apk_cmdset.py` then
 | 66 | GetPushUpgradeStatus | progress/status push during flashing |
 | 67 | AckUpgradeStop | stop/abort acknowledgement |
 | 42 | TransferFile | generic file transfer (config/cfg files, not necessarily firmware) |
-| 15 | UpgradeSelfRequest | app-initiated self-upgrade-check path |
+| 15 | UpgradeSelfRequest | device asks the app for self-upgrade permission (traced in `app-upgrade-sequence.md`) |
 
 Matches the dissector's own General cmdset labels for 0x07/0x08/0x09 (`'Enter Loader'`,
 `'Update Confirm'`, `'Update Transmit'` - **V**, cross-checked) and this repo's own earlier
 m0900 firmware-upgrade-path finding (`docs/fpga-upgrade-path.md`: "m0900 handles 0x07/0x08/0x0A
-only; no 0x09 handler" - note that doc's "0x0A" is a different numbering context, not yet
-reconciled with this table - flagged, not resolved here).
+only; no 0x09 handler" - the same COMMON command numbering context; no renumbering is implied).
 
-## Flight command sequence (structural facts only - names, IDs, rough order; no payload bit layouts)
+## Superseded P3 flight-sequence inference (names and IDs retained)
 
 Scope note: this is the same category of information the public dissector already documents in
 detail (command existence, names, rough grouping) - not new exploit material, and this repo's
 stated scope explicitly keeps geofence/flight-restriction logic out of catalogued detail. Listed
 here because it's needed for `awto_dji_app`'s own interoperability work on the owner's aircraft.
 
-**I**, inferred from command names + typical DJI app flow + dissector cross-reference, real IDs
+**Historical hypothesis only, P3 order/authority not verified.** Names cannot establish a protocol sequence. Retained for provenance, superseded as a P3 implementation recipe. Real IDs
 from the APK enum (`cmdset 3`, Flight Control):
 
 1. `SimScan`(0)/`SimGetParams`(1)/`SimParams`(2)/`SimRc`(17) - simulator path, separate from real
@@ -125,7 +125,7 @@ payload for (what fault categories exist, whether it's gated behind an activatio
 Payload layouts for any of these: not yet examined, same "decode on demand" priority approach as
 the flight-sequence work above.
 
-## No FPGA die/chip-ID readout found anywhere in the APK (2026-10-23)
+## No FPGA die/chip-ID readout identified in the examined GO 4 tree (2026-10-23)
 
 Checked whether any command dumps the Lightbridge FPGA's own die/chip ID.
 
@@ -134,9 +134,7 @@ Checked whether any command dumps the Lightbridge FPGA's own die/chip ID.
   ModuleNum(3), FlycNum(4)`. Sent via `GetSerialNum` (`CmdIdCommon` value 81 = `0x51`, COMMON
   cmdset, already in our 304-command `Get*` catalog) with `receiverType = DeviceType.DM368` -
   the air-side video SoC, a different chip from the Lightbridge FPGA in this project's own
-  architecture (`control-plane-re.md`'s "Air FPGA" vs the separate DM368 video chip). So at best
-  this is **DM368's own chip ID, not the FPGA's** - the request never targets an FPGA-typed
-  device. Nothing in the file mentions "fpga" (checked directly).
+  architecture (`control-plane-re.md`'s "Air FPGA" vs the separate DM368 video chip). **Superseded inference:** a DM368 receiver does not prove which silicon ultimately supplies the value; a processor can proxy another component. The returned identifier's provenance is U. Nothing in the file mentions "fpga" (checked directly).
 - **V.** The only other "chip state" command found, `general_encrypt_config`'s
   `GetChipState`/`GetModuleState` (`dji-dumlv1-general.lua` line ~570, cmd_type 1/2), is the
   ATSHA204/AT88 component-auth chip (returns "At88 chip state flags", config/data-zone lock
@@ -144,11 +142,7 @@ Checked whether any command dumps the Lightbridge FPGA's own die/chip ID.
   still not an FPGA readout.
 - **V.** `DataCameraGetSensorID.java` exists but queries the camera's image sensor, not the
   Lightbridge FPGA - a different "ID" command entirely, same naming-looks-relevant trap.
-- **Conclusion: no FPGA die/chip-ID command exists in the APK's DUML surface.** Nothing found
-  for "jtag"/"idcode" either (checked earlier in `m0900` firmware strings, also empty). The
-  closest thing to an FPGA identity readout in this protocol is version/build strings
-  (`GetVersion`, already in the safe catalog) - not a silicon die ID. If one exists, it would
-  have to come from actually probing the FPGA's own JTAG port on the PCB, not over DUML.
+- **Superseded global conclusion:** the searches did not identify an FPGA die-ID query in this GO 4 tree. They do not prove that no such DUML request exists or that JTAG is the only possible route. Classic GO 3.1.8 lacks the particular `DataCommonGetDeviceSerialNumber` class found here; endpoint capabilities and the identity behind returned values remain U. Firmware-side negative searches remain bounded to their named images.
 
 ## Files
 

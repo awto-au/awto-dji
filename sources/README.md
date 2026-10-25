@@ -16,6 +16,32 @@ re-extract per the entry below, don't ask for a copy.
   update to `dji.go.v4`.
 - **Good copy check**: 187,813,358 bytes as downloaded; installed `base.apk` on device is
   187,813,358 bytes too (same, not re-compressed by install).
-- **Why it matters**: GO4 itself decided this is the correct control app for this exact
-  aircraft - not yet decompiled/analyzed. Candidate for the missing gimbal
-  AngleControl/permission-gating logic (awto-dji#16).
+- **Why it matters**: GO4 itself selected classic GO for this exact aircraft.
+  **Superseded:** the original "not yet decompiled/analyzed" status. Issue #16
+  records a successful runtime rescan and gimbal comparisons. The earlier runtime
+  input was not hash-pinned; this does not prove its bytes match a later download.
+- **New official download verified 2026-10-25**: SHA-256
+  `880b67803c60ea35b488882727936b4fa885f37b014aa9495411298224513109`,
+  same manifest version/code/size. Signature passes Google apksig 8.7.3 (v1).
+  Full result: `docs/data/dji-go-3.1.83-provenance.json`.
+
+## apk/dji.pilot-3.1.8.apk
+
+- **What**: original consumer DJI GO, package `dji.pilot`, label DJI GO.
+- **Version**: 3.1.8 / 31018968, minSdk 16, targetSdk 17.
+- **Why this version**: DJI's 2017-07-06 P3 Pro release notes pair it with
+  firmware 1.11.20, the project's `P3X_FW_V01.11.0020` target.
+- **Obtained 2026-10-25**: https://mobile.softpedia.com/apk/dji-go/3.1.8/ - select
+  3.1.8 in its download dialog; follow the generated download-start link, then the
+  manual APK link. Generated Softpedia links expire. APKMirror's release listing
+  independently publishes the same size/hash. Its direct request returned 403 in
+  this session; Softpedia supplied the actual bytes.
+- **Size / SHA-256**: 101,595,742 /
+  `f7a4eaaf0adf6bee86d1cd50c4a221824b17e97132807f0f4172f9b68b9f1965`.
+- **Signature**: passes Google apksig 8.7.3 v1 verification, zero errors;
+  certificate SHA-256 matches the current official 3.1.83 APK:
+  `01a42c94aa87020f41e8c252598df98b86a0acf6c05ff61c75f18fa29cad1dd4`.
+  Full metadata/warnings: `docs/data/dji-go-3.1.8-provenance.json`.
+- **Analysis**: statically decompiled with jadx 1.5.3 into
+  `tmp/apk/go_3.1.8/static/`; four on-disk DEX files, no device execution or sign-in.
+  See `docs/dji-go-p3-evidence-audit-2026-10-25.md` for coverage and errors.

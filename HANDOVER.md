@@ -72,6 +72,12 @@ All the analysis docs cite exact offsets so you can re-derive against your own u
 
 ## Next steps (prioritized)
 
+**APK provenance update (2026-10-25, #30/#19):** classic DJI GO is `dji.pilot`,
+not the enterprise Pilot app. Firmware-era GO 3.1.8 and current 3.1.83 have been
+obtained and signature-verified. See `docs/dji-go-p3-evidence-audit-2026-10-25.md`
+for the bounded upgrade trace, preserved independent evidence and unresolved
+product-path questions. Do not use GO 4's absent callers to conclude P3 incapability.
+
 1. **Capture DUML from your own aircraft** (usbmon on the ground USB, or the MCU UART at
    256000 8N1) and run `app/packages/duml/tool/telemetry_scan.dart` → read the live Master-ID,
    SN, and telemetry. Validate OSD fields against a DJI `.SRT` sidecar. *No hardware beyond a

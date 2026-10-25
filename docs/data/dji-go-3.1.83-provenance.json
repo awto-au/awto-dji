@@ -1,0 +1,49 @@
+{
+  "file": "sources/apk/dji.pilot-3.1.83.apk",
+  "source_url": "https://service-adhoc.dji.com/download/app/android/be36a032-050d-4184-92cc-ac5aa1eb2eef",
+  "acquired_on": "2026-10-25",
+  "size": 187813358,
+  "sha256": "880b67803c60ea35b488882727936b4fa885f37b014aa9495411298224513109",
+  "package": "dji.pilot",
+  "label": "DJI GO",
+  "version_name": "3.1.83",
+  "version_code": "36020963",
+  "min_sdk": "16",
+  "target_sdk": "26",
+  "application_class": "com.AppGuard.AppGuard.QLVRK",
+  "dex": [
+    {
+      "name": "classes.dex",
+      "size": 24754800,
+      "sha256": "07e904bb28e3110cdc4015cfe3b74968e41cd3f4c2306d6ef332d041ba651d6e",
+      "class_defs": 1623
+    }
+  ],
+  "signature": {
+    "verifier": "Google apksig 8.7.3",
+    "verifier_jar_sha256": "c070ed1394629d74641aa0906f60b2ffa1ee77e6366a1f93437f59717b1aeb89",
+    "verified": true,
+    "v1": true,
+    "v2": false,
+    "signer_certificate_sha256": [
+      "01a42c94aa87020f41e8c252598df98b86a0acf6c05ff61c75f18fa29cad1dd4"
+    ],
+    "errors": [],
+    "warnings": [
+      "META-INF/DJI-Mapkit-Core_release.kotlin_module not protected by signature. Unauthorized modifications to this JAR entry will not be detected. Delete or move the entry outside of META-INF/.",
+      "META-INF/DJI-Mapkit-Maplibre_release.kotlin_module not protected by signature. Unauthorized modifications to this JAR entry will not be detected. Delete or move the entry outside of META-INF/.",
+      "META-INF/com.android.tools.metadata/drm/com.google.play/metadata.bin not protected by signature. Unauthorized modifications to this JAR entry will not be detected. Delete or move the entry outside of META-INF/.",
+      "META-INF/kotlin-stdlib-common-coroutines.kotlin_module not protected by signature. Unauthorized modifications to this JAR entry will not be detected. Delete or move the entry outside of META-INF/.",
+      "META-INF/kotlin-stdlib-common.kotlin_module not protected by signature. Unauthorized modifications to this JAR entry will not be detected. Delete or move the entry outside of META-INF/.",
+      "META-INF/kotlin-stdlib-coroutines.kotlin_module not protected by signature. Unauthorized modifications to this JAR entry will not be detected. Delete or move the entry outside of META-INF/.",
+      "META-INF/kotlin-stdlib-jdk7.kotlin_module not protected by signature. Unauthorized modifications to this JAR entry will not be detected. Delete or move the entry outside of META-INF/.",
+      "META-INF/kotlin-stdlib-jdk8.kotlin_module not protected by signature. Unauthorized modifications to this JAR entry will not be detected. Delete or move the entry outside of META-INF/.",
+      "META-INF/kotlin-stdlib.kotlin_module not protected by signature. Unauthorized modifications to this JAR entry will not be detected. Delete or move the entry outside of META-INF/.",
+      "META-INF/proguard/dji.phone.orientation.DJIOrientationManager.pro not protected by signature. Unauthorized modifications to this JAR entry will not be detected. Delete or move the entry outside of META-INF/.",
+      "META-INF/proguard/okhttp3.pro not protected by signature. Unauthorized modifications to this JAR entry will not be detected. Delete or move the entry outside of META-INF/.",
+      "META-INF/rxjava-computation-expressions.properties not protected by signature. Unauthorized modifications to this JAR entry will not be detected. Delete or move the entry outside of META-INF/.",
+      "META-INF/rxjava.properties not protected by signature. Unauthorized modifications to this JAR entry will not be detected. Delete or move the entry outside of META-INF/.",
+      "META-INF/services/com.fasterxml.jackson.core.JsonFactory not protected by signature. Unauthorized modifications to this JAR entry will not be detected. Delete or move the entry outside of META-INF/."
+    ]
+  }
+}

@@ -1,5 +1,11 @@
 # Air side survey: FPGA-stream contact, chip/die ID reads, upgrade path
 
+> **APK evidence correction, 2026-10-25:** the firmware-address findings below
+> are independent of app identity. The old GO 4 checklist is superseded by analysis
+> of classic GO 3.1.8; see the [2026-10-25 P3 evidence audit](dji-go-p3-evidence-audit-2026-10-25.md).
+> Searches that found no FPGA ID reader are bounded negatives, not proof that no
+> component or protocol path can read one.
+
 Firmware: `P3X_FW_V01.11.0020` (2017-07-05) plus P3X 01.01.0006, P3S 01.01.0008, P3C 01.08.0100, P3SE 01.01.0000, P3XW 01.00.0010.
 Reproduce: `python3 scripts/re/air_survey.py` (log `tmp/logs/air_survey.log`, about 1 minute). Symbols: `docs/symbols/air_modules.tsv`.
 Scope (CLAUDE.md): interoperability only. No key values read, no auth/signing bypass, no flight-restriction work. Firmware treated as untrusted data (static analysis only).
@@ -90,7 +96,7 @@ UID-read summary across variants: STM32 UID literals exist only in P3X V01.11.00
 - **m0306**: STM32F4 UID word 0 inside a 10-byte record (`0x080596ea`); GPS M8 UID expected (`0x0802867b`); IMU SN; user UUID (V strings, U consumers).
 - **m0100**: ATSHA204 SN (9 bytes) and board number verified against A9 NAND; SD-card SN; authorized MAC. Not an SoC or FPGA UID.
 - **m1700**: camera-module ID, not a chip UID.
-- **FPGA / Cyclone V**: no code anywhere reads the FPGA die ID, JTAG IDCODE or eFuse. Only FPGA values read are regs 0x08/0x09 in the upgrade check (fpga-upgrade-path.md). Bitstream shows no user chip-ID block (weak, see m1900).
+- **FPGA / Cyclone V**: **superseded absolute wording** ("no code anywhere reads"): no such reader was identified in the specific firmware regions examined here. This does not exclude unexamined code, a proxy command or a different build. Only FPGA values read are regs 0x08/0x09 in the upgrade check (fpga-upgrade-path.md). Bitstream shows no user chip-ID block (weak, see m1900).
 - m1500: none. m0400: none (reads a flash page, meaning U). ESC/battery: unknown.
 
 ### (c) Firmware-upgrade path reaching the FPGA or sending an ID
@@ -112,7 +118,7 @@ UID-read summary across variants: STM32 UID literals exist only in P3X V01.11.00
 - **Hardware facts**: FIFO peer of the FX2LP, USB mux topology, which board strap the owned unit has: need a schematic or logic-analyzer capture.
 - **DUML Get Version (0x01) / Query Device Info (0xFF) replies** traced for m0900 only (existing docs); candidate General-set tables found by heuristic scan: m0400 `0x0801d4ac`, m0305 `0x2000a390`, m0306 `0x080baa60`; reply contents not decoded.
 
-## DJI GO 4 APK: checklist (not on disk, nothing downloaded)
+## Superseded GO 4 checklist (historical; use the classic GO audit)
 - Class/package names: upgrade (`Upgrade`, `Firmware`, `FwUpdate`), version/device info (`GetVersion`, `DeviceInfo`, `DeviceState`), activation (`Active`, `Activation`, `RealName`), module-id tables with `FPGA`, `68013`, `DM368`, `1765`.
 - Native libs: DUML pack/unpack, upgrade-packet builder (`Fw3.bin` naming, `P3X_FW_V%d.%d.%d.bin`), any AES/CRC on upgrade packets.
 - Upgrade flow: which command sets the app sends (0x00 general: 0x07..0x0d), whether it pushes the package over DUML/USB or only copies it to the SD card, what it logs from `PushUpgradeStatus`.

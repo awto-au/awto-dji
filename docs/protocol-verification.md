@@ -1,5 +1,10 @@
 # DUML protocol — open-source assertion audit (Phantom 3 Professional)
 
+> **2026-10-25 update:** independent CRC/frame checks below are preserved. GO 4
+> class presence is not P3 product support; classic GO 3.1.8 is now obtained and
+> analysed in the [2026-10-25 P3 evidence audit](dji-go-p3-evidence-audit-2026-10-25.md). Historical static-packing /
+> native-only limitations at the end are superseded for the recovered Java methods.
+
 Every claim this project relies on, checked against primary sources rather than
 repeated on trust. Reference: [`o-gs/dji-firmware-tools`](https://github.com/o-gs/dji-firmware-tools)
 (GPL-3), which ships Phantom 3 firmware symbols and whose CRC-16 seed is commented
@@ -48,7 +53,7 @@ reference. Last run: 13/13 structural checks pass.
 ## Cross-checked against the DJI binary (APK)
 
 Not just the third-party reference — the following were read directly out of the DJI
-app (`dji.go.v4`, the newest app that still carries the P3 midware classes). Class
+app (`dji.go.v4`, a GO 4 build carrying shared P3-named middleware, not the P3 control app). Class
 names are obfuscated, but the protocol identifiers survive, and they match the
 open-source assertions.
 
@@ -68,7 +73,7 @@ the reference + the captured packet above), and any flight-control payload forma
 (the "unproven" row stands). The DUML *structure* is corroborated from both the
 open-source reference and the vendor binary; they agree.
 
-## Why we don't RE the app for the protocol
+## Superseded early scope rationale (historical)
 
 The DJI app's DUML/flight logic is in obfuscated native `.so` files, interleaved with
 no-fly enforcement (`libFlyForbid.so`). Extracting control from those binaries is
