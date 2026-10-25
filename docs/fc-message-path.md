@@ -125,6 +125,26 @@ allowlist. The deciding factor is the mode gate (RC switch / flight mode), not t
 Not yet done: the continuous-setpoint (joystick / `serial_open_nav`) payload, and what sets the
 mode byte to 2 (confirm it is the RC mode switch).
 
+## How to use the FC control API (enable chain, 2026-10-25)
+
+Working within the stock API (no patching). The enable chain, decompiled:
+
+1. **Arbitration** `fc_ctrl_arbitrate` (0x08064c9c) scans a 2-entry priority table (0x080ef3d8):
+   device code 1 (pred 0x08064c88) and device code 2 = API/nav (pred `fc_ctrl_src2_pred_api`
+   0x08064c92). The first predicate returning 1 wins; its code becomes the gate byte 0x200001d5.
+2. **API/nav becomes active (code 2)** iff `fc_ctrl_src2_pred_api` returns 1, i.e.
+   **bit 2 of the mode-flags byte at 0x200001d6 is set**. (What sets that bit — RC mode switch
+   position vs an app/activation request — is the one remaining unknown in the chain.)
+3. **Request agency**: `fc_api_ctrl_mode_status_request_handler` (0x08055680) grants only while
+   the gate byte == 2 and the sender resolves to a valid channel (no identity allowlist).
+4. **Open navigation**: `fc_api_ctrl_mode_serial_open_nav` (0x08055b9c) opens the nav channel,
+   and only succeeds when the active device is already 2.
+5. **Then** drive `fc_api_mission_planner_wp_*` (waypoint go-to) / joystick / hotpoint / follow.
+
+So for the onboard agent: get the aircraft into the state that sets flags-bit 2 (the API
+control condition), request agency on an accepted channel, open nav, then stream setpoints.
+No firmware change required if that bit can be set the normal way.
+
 ## Next step (proper disassembly, not one-line scans)
 
 Trace from a byte entry point to the dispatch, following indirect calls:

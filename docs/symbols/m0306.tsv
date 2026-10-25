@@ -32,3 +32,6 @@ addr	name	note	source
 0x08064c9c	fc_ctrl_mode_set_a	writes mode gate byte 0x200001d5	ghidra
 0x08064d9c	fc_ctrl_mode_set_b	writes mode gate byte 0x200001d5	ghidra
 0x0805ca9a	fc_ctrl_send_ack	sends control-request ACK (2=grant,1=refuse)	ghidra
+0x08064c9c	fc_ctrl_arbitrate	picks active control device by priority predicates; writes gate byte 0x200001d5	ghidra
+0x08064c88	fc_ctrl_src1_pred	predicate for control device code 1	ghidra
+0x08064c92	fc_ctrl_src2_pred_api	predicate for device code 2 (API/nav): active iff bit2 of flags 0x200001d6	ghidra
