@@ -4,6 +4,19 @@ Dated changelog of fact-corrections previously narrated inline in the docs. Each
 phrased as "initial understanding -> corrected finding." The docs now state only the
 corrected/current fact; this file preserves the history for reference.
 
+## 2026-10-25 (XOR key traced — it's zero)
+
+- **`ofdm_payload_descramble`'s 8-byte XOR key, traced to source.** Located at
+  `radio_state_s+0x64` (RAM `0x20001b18`-`0x20001b1f`, inside the struct's previously-opaque
+  `pad_10` gap). No DUML command handler writes this offset (Set Config writes a different,
+  earlier struct); a direct reference search of all 8 bytes found zero writers anywhere in the
+  firmware. Traced how the RAM region gets its boot-time value: the C-runtime's RAM-init table
+  has two region descriptors, and the key's address falls inside the one whose initializer is a
+  plain zero-fill loop (the *other* descriptor, covering a different RAM range, really does use
+  a compressed-copy decompressor — so this is a specific finding, not "everything's zero").
+  **The key is always zero in this build; the XOR step is a no-op, and the real validation is
+  the two-stage checksum alone, not encryption.** (`docs/air-router-deep-dive.md` §6a)
+
 ## 2026-10-25 (second ring resolved — RF link confirmed, not a bus guess)
 
 - **`fpga_uart_to_fc_relay`'s first ring, previously open, fully resolved.** Ruled out CAN

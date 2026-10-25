@@ -305,13 +305,26 @@ tick scheduler outward.
   drains **two independent RF-sourced paths** — one the FPGA's UART framing, one the FPGA's SPI
   payload/status interface — and relays both, verbatim, to the FC. This is about as complete a
   confirmation of "yes, `air_router` forwards RF-link traffic to the FC" as static analysis can
-  give without a live RF capture. Also worth flagging for later: `FUN_0800e008`'s XOR-key +
-  chained-checksum scheme is exactly the shape of a link-level descrambler/authenticator and is
-  worth a dedicated trace of its own (key source, whether it's a fixed constant or
-  pairing-derived) — not attempted this pass.
+  give without a live RF capture.
+- **V, key source traced (2026-10-25, same day) — it's zero, not a secret.** The 8-byte XOR
+  key lives at `radio_state_s+0x64` (RAM `0x20001b18`-`0x20001b1f`, inside the struct's
+  previously-opaque `pad_10` gap). Checked every write path: no DUML command handler touches
+  this offset (Set Config writes the *other*, earlier struct, `radio_cfg_page_s`, not this
+  one), and a direct reference search of all 8 individual bytes found zero writers anywhere in
+  the firmware. Traced the reset vector into the C-runtime's RAM-init table (two region
+  descriptors, each `{src, dst, len, init-fn}`) to see how this RAM starts out: the key's
+  address falls inside the second descriptor (`dst=0x200001d0`, `len=0x4ae8`), whose init
+  function is a plain zero-fill loop (`stmia` of zero registers, never reading `src` at all) —
+  not the compressed-copy decompressor the *first* descriptor uses for `0x20000000-0x200001cf`
+  (so this isn't "everything is zero," just this specific range). **Conclusion: the key is
+  zero-initialized RAM nothing in this build ever writes — the XOR step is effectively a no-op
+  (XOR against zero), and the real work `ofdm_payload_descramble` does is the two-stage chained
+  checksum, not encryption.** Possibly wired up for a board variant not active in this build,
+  or vestigial from an earlier revision.
 - Reproduce: `scratchpad/ghscripts/m0900_fun80103f8.py`, `m0900_ring_writers.py`,
   `m0900_can_init_trace.py`, `m0900_can_queue_init_callers.py`, `m0900_fun0800e008_callers.py`,
-  `m0900_check_usart3_ctx.py`, `m0900_all_ring_pushers.py` (all ad hoc, not committed).
+  `m0900_check_usart3_ctx.py`, `m0900_all_ring_pushers.py`, `m0900_key_src1.py`-`4.py`,
+  `m0900_data_table_entries.py`, `m0900_decomp_fn_dis.py` (all ad hoc, not committed).
 
 ## 7. Chip ID / identity — no new readers found
 
