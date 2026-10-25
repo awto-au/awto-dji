@@ -310,15 +310,29 @@ V sequence from the app side (`pilot/publics/objects/DJIBaseActivity.java`; same
 | SD card | camera-hosted (2.6) + SD error codes (1.8) | aircraft modules via camera engine | I |
 | Per-module DUML push to the aircraft | `LG/*` (2.3) | any type+module from package entry | V code, no callers (U use) |
 
-- **Air FPGA (m1900, type 19)**: V: listed in the P3 module lists (`pilot/upgrade/f/x.java:40`, `z.java:40`), version query `DeviceType.FPGA` (`PC/DJIUpgradeControl.java:791`), field `m1900` in the pack list (`DJIUpgradePackListModel.java:102`). U: how bytes reach it. No app class sends 0x07-0x0A to type 19. `docs/fpga-upgrade-path.md` shows m0900 handles Enter/Confirm/Finish for receiver 0x13 and has no TranslateData handler, so the data stage does not pass through m0900 (V there). I: the camera-hosted engine distributes it (`docs/air-id-and-stream-survey.md:40-45`, which also notes its type-19 routing as untraced).
+- **Air FPGA (m1900, type 19)**:
+  - V: listed in the P3 module lists (`pilot/upgrade/f/x.java:40`, `z.java:40`), version query `DeviceType.FPGA` (`PC/DJIUpgradeControl.java:791`), field `m1900` in the pack list (`DJIUpgradePackListModel.java:102`).
+  - U: how bytes reach it. No app class sends 0x07-0x0A to type 19.
+  - V (there): `docs/fpga-upgrade-path.md` shows m0900 handles Enter/Confirm/Finish for receiver 0x13 and has no TranslateData handler, so the data stage does not pass through m0900.
+  - I: the camera-hosted engine distributes it (`docs/air-id-and-stream-survey.md:40-45`, which also notes its type-19 routing as untraced).
 - **Ground FPGA (m2000-m2002, type 20)**: V: pushed by the app over RC DUML with the RC flow's FPGA_G special-casing (u16 byte-sum instead of MD5, 130 s pre-data wait, `RC/c.java:349-352,563-575,624-653`). Data consumer on the RC U (m1400 ignores 0x09: `docs/ground-upgrade-path.md` Q2).
 - **m0900 (type 9)**: V in pack list and P3 lists; not pushed by any traced app flow. Air MCU modules 0305/0306/0400/1100/1200-1203/1500/1700/1701: same status as 1900 (U).
 
 ## 4. What the app learns before it will push
 
-- V: version list built in `PC/DJIUpgradeControl.java:772-830`: GetVersion to DM368_G, OSD, TRANSFORM_G, FPGA_G, WIFI_G(0), SINGLE(0,1), CAMERA(0,1,4), FLYC, BATTERY, GIMBAL(0..3), CENTER, DM368(0,1,7), OFDM, DIGITAL(0..3), TRANSFORM(0,1), FPGA, WIFI(0). First probe is OSD (`:741`, timeout 1000, retry 1). Module id goes in the receiver-id field (`P3/DataCommonGetVersion.java:248-251,262-270`).
-- V: component version check (`pilot/upgrade/b.java:127-147`): per `DDMM`, `GetVersion` with `start(…,500,5)`; DM368_G/FPGA_G/TRANSFORM_G/OSD and camera 0/1 queried without module id. Camera 0/1 and FLYC module 5 use the *loader* version, others the *firmware* version (`:51-59`). Ground modules are rejected when the ack's loader byte 2 differs from the module id (`:62-69`). Version integer = `b0*2^24 + b1*2^16 + b2*2^8 + b3` (camera 0/1: last two parts concatenated) (`pilot/upgrade/FirmwareVersion.java:26-36`).
-- V ack getters (`P3/DataCommonGetVersion.java`): hardware string 16 B at index 1 (`:119-130`), loader bytes 17..20 (`:144-163`), firmware bytes 21..24 printed `b24.b23.b22.b21` (camera: `b24.b23.(u16@21/100).(%100)`, `:79-101`), flags u32 at 25: bit31 production, bit30 safe-upgrade supported (`:132-142`). The index base against the ccode is U (getters start at 1 while other getters start at 0 after ccode stripping); see `scripts/re/get_identity.py`.
+- V: version list built in `PC/DJIUpgradeControl.java:772-830`: GetVersion to DM368_G, OSD, TRANSFORM_G, FPGA_G, WIFI_G(0), SINGLE(0,1), CAMERA(0,1,4), FLYC, BATTERY, GIMBAL(0..3), CENTER, DM368(0,1,7), OFDM, DIGITAL(0..3), TRANSFORM(0,1), FPGA, WIFI(0).
+  - First probe is OSD (`:741`, timeout 1000, retry 1).
+  - Module id goes in the receiver-id field (`P3/DataCommonGetVersion.java:248-251,262-270`).
+- V: component version check (`pilot/upgrade/b.java:127-147`): per `DDMM`, `GetVersion` with `start(…,500,5)`.
+  - DM368_G/FPGA_G/TRANSFORM_G/OSD and camera 0/1 are queried without module id.
+  - Camera 0/1 and FLYC module 5 use the *loader* version, others the *firmware* version (`:51-59`).
+  - Ground modules are rejected when the ack's loader byte 2 differs from the module id (`:62-69`).
+  - Version integer = `b0*2^24 + b1*2^16 + b2*2^8 + b3` (camera 0/1: last two parts concatenated) (`pilot/upgrade/FirmwareVersion.java:26-36`).
+- V ack getters (`P3/DataCommonGetVersion.java`):
+  - hardware string 16 B at index 1 (`:119-130`), loader bytes 17..20 (`:144-163`);
+  - firmware bytes 21..24 printed `b24.b23.b22.b21` (camera: `b24.b23.(u16@21/100).(%100)`, `:79-101`);
+  - flags u32 at 25: bit31 production, bit30 safe-upgrade supported (`:132-142`).
+  - U: the index base against the ccode (getters start at 1 while other getters start at 0 after ccode stripping); see `scripts/re/get_identity.py`.
 - V: product identity: GetVersion to `OSD` populates the product type (`P3/DataCommonGetVersion.java:196-225`); package must carry the matching product string (2.1). P4 engine reads the hardware string and matches substrings `wm330`, `wm331`, `rc001`, `de01`, ... (`DB/statemachine/h.java:98-125`, `:295-330`).
 - V connection gates: `ServiceManager.isRemoteOK()` and `isOK()` for aircraft components (`pilot/upgrade/f/x.java:44-46`); RC components need only `isOK()` (`f/a0.java:45`); motors not up (`DB/statemachine/b.java:39-41`, `P3/DataUpgradeSelfRequest.java:89-95`); battery minimum (2.4); `DataCommonRequestUpgrade` ack flags (1.2).
 - V: size/precondition errors the device can return: Ccode 233 SDCARD_FULL, 232 SDCARD_NOT_INSERTED, 249 UPDATE_MOTOR_WORKING, 251 DEVICE_LOW_POWER, 246 FIRM_MATCH_WRONG, 245 UPDATE_WRONG, 242 FM_CRC_WRONG.

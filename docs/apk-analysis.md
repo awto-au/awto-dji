@@ -147,64 +147,33 @@ per-class errors. This recovered the real legacy-P3 DUML package tree:
 `dji.midware.data.model.P3.Data*` (hundreds of per-command classes),
 `dji.midware.data.manager.P3.{DataBase,DJIProductManager,...}`, `dji.midware.usb.P3.*`.
 
-**`CmdSet` and `DeviceType` numeric values - verified, extracted to
-`docs/data/apk-cmdset-devicetype.tsv`**: `CmdSet` 0-8 are COMMON/SPECIAL/CAMERA/FLYC/GIMBAL/
-CENTER/RC/WIFI/DM368 (enum continues past DM368 in the source; not yet fully extracted).
-`DeviceType` (the DUML receiver-type byte) is the standout cross-check: **`OFDM = 9`
-matches exactly** what `docs/symbols/m0900_V01.11.0020.tsv` independently derived from
-disassembly (DUML keys `0x0913`/`0x0914`, receiver type 9) in an earlier session, before
-this APK was ever opened; **`FPGA = 19` (0x13) and `FPGA_G = 20` (0x14) match exactly** the air (m0900,
-`docs/fpga-upgrade-path.md`) and ground (m1400, `docs/ground-upgrade-path.md`) FPGA-upgrade
-receiver types found independently by static firmware RE. This is a real, independent
-cross-validation of the firmware-side DUML receiver-type reverse engineering against DJI's
-own app source - not a coincidence at this specificity.
+**`CmdSet` and `DeviceType` numeric values - verified, extracted to `docs/data/apk-cmdset-devicetype.tsv`**:
+- `CmdSet` 0-8 are COMMON/SPECIAL/CAMERA/FLYC/GIMBAL/CENTER/RC/WIFI/DM368 (enum continues past DM368 in the source; not yet fully extracted).
+- `DeviceType` (the DUML receiver-type byte) is the standout cross-check.
+- **`OFDM = 9` matches exactly** what `docs/symbols/m0900_V01.11.0020.tsv` independently derived from disassembly (DUML keys `0x0913`/`0x0914`, receiver type 9) in an earlier session, before this APK was ever opened.
+- **`FPGA = 19` (0x13) and `FPGA_G = 20` (0x14) match exactly** the air (m0900, `docs/fpga-upgrade-path.md`) and ground (m1400, `docs/ground-upgrade-path.md`) FPGA-upgrade receiver types found independently by static firmware RE.
+- This is a real, independent cross-validation of the firmware-side DUML receiver-type reverse engineering against DJI's own app source; not a coincidence at this specificity.
 
-Each `CmdSet` carries a nested `CmdIdType` enum with real numeric command IDs and payload
-model classes (e.g. `RC.CmdIdType.SetConnectMaster(12)` / `GetConnectMaster(13)` - matches
-`docs/id-entry-point.md`'s "Connected Master Id Set/Get" m1400 proof exactly, including the
-+1 Set/Get pairing pattern). `docs/data/apk-duml-commands.tsv`'s "?" numeric ids can now be
-filled from this source class by class; not yet done here (large task, left for a follow-up
-pass - the raw decompiled `.java` is not committed, per the no-DJI-derivative-code
-convention, so re-extraction needs a fresh unpack run against `scripts/re/apk_dynamic_unpack.py`).
+Each `CmdSet` carries a nested `CmdIdType` enum with real numeric command IDs and payload model classes.
+- Example: `RC.CmdIdType.SetConnectMaster(12)` / `GetConnectMaster(13)` matches `docs/id-entry-point.md`'s "Connected Master Id Set/Get" m1400 proof exactly, including the +1 Set/Get pairing pattern.
+- `docs/data/apk-duml-commands.tsv`'s "?" numeric ids can now be filled from this source class by class. Not yet done (large task, left for a follow-up pass).
+- The raw decompiled `.java` is not committed, per the no-DJI-derivative-code convention. Re-extraction needs a fresh unpack run against `scripts/re/apk_dynamic_unpack.py`.
 
-**Method**: `scripts/re/apk_dynamic_unpack.py --device <serial>` on a real, dedicated-for-work,
-rooted (Magisk) Android device. frida-server pushed/run; `frida-dexdump` dumped ~62 resident
-dex files on cold start, but those are all stock Android framework classes (`android.*`,
-`dalvik.*`) loaded by the boot classloader — the app's own `dji.*` payload was not yet
-resident. Progressing the app past its first-run consent flow (Terms of Use -> OS
-storage/location permission request, declined -> DJI "Information Authorization" toggles,
-accepted as defaulted -> "DJI Product Improvement Program", declined -> Sign Up/Sign In,
-**stopped here, no login performed**) triggers the real payload to load. **At that point
-`frida-dexdump`/manual classloader-walk both reliably killed the target process**
-(`frida.InvalidOperationError: script has been destroyed`, reproducible, process respawned
-under a new PID each time) **and the process was stable as soon as `frida-server` was
-killed** — confirms the packer's advertised anti-tamper/anti-Frida detection, not incidental
-instability. Fell back to the no-Frida path: raw `/proc/<pid>/mem` reads of `rw-p` regions
-under 64 MB via `adb exec-out su -c dd` (binary-safe; plain `adb shell` text capture would
-corrupt the bytes), scanning each region for the dex magic and carving out every match (a
-region can hold several dex files back to back). 5 regions carved (2 large, 60 MB and 38 MB;
-3 small). `jadx -Pdex-input.verify-checksum=no` (the carved copies' SHA-1/Adler-32 header
-fields are stale relative to the runtime's in-memory patches, as expected for a live-process
-dump; jadx's `verify-checksum=no` option accepts them without needing to recompute those
-fields) decompiled 4 of 5 (one small carve was truncated at its memory-region boundary) to
-2544 classes, 775 of them under real `dji.*`/`com.dji.*` packages — confirms the unpack
-worked.
+**Method**: `scripts/re/apk_dynamic_unpack.py --device <serial>` on a real, dedicated-for-work, rooted (Magisk) Android device.
+- frida-server pushed/run; `frida-dexdump` dumped ~62 resident dex files on cold start. All are stock Android framework classes (`android.*`, `dalvik.*`) loaded by the boot classloader; the app's own `dji.*` payload was not yet resident.
+- Progressing past the first-run consent flow loads the real payload. Flow: Terms of Use -> OS storage/location permission request (declined) -> DJI "Information Authorization" toggles (accepted as defaulted) -> "DJI Product Improvement Program" (declined) -> Sign Up/Sign In (**stopped here, no login performed**).
+- **At that point `frida-dexdump`/manual classloader-walk both reliably killed the target process** (`frida.InvalidOperationError: script has been destroyed`, reproducible, process respawned under a new PID each time). **The process was stable as soon as `frida-server` was killed.** This confirms the packer's advertised anti-tamper/anti-Frida detection, not incidental instability.
+- Fallback, no Frida: raw `/proc/<pid>/mem` reads of `rw-p` regions under 64 MB via `adb exec-out su -c dd` (binary-safe; plain `adb shell` text capture would corrupt the bytes). Each region is scanned for the dex magic and every match carved out (a region can hold several dex files back to back).
+- 5 regions carved (2 large, 60 MB and 38 MB; 3 small).
+- `jadx -Pdex-input.verify-checksum=no` decompiled 4 of 5 (one small carve was truncated at its memory-region boundary) to 2544 classes, 775 of them under real `dji.*`/`com.dji.*` packages. This confirms the unpack worked.
+- The checksum option is needed because the carved copies' SHA-1/Adler-32 header fields are stale relative to the runtime's in-memory patches, as expected for a live-process dump; jadx accepts them without recomputing those fields.
 
-**What this specific carve contains**: this pass's two large regions hold `dji.data.upgrade`
-/ `dji.dbox.upgrade.p4.*` and a package tree that also includes `dji.flysafe` (present but
-**not examined**, per the standing FlySafe exclusion below — the operator's packer-unpacking
-authorization did not extend scope on that). `DJIUpDeviceType` (upgrade device/model table)
-confirms AOA as a named, general transport strategy (`FileTransferStrategies.APP_AOA_RC`,
-`APP_AOA_RC_WIFI_UAV`, `APP_AOA_RC_SDR_UAV` enum values) but is the **modern DJI SDK Core**
-device table (`wm220`/`wm330`-series, `rc001`-`rc240`, `rm500`, `pm410`, `gl811`...) — no
-`T600`/Phantom-3-era entry in it. The specific legacy-P3 `DataConfig`/`CmdSet`/`CmdId`/
-`UsbAccessoryService`/`DJIAoaActivity` classes the earlier static pass found string
-references to were not in these particular 5 regions; they are almost certainly in one of
-the other ~50 dex files `frida-dexdump` listed at cold start but this session did not carve
-from live memory (would need another memscan pass with a different/larger region-size
-cutoff, done post-consent-flow). **Numeric DUML cmd-set/cmd-id values and the AOA accessory
-identity strings remain unconfirmed** — `docs/data/apk-duml-commands.tsv` and
-`app/awto_dji_app/lib/transport/aoa_identity.dart`'s placeholders are unchanged.
+**What this specific carve contains**:
+- The two large regions hold `dji.data.upgrade` / `dji.dbox.upgrade.p4.*` and a package tree that also includes `dji.flysafe`. FlySafe is present but **not examined**, per the standing FlySafe exclusion below; the operator's packer-unpacking authorization did not extend scope on that.
+- `DJIUpDeviceType` (upgrade device/model table) confirms AOA as a named, general transport strategy (`FileTransferStrategies.APP_AOA_RC`, `APP_AOA_RC_WIFI_UAV`, `APP_AOA_RC_SDR_UAV` enum values).
+- It is the **modern DJI SDK Core** device table (`wm220`/`wm330`-series, `rc001`-`rc240`, `rm500`, `pm410`, `gl811`...), with no `T600`/Phantom-3-era entry.
+- The legacy-P3 `DataConfig`/`CmdSet`/`CmdId`/`UsbAccessoryService`/`DJIAoaActivity` classes the earlier static pass found string references to were not in these 5 regions. They are almost certainly in one of the other ~50 dex files `frida-dexdump` listed at cold start but not carved from live memory (needs another memscan pass with a different/larger region-size cutoff, done post-consent-flow).
+- **Numeric DUML cmd-set/cmd-id values and the AOA accessory identity strings remain unconfirmed**; `docs/data/apk-duml-commands.tsv` and `app/awto_dji_app/lib/transport/aoa_identity.dart` placeholders are unchanged.
 
 Tooling fixes made getting here (now in `scripts/re/apk_dynamic_unpack.py`, reproducible):
 real installed package is `dji.go.v4` (not `com.dji.go4` as the app's own internal class/dir

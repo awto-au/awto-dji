@@ -40,19 +40,11 @@ Honesty tags **V**/**I**/**U** follow `CLAUDE.md`.
      (acceptance checklist in `fc-replacement-plan.md`: valid vector table, `0x77557755`
      marker, correct xV4 packaging, `FIRM_MATCH` fields). Full control, easiest to reason
      about, but reimplements CAN/USB bring-up from scratch.
-  2. **Appended patch payload.** Keep the stock m0306 image entirely intact and append this
-     code in the free flash tail (`0x080FD200–0x08100000`, ~11.5 KB free — **V**,
-     `fc-replacement-plan.md`), reached by repointing one null `FlycExportParam` callback (or
-     a `nullsub_*`/factory-test stub) to it. This mode **calls the stock `duml_send`
-     (`0x0804f862`)** directly to transmit replies instead of bringing up its own transport —
-     far less code, and every DJI driver/failsafe stays live underneath. This is the
-     preferred mode for a first bench instrument because it needs no new bring-up code at
-     all; the risk is entirely in the one patched callback pointer and is trivially
-     recoverable (reflash stock m0306 via DJI Assistant 2, loader untouched either way).
-  The command handlers (`readmem.c`, `hook.c`, `trace_pipe.c`) are written against a small
-  transport interface (`fc_instrument_transport_t`: `send(bytes,len)`) so the same handler
-  code works unchanged in either mode — in mode 2 that interface is a one-line wrapper over
-  `duml_send`.
+  2. **Appended patch payload.** Keep the stock m0306 image entirely intact and append this code in the free flash tail (`0x080FD200–0x08100000`, ~11.5 KB free — **V**, `fc-replacement-plan.md`), reached by repointing one null `FlycExportParam` callback (or a `nullsub_*`/factory-test stub) to it.
+     - This mode **calls the stock `duml_send` (`0x0804f862`)** directly to transmit replies instead of bringing up its own transport. Far less code, and every DJI driver/failsafe stays live underneath.
+     - Preferred mode for a first bench instrument: it needs no new bring-up code at all.
+     - The risk is entirely in the one patched callback pointer and is trivially recoverable (reflash stock m0306 via DJI Assistant 2, loader untouched either way).
+  The command handlers (`readmem.c`, `hook.c`, `trace_pipe.c`) are written against a small transport interface (`fc_instrument_transport_t`: `send(bytes,len)`) so the same handler code works unchanged in either mode. In mode 2 that interface is a one-line wrapper over `duml_send`.
 
 ## 2. Command A — READ-ANY-MEMORY
 
@@ -90,16 +82,11 @@ both implemented in `readmem.c`:
    Anything outside the table is rejected *before* it is ever dereferenced, with status
    `READMEM_ERR_RANGE`, no fault risk at all. This covers the common case (host typo, or
    deliberately probing "is this mapped") cheaply.
-2. **Fault-catching read** (for addresses inside a nominally-valid region that may still fault
-   — e.g. a peripheral base whose exact sub-range is unmapped, or a flash address inside an
-   erased/blank sector read during an in-progress upgrade): temporarily install a custom
-   `BusFault_Handler`, set `SCB->CFSR`/`SCB->SHCSR` for precise fault reporting, perform the
-   read inside a `setjmp`-style frame (in practice: the fault handler advances the stacked PC
-   past the faulting load instruction and sets a "faulted" flag + a sentinel return value,
-   mirroring the pattern ARM app notes use for "probe this address" code, e.g. a fixed-size
-   `__LDR` done through an asm helper the fault handler can recognize by PC range). Restore the
-   board's normal `BusFault_Handler` immediately after. This never escalates to HardFault
-   (BusFault is enabled via `SCB->SHCSR |= BUSFAULTENA`) and never resets the board.
+2. **Fault-catching read** (for addresses inside a nominally-valid region that may still fault, e.g. a peripheral base whose exact sub-range is unmapped, or a flash address inside an erased/blank sector read during an in-progress upgrade):
+   - temporarily install a custom `BusFault_Handler`, set `SCB->CFSR`/`SCB->SHCSR` for precise fault reporting;
+   - perform the read inside a `setjmp`-style frame. In practice: the fault handler advances the stacked PC past the faulting load instruction and sets a "faulted" flag + a sentinel return value, mirroring the pattern ARM app notes use for "probe this address" code (e.g. a fixed-size `__LDR` done through an asm helper the fault handler can recognize by PC range);
+   - restore the board's normal `BusFault_Handler` immediately after.
+   - This never escalates to HardFault (BusFault is enabled via `SCB->SHCSR |= BUSFAULTENA`) and never resets the board.
 
 Both guards return a `status` byte in the response chunk rather than crashing; a rejected
 chunk still gets a response frame so the host knows the read was refused, not silently dropped.

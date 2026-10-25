@@ -179,30 +179,22 @@ two independent ways:
   like an STM32 (flash @ `0x08000000`, SRAM @ `0x20000000`). The ATSAME70**Q21** is the 2 MB-flash /
   384 KB-SRAM part, matching both figures.
 
-So between the P3 and P4, DJI **changed CPU vendor and core**: STM32F427 (Cortex-M4F, ST) →
-ATSAME70Q21 (Cortex-M7, Microchip). The P4 `.text` is ~1.2 MB vs the P3's ~548 KB (~2.3x). That the
-**202 shared symbols survived a full architecture change** (M4→M7, ST→Atmel) is the strong form of
-the "one platform" claim: DJI's application + µC/OS + DUML layer is portable C, **recompiled** for
-new silicon, while the register/HAL layer is necessarily per-vendor (ST SPL on the P3, Atmel ASF on
-the P4). **P3 FC = STM32F427** (verified from our own vector-table analysis); **P4 FC =
-ATSAME70Q21** (wiki + memory-map corroborated).
-- **Sensors — same parts, more of them + redundancy:** both use **MPU-6500** (`mpu6500_driver_init`),
-  **IST8303** and **HMC5883** compasses. P4 adds `imu_groups`, `init_all_gyro_acc` and **three**
-  high-freq gyro channels (`rec_high_freq_gyro_data_0/1/2`), **dual barometers**
-  (`get_ex_baro1/2_raw`), IMU **temperature control** (`gyro_acc_tmp_ctl_init`) and vibration
-  detection — i.e. redundant, heated IMUs vs the P3's single set.
-- **New FC features in P4 (absent in P3):** obstacle avoidance and vision — `rec_svo_avoid_run`
-  (stereo visual odometry), `link_vo_msg_callback`, `rec_vision_tof_run`, `hal_add_tof`,
-  `hal_add_ultrasonic`, front/back radar (`rec_radar_avoid_front/back_run`),
-  `sdk_ctrl_set_avoid_obstacle_enable`, `avoid_cfg`/`avoid_obstacle_limit_cfg`; **RTK**
-  (`handle_app_to_rtk_pack`, `rec_gs_rtk_data_run`, `miss_rtk`); nav-system residual fusion
-  (`rec_ns_data_residuals_run`). This is what the extra ~700 KB of code is.
+So between the P3 and P4, DJI **changed CPU vendor and core**: STM32F427 (Cortex-M4F, ST) → ATSAME70Q21 (Cortex-M7, Microchip). The P4 `.text` is ~1.2 MB vs the P3's ~548 KB (~2.3x).
+- That the **202 shared symbols survived a full architecture change** (M4→M7, ST→Atmel) is the strong form of the "one platform" claim.
+- DJI's application + µC/OS + DUML layer is portable C, **recompiled** for new silicon. The register/HAL layer is necessarily per-vendor (ST SPL on the P3, Atmel ASF on the P4).
+- **P3 FC = STM32F427** (verified from our own vector-table analysis); **P4 FC = ATSAME70Q21** (wiki + memory-map corroborated).
+- **Sensors — same parts, more of them + redundancy:** both use **MPU-6500** (`mpu6500_driver_init`), **IST8303** and **HMC5883** compasses.
+  - P4 adds `imu_groups`, `init_all_gyro_acc` and **three** high-freq gyro channels (`rec_high_freq_gyro_data_0/1/2`), **dual barometers** (`get_ex_baro1/2_raw`), IMU **temperature control** (`gyro_acc_tmp_ctl_init`) and vibration detection.
+  - I.e. redundant, heated IMUs vs the P3's single set.
+- **New FC features in P4 (absent in P3):** obstacle avoidance and vision — `rec_svo_avoid_run` (stereo visual odometry), `link_vo_msg_callback`, `rec_vision_tof_run`, `hal_add_tof`, `hal_add_ultrasonic`, front/back radar (`rec_radar_avoid_front/back_run`), `sdk_ctrl_set_avoid_obstacle_enable`, `avoid_cfg`/`avoid_obstacle_limit_cfg`.
+  - **RTK**: `handle_app_to_rtk_pack`, `rec_gs_rtk_data_run`, `miss_rtk`.
+  - Nav-system residual fusion: `rec_ns_data_residuals_run`.
+  - This is what the extra ~700 KB of code is.
 
 ### Why the DJI names are consistent ("standardised") across products
 
-The upstream maps carry DJI's *own* symbol names, and they line up across P3/P4 because it is **one
-shared codebase** (202 identical symbols, same functions). They reached the RE community two ways:
-DJI firmware **logs its own function names** in debug strings (the convention our string-anchored
-port exploits), from which names are recoverable; and at least one **symbol-bearing artefact** (the
-IAR linker map — note `__iar_program_start`) was obtained. So "standardised" = one source tree +
-DJI's consistent internal naming, captured from the binaries' own strings and a leaked/shipped map.
+The upstream maps carry DJI's *own* symbol names, and they line up across P3/P4 because it is **one shared codebase** (202 identical symbols, same functions). They reached the RE community two ways:
+- DJI firmware **logs its own function names** in debug strings (the convention our string-anchored port exploits), from which names are recoverable.
+- At least one **symbol-bearing artefact** (the IAR linker map; note `__iar_program_start`) was obtained.
+
+So "standardised" = one source tree + DJI's consistent internal naming, captured from the binaries' own strings and a leaked/shipped map.

@@ -85,42 +85,26 @@ source than reconstructing a switch table would have been anyway.
 
 ## What was searched and came back negative
 
-- **`DJIDevice.dll`** (363 KB, the file named as primary target): confirmed by export table
-  to be a thin **WebSocket-IPC + app-settings singleton wrapper**
-  (`DJIWebSocketHandler`, `DJIAppModel` get/save-setting, `DJIDeviceDll` — "Device" here
-  means the Electron-UI-facing device-list/session object, not the serial transport). Its
-  only imports are `Qt5Core`, `Qt5WebSockets`, `DJILog`, MSVC runtime, `KERNEL32` — **no**
-  `Qt5SerialPort.dll`, **no** `dataManager.dll`. Contains **no** CRC table, **no** DUML/SOF
-  constant, **no** cmdset/cmdid literal strings. The name is misleading for this build; the
-  live device/serial layer is elsewhere (see below). (V, supersedes the "almost certainly"
-  guess in `fc-usb-port.md`.)
-- **`Qt5SerialPort.dll`** is present on disk but **not imported (statically) by any binary in
-  the installed tree** — grepped every file under
-  `tmp/wine-dji/.../DJI Assistant 2 For Phantom/` for the literal string `Qt5SerialPort.dll`;
-  the only hits are the file itself and the uninstaller's file-list log (`unins000.dat`).
-  Could still be `LoadLibrary`'d dynamically by a component not inspected here, or be
-  vestigial. (V negative result; **?** whether anything loads it dynamically.)
+- **`DJIDevice.dll`** (363 KB, the file named as primary target): confirmed by export table to be a thin **WebSocket-IPC + app-settings singleton wrapper** (`DJIWebSocketHandler`, `DJIAppModel` get/save-setting, `DJIDeviceDll`).
+  - "Device" here means the Electron-UI-facing device-list/session object, not the serial transport.
+  - Its only imports are `Qt5Core`, `Qt5WebSockets`, `DJILog`, MSVC runtime, `KERNEL32`: **no** `Qt5SerialPort.dll`, **no** `dataManager.dll`.
+  - Contains **no** CRC table, **no** DUML/SOF constant, **no** cmdset/cmdid literal strings.
+  - The name is misleading for this build; the live device/serial layer is elsewhere (see below). (V, supersedes the "almost certainly" guess in `fc-usb-port.md`.)
+- **`Qt5SerialPort.dll`** is present on disk but **not imported (statically) by any binary in the installed tree**.
+  - Grepped every file under `tmp/wine-dji/.../DJI Assistant 2 For Phantom/` for the literal string `Qt5SerialPort.dll`; the only hits are the file itself and the uninstaller's file-list log (`unins000.dat`).
+  - Could still be `LoadLibrary`'d dynamically by a component not inspected here, or be vestigial. (V negative result; **?** whether anything loads it dynamically.)
 - **`DJI_guidance.dll`**: no CRC table, no cmdset/duml/flyc/gimbal strings — vision/obstacle
   avoidance library, not product-relevant to P3 Pro (no guidance sensor) and not part of the
   protocol stack. (V negative.)
-- **`DJIService.exe`** (4.9 MB): imports `DJIDevice.dll`, `DJIDevice.dll`'s IPC layer, plus
-  `SETUPAPI.dll`/`WTSAPI32.dll`/`WS2_32.dll` (device enumeration + networking) — but **not**
-  `Qt5SerialPort.dll` and **not** `dataManager.dll`; no CRC table found in the executable
-  itself either.
-- Connected-Master-Id handshake (RC cmdset 0x06, ids 0x0c/0x0d per `docs/id-entry-point.md`):
-  **not found** in any binary searched — no `ConnectMaster`, `MasterId`, or RC-cmdset-6
-  literal strings anywhere in `DJIDevice.dll`, `dataManager.dll`, or the two services grepped
-  in detail. The 0x0c found here is an unrelated cmdset-0 firmware-upgrade id
-  (`ActionDoQueryStatus`), not RC's master-id field — **coincidental numeric overlap across
-  different cmdsets, not a find**.
-- No readable `CmdSet`/`DeviceType`/`Flyc`/`Gimbal`/`OSD` enum-name strings anywhere (matches
-  the "expected: numeric immediates in native code" note already in `fc-usb-port.md`); no
-  Qt MOC method-name tables beyond the already-known `DJIDevice`/`DJIWebSocketHandler`
-  signal/slot names (these carry no protocol content).
-- No external XML/JSON/cfg file defining DUML fields was found anywhere under the installed
-  tree (`find ... -iname '*.xml' -o -iname '*.json' -o -iname '*.cfg'`) — only 3D-viewer/Ogre
-  assets and Electron `package.json`. Any such schema is fetched from DJI's servers at
-  runtime (consistent with `apk-analysis.md` "Needs DJI servers").
+- **`DJIService.exe`** (4.9 MB): imports `DJIDevice.dll`, `DJIDevice.dll`'s IPC layer, plus `SETUPAPI.dll`/`WTSAPI32.dll`/`WS2_32.dll` (device enumeration + networking).
+  - **Not** `Qt5SerialPort.dll` and **not** `dataManager.dll`; no CRC table found in the executable itself either.
+- Connected-Master-Id handshake (RC cmdset 0x06, ids 0x0c/0x0d per `docs/id-entry-point.md`): **not found** in any binary searched.
+  - No `ConnectMaster`, `MasterId`, or RC-cmdset-6 literal strings anywhere in `DJIDevice.dll`, `dataManager.dll`, or the two services grepped in detail.
+  - The 0x0c found here is an unrelated cmdset-0 firmware-upgrade id (`ActionDoQueryStatus`), not RC's master-id field: **coincidental numeric overlap across different cmdsets, not a find**.
+- No readable `CmdSet`/`DeviceType`/`Flyc`/`Gimbal`/`OSD` enum-name strings anywhere (matches the "expected: numeric immediates in native code" note already in `fc-usb-port.md`).
+  - No Qt MOC method-name tables beyond the already-known `DJIDevice`/`DJIWebSocketHandler` signal/slot names (these carry no protocol content).
+- No external XML/JSON/cfg file defining DUML fields was found anywhere under the installed tree (`find ... -iname '*.xml' -o -iname '*.json' -o -iname '*.cfg'`); only 3D-viewer/Ogre assets and Electron `package.json`.
+  - Any such schema is fetched from DJI's servers at runtime (consistent with `apk-analysis.md` "Needs DJI servers").
 
 ## Tooling note
 

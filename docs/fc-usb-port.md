@@ -329,28 +329,18 @@ different fixed combos (0/1, 1/1, 1/0) all worked when set once before open; a p
   `TIOCMSET` call at all afterward (accepting `cdc_acm`'s default auto-assert, confirmed
   DTR=1/RTS=1 - one of the three combos the Windows test found working). 15 s listen:
   **still 0 bytes.**
-- **Confound, not controlled for:** getting `/dev/ttyACM11` back required an explicit
-  unbind/bind of the USB device (its interfaces had been claimed via `usbfs` by something that
-  exited without releasing them - cause not identified) immediately before this test. That
-  rebind is itself a device-level reconfiguration (likely another `SET_LINE_CODING`/line-state
-  equivalent), so this test does not cleanly isolate "clean single open" from "freshly
-  re-enumerated after an unrelated reset."
-- **Also uncontrolled:** the aircraft is stationary on a bench; the log lines seen in the
-  Windows capture (`gimbal pitch/roll/yaw`, `gps init`, `compass stuck`) look like transient
-  boot/state-change events, not a guaranteed continuous stream - silence here may mean "nothing
-  new to log" rather than "stream gated."
+- **Confound, not controlled for:** getting `/dev/ttyACM11` back required an explicit unbind/bind of the USB device immediately before this test. Its interfaces had been claimed via `usbfs` by something that exited without releasing them (cause not identified).
+  - That rebind is itself a device-level reconfiguration (likely another `SET_LINE_CODING`/line-state equivalent).
+  - So this test does not cleanly isolate "clean single open" from "freshly re-enumerated after an unrelated reset."
+- **Also uncontrolled:** the aircraft is stationary on a bench. The log lines seen in the Windows capture (`gimbal pitch/roll/yaw`, `gps init`, `compass stuck`) look like transient boot/state-change events, not a guaranteed continuous stream.
+  - Silence here may mean "nothing new to log" rather than "stream gated."
 - **V, tried.** Replicated Windows' exact two-stage line-coding sequence (`tcsetattr` to 9600,
   then to 115200 on the same fd, no close in between): **still 0 bytes**, 10 s listen.
-- **Status: still inconclusive on Linux, but the negative result is now thorough.** Across this
-  port specifically, tried: baud 9600/115200/two-stage, all three DTR/RTS combos the Windows
-  test found working (pre- and post-open), 5 receiver addresses, byte-exact packet replay of
-  the working Windows request, and a clean single-open with no post-open control-line change -
-  silent every time, on the same physical device that answers correctly from Windows on the
-  same host. The real remaining uncontrolled variable is whether the aircraft has anything to
-  spontaneously log *right now* (idle on a bench, not flying) - not something further
-  port/baud/DTR tuning can resolve. Not pursuing further on this specific angle without new
-  information (e.g. a capture confirming the log stream is genuinely continuous/periodic, not
-  event-triggered).
+- **Status: still inconclusive on Linux, but the negative result is now thorough.**
+  - Tried on this port: baud 9600/115200/two-stage, all three DTR/RTS combos the Windows test found working (pre- and post-open), 5 receiver addresses, byte-exact packet replay of the working Windows request, and a clean single-open with no post-open control-line change.
+  - Silent every time, on the same physical device that answers correctly from Windows on the same host.
+  - The real remaining uncontrolled variable is whether the aircraft has anything to spontaneously log *right now* (idle on a bench, not flying). Further port/baud/DTR tuning cannot resolve that.
+  - Not pursuing this angle without new information (e.g. a capture confirming the log stream is genuinely continuous/periodic, not event-triggered).
 
 ## Cross-product cmdset fuzz - also silent (2026-10-23)
 

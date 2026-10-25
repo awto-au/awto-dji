@@ -50,14 +50,11 @@ no new commands were transmitted to hardware.
 
 ### GO parity review
 
-The transform was also checked by executing the actual APK AArch64 routine at
-`0x3438` and the C1 ARM routine at `0x400042e4` in Unicorn CPU emulation.
-**All 544 cases matched both native routines byte for byte**, including inverse
-transforms, sequence edge cases, lengths 0–65 and the maximum 1012-byte body.
-The Dart verifier also checked packet encoding/decoding for bodies of at least
-two bytes. This checks isolated native routines, not the whole GO application or
-hardware interoperability. Artifact hashes and results are retained in
-[the native review report](data/simple-native-review-2026-10-24.json).
+The transform was also checked by executing the actual APK AArch64 routine at `0x3438` and the C1 ARM routine at `0x400042e4` in Unicorn CPU emulation.
+- **All 544 cases matched both native routines byte for byte**, including inverse transforms, sequence edge cases, lengths 0–65 and the maximum 1012-byte body.
+- The Dart verifier also checked packet encoding/decoding for bodies of at least two bytes.
+- This checks isolated native routines, not the whole GO application or hardware interoperability.
+- Artifact hashes and results are retained in [the native review report](data/simple-native-review-2026-10-24.json).
 
 The Java review covered `DataBase.preprocessPack`/`start`, manager `P3/c.java`,
 the receive parser `P3/i.java`, AOA manager `P3/h.java`, and USB channel routing.
@@ -88,14 +85,11 @@ cd app/packages/duml
 dart run tool/verify_simple_native.dart ../../../tmp/simple-native-vectors.json
 ```
 
-**Recorded-traffic evidence:** the saved 2026-10-23 AOA command channel contains
-103 CRC-valid frames with wire mode 3. One is retained as
-`app/packages/duml/test/fixtures/captured_simple_frame.json`: sequence 15311,
-sender `0x0e` to app `0x02`, decoded command `09/0a`. Its wire bytes are an actual
-capture; the expected plaintext fields were independently computed from the traced
-transform, not captured separately. The Dart test verifies decoding and byte-exact
-re-encoding. This supersedes earlier uncertainty below about whether SIMPLE appears
-on the owner's recorded P3 link; new outgoing interoperability tests remain pending.
+**Recorded-traffic evidence:** the saved 2026-10-23 AOA command channel contains 103 CRC-valid frames with wire mode 3.
+- One is retained as `app/packages/duml/test/fixtures/captured_simple_frame.json`: sequence 15311, sender `0x0e` to app `0x02`, decoded command `09/0a`.
+- Its wire bytes are an actual capture; the expected plaintext fields were independently computed from the traced transform, not captured separately.
+- The Dart test verifies decoding and byte-exact re-encoding.
+- This supersedes earlier uncertainty below about whether SIMPLE appears on the owner's recorded P3 link. New outgoing interoperability tests remain pending.
 
 ## Findings
 
