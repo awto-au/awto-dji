@@ -1,5 +1,11 @@
 name: Intel WiMAX frequency table inspection
 on:
+  push:
+    branches:
+      - research/intel-wimax-band-inspection
+    paths:
+      - .github/workflows/intel-wimax-band-inspection.yml
+      - scripts/re/intel_wimax_band_scan.py
   workflow_dispatch:
 permissions:
   contents: read
@@ -8,22 +14,27 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Download archived firmware
+      - name: Download original upstream firmware
         shell: bash
         run: |
-          curl -fL --retry 3 -o /tmp/firmware-intelwimax.deb 'https://deb.debian.org/debian/pool/non-free/f/firmware-nonfree/firmware-intelwimax_20210315-3_all.deb'
+          set -euo pipefail
           mkdir -p /tmp/intel-fw
-          dpkg-deb -x /tmp/firmware-intelwimax.deb /tmp/intel-fw
-          find /tmp/intel-fw -name '*.sbcf' -exec sha256sum '{}' ';'
+          for NAME in i2400m-fw-usb-1.5.sbcf i6050-fw-usb-1.5.sbcf; do
+            curl -fL --retry 3 --retry-delay 2 -o "/tmp/intel-fw/$NAME" "https://raw.githubusercontent.com/cernekee/linux-firmware/master/$NAME"
+            sha256sum "/tmp/intel-fw/$NAME"
+            file "/tmp/intel-fw/$NAME"
+          done
       - name: Scan firmware (structural only)
         shell: bash
         run: |
-          FW=$(find /tmp/intel-fw -name 'i6050-fw-usb-1.5.sbcf' | head -n 1)
-          test -n "$FW"
-          python3 scripts/re/intel_wimax_band_scan.py --json "$FW" > /tmp/intel-fw-report.json
-          python3 -c 'import json; d=json.load(open("/tmp/intel-fw-report.json")); print(json.dumps(d, indent=2)[:18000])'
+          set -euo pipefail
+          for FW in /tmp/intel-fw/*.sbcf; do
+            NAME=$(basename "$FW" .sbcf)
+            python3 scripts/re/intel_wimax_band_scan.py --json "$FW" > "/tmp/$NAME-report.json"
+            python3 -c 'import json,sys;d=json.load(open(sys.argv[1]));print("=== ",d["file"]," ===");print(json.dumps(d,indent=2)[:15000])' "/tmp/$NAME-report.json"
+          done
       - name: Upload metadata only
         uses: actions/upload-artifact@v4
         with:
           name: intel-wimax-band-report
-          path: /tmp/intel-fw-report.json
+          path: /tmp/*-report.json
