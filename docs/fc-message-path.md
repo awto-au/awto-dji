@@ -125,6 +125,25 @@ allowlist. The deciding factor is the mode gate (RC switch / flight mode), not t
 Not yet done: the continuous-setpoint (joystick / `serial_open_nav`) payload, and what sets the
 mode byte to 2 (confirm it is the RC mode switch).
 
+## The "agency" model is a priority mutex, not security (2026-10-25)
+
+The control-authority code is exclusive-access arbitration, not authentication:
+- `0x200001d6` is a flags byte with one bit per control source: device 1 = bit1
+  (`fc_ctrl_src1_pred` = `(flags>>1)&1`), device 2 / API-nav = bit2 (`(flags>>2)&1`).
+- `fc_ctrl_arbitrate` is a **priority scan**: the lowest-index source asserting its bit wins and
+  becomes the single active device (gate byte 0x200001d5). Device 1 outranks device 2, so a
+  higher-priority source (the RC/manual path) **preempts** the API. Handover logs
+  `ctrl_dev_changed`; the `old==2 && new==1` transition (`FUN_0805732a`) is "API released, RC
+  resumes".
+- The request handler records the requester only to track the holder and refuse a *second*
+  controller while one is active. **No crypto/signature/nonce/per-device key** anywhere in the
+  path — it enforces "one controller at a time", not identity.
+- The only deliberate access control is separate: `reg_user_activation` / `sdk_set_key` (DJI SDK
+  activation/licensing), not per-packet security.
+
+Implication: the arbiter is the mechanism the onboard agent *uses* — assert the API source,
+win when the RC isn't preempting, hold agency, drive — not an obstacle to defeat.
+
 ## How to use the FC control API (enable chain, 2026-10-25)
 
 Working within the stock API (no patching). The enable chain, decompiled:
