@@ -1,4 +1,4 @@
-# m0900: firmware / FPGA upgrade path and chip ID
+# m0900 (`air_router_stm32f103`): firmware / FPGA (`air_fpga_cyclonev`) upgrade path and chip ID
 
 Source: static disassembly of `P3X_FW_V01.11.0020_m0900.bin` (app at `0x08008000`; the
 bootloader at `0x08000000-0x08007FFF` is NOT in the container, so it is not analysed).

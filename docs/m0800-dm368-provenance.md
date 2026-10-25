@@ -1,4 +1,4 @@
-# m0800 (air DM368 encoder): what is TI reference code and what DJI changed
+# m0800 (`air_venc_dm368`, air DM368 encoder): what is TI reference code and what DJI changed
 
 Module `m0800` of `P3X_FW_V01.11.0020` (3,363,336 B, SHA-256 `672aff07...7f3f8c6`). Tags:
 **V** = shown by a reproducible comparison or by reading the file, **I** = inferred,

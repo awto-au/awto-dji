@@ -1,4 +1,4 @@
-# m0306 flight controller — I/O and software inventory
+# m0306 (`air_fc_stm32f427`) flight controller — I/O and software inventory
 
 Peripherals, clocks, sensors and software identity of the Phantom 3 Pro flight controller
 (module **m0306**, firmware `P3X_FW_V01.11.0020`). Derived from the AES-decrypted module

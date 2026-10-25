@@ -1,6 +1,6 @@
 # Replacement FC firmware + bootloader-dump: plan
 
-Goal, near-term: a **clean-room replacement FC app** for the STM32F427 (m0306) that the **stock DJI
+Goal, near-term: a **clean-room replacement FC app** for the STM32F427 (m0306, `air_fc_stm32f427`) that the **stock DJI
 loader will accept and flash**, whose first job is to **add a DUML "read memory" command and dump
 the resident bootloader** (`0x08000000–0x0801FFFF`) — the one piece we cannot otherwise read without
 SWD. Longer-term: the same app is the base for owned-aircraft autonomy work.

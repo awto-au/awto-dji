@@ -1,4 +1,4 @@
-# Camera Linux (m0100, Ambarella A9SE): console and shell access
+# Camera Linux (m0100, Ambarella A9SE, `air_cam_a9se`): console and shell access
 
 Evidence from `firmware/unpacked/P3X_FW_V01.11.0020_m0100.bin`, both the extracted `sys`
 RTOS partition (`tmp/air/amba_P3X0020/P3X_FW_V01.11.0020_m0100_part_sys.a9s`) and the

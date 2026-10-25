@@ -2,7 +2,7 @@
 
 **Owner:** next agent (Selwyn or a spawned session). **Goal:** close the one open PHY-params
 proof in `HANDOVER.md` — recover the exact OFDM channel parameters (centre frequency, channel
-bandwidth, sample rate, gains) by **emulating the air MCU `m0900` (STM32F103) in Renode and
+bandwidth, sample rate, gains) by **emulating the air MCU `m0900` (`air_router_stm32f103`) in Renode and
 capturing the SPI register writes it makes to the AD9363**, then decoding them against the
 public ADI UG-570 register map.
 

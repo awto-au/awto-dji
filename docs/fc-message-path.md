@@ -1,4 +1,4 @@
-# m0306 (flight controller) message handling — entry points and DUML path
+# m0306 (`air_fc_stm32f427`, flight controller) message handling — entry points and DUML path
 
 Scope: find how the FC receives and dispatches DUML, what it accepts, and whether it checks the
 sender — treating IMU/fusion/motor code as a black box. Tags: **V** verified, **I** inferred,

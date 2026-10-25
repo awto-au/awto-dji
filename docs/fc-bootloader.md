@@ -1,4 +1,4 @@
-# m0306 flight-controller bootloader & upgrade scheme
+# m0306 (`air_fc_stm32f427`) flight-controller bootloader & upgrade scheme
 
 What the P3 FC (STM32F427, module m0306) uses for boot and firmware update, and whether it is a
 dual-slot design. Tags: **V** verified in firmware/package, **I** inferred, **U** unknown.
@@ -71,7 +71,7 @@ The resident flash bootloader — the "Loader" at `0x08000000` whose version the
 `0x08000000`-based flash module in the OTA package. Confirming what it does (secure-boot?
 signature? bank-2 use?) needs a **SWD dump of `0x08000000–0x0801FFFF`** from the board. **U.**
 
-The package *does* carry a separate **`m0305`** module (~43 KB, AES-encrypted like the rest,
+The package *does* carry a separate **`m0305`** (`air_fcldr_stm32f427`) module (~43 KB, AES-encrypted like the rest,
 MD5-OK) sitting beside the FC app. Vector table **SP `0x1000e4e8` (CCM RAM @ 0x10000000), reset
 `0x200002c9` (main SRAM @ 0x20000000)** → a **RAM-resident image linked to run from SRAM** (confirms
 STM32F4: CCM @ 0x10000000), with essentially no strings (pure code). **Decompiled** (base

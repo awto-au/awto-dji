@@ -1,4 +1,4 @@
-# m0900 DUML channels: CAN 0x412-0x415 and USART1 (where traffic is sent)
+# m0900 (`air_router_stm32f103`) DUML channels: CAN 0x412-0x415 and USART1 (where traffic is sent)
 
 Static trace of `P3X_FW_V01.11.0020_m0900.bin` (SHA-256 `72156b4b...13fe6d`, app base
 `0x08008000`). Closes `dataflow.md` §5 items 1 and 10. Tags: **V** = read from code (address

@@ -1,4 +1,4 @@
-# m0900 boot: board straps, FPGA GPIO lines and bring-up sequence
+# m0900 (`air_router_stm32f103`) boot: board straps, FPGA GPIO lines and bring-up sequence
 
 Source: static disassembly of `P3X_FW_V01.11.0020_m0900.bin` (STM32F103, app base `0x08008000`)
 plus one Renode cold-boot test. Reproduce: `python3 scripts/re/m0900_trace.py dis <addr> <n>`.

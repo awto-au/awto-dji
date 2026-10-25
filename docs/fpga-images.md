@@ -5,11 +5,11 @@ Family evidence: pluribus `docs/cyclonev-compressed-rbf.md`, `scripts/fpga_famil
 
 | Image | Role | Size | Used | Version | Entropy | SHA-256 (16) | Family |
 |---|---|---|---|---|---|---|---|
-| P3 `m1900` | air FPGA (TX) | 4 MiB | 2.06 MB | 01.00.2144 | 7.98 | `f3a55dea4dc8c0d4` | Cyclone V e50f-family (header/PRAM CRC); CRAM encrypted |
-| Inspire 1 `m1900` | air FPGA (TX) | 4 MiB | 2.06 MB | 01.00.2144 | 7.98 | `f3a55dea4dc8c0d4` | same image |
-| LB2 `m2000` | ground FPGA rev 00 | 8 MiB | 4.65 MB | 01.00.2107 | 7.99 | `39a74d8d4a69ebaf` | Cyclone V (0x80 preamble, nibble-shifted sync); encrypted |
-| LB2 `m2001` | ground FPGA rev 01 | 8 MiB | 2.12 MB | 01.01.2107 | 5.84 | `b6cc5e96f12446b1` | Cyclone III/IV-format; best match EP4CGX150 |
-| LB2 `m2002` | ground FPGA rev 02 | 8 MiB | 4.80 MB | 01.02.2109 | 7.99 | `30aa24c31e5180a7` | Cyclone V; encrypted |
+| P3 `m1900` | air FPGA (TX, `air_fpga_cyclonev`) | 4 MiB | 2.06 MB | 01.00.2144 | 7.98 | `f3a55dea4dc8c0d4` | Cyclone V e50f-family (header/PRAM CRC); CRAM encrypted |
+| Inspire 1 `m1900` | air FPGA (TX, `air_fpga_cyclonev`) | 4 MiB | 2.06 MB | 01.00.2144 | 7.98 | `f3a55dea4dc8c0d4` | same image |
+| LB2 `m2000` | ground FPGA rev 00 (`gnd_fpga_cyclonev_r0`) | 8 MiB | 4.65 MB | 01.00.2107 | 7.99 | `39a74d8d4a69ebaf` | Cyclone V (0x80 preamble, nibble-shifted sync); encrypted |
+| LB2 `m2001` | ground FPGA rev 01 (`gnd_fpga_cyc4gx_r1`) | 8 MiB | 2.12 MB | 01.01.2107 | 5.84 | `b6cc5e96f12446b1` | Cyclone III/IV-format; best match EP4CGX150 |
+| LB2 `m2002` | ground FPGA rev 02 (`gnd_fpga_cyclonev_r2`) | 8 MiB | 4.80 MB | 01.02.2109 | 7.99 | `30aa24c31e5180a7` | Cyclone V; encrypted |
 | P3S `m1900` | air FPGA (TX) | 4 MiB | 2.01 MB | — | — | (independent sample) | not re-classified |
 
 ## Observations

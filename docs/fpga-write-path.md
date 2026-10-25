@@ -123,10 +123,10 @@ sequenceDiagram
 ## Chip that writes the configuration memory
 
 - U. Candidates and evidence:
-  - m0900: V no data path (no Transmit handler, type 19 dropped, SPI2 register-only helpers, too small). Excluded as data writer; it only gates and checks the FPGA.
-  - m0100 / A9: V sends bytes over USB only; no SPI/JTAG/config-pin driver referenced (survey doc: no `fpga/jtag/spidev/uio` strings in kernel or rootfs).
+  - m0900 (`air_router_stm32f103`): V no data path (no Transmit handler, type 19 dropped, SPI2 register-only helpers, too small). Excluded as data writer; it only gates and checks the FPGA.
+  - m0100 (`air_cam_a9se`) / A9: V sends bytes over USB only; no SPI/JTAG/config-pin driver referenced (survey doc: no `fpga/jtag/spidev/uio` strings in kernel or rootfs).
   - m1500 FX2LP: V transparent FIFO bridge (EP2 AUTOOUT), no flash logic.
-  - FPGA-resident logic receiving the FIFO and writing its configuration flash: I, the only remaining sink. Needs confirmation.
+  - FPGA-resident logic (`air_fpga_cyclonev`, m1900) receiving the FIFO and writing its configuration flash: I, the only remaining sink. Needs confirmation.
 
 ## Not determined, and what would settle it
 

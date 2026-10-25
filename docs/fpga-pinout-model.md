@@ -7,7 +7,7 @@ firmware (address cited), **I** = inferred, **U** = unknown. It supersedes the w
 table in `fpga-interfaces.md` where they differ (that table has an FX2 on the ground and the FC
 UART on the FPGA; both are wrong for P3P/GL300C).
 
-## Air FPGA (`m1900`, Cyclone V e50f family by header; package U)
+## Air FPGA (`m1900` / `air_fpga_cyclonev`, Cyclone V e50f family by header; package U)
 
 ```
                       +------------------------- air FPGA -------------------------+
@@ -26,9 +26,9 @@ config flash -------- | Active Serial (DCLK, nCSO, AS_DATA) + nCONFIG/nSTATUS/  
 
 | Interface | Facts | Tag |
 |---|---|---|
-| FX2 (`m1500`) slave FIFO | `IFCONFIG=0x03`: slave FIFO, synchronous, external IFCLK (the FPGA clocks it). `EP2FIFOCFG=0x10` AUTOOUT, 8-bit. `EP6FIFOCFG=0x08` AUTOIN, 8-bit. PINFLAGS and polarity left at defaults (flags active low, indexed by FIFOADR) | V (FX2 side), pin use I |
+| FX2 (`m1500` / `air_fx2_cy68013`) slave FIFO | `IFCONFIG=0x03`: slave FIFO, synchronous, external IFCLK (the FPGA clocks it). `EP2FIFOCFG=0x10` AUTOOUT, 8-bit. `EP6FIFOCFG=0x08` AUTOIN, 8-bit. PINFLAGS and polarity left at defaults (flags active low, indexed by FIFOADR) | V (FX2 side), pin use I |
 | Stream direction | DM368 → USB EP2 OUT → FIFO → FPGA reads raw H.264 slices. FPGA writes → EP6 IN → DM368 (return channel, consumer U) | V (`m0800-dm368-provenance.md` §7) |
-| m0900 SPI2 | mode 1, 4.5 MHz, 3-byte frames, CS PB12; FPGA register file (`fpga_regmap`), boot handshake via reg 0x8A | V (`m0900-buses.tsv`, `fpga-bringup.md`) |
+| m0900 (`air_router_stm32f103`) SPI2 | mode 1, 4.5 MHz, 3-byte frames, CS PB12; FPGA register file (`fpga_regmap`), boot handshake via reg 0x8A | V (`m0900-buses.tsv`, `fpga-bringup.md`) |
 | m0900 GPIO | PB3 reset pulse, PA13 control | V lines, roles I |
 | m0900 USART3 | DUML to the link side, 257143 baud actual | V on m0900; FPGA end I (by elimination, `dataflow.md`) |
 | AD9363 SPI | the FPGA relays AD9363 register access for m0900 (set 0x09 id 06 hi≠0xFE path) | V (m0900), pins I |
@@ -39,7 +39,7 @@ config flash -------- | Active Serial (DCLK, nCSO, AS_DATA) + nCONFIG/nSTATUS/  
 **Air I/O estimate:** about 35–40 (AD9363) + ~18 (FX2) + 8 (m0900) + config/clock, i.e. about
 **65–75 user I/O**. I.
 
-## Ground FPGA (`m2000`/`m2002` Cyclone V, `m2001` Cyclone IV GX-format; board rev decides)
+## Ground FPGA (`m2000`/`m2002` Cyclone V — `gnd_fpga_cyclonev_r0`/`gnd_fpga_cyclonev_r2`, `m2001` Cyclone IV GX-format — `gnd_fpga_cyc4gx_r1`; board rev decides)
 
 ```
                       +----------------------- ground FPGA ------------------------+
@@ -58,9 +58,9 @@ config flash -------- | 8 MiB image class -> 64 Mbit serial flash (I)           
 
 | Interface | Facts | Tag |
 |---|---|---|
-| FX3 GPIF II | `GPIF_CONFIG=0x80000380`: sync, SDR, **clock input on the CLK pin** (FPGA-driven). `GPIF_BUS_CONFIG=0x1003`: 31-pin allocation, **8-bit DQ**, OE present. `CTRL_BUS_DIRECTION=0x500`: CTL4/5 outputs, rest inputs. `CTRL_BUS_SELECT[4]=24` (current-thread empty/full), `[5]=25` (partial). `POLARITY=0xbf` (CTL0-5 and 7 active low). `AD_CONFIG=0x44`: address lines are inputs, data thread selected by A1:A0. 4 threads → PIB sockets 0-3 | V (`m1601` table at `0x400300d8`; decoded with FX3 SDK 1.3.1 `gpif_regs.h`, checked against bladeRF and Ettus B200 configs) |
+| FX3 (`m1601` / `gnd_fx3_cyusb2014`) GPIF II | `GPIF_CONFIG=0x80000380`: sync, SDR, **clock input on the CLK pin** (FPGA-driven). `GPIF_BUS_CONFIG=0x1003`: 31-pin allocation, **8-bit DQ**, OE present. `CTRL_BUS_DIRECTION=0x500`: CTL4/5 outputs, rest inputs. `CTRL_BUS_SELECT[4]=24` (current-thread empty/full), `[5]=25` (partial). `POLARITY=0xbf` (CTL0-5 and 7 active low). `AD_CONFIG=0x44`: address lines are inputs, data thread selected by A1:A0. 4 threads → PIB sockets 0-3 | V (`m1601` table at `0x400300d8`; decoded with FX3 SDK 1.3.1 `gpif_regs.h`, checked against bladeRF and Ettus B200 configs) |
 | FX3 stream use | FPGA → socket 2 = video only (2 KB buffers). Socket 0 (FX3 → FPGA) is created but unused in phone mode; it is EP2 → FPGA raw in GPIO41-high (HDMI-board) mode | V (`ground-fx3-m1601.md`) |
-| m1400 SPI0 and GPIO | listed pins, 4 MHz, same `0E`/`0F` register protocol and bit records as air; FPGA id word in regs 0x8B-0x8E | V (`ground-upgrade-path.md`) |
+| m1400 (`gnd_rc_lpc1765`) SPI0 and GPIO | listed pins, 4 MHz, same `0E`/`0F` register protocol and bit records as air; FPGA id word in regs 0x8B-0x8E | V (`ground-upgrade-path.md`) |
 | AD9363 SPI | relayed through FPGA reg 1 (`0xbec8`/`0xbf16` in m1400) | V (m1400), pins I |
 | DUML path to and from m1400 | All phone-side DUML, air senders included, reaches the FX3 over its UART from (I) m1400, so m1400 must exchange DUML with the FPGA. A UART is the likely carrier (wiki-era docs say so). Reading it through SPI0 registers is not excluded | I/U |
 | Config | 8 MiB images; three board revisions with different families (rev 01 is Cyclone IV GX-format, best match EP4CGX150) | V (sizes, headers), I (flash part) |

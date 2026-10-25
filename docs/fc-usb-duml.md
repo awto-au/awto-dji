@@ -1,4 +1,4 @@
-# Front micro-USB (m0306 flight controller): why it never answers DUML
+# Front micro-USB (m0306 / `air_fc_stm32f427` flight controller): why it never answers DUML
 
 Firmware: `P3X_FW_V01.11.0020_m0306.bin` (STM32F427IIH6, app base `0x08020000`, SP
 `0x2002ff00`, reset `0x08021965`, RTOS strings identify **Micrium uC/OS-III**). Reproduce

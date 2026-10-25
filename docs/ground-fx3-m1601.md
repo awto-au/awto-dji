@@ -1,4 +1,4 @@
-# Ground USB (m1601, Cypress FX3): where DUML and video meet the phone
+# Ground USB (m1601, Cypress FX3, `gnd_fx3_cyusb2014`): where DUML and video meet the phone
 
 Owner hardware is a **GL300C** RC (`fc-usb-port.md`). On GL300b/c the ground DM368 (`m1300`) is
 removed. The phone-facing USB is a **Cypress FX3 / CYUSB2014** running module `m1601` (ThreadX,

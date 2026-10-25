@@ -1,4 +1,4 @@
-# C1 ground: firmware / FPGA upgrade path and chip ID (m1400)
+# C1 ground: firmware / FPGA upgrade path and chip ID (m1400, `gnd_rc_lpc1765`)
 
 Source: static disassembly of `C1_FW_V01.06.0000_m1400.bin` (LPC1765, Cortex-M3). Tool: `scripts/re/mcu_trace.py`
 (capstone). Symbols: `docs/symbols/c1_m1400.tsv`. Scope & safety: see `SAFETY.md`. Tags: **verified** (read from code/data), **inferred**, **unknown**.

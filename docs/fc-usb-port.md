@@ -11,7 +11,7 @@ Status of each claim: **V** verified here, **W** from the o-gs wiki / issues (no
 - **V** The USB device is implemented in the flight-controller firmware itself (`m0306` carries the `DJI CONTROLLER` / `0001A0000000` strings), not a separate bridge chip.
 
 ## CPU behind it
-- **W** Flight controller ("MC", P01006.05): STM32F427IIH6, Cortex-M4F, 180 MHz, 2 MB flash. Firmware modules `m0305` (loader), `m0306` (app).
+- **W** Flight controller ("MC", P01006.05), `air_fc_stm32f427`: STM32F427IIH6, Cortex-M4F, 180 MHz, 2 MB flash. Firmware modules `m0305` (loader), `m0306` (app).
 - **W** Same board also carries MPU-6500 IMU, MS5607 barometer, ATSHA204 (component auth), micro-SD (flight logs).
 - **W** Readout protection level 2 on the factory ROM bootloader; BOOT0 / SWD pads exist.
 - Not the ESC MCUs: four TMS320F28027F ("IESC2000", `m1200`-`m1203`) sit on the center board.
