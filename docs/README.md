@@ -9,8 +9,6 @@ repair-scope rules. Technical docs link here and do not repeat them. **`HISTORY.
 of fact-changes (docs state current facts only).
 
 ## Protocol & control plane (the practical path)
-- [usb-test-matrix.md](usb-test-matrix.md) — per-port bench evidence, open USB tests, and a cached-descriptor watcher for cable/power correlation.
-- [fx3-usb-modes.md](fx3-usb-modes.md) — ground USB firmware's alternate bulk interfaces, GPIO/configuration mode selection, and the currently verified PC serial path; PC bulk access remains unverified.
 - [duml-protection.md](duml-protection.md) — separates APK SIMPLE XOR, ATSHA204 component authentication, RC master/slave connection and unresolved aircraft-radio protection; traces the XOR inputs.
 - `protocol-verification.md` — DUML wire format verified byte-exact against a real packet.
 - `control-plane-re.md` — reverse the MCU control plane, not the FPGA; external corroboration.
@@ -25,7 +23,6 @@ of fact-changes (docs state current facts only).
 - `p3-usb-observations-2026-10-23.md` — what the P3 controller and aircraft do on USB: line settings, DUML replies, the aircraft's one-way log stream, DTR/RTS sensitivity.
 
 ## Telemetry & video
-- [pc-video-preview.md](pc-video-preview.md) — corrected AOA envelope parsing, PC extraction/FFmpeg checks and saved-capture limitations; supersedes the earlier no-demux-header claim.
 - `video-and-link.md` — what talks to the phone; OSD is client-rendered, not burned at the
   aircraft; video/telemetry mux; data-vs-burned-OSD tests.
 
@@ -40,7 +37,6 @@ of fact-changes (docs state current facts only).
 - `alternative-approaches.md` — cheapest routes to the ID + whitening.
 - `known-plaintext-plan.md` — all-0s / repetitive-telemetry known-plaintext for the scrambler.
 - `rf-sdr-and-repair.md` — SDR tooling and RF notes.
-- `safety-geofence.md` — public-airspace geofence gate (safety, not defeat).
 
 ## Active task
 - `renode-task.md` — **TASK**: build Renode from source, emulate `m0900`, capture the AD9363 config (closes the PHY-params open item).
@@ -69,9 +65,7 @@ of fact-changes (docs state current facts only).
 ## Provenance
 - `code-provenance.md`, `license-compliance.md`, `data-manifest.md` — the downloaded inputs (firmware/APK/tools) with SHA-256s; **none of the bytes are stored here** (copyright/size) — re-fetch + verify.
 
-## Safety / scope
-See `../CLAUDE.md` → "Scope & safety constraints". This is interoperability for an owned
-aircraft: no geofence defeat, no extraction of secret key values, structural analysis only.
+## Upgrade paths, USB ports & app protocol
 - [fpga-bringup.md](fpga-bringup.md): m0900 boot flow, board straps, FPGA GPIO lines, FPGA boot handshake
 - [fpga-upgrade-path.md](fpga-upgrade-path.md): m0900 upgrade commands, FPGA update handshake, where the chip UID is sent
 - [air-id-and-stream-survey.md](air-id-and-stream-survey.md): all air modules (+ P3S/P3C/P3SE/P3XW): FPGA-stream contact, chip/die ID reads, update-engine path (FX2LP, DM368, FPGA); symbols in `symbols/air_modules.tsv`
