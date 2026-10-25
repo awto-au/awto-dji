@@ -13,7 +13,7 @@ talk to it, and whether firmware is accepted — kept apart because they are eas
 | **DJI product activation** | FC app `m0306` | **motor start** (`Product not activation,stop motor!`) | **Hardware behaviour** (firmware won't spin motors), driven by DJI online/app activation | V (gate); the activation exchange itself I |
 | **ATSHA204 component auth** | A9 camera `m0100` (primary), RC `m1400` | demonstrated: **client/app authorization** (`cam_server` rejects un-authorized MAC). Flight/boot block **not shown** | On-device check, but visible teeth are **DJI-software/client-facing** | V (check exists + what it compares); mismatch consequence **U** |
 | **Device identity (UID/SN)** | `m0306`, `m0900`, `m0100` | nothing by itself — used to *build* an identity/serial | neither; it's an identifier, not a gate | V (reads); consumers partly U |
-| **Authorized-MAC list** | A9 `cam_server` (`DjiMsgAuthorizedMac`) | which clients may connect to the camera server | DJI-software/client-facing | V |
+| **Authorized-MAC (network)** | A9 `cam_server` (`DjiMsgAuthorizedMac`) | which client (by 6-byte network MAC) may connect to the camera server; a pairing whitelist | DJI-software/client-facing; **changeable** (`t dji mac …`, `MCCTRL_AuthorizedMacUpdate`) | V |
 | **Firmware integrity** | loader + xV4 container | whether a firmware image is accepted | on-device; **no signature** → patchable | V |
 | **RF link "security"** | FPGA/radio | none (unkeyed waveform + whitening; no link encryption) | neither (spoofable association) | V (absence), OTA-encryption not ruled out |
 
@@ -41,6 +41,32 @@ talk to it, and whether firmware is accepted — kept apart because they are eas
   (0x0e85f370) — `cam_server` rejects clients whose MAC is not authorized. **U** whether a
   failed/absent chip (or a lost NAND copy) halts boot/flight — the mismatch consequence in
   `CheckA9Mac`/`CheckSN` is not yet decompiled. Repair implications: `atsha204-repair-note.md`.
+
+## 2a. "MAC" is two different things here (don't conflate)
+
+- **Network MAC — `DjiMsgAuthorizedMac` (A9).** A **6-byte Ethernet/Wi-Fi hardware address**: the
+  *authorized client's* MAC, a pairing whitelist. `cam_server` accepts the client whose network MAC
+  matches. **V** from the format/command strings: `Update authorized MAC:
+  %02x:%02x:%02x:%02x:%02x:%02x`, `Set authorized mac. t dji mac xx xx xx xx xx xx`,
+  `MCCTRL_AuthorizedMacUpdate`, `WPS: Add/Remove authorized MAC …`.
+  - **Changeable: yes.** Settable by the shell command `t dji mac xx xx xx xx xx xx` and
+    `MCCTRL_AuthorizedMacUpdate` (and over DUML). The underlying interface MACs are themselves
+    software-set — one script even **randomly generates** a MAC (`printf "%02X:…" $RANDOM >
+    /tmp/wifi1_mac`) and others read `/proc/ambarella/board_info`. So this is a mutable pairing, not
+    a fused secret. Interop use: an onboard companion connecting to `cam_server` would set the
+    authorized MAC to its own interface MAC.
+- **Crypto MAC — `DjiEncryptCheckA9Mac` (A9) / `get_mac` (RC).** The **ATSHA204 SHA-256
+  challenge/response** value (`[DJI_ENCRYPT] response_mac[…]`), §2 above. Unrelated to the network
+  MAC; not a network address and not freely settable.
+
+### The A9 has Ethernet + Wi-Fi (a full network stack)
+
+**V** The camera Linux brings up **`eth0` at `192.168.1.12`** (`ifconfig eth0 … up`), bridges it
+(`br0`), and drives an **MII PHY** (`Phy Address = 0x%x`, `MII Interrupt`) — the Ambarella A9's
+built-in GMAC with a board PHY; plus `eth1`/`veth0` (virtual) and Wi-Fi `wlan0`/hostapd/
+wpa_supplicant. `192.168.1.2` is the Wi-Fi module (hard-coded FTP cred). So `cam_server` is an **IP
+server** and clients are identified by network MAC — which is why the authorized-MAC pairing is a
+network address, not the crypto MAC.
 
 ## 3. Device identity (UID / serial)
 
