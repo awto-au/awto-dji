@@ -46,7 +46,7 @@ Addresses: Cortex-M modules = runtime address; m0100 sys = runtime address (base
 
 ### ID-related code (b)
 - V: ATSHA204 (I2C) provisioning and check: `DjiEncryptInit` `0x0e871e94`, `DjiEncryptCheckA9Mac` `0x0e871ae0`, `DjiEncryptCheckSN` `0x0e8731cc`, `DjiEncryptSaveBothToSha204AndA9` `0x0e872740`, `DjiEncryptWriteAllBoardNumToOTP` `0x0e871140`. 9-byte ATSHA204 SN and a board number are compared with a copy in A9 NAND. Shell tests `t dji encrypt ...` exist. No key or SN value recorded here.
-- V: `DjiMsgAuthorizedMac` `0x0e85f370`; `cam_server` rejects clients whose MAC is not authorized.
+- V: `DjiMsgAuthorizedMac` `0x0e85f370`; `cam_server` rejects clients whose Ethernet MAC is not authorized.
 - V: Ambarella DSP microcode (`dsp_fw` partition) has `check_sc() ... chip_id ... efuse` log strings: SoC-internal ucode/chip match, not exported by DJI code (I). No DJI string reads an A9 unique ID.
 - V: `cam_server` embeds a hard-coded FTP credential for `192.168.1.2` (Wi-Fi module firmware upload). Value deliberately not copied.
 - Not found: any `fpga`/`altera`/`cyclone`/`jtag`/`idcode`/`spidev`/`uio` string in the Linux kernel partition or rootfs; no FPGA config or `.rbf`/`.sof` handling in m0100.
@@ -70,7 +70,7 @@ Addresses: Cortex-M modules = runtime address; m0100 sys = runtime address (base
 | P3X 01.01.0006, P3S 01.01.0008 | m0100..m1900 incl. m1500, m1900 | m1500 byte-identical to P3X 0020. m1900 identical between these two, differs from 0020. m0100 sys has UEG USB/68013/ATSHA204 strings (names `DjiUegFpgaFinishHandle`, `MCCTRL_68013Update`, `DjiEncryptSaveBothToSha204AndA9`). Older table layout (no `P*Fw3.bin` strings). `DjiMsgAuthorizedMac` absent. m0900 (01.07.x) has **no UID literal**; m0306 (02.01.1543) has **no UID literal** |
 | P3C 01.08.0100 | no m1500 / m1900 (Wi-Fi: m0700/m2700, ath9k Linux) | m0100 rootfs is the same as P3X (still carries `68013.ko`, `fxload`, `Vend_Ax.iic`), UEG table identical layout: code presence is not hardware presence. m0900, m0306 (02.04.5148): no UID literal. m0305 identical |
 | P3SE 01.01.0000 | Wi-Fi, no m1500 / m1900 | m0100 not splittable by `amba_fwpak`; raw scan: `DjiUegFpgaFinishHandle` x1, `FPGA.A` x1, `MCCTRL_68013Update` x0 (differs from P3C). m0700/m2700 gunzip to Linux/ath9k, no FPGA/ID hits |
-| P3XW 01.00.0010 | Wi-Fi, no m1500 / m1900 | m0100 same layout as P3X incl. authorized-MAC and fw table; m0900/m0306 no UID literal |
+| P3XW 01.00.0010 | Wi-Fi, no m1500 / m1900 | m0100 same layout as P3X incl. authorized Ethernet-MAC and fw table; m0900/m0306 no UID literal |
 | P3XS RC 01.03.0020 | RC only (m1300, m1400, m1600, m1601, m2000-m2002) | no air modules; not used |
 
 UID-read summary across variants: STM32 UID literals exist only in P3X V01.11.0020 `m0900` and `m0306` among the images checked.

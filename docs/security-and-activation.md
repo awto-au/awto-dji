@@ -13,7 +13,7 @@ talk to it, and whether firmware is accepted — kept apart because they are eas
 | **DJI product activation** | FC app `m0306` | **motor start** (`Product not activation,stop motor!`) | **Hardware behaviour** (firmware won't spin motors), driven by DJI online/app activation | V (gate); the activation exchange itself I |
 | **ATSHA204 component auth** | A9 camera `m0100` (primary), RC `m1400` | demonstrated: **client/app authorization** (`cam_server` rejects un-authorized MAC). Flight/boot block **not shown** | On-device check, but visible teeth are **DJI-software/client-facing** | V (check exists + what it compares); mismatch consequence **U** |
 | **Device identity (UID/SN)** | `m0306`, `m0900`, `m0100` | nothing by itself — used to *build* an identity/serial | neither; it's an identifier, not a gate | V (reads); consumers partly U |
-| **Authorized-MAC (network)** | A9 `cam_server` (`DjiMsgAuthorizedMac`) | which client (by 6-byte network MAC) may connect to the camera server; a pairing whitelist | DJI-software/client-facing; **changeable** (`t dji mac …`, `MCCTRL_AuthorizedMacUpdate`) | V |
+| **Authorized Ethernet MAC** | A9 `cam_server` (`DjiMsgAuthorizedMac`) | which client (by 6-byte Ethernet MAC) may connect to the camera server; a pairing whitelist | DJI-software/client-facing; **changeable** (`t dji mac …`, `MCCTRL_AuthorizedMacUpdate`) | V |
 | **Firmware integrity** | loader + xV4 container | whether a firmware image is accepted | on-device; **no signature** → patchable | V |
 | **RF link "security"** | FPGA/radio | none (unkeyed waveform + whitening; no link encryption) | neither (spoofable association) | V (absence), OTA-encryption not ruled out |
 
@@ -44,8 +44,8 @@ talk to it, and whether firmware is accepted — kept apart because they are eas
 
 ## 2a. "MAC" is two different things here (don't conflate)
 
-- **Network MAC — `DjiMsgAuthorizedMac` (A9).** A **6-byte Ethernet/Wi-Fi hardware address**: the
-  *authorized client's* MAC, a pairing whitelist. `cam_server` accepts the client whose network MAC
+- **Ethernet MAC — `DjiMsgAuthorizedMac` (A9).** A **6-byte Ethernet/Wi-Fi hardware address**: the
+  *authorized client's* MAC, a pairing whitelist. `cam_server` accepts the client whose Ethernet MAC
   matches. **V** from the format/command strings: `Update authorized MAC:
   %02x:%02x:%02x:%02x:%02x:%02x`, `Set authorized mac. t dji mac xx xx xx xx xx xx`,
   `MCCTRL_AuthorizedMacUpdate`, `WPS: Add/Remove authorized MAC …`.
@@ -61,9 +61,9 @@ talk to it, and whether firmware is accepted — kept apart because they are eas
 
 ### Does the ATSHA204 hold a hard Ethernet MAC (to lock the GMAC)? — no evidence on the P3
 
-Tested the idea that the secure element stores a provisioned network MAC that the GMAC uses:
+Tested the idea that the secure element stores a provisioned Ethernet MAC that the GMAC uses:
 - **V** The A9 has a GMAC (`ST GMAC Registers`, `Rx/Tx GMAC` — Synopsys/ST Ethernet controller).
-- **V** The network MAC comes from **`/proc/ambarella/board_info`** (`wifi1_mac` read from it), with a
+- **V** The Ethernet MAC comes from **`/proc/ambarella/board_info`** (`wifi1_mac` read from it), with a
   **random fallback** when empty/`00:00:00:00:00:00` (`printf "%02X:…" $RANDOM > /tmp/wifi1_mac`).
   Nothing reads a MAC out of the ATSHA204.
 - **V** The ATSHA204 stores **SN + board number + the crypto secret**; every `204`/`DjiEncrypt`
@@ -79,8 +79,10 @@ Tested the idea that the secure element stores a provisioned network MAC that th
 (`br0`), and drives an **MII PHY** (`Phy Address = 0x%x`, `MII Interrupt`) — the Ambarella A9's
 built-in GMAC with a board PHY; plus `eth1`/`veth0` (virtual) and Wi-Fi `wlan0`/hostapd/
 wpa_supplicant. `192.168.1.2` is the Wi-Fi module (hard-coded FTP cred). So `cam_server` is an **IP
-server** and clients are identified by network MAC — which is why the authorized-MAC pairing is a
-network address, not the crypto MAC.
+server** and clients are identified by Ethernet MAC — which is why the authorized-MAC pairing is an
+Ethernet MAC address, not the crypto MAC. (Wi-Fi clients carry the same 802 hardware MAC, so
+"Ethernet MAC" here means the network hardware address in general, as distinct from the ATSHA204
+crypto MAC.)
 
 ## 3. Device identity (UID / serial)
 
