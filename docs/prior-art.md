@@ -88,8 +88,10 @@ versions. The shared set is the platform core, not incidental:
   infrastructure (`hal_push_mc_version`, `log_version_info`).
 
 The P4 map (3133) is ~2.5x the P3 map (1227): the newer aircraft *grew* code (vision positioning,
-obstacle avoidance) on the same base rather than being rewritten. Same story the module IDs tell
-(every FC is `0306`, every air radio `0900`, across P3/P4/Spark/Mavic). Practical use: a function
+obstacle avoidance) on the same **source** base — even though the P4 moved to a different MCU
+(Cortex-M7 Atmel SAM E70 vs the P3's Cortex-M4 STM32F427), the shared symbols show the source was
+recompiled, not rewritten. Same story the module IDs tell (every FC is `0306`, every air radio
+`0900`, across P3/P4/Spark/Mavic). Practical use: a function
 named in the richer P4 map but absent from the sparse P3 map is a naming candidate for the same
 function in our image, matched by structure/string refs.
 
@@ -129,16 +131,18 @@ names:
    (exact-function, symbol-name, data-flow matchers) and ports names/comments/types across a
    version gap. To use it we need the *binary* of a symbol-bearing build (e.g. P3 FC V01.07.0060,
    or P4 `wm220_0306`), load it, apply upstream's `.map`/`.idc`, then VT-correlate to our image.
-   VT handles same-component pairs well (P3 FC ↔ P4 FC); cross-arch modules (A9 vs LPC) live in the
-   same project but as separate programs with their own language spec — VT does not cross arch.
+   VT handles same-arch same-component pairs well (e.g. P3 FC V01.07.0060 ↔ our V01.11.0020, both
+   STM32). It does **not** cross architectures — and note the P4 FC is Cortex-M7 (Atmel SAM E70),
+   not the P3's Cortex-M4 (STM32), so P4↔P3 is a cross-arch pair for VT, name-transfer only.
 2. **String-anchored name port** (no VT, no reference binary needed) — parse the upstream `.map`,
    and for each named function match it into our image by the debug strings it references
    (version-robust, since addresses move but string refs don't). Cheaper for our one target.
 
-P4 FC (`wm220_0306`) is the same **STM32F4 family** as the P3 (shared `Reset_Handler`,
-`SystemInit`, IAR, µC/OS); the exact part needs the P4 vector table from its binary. Its map is the
-richer naming source (3133 vs 1227 publics), so it is the better VT/port reference for the control
-and nav layers.
+Caveat on the P4 as a VT reference: the P4 FC is a **different architecture** (Atmel SAM E70,
+Cortex-M7) from our P3 (STM32F427, Cortex-M4), so Ghidra VT's *structural* matchers won't bridge
+P4↔P3 — only the **names** transfer (names are arch-independent). For structural VT, the same-arch
+**P3 V01.07.0060** map/binary is the right reference. The P4 map is still the richer *naming*
+source (3133 vs 1227 publics) for the control/nav layer, used via name/string matching, not VT.
 
 ## String-anchored name port: result
 
@@ -161,19 +165,27 @@ V01.11.0020 image, of which **13 resolved to a function with high/med confidence
 So string-anchoring is good for validation and for handler functions, but the full control-mode
 map is the case that actually wants Version Tracking against the P4 binary.
 
-## P3 vs P4 flight controller (same platform, bigger device + new sensing)
+## P3 vs P4 flight controller — a different MCU (STM32F4 → Atmel SAM E70)
 
-From the two FC maps (addresses/sizes are facts from the maps; the exact MCU part is bounded, not
-pinned — that needs the P4 binary's vector table or a PCB teardown):
+The P4 FC is **not** an STM32. It is a **Microchip/Atmel ATSAME70Q21** (ARM Cortex-**M7**), pinned
+two independent ways:
 
-- **Code size:** P4 `.text` = 0x1265D4 (~1.2 MB) vs P3 ~0x85D34 (~548 KB) — P4 FC is ~2.3x the
-  code, needing **≥2 MB flash**. (The P4 map lists code addresses segment-relative, `0x00……`, so
-  its absolute addresses / exact RAM base can't be read cleanly from the map — an earlier draft's
-  "0x2040_0000 RAM base" was an over-read and is withdrawn.) The platform code is the same
-  STM32F4-family lineage (shared `Reset_Handler`/`SystemInit`/IAR/µC/OS). **The exact P4 MCU part
-  is U** — it needs the P4 binary's vector table or a PCB teardown; we only have the symbol map.
-  What is solid: the P3 FC is **STM32F427** (verified from our own vector-table analysis), and the
-  P4 FC is a **bigger STM32F4-family part** (≥2 MB flash, more RAM) running the same platform.
+- **dji-firmware-tools wiki** (`Firmware m0306`) names the m0306 MCU as **STM32F427** for the P3
+  family (P3X/P3S/P3C/WM330/WM610) and **ATSAME70Q21** for **WM100 (Spark) and WM220 (Phantom 4)**.
+- **The symbol map confirms it by memory map:** P4 code symbols live at `0x00400000`–`0x00546252`
+  and RAM symbols at `0x20400540`–`0x2045D870`, with `.bss` = 0x60100 (384 KB). That is exactly the
+  SAM E70/S70/V70 layout — flash @ `0x00400000` (2 MB), SRAM @ `0x20400000` (384 KB) — and nothing
+  like an STM32 (flash @ `0x08000000`, SRAM @ `0x20000000`). The ATSAME70**Q21** is the 2 MB-flash /
+  384 KB-SRAM part, matching both figures. (This is the data an earlier draft saw as "0x2040_0000
+  RAM base" and wrongly withdrew assuming STM32 — it was the SAM E70 signature all along.)
+
+So between the P3 and P4, DJI **changed CPU vendor and core**: STM32F427 (Cortex-M4F, ST) →
+ATSAME70Q21 (Cortex-M7, Microchip). The P4 `.text` is ~1.2 MB vs the P3's ~548 KB (~2.3x). That the
+**202 shared symbols survived a full architecture change** (M4→M7, ST→Atmel) is the strong form of
+the "one platform" claim: DJI's application + µC/OS + DUML layer is portable C, **recompiled** for
+new silicon, while the register/HAL layer is necessarily per-vendor (ST SPL on the P3, Atmel ASF on
+the P4). **P3 FC = STM32F427** (verified from our own vector-table analysis); **P4 FC =
+ATSAME70Q21** (wiki + memory-map corroborated).
 - **Sensors — same parts, more of them + redundancy:** both use **MPU-6500** (`mpu6500_driver_init`),
   **IST8303** and **HMC5883** compasses. P4 adds `imu_groups`, `init_all_gyro_acc` and **three**
   high-freq gyro channels (`rec_high_freq_gyro_data_0/1/2`), **dual barometers**
