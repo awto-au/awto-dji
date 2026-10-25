@@ -111,7 +111,19 @@ the F427 2 MB dual-bank sector layout (bank1 = sectors 0–11, bank2 = 12–23; 
 | **Read Memory** | **absent** | no flash read-out/dump command found |
 
 So the slots are **bank-1 app (`0x08020000`) and bank-2 (`0x08100000`) = true dual-bank A/B**, with
-the loader (sectors 0–4) kept out of the erase path. **Verify** exists but is a marker-word + blank
+the loader (sectors 0–4) kept out of the erase path.
+
+**Target "types" and external selection.** The erase descriptor's type field selects the target:
+**type 6 → bank-1 app slot, type 7 → bank-2 slot** (verified). Values **0–5 are undetermined** —
+the erase dispatcher (`FUN_20008c88`) branches only on 6/7; 0–5 are other entries in DJI's generic
+updater descriptor enum but their meaning isn't established here (**U**; would need the descriptor
+enum / `RequestUpgrade` target parser). *Programming* is therefore externally selectable — the host
+picks the bank via the type in the DUML command. *Booting* is **not** a "boot slot N" command: the
+loader auto-selects (validate slot A → boot; else slot B; else update mode). There is one external
+boot control: `FUN_20006f04` reads an **update-pending flag** (`FUN_20008280`→`FUN_20007ab4(…,0xc0)`);
+nonzero forces update mode instead of booting — the standard "app sets flag, reboots, loader stays
+in the updater" handoff. No evidence of an external override to force-boot a *specific* slot. **V**
+for 6/7 + the force-update gate; **U** for types 0–5 and any per-slot boot override. **Verify** exists but is a marker-word + blank
 + vector sanity check at boot (the transfer itself is CRC'd during `TranslateData`, the
 `FM_CRC_WRONG` path) — there is **no full-image-CRC or host-"verify-digest" command**. **Read** —
 unlike the ST system bootloader's Read Memory (0x11) — has **no equivalent here**: `m0305` reads
