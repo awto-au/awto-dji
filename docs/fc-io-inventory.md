@@ -35,14 +35,14 @@ base-address word in the image); the *role* column is **I** unless noted.
 | **CAN1** | 0x40006400 | 4 | **V** primary inter-MCU link (FC ↔ gimbal/centre board; the 0x41x CAN IDs of `m0900-can-channels.md`) |
 | **CAN2** | 0x40006800 | 2 | second CAN bus |
 | FLASH_IF | 0x40023c00 | 3 | internal-flash program/erase (param save) |
-| FSMC | 0xA0000000 | 3 | external memory bus (**I**: data-logging flash / black-box) |
+| FSMC | 0xA0000000 | 3 | external memory bus — only 3 base loads, no init path found; likely minimal/unused (**I**) |
 | USB_OTG_HS | 0x40040000 | 2 | USB device (**I**: DJI Assistant 2 / upgrade + sim link to the FC) |
 | TIM1/3/4/5/6/7/8/9/10/11/12/13/14 | — | 1–2 each | motor PWM out (TIM1/TIM8 adv.), misc time-bases |
 | USART1/2/3, UART4/5/7/8, USART6 | — | 1 each | serial links (GPS, RC/DBUS, OSD, debug — individual mapping **U**) |
 | SPI1/2/3/4/5/6 | — | 1 each | sensor buses (**I**: IMU/baro on SPI; exact CS **U**) |
 | I2C1/2/3 | — | 1 each | sensor buses (**I**: compass on I2C) |
 | ADC1-3 | 0x40012000 | 1 | analogue (**I**: voltage/current/temp) |
-| SDIO | 0x40012c00 | — | (fc_io abs-ref scan showed 43 offset refs: SD/eMMC logging, **I**) |
+| SDIO | 0x40012c00 | — | **V** SD/eMMC data logger — pins PC8/9/10/11/12 (D0–D3, CK) + PD2 (CMD) @ AF12 (`sdio_bringup` 0x08039f92) |
 | IWDG | 0x40003000 | 1 | independent watchdog |
 | SYSCFG/EXTI | 0x40013800 | 1/1 | pin interrupt mux (sensor DRDY/strobe) |
 | PWR, CRC, RCC, BKPSRAM | — | 1–2 | core services |
@@ -93,7 +93,53 @@ live trace or deep per-driver decompilation).
 - **No borrowed open-source flight-control code.** **V** (absence) — zero
   Betaflight/Cleanflight/MultiWii/Baseflight/iNav/ArduPilot/PX4 strings. The FC is DJI-original.
 - **Compiler/toolchain: U.** No `GCC`/`ARMCC`/`IAR`/`Keil` build-ID string survives in the
-  stripped image.
+  stripped image (see "Build metadata" below — a raw `.bin` keeps no `.comment`/symbol table).
+
+## SPL version
+
+Bracketed, not pinned. **F427/437 support entered SPL at V1.1.0 (Jan 2013)**, so the library is
+**≥ V1.1.0**; the module carries DJI's own `BUILD Jun 19 2017` string, so it is one of
+V1.1.0–V1.8.0 (the F427-capable range up to the last SPL). The **exact patch version is not
+recoverable** from this image: the drivers actually present (RCC, GPIO, USART, CAN) are
+byte-stable across those minor releases — the inter-version diffs are added peripheral files
+(F411/F446) and I2C/DSI/RCC-PLL-min fixes that don't touch these functions — and SPL embeds no
+version string (its version is a `#define` macro). Pinning it would need a function that
+materially changed between versions, byte-matched against each release; low payoff. **Note:** the
+version does **not** matter for naming — every SPL release has identical prototypes and
+`*_InitTypeDef` layouts, so the signatures below apply regardless.
+
+## Verified pin / bus map (from SPL callers)
+
+With the SPL init functions identified, their callers name the hardware for free (the port, pin,
+AF and peripheral are the call arguments). Decoded against the STM32F427 alternate-function map
+(AF9 = CAN, AF12 = SDIO). **V** (decompiled call sites; GPIO port pointers resolved from the
+literal pool):
+
+| Bus | Pins | AF | Bring-up fn | Role |
+|---|---|---|---|---|
+| **CAN1** | PD0 (RX), PD1 (TX) | AF9 | `can1_bringup` 0x08035100 | **V** primary inter-MCU link (FC ↔ m0900/gimbal; the 0x41x CAN IDs) |
+| **CAN2** | PB12 (RX), PB13 (TX) | AF9 | `can2_bringup` 0x080353b2 | **V** second CAN bus (CAN2EN clock set) |
+| **SDIO** | PC8–11 (D0–D3), PC12 (CK), PD2 (CMD) | AF12 | `sdio_bringup` 0x08039f92 | **V** SD/eMMC flight-data logger |
+| **UARTs** | base + baud from a per-port descriptor | — | `usart_open` 0x080343cc | generic open; baud is a runtime field (`descriptor+8`), **not** a compile-time literal |
+
+Pin config word for these buses is `0x01000302` = `GPIO_Mode_AF`, `GPIO_Speed_100MHz`,
+`GPIO_OType_PP`, `GPIO_PuPd_UP`. **DJI uses SPL correctly** — the bring-up order is the textbook
+`GPIO_PinAFConfig → GPIO_Init → <periph>_DeInit → <periph>_Init` sequence.
+
+Still **U**: *which* USART carries GPS / RC / OSD and at what baud — `usart_open` takes those from
+a higher-level port descriptor table, so recovering them is one more trace up (the descriptor
+table), cheap but not yet done. SPI CS lines and TIM PSC/ARR likewise sit behind descriptor/config
+structs.
+
+## Build metadata (answering "is there linker info in the file?")
+
+No. The module is a **raw loadable image** (`file`: *ARM Cortex-M firmware*, not ELF) — the product
+of `objcopy -O binary`, which keeps only loadable sections. So there is **no symbol table, no
+`.comment` (compiler/version), no `.note.gnu.build-id`, no linker map** — all of that lives in the
+ELF and is dropped. The only in-band metadata is `.rodata` text, and there the useful item is
+DJI's own **`BUILD Jun 19 2017 21:40:20`** stamp (plus DJI/Onboard-SDK version strings). No
+toolchain or SPL version string exists to read; library identity and version come from code
+structure (above), not metadata.
 
 ## How to reproduce
 

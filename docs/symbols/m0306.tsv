@@ -138,3 +138,7 @@ addr	name	note	source
 0x0803b5d8	usart_init	SPL USART_Init: calls RCC_GetClocksFreq, BRR via 25*apbclock divider + OVER8 fractional	ghidra+io
 0x0806396c	gpio_init	SPL GPIO_Init(GPIOx,GPIO_InitTypeDef): 16-pin loop over MODER/OSPEEDR/OTYPER/PUPDR	ghidra+io
 0x08063a54	gpio_pin_af_config	SPL GPIO_PinAFConfig(GPIOx,pinsrc,AF): AFR[src>>3] nibble = AF<<((src&7)*4)	ghidra+io
+0x08035100	can1_bringup	GPIOD PD0/PD1 AF9 + CAN_DeInit/CAN_Init on CAN1 (primary inter-MCU link)	ghidra+io
+0x080353b2	can2_bringup	GPIOB PB12/PB13 AF9 + CAN2EN clock + CAN_Init on CAN2	ghidra+io
+0x08039f92	sdio_bringup	PC8-12(D0-D3,CK)+PD2(CMD) AF12 = SDIO (SD/eMMC data logger)	ghidra+io
+0x080343cc	usart_open	generic UART open: USART_Init with base+baud from a per-port descriptor (param_1+4 base, +8 baud)	ghidra+io
