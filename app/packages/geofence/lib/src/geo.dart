@@ -43,8 +43,8 @@ LatLng destination(LatLng start, double bearingDegrees, double distanceM) {
   final br = _rad(bearingDegrees);
   final lat1 = _rad(start.lat);
   final lon1 = _rad(start.lon);
-  final lat2 = math.asin(
-      math.sin(lat1) * math.cos(d) + math.cos(lat1) * math.sin(d) * math.cos(br));
+  final lat2 = math.asin(math.sin(lat1) * math.cos(d) +
+      math.cos(lat1) * math.sin(d) * math.cos(br));
   final lon2 = lon1 +
       math.atan2(math.sin(br) * math.sin(d) * math.cos(lat1),
           math.cos(d) - math.sin(lat1) * math.sin(lat2));
@@ -61,7 +61,9 @@ bool pointInPolygon(LatLng p, List<LatLng> ring) {
     final yi = ring[i].lat, xi = ring[i].lon;
     final yj = ring[j].lat, xj = ring[j].lon;
     final intersect = ((yi > p.lat) != (yj > p.lat)) &&
-        (p.lon < (xj - xi) * (p.lat - yi) / ((yj - yi) == 0 ? 1e-12 : (yj - yi)) + xi);
+        (p.lon <
+            (xj - xi) * (p.lat - yi) / ((yj - yi) == 0 ? 1e-12 : (yj - yi)) +
+                xi);
     if (intersect) inside = !inside;
   }
   return inside;

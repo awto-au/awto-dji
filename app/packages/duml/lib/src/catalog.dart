@@ -122,7 +122,8 @@ class MessageStat {
 
   /// A static, repeated payload on a frequently-seen message is a strong
   /// identifier/metadata candidate (e.g. a Master-ID or serial field).
-  bool get looksLikeStaticId => payloadConstant && count >= 3 && samplePayload.isNotEmpty;
+  bool get looksLikeStaticId =>
+      payloadConstant && count >= 3 && samplePayload.isNotEmpty;
 }
 
 /// Printable-ASCII run of >= minLen inside a payload — serial-number / name hint.
@@ -176,11 +177,13 @@ class StreamInventory {
     final b = StringBuffer();
     b.writeln('DUML capture inventory: $total packet(s), '
         '${messages.length} distinct message type(s)\n');
-    b.writeln('count  set  id    name                               len      route(s)');
-    b.writeln('-----  ---  ----  ---------------------------------  -------  --------');
+    b.writeln(
+        'count  set  id    name                               len      route(s)');
+    b.writeln(
+        '-----  ---  ----  ---------------------------------  -------  --------');
     for (final m in messages) {
-      final name = knownMessageName(m.cmdSet, m.cmdId) ??
-          '(${cmdSetName(m.cmdSet)})';
+      final name =
+          knownMessageName(m.cmdSet, m.cmdId) ?? '(${cmdSetName(m.cmdSet)})';
       final lens = m.payloadLengths.join(',');
       b.writeln('${m.count.toString().padLeft(5)}  '
           '0x${m.cmdSet.toRadixString(16).padLeft(2, '0')}  '
@@ -189,9 +192,11 @@ class StreamInventory {
     }
 
     final statics = messages.where((m) => m.looksLikeStaticId).toList();
-    b.writeln('\nStatic / repeated payloads (identifier & metadata candidates):');
+    b.writeln(
+        '\nStatic / repeated payloads (identifier & metadata candidates):');
     if (statics.isEmpty) {
-      b.writeln('  (none — need more packets, or no constant fields at message level)');
+      b.writeln(
+          '  (none — need more packets, or no constant fields at message level)');
     } else {
       for (final m in statics) {
         b.writeln('  set 0x${m.cmdSet.toRadixString(16).padLeft(2, '0')} '
@@ -203,12 +208,14 @@ class StreamInventory {
       }
     }
 
-    b.writeln('\nASCII strings across all message types (serial / name hints):');
+    b.writeln(
+        '\nASCII strings across all message types (serial / name hints):');
     final seen = <String>{};
     for (final m in messages) {
       for (final s in asciiRuns(m.samplePayload)) {
         if (seen.add(s)) {
-          b.writeln('  "$s"  (set 0x${m.cmdSet.toRadixString(16).padLeft(2, '0')} '
+          b.writeln(
+              '  "$s"  (set 0x${m.cmdSet.toRadixString(16).padLeft(2, '0')} '
               'id 0x${m.cmdId.toRadixString(16).padLeft(2, '0')})');
         }
       }

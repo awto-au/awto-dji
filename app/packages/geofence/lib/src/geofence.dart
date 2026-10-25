@@ -21,7 +21,8 @@ class SafetyVerdict {
   /// Zones that triggered this verdict.
   final List<GeoZone> zones;
 
-  const SafetyVerdict(this.decision, this.reason, {this.allowedCeilingM, this.zones = const []});
+  const SafetyVerdict(this.decision, this.reason,
+      {this.allowedCeilingM, this.zones = const []});
 
   bool get isAllowed => decision != Decision.deny;
 
@@ -39,11 +40,13 @@ class GeoFence {
 
   GeoFence(this.zones, {this.bufferM = 30.0});
 
-  List<GeoZone> _noFlyContaining(LatLng p) =>
-      zones.where((z) => z.kind == ZoneKind.noFly && z.distanceToEdgeM(p) <= bufferM).toList();
+  List<GeoZone> _noFlyContaining(LatLng p) => zones
+      .where((z) => z.kind == ZoneKind.noFly && z.distanceToEdgeM(p) <= bufferM)
+      .toList();
 
-  List<GeoZone> _altLimitsAt(LatLng p) =>
-      zones.where((z) => z.kind == ZoneKind.altitudeLimit && z.contains(p)).toList();
+  List<GeoZone> _altLimitsAt(LatLng p) => zones
+      .where((z) => z.kind == ZoneKind.altitudeLimit && z.contains(p))
+      .toList();
 
   /// May the aircraft take off from here?
   SafetyVerdict checkTakeoff(LatLng at) {
@@ -60,10 +63,13 @@ class GeoFence {
   /// none. A requested altitude above it should be clamped down.
   SafetyVerdict checkAltitude(LatLng at, double requestedAltM) {
     final limits = _altLimitsAt(at).where((z) => z.ceilingM != null).toList();
-    if (limits.isEmpty) return const SafetyVerdict(Decision.allow, 'no altitude limit here');
-    final ceiling = limits.map((z) => z.ceilingM!).reduce((a, b) => a < b ? a : b);
+    if (limits.isEmpty)
+      return const SafetyVerdict(Decision.allow, 'no altitude limit here');
+    final ceiling =
+        limits.map((z) => z.ceilingM!).reduce((a, b) => a < b ? a : b);
     if (requestedAltM <= ceiling) {
-      return SafetyVerdict(Decision.allow, 'within ceiling', allowedCeilingM: ceiling, zones: limits);
+      return SafetyVerdict(Decision.allow, 'within ceiling',
+          allowedCeilingM: ceiling, zones: limits);
     }
     return SafetyVerdict(Decision.clamp,
         'altitude limited to ${ceiling.toStringAsFixed(0)} m by ${limits.map((z) => z.name).join(", ")}',
@@ -75,7 +81,8 @@ class GeoFence {
   /// zone. Zero/receding velocity is always allowed so the pilot can fly away.
   ///
   /// `forward`/`right` are body-frame m/s; `headingDeg` is the aircraft heading.
-  SafetyVerdict checkVelocity(LatLng at, double headingDeg, double forward, double right,
+  SafetyVerdict checkVelocity(
+      LatLng at, double headingDeg, double forward, double right,
       {double lookaheadS = 2.0}) {
     final speed = math.sqrt(forward * forward + right * right);
     if (speed < 0.05) return const SafetyVerdict(Decision.allow, 'stationary');

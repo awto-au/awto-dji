@@ -101,7 +101,8 @@ class OsdGeneral {
         motorFailedCause = MotorStartFailedCause.find(d.getUint8(51) & 0xff);
       }
     }
-    if (payload.length >= 50) imuInitFailReason = ImuInitFailReason.find(d.getUint8(49));
+    if (payload.length >= 50)
+      imuInitFailReason = ImuInitFailReason.find(d.getUint8(49));
 
     return OsdGeneral(
       longitude: d.getFloat64(0, Endian.little) * degPerRad,

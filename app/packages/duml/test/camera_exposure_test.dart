@@ -34,8 +34,10 @@ void main() {
     });
 
     test('min/max raw values map to +-5.0 EV', () {
-      expect(CameraExposureCompensation.fromPacket(_packet(0x2f, [1]))!.ev, -5.0);
-      expect(CameraExposureCompensation.fromPacket(_packet(0x2f, [31]))!.ev, 5.0);
+      expect(
+          CameraExposureCompensation.fromPacket(_packet(0x2f, [1]))!.ev, -5.0);
+      expect(
+          CameraExposureCompensation.fromPacket(_packet(0x2f, [31]))!.ev, 5.0);
     });
 
     test('one step above center is +1/3 EV', () {
@@ -44,7 +46,8 @@ void main() {
     });
 
     test('rejects wrong cmdId', () {
-      expect(CameraExposureCompensation.fromPacket(_packet(0x2e, [16])), isNull);
+      expect(
+          CameraExposureCompensation.fromPacket(_packet(0x2e, [16])), isNull);
     });
   });
 
@@ -56,7 +59,8 @@ void main() {
     });
 
     test('decodes SCN with its scene index', () {
-      final s = CameraExposureModeState.fromPacket(_packet(0x1f, [6, 3]))!; // SCN
+      final s =
+          CameraExposureModeState.fromPacket(_packet(0x1f, [6, 3]))!; // SCN
       expect(s.mode, CameraExposureMode.scn);
       expect(s.scene, 3);
     });

@@ -73,7 +73,8 @@ class CommonVersion {
     final d = ByteData.sublistView(payload);
     final hwBytes = payload.sublist(2, 18);
     final nul = hwBytes.indexOf(0);
-    final hw = String.fromCharCodes(nul >= 0 ? hwBytes.sublist(0, nul) : hwBytes);
+    final hw =
+        String.fromCharCodes(nul >= 0 ? hwBytes.sublist(0, nul) : hwBytes);
     final info = d.getUint32(26, Endian.little);
     return CommonVersion(
       hardwareVersion: hw,

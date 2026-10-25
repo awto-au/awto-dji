@@ -282,6 +282,9 @@ def main():
 
         dart_path = dart_out_dir / f"{snake}.dart"
         dart_path.write_text(gen_dart(schema))
+        # Formatted so dev.py fmt-check stays green after regeneration (hand-formatting
+        # the output would be reverted by the next run).
+        subprocess.run(["dart", "format", str(dart_path)], check=True)
 
         log(f"generated {py_path.relative_to(root)} + {dart_path.relative_to(root)} "
             f"from {yaml_path.relative_to(root)}")

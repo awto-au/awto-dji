@@ -8,7 +8,19 @@ void main() {
   group('CRC', () {
     // Verified against o-gs/dji-firmware-tools and a captured DJI RC packet.
     final pkt = Uint8List.fromList([
-      0x55, 0x0d, 0x04, 0x33, 0x0a, 0x06, 0xeb, 0x34, 0x40, 0x06, 0x01, 0x74, 0x24
+      0x55,
+      0x0d,
+      0x04,
+      0x33,
+      0x0a,
+      0x06,
+      0xeb,
+      0x34,
+      0x40,
+      0x06,
+      0x01,
+      0x74,
+      0x24
     ]);
 
     test('header CRC-8 matches captured packet', () {
@@ -29,22 +41,68 @@ void main() {
     // 2026-10-24. Independent confirmation that this codec's CRC8/CRC16/framing is
     // correct across models, not just tuned to our own one aircraft's traffic.
     final mavicAir = Uint8List.fromList([
-      0x55, 0x17, 0x04, 0x38, 0x02, 0x0e, 0x1d, 0x00, 0x40, 0x07, 0x30, 0x55, 0x53,
-      0x00, 0x00, 0x55, 0x53, 0x00, 0x00, 0x01, 0x00, 0xfe, 0x5d,
+      0x55,
+      0x17,
+      0x04,
+      0x38,
+      0x02,
+      0x0e,
+      0x1d,
+      0x00,
+      0x40,
+      0x07,
+      0x30,
+      0x55,
+      0x53,
+      0x00,
+      0x00,
+      0x55,
+      0x53,
+      0x00,
+      0x00,
+      0x01,
+      0x00,
+      0xfe,
+      0x5d,
     ]);
     final mini2 = Uint8List.fromList([
-      0x55, 0x18, 0x04, 0x20, 0x02, 0x09, 0x00, 0x00, 0x40, 0x09, 0x27, 0x00, 0x02,
-      0x48, 0x00, 0xff, 0xff, 0x02, 0x00, 0x00, 0x00, 0x00, 0x81, 0x1f,
+      0x55,
+      0x18,
+      0x04,
+      0x20,
+      0x02,
+      0x09,
+      0x00,
+      0x00,
+      0x40,
+      0x09,
+      0x27,
+      0x00,
+      0x02,
+      0x48,
+      0x00,
+      0xff,
+      0xff,
+      0x02,
+      0x00,
+      0x00,
+      0x00,
+      0x00,
+      0x81,
+      0x1f,
     ]);
 
-    test('Mavic Air packet (SetWiFiCountryCode, cmdset 0x07/0x30) passes our CRC', () {
+    test(
+        'Mavic Air packet (SetWiFiCountryCode, cmdset 0x07/0x30) passes our CRC',
+        () {
       expect(headerCrc8(mavicAir), equals(mavicAir[3]));
       final crc = packetCrc16(mavicAir, mavicAir.length);
       expect(crc & 0xFF, equals(mavicAir[mavicAir.length - 2]));
       expect((crc >> 8) & 0xFF, equals(mavicAir[mavicAir.length - 1]));
     });
 
-    test('Mini 2 packet (SetSdrAssitantWrite, cmdset 0x09/0x27) passes our CRC', () {
+    test('Mini 2 packet (SetSdrAssitantWrite, cmdset 0x09/0x27) passes our CRC',
+        () {
       expect(headerCrc8(mini2), equals(mini2[3]));
       final crc = packetCrc16(mini2, mini2.length);
       expect(crc & 0xFF, equals(mini2[mini2.length - 2]));
@@ -65,7 +123,21 @@ void main() {
       );
       expect(
         p.encode(),
-        equals([0x55, 0x0d, 0x04, 0x33, 0x0a, 0x06, 0xeb, 0x34, 0x40, 0x06, 0x01, 0x74, 0x24]),
+        equals([
+          0x55,
+          0x0d,
+          0x04,
+          0x33,
+          0x0a,
+          0x06,
+          0xeb,
+          0x34,
+          0x40,
+          0x06,
+          0x01,
+          0x74,
+          0x24
+        ]),
       );
     });
 
@@ -79,7 +151,8 @@ void main() {
         ackType: AckType.afterExec,
         cmdSet: CmdSet.flightController,
         cmdId: 0x43,
-        payload: Uint8List.fromList(List<int>.generate(20, (i) => i * 3 & 0xFF)),
+        payload:
+            Uint8List.fromList(List<int>.generate(20, (i) => i * 3 & 0xFF)),
       );
       final decoded = DumlPacket.decode(original.encode());
       expect(decoded.senderType, DeviceType.app);
@@ -223,11 +296,15 @@ void main() {
       expect(osd.imuInitFailReason, isNull);
     });
 
-    test('REMOTE_USB_CONNECTED range (200-255) resolves via MotorStartFailedCause.find',
+    test(
+        'REMOTE_USB_CONNECTED range (200-255) resolves via MotorStartFailedCause.find',
         () {
-      expect(MotorStartFailedCause.find(200), MotorStartFailedCause.remoteUsbConnected);
-      expect(MotorStartFailedCause.find(255), MotorStartFailedCause.remoteUsbConnected);
-      expect(MotorStartFailedCause.find(199), isNot(MotorStartFailedCause.remoteUsbConnected));
+      expect(MotorStartFailedCause.find(200),
+          MotorStartFailedCause.remoteUsbConnected);
+      expect(MotorStartFailedCause.find(255),
+          MotorStartFailedCause.remoteUsbConnected);
+      expect(MotorStartFailedCause.find(199),
+          isNot(MotorStartFailedCause.remoteUsbConnected));
       expect(MotorStartFailedCause.find(9999), MotorStartFailedCause.other);
     });
   });

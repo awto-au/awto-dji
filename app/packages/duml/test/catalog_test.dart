@@ -5,7 +5,9 @@ import 'package:test/test.dart';
 
 /// Build a packet with the given payload (encode() fills in CRCs).
 Uint8List pkt(int set, int id, List<int> payload,
-    {int sender = DeviceType.flightController, int receiver = DeviceType.app, int seq = 0}) {
+    {int sender = DeviceType.flightController,
+    int receiver = DeviceType.app,
+    int seq = 0}) {
   return DumlPacket(
     senderType: sender,
     receiverType: receiver,
@@ -20,7 +22,8 @@ void main() {
   test('inventory counts message types and routes', () {
     final cap = <int>[];
     for (var i = 0; i < 5; i++) {
-      cap.addAll(pkt(0x03, 0x43, List.filled(30, i), seq: i)); // OSD-ish, varying
+      cap.addAll(
+          pkt(0x03, 0x43, List.filled(30, i), seq: i)); // OSD-ish, varying
     }
     cap.addAll(pkt(0x06, 0x20, [1, 2, 3, 4]));
     final inv = StreamInventory.of(DumlFramer().add(cap));
@@ -37,7 +40,8 @@ void main() {
       cap.addAll(pkt(0x06, 0x30, id, seq: i));
     }
     final inv = StreamInventory.of(DumlFramer().add(cap));
-    final m = inv.messages.firstWhere((m) => m.cmdSet == 0x06 && m.cmdId == 0x30);
+    final m =
+        inv.messages.firstWhere((m) => m.cmdSet == 0x06 && m.cmdId == 0x30);
     expect(m.looksLikeStaticId, isTrue);
     expect(m.samplePayload, equals(Uint8List.fromList(id)));
   });
@@ -48,7 +52,8 @@ void main() {
       cap.addAll(pkt(0x03, 0x43, List.filled(30, i), seq: i));
     }
     final inv = StreamInventory.of(DumlFramer().add(cap));
-    final m = inv.messages.firstWhere((m) => m.cmdSet == 0x03 && m.cmdId == 0x43);
+    final m =
+        inv.messages.firstWhere((m) => m.cmdSet == 0x03 && m.cmdId == 0x43);
     expect(m.looksLikeStaticId, isFalse);
   });
 

@@ -32,4 +32,5 @@ int _crc16(int seed, List<int> data, int length) {
 int headerCrc8(List<int> packet) => _crc8(0x77, packet, 3);
 
 /// Whole-packet checksum over `packet[0 .. length-2]`, seed 0x3692.
-int packetCrc16(List<int> packet, int length) => _crc16(0x3692, packet, length - 2);
+int packetCrc16(List<int> packet, int length) =>
+    _crc16(0x3692, packet, length - 2);
