@@ -5,7 +5,7 @@ Built from firmware evidence (m0900 `P3X_FW_V01.11.0020`, app base `0x08008000`)
 - **V** verified: read from m0900 code or Renode readback (address cited).
 - **I** inferred: reasoned from firmware/docs/wiki, not observed.
 - **U** unknown: no evidence either way.
-- Bus rates: `docs/data/m0900-buses.tsv` (derivations there). Scope: architecture only, no keys, no geofence, no control bypass (`CLAUDE.md`).
+- Bus rates: `docs/data/m0900-buses.tsv` (derivations there). Scope & safety: see `SAFETY.md`.
 
 ## 1. Rate summary (m0900 side, all derived)
 

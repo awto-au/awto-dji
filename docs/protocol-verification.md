@@ -72,6 +72,6 @@ open-source reference and the vendor binary; they agree.
 
 The DJI app's DUML/flight logic is in obfuscated native `.so` files, interleaved with
 no-fly enforcement (`libFlyForbid.so`). Extracting control from those binaries is
-impractical and entangled with safety enforcement, so it is out of scope. The benign
+impractical and entangled with safety enforcement. The benign
 protocol *structure* above is fully recoverable from the open-source reference and is
 all this codec needs.

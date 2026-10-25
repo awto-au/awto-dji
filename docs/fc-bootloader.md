@@ -244,9 +244,7 @@ Checked whether the resident loader (sectors 0–4, `0x08000000`) is already ava
 - **One thing may be unique to it.** A Hackaday Naza-M teardown found a DJI bootloader holding a
   "secret seed" used for authentication — i.e. the resident loader *can* hold auth material absent
   from the app/updater. On the P3 FC this is unverified (**U**), but it is the one concrete reason
-  the resident loader is worth a SWD dump beyond completeness. (Scope note: the interest here is the
-  boot chain and a clean replacement, not DJI activation/licensing or geofence defeat, which stay
-  out of scope per `autonomy-onboard-plan.md`.)
+  the resident loader is worth a SWD dump beyond completeness. Scope & safety: see `SAFETY.md`.
 
 ## Is a loader-resident secret actually needed? (searched the app — no evidence)
 

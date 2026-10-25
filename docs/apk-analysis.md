@@ -59,8 +59,8 @@ Commands table: `data/apk-duml-commands.tsv`.
 - What it does not give (U): numeric (set,id) per class, payload layouts. Names map 1:1 to public dissector messages (I), but ids in the TSV are only filled where the repo's m0900 work verified them or `catalog.dart` already carries them.
 - Telemetry push classes P3 needs: `DataOsdGetPushCommon` (OSD General), `DataOsdGetPushHome`, `DataFlycGetPushSmartBattery`, `DataFlycGetPushGpsSnr`, `DataRcGetPushParams`, `DataRcGetPushGpsInfo`, `DataRcGetPushBatteryInfo`, `DataCameraGetPushStateInfo`, `DataGimbalGetPushParams`, `DataCenterGetPushBatteryCommon`, `DataSmartBatteryGetPushDynamicData` (V names).
 - Get version / device info: `DataCommonGetVersion`, `DataCommonGetDeviceInfo`, `DataCommonGetDeviceStatus`, `DataCommonGetDeviceSerialNumber` (V names).
-- Control (not decoded here, out of scope to weaponise): `DataFlycJoystick`, `DataGimbalSpeedControl`, `DataCameraSetRecord`/`SetPhoto` exist (V names).
-- Geofence/flight-restriction message classes exist in the app; deliberately not catalogued.
+- Control (not decoded here): `DataFlycJoystick`, `DataGimbalSpeedControl`, `DataCameraSetRecord`/`SetPhoto` exist (V names).
+- Geofence/flight-restriction message classes exist in the app. Scope & safety: see `SAFETY.md`.
 
 ## 4. Video
 - Same AOA stream as DUML; no second USB channel in the manifest/filter (V filter; I mux).

@@ -5,9 +5,8 @@ loader will accept and flash**, whose first job is to **add a DUML "read memory"
 the resident bootloader** (`0x08000000–0x0801FFFF`) — the one piece we cannot otherwise read without
 SWD. Longer-term: the same app is the base for owned-aircraft autonomy work.
 
-This is bench reverse-engineering on an aircraft the operator owns. **Flight is out of scope here**
-and stays behind the project's A–E props-off work order (`autonomy-onboard-plan.md`). The dump app
-below is a **diagnostic that never touches motors** (see Safety).
+Scope & safety: see `SAFETY.md`. The dump app
+below is a **diagnostic that never touches motors**.
 
 ## Two approaches — patch the stock image (B) before a clean-room replacement (A)
 
@@ -95,15 +94,11 @@ mock "read_memory" that serves a fake flash image, and the xV4 packer verified a
    (acceptance checklist), flash via the loader, confirm it boots and answers GetVersion over CAN.
 3. **Add read_memory**: dump `0x08000000–0x0801FFFF` in chunks over DUML → recover the resident
    loader. Analyse it (closes the last boot-chain gap; check for any secure-boot the app lacks).
-4. **(Gated, later)** param/control surface for autonomy — only after A–E bench bring-up, props off.
+4. **(Gated, later)** param/control surface for autonomy — only after A–E bench bring-up.
 
-## Safety (non-negotiable for this phase)
+## Safety
 
-- The **dump/diagnostic app does not initialise or drive motors/ESCs** and runs **no control loop** —
-  it is comms + memory-read only. There is nothing for it to fly.
-- **No propellers, no flight** in this phase; a flight-capable replacement is the separate A–E track.
-- Always keep the stock m0306 image to reflash via DJI Assistant 2 (the loader, preserved in
-  sectors 0–4, makes this a reliable recovery).
+Scope & safety: see `SAFETY.md`.
 
 ## Proposed layout
 

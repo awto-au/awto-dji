@@ -157,7 +157,7 @@ What the unmatched messages are:
     `PustABDM368SelfCheck`, `Enc_Serial_Encrypt_*`, `Enc_Serial_Is_Stream_Disable`,
     `Enc_Serial_Get_Encode_Mode`).
   - Status format: `T:%d:%d R:%d H:%d L:%d USB:%d BW:%d SBR:%d SFR:%d`.
-- **Out of scope here** (CLAUDE.md: no keys): `setsecurity`, `common/cross/at88.c`
+- `setsecurity`, `common/cross/at88.c`
   (I: Atmel AT88 CryptoMemory) and the `encryptThrFxn`/`/etc/key.bin` path are the component
   authentication / "encrypt query" already noted in `air-id-and-stream-survey.md`. They were
   inventoried, not analysed.

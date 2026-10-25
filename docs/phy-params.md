@@ -166,5 +166,4 @@ PHY-params row in `HANDOVER.md` and `docs/cpu-reversing-proof.md` from "open" to
 
 ## Scope
 
-Interoperability for an owned aircraft (`CLAUDE.md`): structural RF-parameter recovery using
-the public UG-570 register map. No key extraction, no geofence/flight-restriction work.
+Scope & safety: see `SAFETY.md`.

@@ -117,5 +117,4 @@ crypto MAC.)
   flow on an owned aircraft — not the ATSHA204.
 - The **ATSHA204** (mechanism 2) is anti-counterfeit parts-pairing; its demonstrated effect is
   client-authorization, and a failed-chip repair is covered (with its unknowns) in
-  `atsha204-repair-note.md`. None of this touches geofence/NFZ/TX-power, which stay out of scope
-  (`autonomy-onboard-plan.md`).
+  `atsha204-repair-note.md`. Scope & safety: see `SAFETY.md`.

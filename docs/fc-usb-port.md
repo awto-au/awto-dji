@@ -377,6 +377,6 @@ doesn't nominally use, e.g. `FPGA Air`(19), `FPGA Ground`(20), `Automation`(16),
 2. If a live Assistant capture is still wanted: the silent exit is NOT a network/CEF-startup issue (refuted above, with independent host-side confirmation) - every DJI engine binary tried (DJIService.exe standalone included) exits the same voluntary way, pointing at a shared gate in DJI's own startup code (possibly anti-tamper/environment detection, akin to the DJI GO 4 APK's AppGuard packer). Next: x86-disassemble the shared init path in `DJIDevice.dll`/`DJIService.exe` to find the actual gate condition, or try real Windows/a VM instead of Wine to sidestep it entirely.
 3. Rule out line-coding/baud dependence with a CDC SET_LINE_CODING sweep.
 
-Scope: owned aircraft, interoperability only (see `../CLAUDE.md`). No key extraction, no geofence or flight-restriction work.
+Scope & safety: see `SAFETY.md`.
 
 Tools: `scripts/probe_fc_usb.py`, `scripts/re/fc_usb_xrefs.py`. Wiki: https://github.com/o-gs/dji-firmware-tools/wiki/P3X-ESC-center-board , https://github.com/o-gs/dji-firmware-tools/wiki/P3-Flight-Controller-aka-MC

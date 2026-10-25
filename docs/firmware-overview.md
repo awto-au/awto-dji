@@ -3,7 +3,7 @@
 This is the aircraft/RC software, a separate world from the phone app. Described from
 the P3-focused open-source tooling (`o-gs/dji-firmware-tools`) and its P3X firmware
 symbols — i.e. how the firmware is *organised and works*, not how to modify it.
-Modifying firmware is signed/encrypted, out of scope, and not needed for the app.
+Modifying firmware is signed/encrypted and not needed for the app.
 
 ## One package, many modules
 
@@ -174,6 +174,6 @@ The FPGA-bitstream-documentation projects are the right tools here:
 
 The reference also ships tools to edit firmware (including a no-fly-zone editor and
 FC "hardcoder" patchers) and historically a firmware *downgrade* enabled root access.
-Those modify the aircraft's behaviour and its safety limits — out of scope here, and
-unnecessary: the app project only needs to *speak* DUML to a stock aircraft and enforce
-airspace limits itself (the `geofence` gate), not to alter firmware.
+Those modify the aircraft's behaviour and its safety limits. The app project only
+needs to *speak* DUML to a stock aircraft and enforce airspace limits itself (the `geofence`
+gate), not to alter firmware. Scope & safety: see `SAFETY.md`.

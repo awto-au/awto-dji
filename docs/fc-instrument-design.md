@@ -1,6 +1,8 @@
 # FC instrument: read-any-memory + runtime hook tracer (design)
 
-**BENCH DIAGNOSTIC ONLY — props off, no flight.** This document designs an instrumentation
+Scope & safety: see `SAFETY.md`.
+
+This document designs an instrumentation
 tool for the P3 Pro flight controller (module **m0306**, STM32F427) that the operator
 (dan@awto.au) uses to inspect their own aircraft's firmware state. It is **not** a flight
 firmware: it initialises no motor/ESC driver and runs no control loop. It exists to answer
@@ -77,7 +79,7 @@ Response: one or more DUML frames, each a chunk `{uint32_t addr; uint16_t chunk_
 | Option bytes | `0x1FFFC000`–`0x1FFFC00F` | readable as normal memory; **never write** this command — option bytes are also reachable at `0x40023C14` (`FLASH_OPTCR`) and writing either representation can brick boot config. Read-only enforced in code (see 2.3) |
 | Peripheral registers | `0x40000000`+ | always mapped (no bus fault for a valid peripheral base), but some registers have **read side effects** (e.g. clearing a status flag, popping a FIFO) — documented as a caveat, not blocked, since the operator asked for raw read access |
 
-### 2.3 Safety: BusFault guard
+### 2.3 BusFault guard
 
 An address outside implemented memory (unmapped Cortex-M4 region, e.g. a bogus `addr` typo'd
 by the host) causes a **BusFault**, which is fatal unless caught. Two complementary guards,
@@ -303,15 +305,6 @@ that it only watches comms/memory, never the control path.
   shared state beyond both being core-exception-priority code, so no special ordering is
   required between Commands A and B.
 
-## 5. Bench-safety summary (binding constraints on this design)
+## 5. Bench-safety summary
 
-- No motor/ESC initialisation, no control loop — comms + memory + hook tracer only.
-- No DUML command in this design ever writes flash/OTP/option-bytes; `readmem` is read-only by
-  construction.
-- `install_hook` refuses (by convention/documentation, reinforced in the README) any address in
-  the control/motor path; hooks are for comms-function tracing.
-- Always test with **props off**. This is firmware for a bench, not for flight — flight-capable
-  work is the separate A–E track gated in `autonomy-onboard-plan.md` and is explicitly out of
-  scope here.
-- Recovery: stock m0306 is always reflashable via DJI Assistant 2 regardless of which mode
-  (§1) is used, because the loader (sectors 0–4) is untouched either way.
+Scope & safety: see `SAFETY.md`.

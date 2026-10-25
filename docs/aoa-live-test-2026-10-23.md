@@ -144,8 +144,7 @@ than guessing why.
 3. Make a longer capture (this one was ~500 KB) to see the burst period precisely and confirm it
    lines up with a plausible telemetry push rate (10 Hz typical for OSD per other docs in this
    repo).
-4. Work out what's safe to transmit back (per `../CLAUDE.md` scope: read-only telemetry/status
-   queries only - no flight-control, no geofence-adjacent commands). Candidate safe sends, from
+4. Work out what's safe to transmit back (scope & safety: see `SAFETY.md`). Candidate safe sends, from
    already-public framing + this session's own captures: `0x00/0x01` (Get-Version),
    `0x00/0xff`-equivalent build-string query (confirmed working against the RC's own port in
    `docs/fc-usb-port.md`), and read-only OSD/status `Get*` messages named in

@@ -58,5 +58,4 @@ result.
 
 ## Scope / safety
 
-Interoperability for an owned aircraft (see `CLAUDE.md`): structural RF-parameter recovery,
-public register map. No key extraction, no geofence work.
+Scope & safety: see `SAFETY.md`.

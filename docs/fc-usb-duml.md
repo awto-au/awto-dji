@@ -4,7 +4,7 @@ Firmware: `P3X_FW_V01.11.0020_m0306.bin` (STM32F427IIH6, app base `0x08020000`, 
 `0x2002ff00`, reset `0x08021965`, RTOS strings identify **Micrium uC/OS-III**). Reproduce
 disasm: `python3 scripts/re/mcu_trace.py --img firmware/unpacked/P3X_FW_V01.11.0020_m0306.bin
 --base 0x08020000 --load 0x08020000 dis <addr> <n>`.
-Scope (`CLAUDE.md`): read/trace-only, no control-command sending, no geofence work.
+Scope & safety: see `SAFETY.md`.
 Tags: **V** verified (code/Renode), **I** inferred, **U** unknown.
 
 ## Headline finding
