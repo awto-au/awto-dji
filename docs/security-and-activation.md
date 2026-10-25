@@ -46,9 +46,11 @@ talk to it, and whether firmware is accepted — kept apart because they are eas
 
 - **Ethernet MAC — `DjiMsgAuthorizedMac` (A9).** A **6-byte Ethernet/Wi-Fi hardware address**: the
   *authorized client's* MAC, a pairing whitelist. `cam_server` accepts the client whose Ethernet MAC
-  matches. **V** from the format/command strings: `Update authorized MAC:
-  %02x:%02x:%02x:%02x:%02x:%02x`, `Set authorized mac. t dji mac xx xx xx xx xx xx`,
-  `MCCTRL_AuthorizedMacUpdate`, `WPS: Add/Remove authorized MAC …`.
+  matches. **V — decompiled** (m0100 sys partition at base `0x0E600000`, `0x0e85f370`): it copies
+  the stored authorized MAC (`DAT_0e85ff68`) and does `memcmp(stored, incoming, 6)` — a **6-byte**
+  compare — returning **0 (authorized)** or **0xe6 (rejected)** (with a secondary list check on
+  mismatch). Also V from the strings: `Update authorized MAC: %02x:…:%02x`, `Set authorized mac.
+  t dji mac xx xx xx xx xx xx`, `MCCTRL_AuthorizedMacUpdate`.
   - **Changeable: yes.** Settable by the shell command `t dji mac xx xx xx xx xx xx` and
     `MCCTRL_AuthorizedMacUpdate` (and over DUML). The underlying interface MACs are themselves
     software-set — one script even **randomly generates** a MAC (`printf "%02X:…" $RANDOM >
@@ -56,8 +58,11 @@ talk to it, and whether firmware is accepted — kept apart because they are eas
     a fused secret. Interop use: an onboard companion connecting to `cam_server` would set the
     authorized MAC to its own interface MAC.
 - **Crypto MAC — `DjiEncryptCheckA9Mac` (A9) / `get_mac` (RC).** The **ATSHA204 SHA-256
-  challenge/response** value (`[DJI_ENCRYPT] response_mac[…]`), §2 above. Unrelated to the network
-  MAC; not a network address and not freely settable.
+  challenge/response** value (`[DJI_ENCRYPT] response_mac[…]`), §2 above. **V — decompiled**
+  (`0x0e871ae0`): builds a **32-byte** nonce, computes the expected MAC on the A9 (`FUN_0e871840`)
+  and reads the ATSHA204's MAC (`FUN_0e8716f8`), then XOR-compares all **32 bytes** — returning
+  **0 (genuine)** or **0xe1 (fail)**. A SHA-256 response, not an Ethernet address and not freely
+  settable. (What a `0xe1`/`0xe6` return then gates in the *caller* is still open — issue #45.)
 
 ### Does the ATSHA204 hold a hard Ethernet MAC (to lock the GMAC)? — no evidence on the P3
 
