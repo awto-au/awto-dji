@@ -24,6 +24,7 @@ Unpack with dji-firmware-tools `dji_xv4_fwcon.py` → per-module `.bin`. Key mod
 |---|---|---|---|
 | `P3X_FW_V01.11.0020_m0900.bin` | `72156b4b18e8db4c35c74cf2e8ae90d216fd260cdb5b508087840a8d7313fe6d` | 75,796 | air radio MCU (STM32F103) |
 | `c1_m1400.bin` | `43bc7d6cb9f9c916dcfee0146378a3a6c823d0c65ac9613ca5adecae25f9d93f` | 155,304 | ground radio MCU (LPC1765) — all MCU proofs are against this |
+| `c1_m1401.bin` | `85171a356399e1a47bcf9227c6605aaff109b32b347ca42732946091ed93df49` | 139,092 | ground radio MCU, alternate chip (LPC1549) — which family the owner's board actually has is open, see `ground-upgrade-path.md` §Q6 |
 | `c1_m2001.bin` | `b6cc5e96f12446b12d7d384a6b873cf29653fb0ac34353442124b8480f9a73ca` | 8,388,608 | ground Lightbridge FPGA container (Cyclone III/IV-format payload; best match EP4CGX150) |
 
 ## App (DJI GO) — DJI copyright, not stored

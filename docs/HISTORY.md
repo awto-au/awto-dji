@@ -6,6 +6,18 @@ corrected/current fact; this file preserves the history for reference.
 
 ## 2026-10-25
 
+- **m1401 (ground radio, LPC1549 variant) analysed for the first time:** was previously noted
+  only as "LPC1549 variant of m1400... not analysed further" -> a separate, richer upstream
+  symbol map (`C1_FW_V01.06.0000_m1401.map`/`.idc`, o-gs/dji-firmware-tools) already vendored
+  locally but not examined was found (user-prompted) to carry `get_board_version`,
+  `packet_hw_receive`, `ofdm_init_instruction`, and `cmd_exec_setXX_cmdYY` handler names.
+  `get_board_version` decompiled (file offset `0x11ce4`): calls a shared compare-and-log helper
+  against RAM `0x2000600`; no direct caller found yet (likely a function-pointer table entry).
+  Confirmed against the real re-extracted binary (same `c1.bin` verified earlier), same
+  2016-03-21 build vintage as m1400. New open question: which chip family (m1400/LPC1765 vs
+  m1401/LPC1549) the operator's actual GL300C uses — the live build string doesn't disambiguate,
+  and neither 2016 build matches the live-reported 2017-08-28 date regardless. (`docs/
+  ground-upgrade-path.md` §Q6, `docs/data-manifest.md`)
 - **RC's own micro-USB port (`2ca3:0008`) identity:** initial understanding was open between
   three hypotheses — m1400's own USB peripheral, a second Cypress FX2/FX3 bridge chip (DJI
   reuses FX2LP elsewhere), or an LPC boot-ROM/ISP mode -> **resolved**: the descriptor strings

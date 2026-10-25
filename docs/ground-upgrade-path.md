@@ -166,12 +166,48 @@ a **second FX2/FX3 bridge chip** (DJI reuses FX2LP as a generic USB bridge elsew
   m1400 image; no `0x2008c0xx` LPC17xx USB-peripheral-base literal dword was found by a flat
   scan (base likely reached via `MOVW`/`MOVT` or a literal pool, not yet traced).
 
+## Q6: m1401 — a second, richly-named ground-radio variant (LPC1549, not LPC1765)
+
+`m1401` is a **different chip target**, not a second copy of m1400: SP `0x02008f60` sits in
+LPC15xx's SRAM0 region (`0x02000000+`), distinct from LPC17xx's `0x10000000+`. Same build
+vintage as m1400 (`WM610 A7_1549 20160321/01`, dated 2016-03-21 — confirmed directly against
+the real binary, re-extracted from the verified `c1.bin`, SHA-256 `85171a35...df49` matching
+the container's own listing).
+
+- **V, richer upstream symbols than m1400's own map.** `o-gs/dji-firmware-tools` vendors a
+  separate `C1_FW_V01.06.0000_m1401.map` (9.7 KB) + `.idc` (1.26 MB) — present locally at
+  `tools/symbols/` but not previously examined in this project. Named functions include
+  `App_TaskAdcKey_Worker`, `App_TaskRadio_Worker`, `App_TaskUnpack_Worker`,
+  `packet_hw_receive`, **`get_board_version`**, `ofdm_init_instruction`, and numerous
+  `cmd_exec_setXX_cmdYY` handlers — community RE annotations (upstream's own work, GPL-3.0),
+  not DJI's original symbols.
+- **`get_board_version` (file offset `0x11ce4`, decompiled this session, V for the
+  disassembly, I/U for full semantics):** calls a shared compare-and-log helper (same
+  "something change" / "no change" string pattern already documented for m1400's own sector-9
+  config-compare routine, `0x254` above) against a stored value at RAM `0x2000600`, logging the
+  result. **U:** no caller found by a direct BL/B.W scan (`who`) — likely reached via a function
+  pointer in one of the `cmd_exec_set*` tables rather than a direct call; not yet traced. What
+  exactly it reports as "the board version" (which register/strap, and how it maps to
+  `m2000`/`m2001`/`m2002` selection) is **the same open question as `fpga-air-vs-ground.md`'s
+  item (b)** — this function is the concrete next anchor for that, not yet fully traced.
+- The reset handler at file offset `0xa334` decodes cleanly (checks a RAM flag bit, branches on
+  stored byte values) — confirms this chip's `.text` segment sits at file offset 0 directly
+  (`--load 0`, no `+0xA000` correction, unlike m1400); the IDA map's `0003:` segment prefix is
+  `.text` starting at image offset 0 (map's own segment table, `Start 0003:00000000 Length
+  0000193E0H`).
+- **Open: which chip family does the operator's actual GL300C use — m1400 (LPC1765) or m1401
+  (LPC1549)?** The live-reported build (`fc-usb-port.md`: `WM320_A7_LPC1 20170828/00`) uses a
+  generic `LPC1` tag that doesn't disambiguate, and **neither** this 2016-03-21 `m1400` nor this
+  2016-03-21 `m1401` matches that later date regardless of which family is correct. Settling
+  this needs either the chip's own package marking (ties to the same board-opening work as
+  #59) or a newer firmware build for whichever family is actually fitted.
+
 ## Other modules (header .ini + magic bytes)
 
 - `m1400` 04.10.0006: "LPC1765 GROUND LB2" (this doc).
 - `m1401` 04.10.0006: ".ini: lightbridge MCU on ground model 01". String `WM610 A7_1549 20160321/01`; vector table SP `0x02008f60`
   (LPC1549 SRAM region) -> **LPC1549 variant of m1400** (verified strings/SP; part number inferred from `1549`). Contains
-  `FpgaErr` and `Encryption_Check_And_Set_Chip_Info` / `Common_Encrypt_Get_Chip2` assert strings. Not analysed further.
+  `FpgaErr` and `Encryption_Check_And_Set_Chip_Info` / `Common_Encrypt_Get_Chip2` assert strings. See Q6 below — now analysed.
 - `m1300` 02.26.0000: video decoder (DM365). File starts with ASCII `Salted__` = OpenSSL salted-encrypted blob (verified header; not decrypted, out of scope).
 - `m1600` 01.03.0256: ".ini: IG810 LB2_68013_RX". 2750 B, starts `C2 47 05 31 21`: Cypress FX2 (68013) EEPROM/boot load image (inferred from the C2 header).
 - `m1601` 02.00.0006: ".ini: IG810 LB2_CY2014_RX". Starts `43 59 1C B0`: "CY" Cypress FX3 boot image signature, ARM code follows (inferred part: FX3).
