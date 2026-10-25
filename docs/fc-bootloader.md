@@ -72,3 +72,44 @@ for t in (0x08000000,0x08020000,0x08100000):
     print(hex(t), sum(struct.unpack_from('<I',d,i)[0]==t for i in range(0,len(d)-3,4)))
 PY
 ```
+
+## Integrity check: CRC + MD5 + AES, NOT a cryptographic signature
+
+What protects the P3 FC image is checksums + the module encryption, not a public-key signature:
+
+- **No signature primitives.** The decrypted m0306 has **no** `signature`/`RSA`/`ECDSA`/`SHA`/`cert`
+  strings. What it does have: `verify_crc16_checksum` (CRC16), a config/param **hash**
+  (`cfg err hash`, `hash table is not match cfg_table`), a flash-write **key** gate
+  (`invalid flash key`, `[whitelist]invalid flash key`), an AES decrypt routine
+  (`decrypting:Ibuf…`, `DJI-DEMO AES256 KEY-…` — used for SDK activation, not the image), and
+  activation/license (`ActiveStatus` 0x32, `LockLicense` 0x34, `CmdNeedEncrypt` 0xcc). **V.**
+- **The integrity chain is therefore:** (1) xV4 module **AES-128** encryption (`encrypt_type=1`,
+  public key — `scripts/re/xv4_decrypt.py`); (2) container **MD5** (`decrypted_md5` per module);
+  (3) upgrade-stream **CRC** (the `FM_CRC_WRONG`=242 / `FLASH_C_WRONG`=243 result codes); (4)
+  `FIRM_MATCH_WRONG`=246 version/hardware match. No step is a signature, so **anyone holding the
+  (public) module AES key can craft an image the loader accepts** — the long-known basis for custom
+  P3 firmware. This is the xV4 era; DJI's **signed** format (`IM*H`, `dji_imah_fwsig.py`) arrives on
+  the newer, SAM E70-class products (e.g. the P4-generation / Spark lineage), so the P4 FC likely
+  *is* signed — a contrast worth testing if its image is ever obtained. **I** for the P4 side.
+
+## Is there a DUML command that reads/writes memory directly?
+
+Checked the full 723-entry DUML catalog (`scripts/re/duml_catalog.py`). **There is no
+general peek/poke (read/write arbitrary address) command on the FC.** The only memory-touching
+paths are structured and gated:
+
+- **Flash write** only via the upgrade state machine — `RequestUpgrade`(0x00,0x07) →
+  `RequestReceiveData`(0x08) → `TranslateData`(0x09, the bytes) → `TranslateComplete`(0x0A) →
+  `RestartDevice`(0x0B), behind the flash-key + CRC + `FIRM_MATCH` + motor-stopped gates. It writes
+  the image, not an arbitrary address you choose.
+- **Config read/write by index** — `GetParamInfoByIndex`(0x03,0xf0), `GetParamsByIndex`(0xf1),
+  `SetParamsByIndex`(0xf2): reach any `g_config` field, but *by table index with min/max
+  validation* (see `fc-io-inventory.md`), not raw memory.
+- **File transfer** — `RequestFile`/`GetPushFile`/`TransferFile`(0x00,0x26/0x27/0x2a): SD-card/log
+  files, not MCU memory. The only `Debug`-named commands are OSD `GetPushDebugInfo`(0x09,0x16) /
+  `SetDebugVideo`(0x09,0xf0) and EYE `DebugCtrlParam`(0x0a,0x09) — telemetry/video, not memory.
+
+**Consequence for "verify the on-chip image":** there is **no DUML flash-read-back**, so you cannot
+dump or verify the installed firmware over DUML — only `GetVersion`(0x01) reports the Loader/Firmware
+version numbers. Reading the actual bytes (to verify, or to pull the immutable loader at
+`0x08000000`) needs **SWD/JTAG** on the board, not the DUML link. **V** (absence of a read-mem cmd).
