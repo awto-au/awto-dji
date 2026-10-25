@@ -30,12 +30,14 @@ from" is answered and was already documented; it isn't a fresh finding, just a c
   a sane Cortex-M vector table at offset 0 of a bundled m1400 copy. No `xv4_decrypt.py` step is
   needed before disassembly; `ground-upgrade-path.md`'s own intro just says "static disassembly
   of `C1_FW_V01.06.0000_m1400.bin`" with no decrypt step, which is why.
-- **Gotcha, live right now (#60):** the real `C1_FW_V01.06.0000_m1400.bin` is not currently in
-  this analysis environment — only its `.map`/`.idc` symbol files survived from an earlier
-  session. Verify by the SHA-256 in `data-manifest.md` once re-obtained; don't assume a
-  differently-named bundled copy (e.g. from an older combined `P3X_FW_*` package) is the same
-  build without checking its own build-date string first (caught and corrected this session —
-  see `HISTORY.md` 2026-10-25).
+- **Resolved (#60, 2026-10-25):** the real `c1.bin` was re-obtained from a live CDN URL
+  (`dl.djicdn.com/downloads/lightbridge2/C1_FW_V01.06.0000.bin`), hash-verified exact, and
+  unpacked — see `data-manifest.md`. Standing lesson from getting this wrong once: don't assume
+  a differently-named bundled copy (e.g. from an older combined `P3X_FW_*` package) is the same
+  build without checking its own build-date string first; and don't assume a container whose
+  *hash* matches has every submodule current — DJI updates modules independently inside one
+  version tag (this container's own `m1400` build-tags itself 17 months older than what the
+  operator's hardware actually reports live, `ground-upgrade-path.md` §Q5).
 
 ## 2. Determine core and load base
 
@@ -61,13 +63,36 @@ from" is answered and was already documented; it isn't a fresh finding, just a c
   obtained via SWD.
 - **Peripheral labelling has no equivalent to `fc_setup.py` yet.** The STM32 side applies a
   CMSIS-SVD file for register names; no SVD has been obtained or tried for LPC17xx here. NXP's
-  own `LPC176x-5x SVD.zip` (step 0) is the candidate — fetch it, confirm it covers the 1765, then
-  write an `lpc_setup.py` analogous to `fc_setup.py` (MMIO blocks + SVD labels). Until then,
-  peripheral base addresses are cited as bare literals in the docs (works, just unstructured).
+  own `LPC176x-5x SVD.zip` (step 0) is the candidate — fetch it, confirm it covers the 1765,
+  then use **`leveldown-security/svd-loader-ghidra`** (GPLv3, Jython script — checked online,
+  2026-10-25: a real, maintained public tool, same licence family as our other vendored
+  material) rather than writing `lpc_setup.py` from scratch; it loads a CMSIS-SVD directly into
+  a Ghidra project (MMIO blocks + register labels) in one step. Until then, peripheral base
+  addresses are cited as bare literals in the docs (works, just unstructured).
 - **Known peripheral bases already recovered by hand** (worth seeding the SVD-less labelling
   with, from `ground-upgrade-path.md`/`id-entry-point.md`): legacy SPI0 `0x40020000`, GPIO
   FIOSET/FIOCLR region (P0/P1/P2/P3 pins named per-use, no single base cited yet), flash sector
   table at image offset `0x25460`.
+- **Enable the ARM Aggressive Instruction Finder analyzer** (off by default in Ghidra) before
+  the first auto-analysis pass on Cortex-M firmware — checked online, 2026-10-25: this is the
+  standard advice for exactly the failure mode hit informally this session (see the gotcha
+  below): a disassembler misreads an inline literal-pool word as an instruction and drifts out
+  of alignment for everything downstream. Also worth trying: the **Address Table Analyzer**
+  (scans undefined data for pointer tables — may help locate the USB descriptor table itself).
+- **Gotcha, confirmed the hard way (2026-10-25, no Ghidra project yet):** a blind linear
+  `mcu_trace.py` sweep over ~75,000 instructions found zero xrefs to known UTF-16LE USB
+  descriptor strings, and disassembly at the reset vector produced impossible opcodes (a
+  `vaddl.u32` NEON instruction — Cortex-M3 has no such unit). Root cause, confirmed by search:
+  **literal pools sit inline between real code**, and a disassembler with no reference-tracked
+  function-boundary analysis (which is what a linear capstone sweep is) cannot tell a literal
+  word from an instruction — once it misreads one, every following instruction in that sweep is
+  decoded 2 bytes out of true alignment. `mcu_trace.py` is reliable for **targeted, known
+  addresses** (confirmed working on two separately-documented sites, `0xdddc` and `0x53c8`); it
+  is not reliable for **blind xref-hunting across the whole image** — that genuinely needs
+  Ghidra's reference-tracked disassembly (which marks a literal pool as data, not code), not a
+  bigger/smarter capstone script. Good general references for the actual build steps once this
+  is tackled: Pentest Partners' "Taming the Dragon" and Feabhas' "Disassembling a Cortex-M raw
+  binary file with Ghidra" (both checked online, both general Cortex-M, neither LPC-specific).
 
 ## 4. Identify the register library — already done, it's NXP's own, not ST's
 
@@ -140,8 +165,10 @@ from" is answered and was already documented; it isn't a fresh finding, just a c
 
 1. `grep -ri <module> docs/ docs/symbols/` (step 0) — confirm what's already vendored/known.
 2. Confirm encrypt_type (likely 0, step 1); read SP/reset, compute the app's flash offset (2).
-3. If a Ghidra project doesn't exist yet, start with `mcu_trace.py` (capstone) rather than
-   blocking on step 3's SVD gap; upgrade to Ghidra once `lpc_setup.py` exists.
+3. If a Ghidra project doesn't exist yet, `mcu_trace.py` (capstone) is fine for **targeted,
+   known-address** lookups but not for blind xref-hunting (step 3's gotcha) — don't burn time
+   on a linear sweep expecting it to find unknown string/table references; that needs a real
+   Ghidra project (`svd-loader-ghidra` once the SVD is in hand).
 4. Check the vendored `.map`/`.idc` for LPCOpen/IAP names first (4) — likely already answers
    "what's the flash-driver library."
 5. Port DJI-specific names via strings, including the UTF-16LE scan (5).
