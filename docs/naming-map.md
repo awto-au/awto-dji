@@ -1,7 +1,8 @@
-# Naming map — modules and buses (PROPOSAL, for review)
+# Naming map — modules and buses
 
-Short, side-prefixed names so a bare `m####` or a bus is self-describing. **Draft — review and
-edit the names before we adopt them repo-wide** (that roll-out is tracked in a GitHub issue).
+**Adopted 2026-10-25.** The canonical names for every module and bus, so a bare `m####` or a bus is
+self-describing. Use these alongside the `m####` code in docs and in script variables; roll-out
+across the existing docs is tracked in issue #54.
 
 **Convention.**
 - **Modules carry the chip:** `<side>_<role>_<chip>` — e.g. `air_fc_stm32f427`, `air_radio_stm32f103`.
