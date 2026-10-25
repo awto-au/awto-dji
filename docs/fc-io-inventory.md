@@ -12,7 +12,8 @@ Change history: see docs/HISTORY.md.
 
 ## MCU
 
-- **STM32F427** (Cortex-M4F), image base `0x08020000`, reset vector `0x08021964`, initial
+- **STM32F427** (Cortex-M4F), image base `0x08020000`, reset vector `0x08021964` (the vector-table
+  word is `0x08021965` with the Thumb bit set; `fc-message-path.md` quotes the raw word), initial
   SP `0x2002ff00`. **V** (vector table of the decrypted module).
 - The F42x/43x line clocks to 180 MHz max. The firmware carries ST's `RCC_GetClocksFreq`
   readback (named `rcc_get_clocks_freq` @ `0x0806d5f0`): it decodes `RCC_CFGR[SWS]` and, for the

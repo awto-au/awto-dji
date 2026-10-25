@@ -37,7 +37,9 @@ documented intent here is a dead auth chip on a board you own, not counterfeitin
 
 ## Where the auth lives (from RE) — it is on more than one board
 
-The ATSHA204 appears on **at least two boards**; the primary one is the **camera/A9**, not the RC:
+The ATSHA204 appears on **at least two boards**; the primary one is the **camera/A9**, not the RC
+(full address list + the `DjiEncrypt*` provisioning path live in `security-and-activation.md` §2 —
+this note keeps only the repair-relevant gate functions):
 
 - **Camera / A9 (`m0100`) — the primary board authentication.** A full `DjiEncrypt*` subsystem:
   `DjiEncryptInit` (I2C, config-zone lock), **`DjiEncryptCheckA9Mac`** (nonce/MAC check between the
@@ -50,7 +52,8 @@ The ATSHA204 appears on **at least two boards**; the primary one is the **camera
   ATSHA204 MAC challenge/response (MCU sends a challenge, chip returns
   `MAC = SHA-256(challenge ‖ secret ‖ …)`, MCU compares and gates on the match).
 - The P3 **FC app (`m0306`) has no ATSHA204 code**; the P4-gen FC map shows a `secure_chip_unlock`
-  (wm220 `0x0050EB40`). Other boards (smart battery, etc.) may host their own — **not yet mapped**.
+  (wm220 `0x0050EB40` — **U**, from the upstream P4 symbol map, not verified here). Other boards
+  (smart battery, etc.) may host their own — **not yet mapped**.
 
 A **failed/absent chip** (or, on the A9, a lost NAND copy) makes the relevant check fail and the
 board refuses. The stub therefore goes in **whichever board's MCU hosts the failed chip** — the A9

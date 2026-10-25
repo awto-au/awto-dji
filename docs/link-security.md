@@ -185,7 +185,8 @@ Also in `m1400`: `MASTER`/`SLAVER`/`TestMaster`/`TestSlaver` (confirms the maste
 pairing), and `sha204p_send_slave_address` — an **ATSHA204 crypto-auth chip**. That is
 SHA-256 challenge-response for **component authentication (anti-counterfeit)**, not link
 encryption; it is the one real cryptographic element, and it authenticates *genuine
-hardware*, not the RF payload. (LB2 is also dual-band — a `5.8G VER ERR!` string — unlike
+hardware*, not the RF payload. (This `m1400` instance is **not** the only one, nor the primary:
+the main ATSHA204 board-auth is on the camera/A9 `m0100` — see `security-and-activation.md` §2.) (LB2 is also dual-band — a `5.8G VER ERR!` string — unlike
 the P3's 2.4 GHz-only Lightbridge.)
 
 **And Lightbridge is "based on WiMAX" (IEEE 802.16 OFDM)** per the receiver-board docs — a
