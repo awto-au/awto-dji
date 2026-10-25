@@ -16,10 +16,16 @@ corrected/current fact; this file preserves the history for reference.
   grep of the wrong firmware build (`P3X_FW_V01.03.0020`'s bundled m1400 copy; its build-date
   string doesn't match the operator's `WM320_A7_LPC1 20170828/00`) -> re-grounded on the
   correct version's own IDA symbol map (`C1_FW_V01.06.0000_m1400.map`), which independently
-  names the same `aDjiConfif`/`aVcom`/`aMscm` string symbols. The conclusion stands; the real
-  `C1_FW_V01.06.0000_m1400.bin` bytes are still not in this environment, so the string content
-  and surrounding code for the exact version remain unconfirmed pending that binary.
-  (`docs/ground-upgrade-path.md` §Q5, `docs/fc-usb-port.md`)
+  names the same `aDjiConfif`/`aVcom`/`aMscm` string symbols. **Resolved fully, same day:**
+  re-obtained the real `c1.bin` from a live CDN URL (`dl.djicdn.com/downloads/lightbridge2/
+  C1_FW_V01.06.0000.bin`), hash-verified exact, unpacked, and confirmed the same strings
+  directly in the real binary at the symbol map's address (offset-adjusted). **New finding this
+  surfaced:** this container's m1400 submodule (build-tagged `WM610 A7_1765 20160321/01`)
+  predates the operator's live-reported build (`WM320_A7_LPC1 20170828/00`) by ~17 months — the
+  container hash matches and its FPGA submodules are independently confirmed current, but DJI
+  evidently updates modules independently inside one version tag, so this specific m1400 build
+  is not bit-identical to what's actually running. (`docs/ground-upgrade-path.md` §Q5,
+  `docs/fc-usb-port.md`, `docs/data-manifest.md`)
 - **FC activation-gate addresses:** initial understanding cited `is_prod_activated` 0x08047c2c /
   `check_activation_authority` 0x08047d5e / `dji_sdk_set_key` 0x0805a964 -> corrected: those are
   from a *different build's* symbol map (V01.07.0060) and land in an unrelated MD5 routine in the
