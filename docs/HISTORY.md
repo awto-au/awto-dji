@@ -4,6 +4,37 @@ Dated changelog of fact-corrections previously narrated inline in the docs. Each
 phrased as "initial understanding -> corrected finding." The docs now state only the
 corrected/current fact; this file preserves the history for reference.
 
+## 2026-10-25 (later still)
+
+- **`air_router_stm32f103` (m0900) completeness pass closes the I/O-inventory/naming gap left
+  open after the first deep dive:** 17 more handlers named via direct `(set,cmd)`-key
+  correspondence with the upstream `V01.07.0060` map (one upstream name,
+  `cmd_exec_flyc_unlimit_state`, explicitly does **not** reconcile with cmd `0x42`'s actual
+  simple-forward behavior — reported as a mismatch, not forced); cmd `0xfe`/`0xff`/`0x0c` fully
+  decompiled — notably cmd `0xff`'s "catchall" is **not** inert: for the FPGA receiver it replies
+  with a hardcoded firmware-ID string matching the upstream map's own string symbol byte-for-byte
+  across a 4+ year firmware gap. First Ghidra project built for `m0900` (426 functions, 107
+  named). New I/O found: `PA4` (role unknown), joint `PB3+PB6` config, a `PA1` pulse-strobe
+  candidate antenna/quadrant-switch relay (supported by an address-exact RAM cross-check against
+  the upstream map's `ofdm_board_version_flags`/`switch_active_quadrant` cluster). Spot-checked
+  directly against the new Ghidra project (cmd `0xfe`/`0xff`/`0x0c`, `pa1_pulse_strobe`) before
+  trusting/committing. (`docs/air-router-io-and-naming.md`)
+
+## 2026-10-25 (later)
+
+- **`air_fc_stm32f427` receiver-forward / debug-port question, resolved negative:** initial
+  question was whether `air_fc` has code that forwards DUML frames addressed to receivers it
+  doesn't own (explaining why its front port answers as `air_router`), or a generic
+  debug/bus-sniff command -> traced `air_fc`'s own full incoming-command dispatch table
+  (`0x080ab440`-`0x080ab644`, ~65 entries) and found **no** wildcard/catchall/forwarding entry
+  — every entry is one of `air_fc`'s own owned `(cmd,cmd_set)` pairs, almost all `cmd_set=3`
+  (FLYC). Combined with the already-documented facts that `air_fc`'s own USB-OTG interrupts
+  are dead code and the front connector is publicly documented as a UART (not real USB-CDC),
+  the simplest explanation is that the connector taps the same internal UART bus
+  `air_router_stm32f103` also listens on, so `air_router` itself answers receiver-`0x0e`
+  queries directly — no forwarding or debug backdoor inside `air_fc` is needed or found.
+  (`docs/fc-usb-duml.md` "Does air_fc itself forward DUML frames by receiver type?")
+
 ## 2026-10-25
 
 - **`air_router_stm32f103` (m0900) deep dive closes five open items:** (1) `dataflow.md`'s

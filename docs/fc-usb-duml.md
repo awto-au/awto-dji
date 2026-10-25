@@ -136,6 +136,43 @@ forward the request to the real `air_router_stm32f103`? Two concrete findings, n
   paired components, remains **U** — but "stale copy-pasted string" is now ruled out, and a
   real WM610-communication mechanism (not previously documented) is confirmed to exist.
 
+## Does `air_fc_stm32f427` itself forward DUML frames by receiver type? (2026-10-25)
+
+Direct trace, continuing from the `duml_resp_send` echo-rule finding above, looking for a
+generic "not mine, pass it on" mechanism (the thing that would explain the front-port reply
+answering as `air_router`) or a generic debug/bus-sniff command.
+
+- **V, decompiled `scratchpad/ghproj/m0306`.** `air_fc`'s own incoming-command dispatch is a
+  flat (funcptr, key) table at `0x080ab440`-`0x080ab644` (~65 entries, 8 bytes each: thumb
+  function pointer + 16-bit key `(cmd<<8)|cmd_set`). Decoded every entry: **all but six are
+  `cmd_set=0x03` (FLYC)**; the rest are `0x01`/`0x02`/`0x04`/`0x06`/`0x07` — still all
+  `air_fc`'s own owned command sets, none a generic/wildcard/catchall key (no `0xff`-style
+  entry like `air_router`'s cmdset-9 catchall). Two entries have a null function pointer
+  (`cmd=0x51`/`0xaa`, `set=0x03`) — declared-but-unimplemented FLYC commands, not forwarding
+  stubs.
+  Reproduce: `scratchpad/ghscripts/fc_table_search.py` (locates the table by scanning for
+  known leaf-handler addresses as literal pointer values) then
+  `scratchpad/ghscripts/fc_table_dump.py` (dumps the raw words) — both ad hoc, not committed.
+- **V, zero direct callers.** None of the table's leaf handlers (`FUN_08043a1c` etc.) have any
+  direct-call xref in the whole image — confirmed function-pointer-table-only dispatch,
+  consistent with (and the same shape as) `air_router`'s own dispatch tables.
+- **Conclusion: no generic receiver-forward and no debug/bus-sniff command found in `air_fc`'s
+  own traced command surface.** Combined with the headline finding above (USB OTG interrupts
+  are dead code — never even unmasked at the NVIC) and the public wiki's own description of
+  the front port as a **UART** interface (115200 8N1), not real USB-CDC, the simplest
+  explanation for "the front port answers as `air_router`" is now: **the micro-USB connector
+  is a USB-to-UART adapter external to `air_fc`, tapping the same internal UART DUML bus that
+  `air_router` also listens on** — so a query addressed to `air_router` (`0x0e`) is answered
+  by the real `air_router_stm32f103`, physically present on the same bus, not by any forwarding
+  logic inside `air_fc`. `air_fc`'s own USB-OTG silicon plays no role at all. This is **I**
+  (inferred from the combination of findings above), not itself code-traced — the actual wiring
+  between the front connector, `air_fc`'s UART peripherals, and `air_router`'s bus has not been
+  confirmed from a schematic or a bus-level capture.
+- **Still open (U):** which of `air_fc`'s UART peripherals (if any) is physically the one wired
+  to the front connector, and whether `air_fc` itself ever transmits/receives on that same
+  wire (shared bus vs. point-to-point) — would need either a schematic or a logic-level capture
+  to settle, not a further static trace.
+
 ## Open / not resolved
 
 - **U**: no CDC-receive-equivalent function was located by tracing forward from either boot
