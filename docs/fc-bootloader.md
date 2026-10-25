@@ -59,8 +59,23 @@ hardware. But the firmware does **not** do it:
 So the scheme is **immutable factory bootloader + one updatable app slot**, with validate-before-
 commit (CRC + `FIRM_MATCH` + motor-stopped gate) in the loader. A failed flash is recovered through
 the loader, which is the point of keeping the loader out of the OTA set. The F427's second bank is
-**unused by the app** (no evidence it is used for data/log either; **I**: likely idle). Confirming
-what the loader itself does would need the loader image, which this project does not have (**U**).
+**unused by the app** (no evidence it is used for data/log either; **I**: likely idle).
+
+### The resident bootloader is NOT identified (and what `m0305` is)
+
+The resident flash bootloader — the "Loader" at `0x08000000` whose version the app reports — is
+**not identified**: it is not in our m0306 app image (which begins at `0x08020000`) and there is no
+`0x08000000`-based flash module in the OTA package. Confirming what it does (secure-boot?
+signature? bank-2 use?) needs a **SWD dump of `0x08000000–0x0801FFFF`** from the board. **U.**
+
+The package *does* carry a separate **`m0305`** module (~43 KB, AES-encrypted like the rest,
+MD5-OK) sitting beside the FC app. It is **not** the resident bootloader: its vector table is
+**SP `0x1000e4e8` (CCM RAM @ 0x10000000), reset `0x200002c9` (main SRAM @ 0x20000000)** — a
+**RAM-resident image linked to run from SRAM**, and it has **essentially no strings** (pure code).
+That is the classic shape of a **RAM-loaded flash-programming / update stub** (you cannot execute
+from flash while erasing/writing it, so the programmer runs from RAM). **I** (strong): `m0305` is the
+FC's RAM-resident updater/flash-programmer helper, part of the upgrade machinery; its exact role is
+unconfirmed without decompiling it (no strings to anchor on). It confirms STM32F4 (CCM @ 0x10000000).
 
 ## Reproduce
 ```
