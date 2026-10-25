@@ -107,6 +107,13 @@ Settles the conflict with `docs/control-plane-re.md` (which said the remote MCU 
 - Reset mechanism: `0x17318` programs the watchdog timeout (ms x 1000 us), `0x1734a` sets RAM byte `0x100005d5` so
   `0x172c6` stops feeding; the WDT then resets the chip. WDMOD reset-enable was not traced (inferred).
 - Enter Loader with receiver 0x0E resets the chip; with 0x14 it does not.
+- **0x0B Reboot Chip, confirmed against real hardware 2026-10-24:** sent via
+  `GroundCommands.restartDevice` (`app/awto_dji_app/lib/link/ground_commands.dart`),
+  payload byte1=1, watchdog=1000ms. Observed: RC's USB-serial device
+  re-enumerated and its DUML sequence counter reset to 0, right when sent -
+  consistent with the stop-feeding-watchdog/reset mechanism above. 1000ms is
+  untried-elsewhere-but-conservative, not measured as a minimum. No raw
+  capture of this specific test was kept; this is the only record.
 
 ### Other flash pages written by the app (verified)
 

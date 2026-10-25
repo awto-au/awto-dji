@@ -9,14 +9,9 @@ class GroundCommands {
 
   static const _deviceOsd = 0x0e; // the receiver that actually answers on the RC
 
-  /// RestartDevice, General/0x00/0x0b - confirmed against real hardware 2026-10-24
-  /// (see docs/rc-restart-device-confirmed.md): RC's own USB-serial device
-  /// re-enumerated and its DUML sequence counter reset to 0 right when this was sent.
-  /// Payload (docs/ground-upgrade-path.md, m1400 handler 0x5124): byte0 reserved
-  /// (send 0), byte1 must be 0 or 1 (else error 0xE3), bytes2-5 = u32 LE watchdog
-  /// timeout ms - after the ack it stops feeding the watchdog, which resets the chip
-  /// after this many ms. 1000ms is untried-elsewhere-but-conservative, not measured
-  /// as a minimum.
+  /// RestartDevice, General/0x00/0x0b - see docs/ground-upgrade-path.md
+  /// ("0x0B Reboot Chip") for hardware confirmation and payload layout
+  /// (m1400 handler 0x5124).
   Uint8List restartDevice({int watchdogMs = 1000}) {
     final payload = ByteData(6)
       ..setUint8(0, 0)
