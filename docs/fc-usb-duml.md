@@ -35,22 +35,35 @@ deliberate gap, not an artifact of the search method.
 
 ## Does the firmware ever even arm USB OTG at the NVIC?
 
-**V (Renode).** Booted the real image from its own reset vector, then read NVIC `ISER1`
+**V (Renode), but downgraded (2026-10-25) — read the caveat below before citing this.**
+Booted the real image from its own reset vector, then read NVIC `ISER1`
 (`0xE000E104`) / `ISER2` (`0xE000E108`) at t=2000ms simulated (`renode/scripts/
 m0306_probe_long.resc`, log `tmp/logs/m0306_probe_long.log`): `0x871018A1` / `0x000803F3`.
 Decoded enabled IRQn set: `{32,37,39,43,44,52,56,57,58,63,64,65,68,69,70,71,72,73,83}` —
 USART1(37)/USART3(39)/TIM6(56)/TIM7(57)/UART5(83)/DMA/I2C channels are all armed (positive
 control: normal driver init *did* run by this point) but **none** of OTG_FS_WKUP(42) /
-OTG_HS_EP1_OUT/IN(74/75) / OTG_HS_WKUP(76) / OTG_HS(77) are ever present, at any of the
-sampled points up to 2s simulated boot. So the gate is two deep: even if the dead vector
-weren't dead, the firmware never unmasks the interrupt that would reach it.
+OTG_HS_EP1_OUT/IN(74/75) / OTG_HS_WKUP(76) / OTG_HS(77) are present **within this 2s simulated
+window**.
 
-**V (Renode, side note, not chased further).** By t=2000ms the CPU was found spinning in an
+**V (Renode, side note).** By t=2000ms the CPU was found spinning in an
 SD-card status poll (`PC 0x0805b102`, reading `SDIO:STA 0x40012C34`, which Renode's generic
 SVD model always returns as `0`) — an environment-dependent stall, the same category as
-m0900's board-strap gate, just for an SD logger rather than a radio. Flagged as open; all the
-non-USB peripherals above were already armed before this point, so it's unlikely to be
-hiding a later USB-enable, but not proven.
+m0900's board-strap gate, just for an SD logger rather than a radio.
+
+**Caveat, raised 2026-10-25, not yet resolved — this materially weakens the "never unmasks
+USB" claim above.** The 2s window this test covers *ends inside that same SD-card stall* —
+the firmware never gets past it in simulation, because Renode's generic model can't satisfy
+whatever `STA` bit it's polling for. The claim "the gate is two deep: even if the dead vector
+weren't dead, the firmware never unmasks the interrupt" is **only true up to the point the
+simulated boot gets stuck**. If real hardware's SD card actually answers that poll (which it
+would, SD hardware being present on the real board), boot proceeds past this point into code
+Renode never reaches — and nothing here establishes what that code does. **Downgrade: the
+dead vector-table entries (previous section) are solid, chip/emulator-independent, static
+evidence; "never unmasked, full stop" is not — it is "never unmasked before the point this
+specific Renode run stalls on an unmodeled SD peripheral," which is a weaker claim.** Closing
+this needs either a Renode re-run with the SDIO `STA` register patched/stubbed to let boot
+continue (not done — the Renode binary used in the earlier session isn't available in this
+one), or a real-hardware test. Not attempted further this pass.
 
 **V (Renode).** At the earlier 50/100/150/200ms samples (`renode/scripts/m0306_probe.resc`,
 log `tmp/logs/m0306_probe.log`) PC was pinned at `0x0806816c` (`b #0x8068154`), a tight loop
@@ -139,8 +152,16 @@ forward the request to the real `air_router_stm32f103`? Two concrete findings, n
 ## Does `air_fc_stm32f427` itself forward DUML frames by receiver type? (2026-10-25)
 
 Direct trace, continuing from the `duml_resp_send` echo-rule finding above, looking for a
-generic "not mine, pass it on" mechanism (the thing that would explain the front-port reply
-answering as `air_router`) or a generic debug/bus-sniff command.
+generic "not mine, pass it on" mechanism (the thing that would have explained the front-port
+reply answering as `air_router`, per the now-**retracted** "Breakthrough" log above) or a
+generic debug/bus-sniff command. **Caveat (2026-10-25): since this was written, the premise —
+that the front port answers as `air_router`/`GL300C` at all — was retracted** (the log it came
+from is disregarded per the operator, and separately, that identity string was never found in
+either chip's firmware). The code findings below about `air_fc`'s own dispatch table are still
+directly observed and stand on their own; the "simplest explanation" paragraph at the end,
+which was built to explain the now-retracted observation, should be read as **narrower than
+written**: it shows `air_fc` has no generic forward/debug command in its own table, nothing
+more — it is not evidence of what the front port actually reaches, which is open again.
 
 - **V, decompiled `scratchpad/ghproj/m0306`.** `air_fc`'s own incoming-command dispatch is a
   flat (funcptr, key) table at `0x080ab440`-`0x080ab644` (~65 entries, 8 bytes each: thumb
@@ -204,7 +225,24 @@ answering as `air_router`) or a generic debug/bus-sniff command.
   will provide a serial interface with startup logs on the USB output"), consistent with
   what we see, but does not mention commands failing to get a reply as a known issue.
 
-## Breakthrough, live hardware (2026-10-24): the port answers, reliably, once caught
+## Breakthrough, live hardware (2026-10-24) — RETRACTED (2026-10-25), do not cite
+
+**Operator instruction (2026-10-25): `captures/sessions/2026-10-24/duml_watch.log` is
+disregarded — stop treating it as a reference.** Everything below this point that depends
+on that log (the "port answers as `air_router`" claim, the receiver sweep, the `0x14`
+anomaly, all of §"Follow-up probing on the same live session") is retracted along with it,
+not just flagged open. The identity string it reported (`GL300C`/`WM320 A7_LPC1
+20170828/00`) was independently found to not exist in either `air_fc`'s or `air_router`'s
+own firmware (`docs/air-router-io-and-naming.md`'s follow-up, 2026-10-25), which is what
+originally put this log in doubt. Do not use this section, or any downstream doc that cites
+it, as evidence for what the front port actually is or does. The real architecture question
+it was trying to answer — what `air_fc`'s front port actually reaches — is open again,
+pending a clean re-test (RC physically disconnected, fresh capture).
+
+The section is kept below, struck through in spirit, only so the retraction itself has a
+paper trail; treat none of its content as established.
+
+<!-- BEGIN RETRACTED SECTION — do not cite -->
 
 Prior sessions concluded this port never replies. That conclusion was an artifact of
 probing with a tool that gives up the moment the USB device drops — which is exactly
@@ -266,6 +304,8 @@ at PC (`0x0a`) throughout except one explicit check.
   - Every type value actually tried this session is in `captures/sessions/2026-10-24/duml_watch.log` and the shell history above. Re-run rather than re-guess.
 - Everything above ran on a single sustained connection (no further disconnects),
   confirmed live before and after each batch.
+
+<!-- END RETRACTED SECTION -->
 
 ## Suggestion for the operator (not an instruction — their hardware, their call)
 

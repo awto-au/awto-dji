@@ -4,6 +4,25 @@ Dated changelog of fact-corrections previously narrated inline in the docs. Each
 phrased as "initial understanding -> corrected finding." The docs now state only the
 corrected/current fact; this file preserves the history for reference.
 
+## 2026-10-25 (retraction)
+
+- **`captures/sessions/2026-10-24/duml_watch.log` retracted, per operator instruction — stop
+  citing it.** Everything downstream of it in `fc-usb-duml.md`'s "Breakthrough, live hardware"
+  section (the claim that the aircraft's front port answers DUML as `air_router`/`GL300C`, the
+  receiver sweep, the `0x14` anomaly) is retracted along with it, not merely flagged open. This
+  was already in doubt: the identity string it reported was independently found to not exist in
+  either `air_fc`'s or `air_router`'s own firmware. The section is kept in the doc, marked
+  retracted, for the paper trail; nothing in it should be treated as established. What the
+  front port actually reaches is open again, pending a clean re-test.
+- **Renode "USB interrupt never unmasked" claim downgraded, same pass.** The static evidence
+  (dead vector-table entries in flash, five USB IRQ slots sharing one self-loop target) stands
+  on its own, chip/emulator-independent. The dynamic claim ("never unmasked within 2s of
+  simulated boot") does not: that 2s window ends inside an SD-card status poll that Renode's
+  generic peripheral model can never satisfy (always reads `STA=0`), so the simulated boot
+  never gets past that point to show what happens next. Correctly identified by the operator as
+  an unexamined confound. Not re-tested (the Renode binary from the earlier session isn't
+  available in this one) — recorded as open, not resolved. (`docs/fc-usb-duml.md`)
+
 ## 2026-10-25 (deeper follow-up)
 
 - **cmd `0xfe` (`air_router_stm32f103`, set 0x00) re-examined and found to be more significant
