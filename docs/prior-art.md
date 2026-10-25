@@ -166,11 +166,14 @@ map is the case that actually wants Version Tracking against the P4 binary.
 From the two FC maps (addresses/sizes are facts from the maps; the exact MCU part is bounded, not
 pinned — that needs the P4 binary's vector table or a PCB teardown):
 
-- **Code/RAM size:** P4 `.text` = 0x1265D4 (~1.2 MB) vs P3 ~0x85D34 (~548 KB) — P4 FC is ~2.3x the
-  code (needs ≥2 MB flash). P4 data/bss symbols sit around a **0x2040_0000 RAM base** reaching
-  ~0x2045D870 (~400 KB), far beyond the P3 F427's ~196 KB at 0x2000_0000. So the **P4 FC is a
-  larger-memory part than the P3's STM32F427** (or F427 + external RAM) — same STM32F4-family
-  platform code (shared `Reset_Handler`/`SystemInit`/IAR/µC/OS), a bigger device. Exact part: **U**.
+- **Code size:** P4 `.text` = 0x1265D4 (~1.2 MB) vs P3 ~0x85D34 (~548 KB) — P4 FC is ~2.3x the
+  code, needing **≥2 MB flash**. (The P4 map lists code addresses segment-relative, `0x00……`, so
+  its absolute addresses / exact RAM base can't be read cleanly from the map — an earlier draft's
+  "0x2040_0000 RAM base" was an over-read and is withdrawn.) The platform code is the same
+  STM32F4-family lineage (shared `Reset_Handler`/`SystemInit`/IAR/µC/OS). **The exact P4 MCU part
+  is U** — it needs the P4 binary's vector table or a PCB teardown; we only have the symbol map.
+  What is solid: the P3 FC is **STM32F427** (verified from our own vector-table analysis), and the
+  P4 FC is a **bigger STM32F4-family part** (≥2 MB flash, more RAM) running the same platform.
 - **Sensors — same parts, more of them + redundancy:** both use **MPU-6500** (`mpu6500_driver_init`),
   **IST8303** and **HMC5883** compasses. P4 adds `imu_groups`, `init_all_gyro_acc` and **three**
   high-freq gyro channels (`rec_high_freq_gyro_data_0/1/2`), **dual barometers**
