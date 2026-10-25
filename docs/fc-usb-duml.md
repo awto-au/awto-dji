@@ -100,6 +100,42 @@ isn't re-walked.
   - the actual content of the one-shot boot init (I did not find/trace the consumer of `assistant_timeout_0`, nor a receive-processing function reachable from either call chain above);
   - whether the operator's physically connected FC runs this exact firmware build (image `.ini` version `02.04.5170`; other P3X FC images checked in `docs/air-id-and-stream-survey.md` cross-check table have **no** UID literal and may differ in this area too).
 
+## The receiver=0x0e / "GL300C" reply content, re-examined (2026-10-25)
+
+The "Breakthrough" section's `GL300C`/`WM320 A7_LPC1 20170828/00` reply at receiver `0x0e`
+raised an architecture question: does m0306 locally fabricate that identity, or genuinely
+forward the request to the real radio MCU? Two concrete findings, neither fully closing it:
+
+- **V, decompiled `duml_resp_send` (`0x0806d334`), existing Ghidra project
+  (`scratchpad/ghproj/m0306`).** The reply-builder's sender byte is built from the *request's
+  own receiver byte* (`*(byte*)(param_1+5)`), not a validity check against "am I this type":
+  `if ((~bVar2 & 0x1f) == 0) bVar2 = 3;` — i.e. only the broadcast wildcard (`0x1f`, all 5 type
+  bits set) gets special-cased to answer as FLYC (device type 3); **every other receiver value
+  is echoed straight back as the reply's claimed sender**. This is a permissive echo, not an
+  identity check — on its own it would explain the reply's *header* claiming to be from `0x0e`,
+  but says nothing about where the *payload content* (`GL300C`, the version string) comes from.
+- **V, `GL300C`/`WM320 A7_LPC1 20170828/00` are NOT literal strings anywhere in m0306's own
+  decrypted flash** (`scratchpad/dec/P3X_FW_V01.11.0020_m0306.bin`, full `strings` sweep) —
+  rules out "stale shared-codebase boilerplate string" as the explanation.
+- **V, found instead:** `REQ_APP_WM610` (`0x8064530`) and a parameter/debug-name cluster
+  `g_real.wm610_app_command.function_command_0` / `..._state_0` (`0x80f74ca`/`0x80f828a`) —
+  naming consistent with the `g_config.*`/`g_real.*` debug-name convention already established
+  for the 834-entry param table (`fc-io-inventory.md`/`fc_param_table.py`), not raw code. This
+  is a real, named mechanism in m0306 for talking to a WM610-family (shared-Lightbridge) device
+  — consistent with, though not proof of, the forward-to-radio-MCU hypothesis.
+- **U, dead end by the documented method, not yet solved another way:** `mcu_trace.py str`
+  found **zero literal-pool xrefs** to either string — the same "code addresses the struct by
+  RAM base, not by re-loading the string's flash address" dead end already recorded above for
+  `VCOM`/`MSCM`. The right next step is the **param-table route**, not string-xref: find this
+  cluster's entry in the `FlycExportParam` array by its debug name (same method
+  `fc_param_table.py` uses for the other 834 entries) to get its RAM address, then trace who
+  reads/writes *that* address — not attempted this session.
+- **Net effect: narrowed, not solved.** The reply's claimed sender (`0x0e`) is now explained
+  (permissive echo, V). Whether the reply's *content* is live-forwarded from the real radio MCU
+  over an internal bus, or populated from a cached/shared RAM table the FC maintains about
+  paired components, remains **U** — but "stale copy-pasted string" is now ruled out, and a
+  real WM610-communication mechanism (not previously documented) is confirmed to exist.
+
 ## Open / not resolved
 
 - **U**: no CDC-receive-equivalent function was located by tracing forward from either boot
