@@ -214,3 +214,15 @@ command names do appear in the upstream map.
 **Remaining open (U):** `m0305` target types 0–5 (6/7 confirmed), the air-radio (m0900) loader, and
 the resident FC loader at `0x08000000` (needs an SWD dump). Everything else in the FC boot/upgrade
 path is now analysed.
+
+## Image-acceptance marker + the type-0-5 resolution
+
+- **Valid-image marker:** the loader's slot-validate (`FUN_20007a30`) checks an image word equals
+  **`0x77557755`** (`DAT_20007a74`) at a fixed header offset (`*(*(desc+0x2c) - 0xf)`), on top of
+  the blank-check and vector-table sanity. `0x77557755` is a DJI magic (the DUML `0x55` SOF and
+  `0x77` CRC8 seed, doubled). A flashable image must carry it. The exact byte offset in the image
+  header is still to be pinned for building one (**U**, needs the header struct confirmed).
+- **Types 0-5:** the erase/program *target* type is **6 = bank-1 app, 7 = bank-2** only; `m0305`
+  never uses 0-5. The other "type" seen (`FUN_2000723c`, values 3/5) is the DUML **sender device
+  type**, a different field. So 0-5 are other modules' targets in DJI's shared updater enum, not FC
+  banks — not exercised here (**U**, by design).
