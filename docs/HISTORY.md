@@ -6,6 +6,19 @@ corrected/current fact; this file preserves the history for reference.
 
 ## 2026-10-25
 
+- **FC activation-gate addresses:** initial understanding cited `is_prod_activated` 0x08047c2c /
+  `check_activation_authority` 0x08047d5e / `dji_sdk_set_key` 0x0805a964 -> corrected: those are
+  from a *different build's* symbol map (V01.07.0060) and land in an unrelated MD5 routine in the
+  loaded V01.11.0020 image. Re-derived for this build: activation-state read `FUN_08046d54`, fed by
+  `fc_sdk_set_key` (0x08046e86), checked inside the real motor-arm logic (`FUN_08024b46` emitting
+  "Product not activation,stop motor!", and the table-driven `fc_Motor_Start` path gating
+  auto-takeoff). The gate-is-real conclusion is unchanged. (`docs/security-and-activation.md`,
+  `docs/fc-auth-enforcement-trace.md`)
+- **A9 ATSHA204 MAC/SN effect:** initial understanding = "only demonstrated effect is client/app
+  authorization" -> refined: the `CheckA9Mac`/`CheckSN` result latches a persistent A9 RAM flag
+  (0x109d00b8) that ≥3 other A9 functions branch on, skipping work when unauthorized, so it gates
+  ≥1 on-device A9 feature path (which subsystem = I/U). Still **no** tie to the FC or flight/boot.
+  (`docs/security-and-activation.md`, `docs/fc-auth-enforcement-trace.md`)
 - **P4 flight-controller MCU:** initial understanding guessed a bigger STM32F4-family part ->
   corrected to Microchip/Atmel **ATSAME70Q21** (Cortex-M7). The `0x2040_0000` RAM-base
   observation was at one point withdrawn on an assumption of STM32, then shown to in fact be

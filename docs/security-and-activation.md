@@ -20,9 +20,15 @@ talk to it, and whether firmware is accepted — kept apart because they are eas
 ## 1. DJI product activation — the real hardware gate
 
 - **V** The FC app (`m0306`) refuses motor start when not activated: string `Product not activation,
-  stop motor!`, alongside `is_prod_activated` (0x08047c2c), `check_activation_authority` (0x08047d5e),
-  `dji_sdk_set_key` (0x0805a964). The SDK/API key is **supplied externally** (DJI app/server), not
-  derived on-device.
+  stop motor!`. Addresses re-derived for the loaded `P3X_FW_V01.11.0020_m0306.bin` build
+  (`fc-auth-enforcement-trace.md`): the activation-state byte is read by `FUN_08046d54` (0x08046d54)
+  and supplied externally by `fc_sdk_set_key` (0x08046e86); the byte is checked inside the real
+  motor-arm logic (`FUN_08024b46`, which emits that exact log, and the table-driven
+  `fc_Motor_fail`/`fc_Motor_Start` path that also gates auto-takeoff `FUN_080a8010`). The SDK/API
+  key is **supplied externally** (DJI app/server), not derived on-device.
+  (The earlier `is_prod_activated` 0x08047c2c / `check_activation_authority` 0x08047d5e /
+  `dji_sdk_set_key` 0x0805a964 were from a different build's symbol map and land in an unrelated MD5
+  routine in this build — superseded.)
 - So "won't fly without DJI software" is **this** mechanism — a firmware motor gate keyed on DJI's
   online/app activation. It is **separate** from the ATSHA204 and from firmware signing (there is
   none). `enable_api` defaults off (`fc-io-inventory.md`); activation is one of many motor-start
@@ -37,10 +43,15 @@ talk to it, and whether firmware is accepted — kept apart because they are eas
   (`m1400`)** — `get_mac`, `sha204p_send_slave_address`. The P3 FC (`m0306`) has **no** ATSHA204 code.
 - It is DJI's **one real cryptographic element** (SHA-256 challenge/response), for **component
   anti-counterfeit**, not link encryption (`link-security.md`).
-- **V** The only enforcement RE shows from it is client authorization: `DjiMsgAuthorizedMac`
-  (0x0e85f370) — `cam_server` rejects clients whose MAC is not authorized. **U** whether a
-  failed/absent chip (or a lost NAND copy) halts boot/flight — the mismatch consequence in
-  `CheckA9Mac`/`CheckSN` is not yet decompiled. Repair implications: `atsha204-repair-note.md`.
+- **V** Client authorization: `DjiMsgAuthorizedMac` (0x0e85f370) — `cam_server` rejects clients
+  whose MAC is not authorized (its own callers live in Linux `cam_server`, not in this image, so
+  that string-level claim is **U**/not re-verified).
+- **V, new** (`fc-auth-enforcement-trace.md`): `CheckA9Mac`/`CheckSN` retry 3× then latch pass/fail
+  into a persistent RAM flag (0x109d00b8); **≥3 other A9 functions branch on that flag and skip
+  work when "unauthorized"** (a DUML report send, clearing an enable-bit 0x200, part of a
+  Wi-Fi-channel-enable gate). So the check is **more than a connection filter — it gates ≥1
+  on-device A9 feature path**; which subsystem is **I/U**. **No** path to the FC or to flight/boot
+  was found. Repair implications: `atsha204-repair-note.md`.
 
 ## 2a. "MAC" is two different things here (don't conflate)
 
