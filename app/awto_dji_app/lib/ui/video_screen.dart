@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../link/link_session.dart';
 import '../transport/aoa_transport.dart';
 import '../video/video_decoder.dart';
+import 'camera_video_info.dart';
 
 /// Shows the live H.264 decode from [decoder] (android/.../VideoShim.kt), if any. Only
 /// populated on the Android accessory transport - other transports never set a decoder.
@@ -39,6 +40,13 @@ class VideoScreen extends StatelessWidget {
     return Stack(
       children: [
         body,
+        if (session != null)
+          Positioned(
+            left: 8,
+            right: 8,
+            top: 8,
+            child: CameraVideoInfo(session: session!),
+          ),
         if (canRequestFrame)
           Positioned(
             right: 16,

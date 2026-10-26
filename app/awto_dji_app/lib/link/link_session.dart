@@ -83,15 +83,54 @@ class LinkSession extends ChangeNotifier {
   CameraExposureCompensation? latestExposureCompensation;
   CameraExposureModeState? latestExposureMode;
 
+  CameraStateInfo? latestCameraState;
+  CameraRecordingSettings? latestCameraRecording;
+  DateTime? lastCameraStateAt;
+  DateTime? lastCameraRecordingAt;
+
+  // Independent of general link traffic: OSD packets cannot keep camera settings
+  // fresh when the camera stops pushing. Neither message contains preview stats.
+  static const cameraSettingsStaleAfter = Duration(seconds: 3);
+
+  String get cameraVideoDescription => cameraVideoDescriptionAt(_clock());
+
+  String cameraVideoDescriptionAt(DateTime now) {
+    if (linkState != LinkState.connected) {
+      return 'Camera settings unavailable - link disconnected';
+    }
+    final state = latestCameraState;
+    final shot = latestCameraRecording;
+    if (state == null) return 'Waiting for camera identity (DUML)';
+    if (!state.raw.connected) return 'Camera reports disconnected';
+    if (!state.isPhantom3Professional) {
+      return 'Camera settings unavailable - unverified camera type ${state.raw.cameraType}';
+    }
+    if (shot == null) return 'Waiting for camera recording settings (DUML)';
+    if (now.difference(lastCameraStateAt!) > cameraSettingsStaleAfter ||
+        now.difference(lastCameraRecordingAt!) > cameraSettingsStaleAfter) {
+      return 'Camera settings stale - waiting for DUML pushes';
+    }
+    return shot.description;
+  }
+
+  void _clearCameraVideo() {
+    latestCameraState = null;
+    latestCameraRecording = null;
+    lastCameraStateAt = null;
+    lastCameraRecordingAt = null;
+  }
+
   Stream<DumlPacket> get packets => _packets.stream;
   Stream<OsdGeneral> get telemetry => _telemetry.stream;
   Stream<PacketLogEntry> get entries => _entries.stream;
   List<PacketLogEntry> get log => List.unmodifiable(_log);
 
   Future<void> start() async {
+    _clearCameraVideo();
     _bytesSub = transport.bytes.listen(_onBytes);
     _stateSub = transport.state.listen((s) {
       linkState = s;
+      if (s != LinkState.connected) _clearCameraVideo();
       _notify();
     });
     await transport.connect();
@@ -105,6 +144,7 @@ class LinkSession extends ChangeNotifier {
     _bytesSub = _stateSub = null;
     await transport.disconnect();
     linkState = LinkState.disconnected;
+    _clearCameraVideo();
     _notify();
   }
 
@@ -146,6 +186,23 @@ class LinkSession extends ChangeNotifier {
           'id=0x${p.cmdId.toRadixString(16)} sender=${p.senderType} '
           'receiver=${p.receiverType} ${_hex(p.encode(), 32)}');
       _packets.add(p);
+      final cameraState = CameraStateInfo.fromPacket(p);
+      if (cameraState != null) {
+        if (!cameraState.raw.connected ||
+            (latestCameraState != null &&
+                latestCameraState!.raw.cameraType !=
+                    cameraState.raw.cameraType)) {
+          latestCameraRecording = null;
+          lastCameraRecordingAt = null;
+        }
+        latestCameraState = cameraState;
+        lastCameraStateAt = now;
+      }
+      final cameraRecording = CameraRecordingSettings.fromPacket(p);
+      if (cameraRecording != null) {
+        latestCameraRecording = cameraRecording;
+        lastCameraRecordingAt = now;
+      }
       final osd = OsdGeneral.fromPacket(p);
       if (osd != null) {
         latestOsd = osd;

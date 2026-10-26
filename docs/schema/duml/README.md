@@ -5,7 +5,7 @@ the Python and Dart code (+ tests + docs) instead of hand-maintaining each in bo
 languages - the OSD General dual-cmdset/cmdid fix had to be done twice (once per
 language) the night this started; that's the bug class this stops.
 
-**Status:** 12 of ~723 known commands (`scripts/re/duml_catalog.py`) migrated.
+**Status:** 14 of ~723 known commands (`scripts/re/duml_catalog.py`) migrated.
 Migrate incrementally as each command actually gets traced/needed - see
 `commands.yaml`'s header comment for the current count and known gaps (chiefly:
 `Get*`/`Set*` pairs that share one id for both an empty outgoing request and a

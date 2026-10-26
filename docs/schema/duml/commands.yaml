@@ -10,7 +10,7 @@
 # docs/schema/duml/README.md for the field format and regenerate command. Do not
 # hand-edit any generated file.
 #
-# Status: 12 of ~723 known commands (scripts/re/duml_catalog.py) migrated so far -
+# Status: 14 of ~723 known commands (scripts/re/duml_catalog.py) migrated so far -
 # migrate incrementally, per the issue's own instruction. Everything else in
 # duml_catalog.py is still outside this file. Known still-unmigrated cases, and why:
 # - Get*/Set* pairs that share one (cmdset,cmdid) for both an empty-payload outgoing
@@ -18,6 +18,49 @@
 #   0x02/0x69, RequestGimbalCtrPermission's reply) - this file only supports one
 #   direction per id; the push (reply-decode) side is migrated, the empty-request
 #   encode side is left as the existing hand-written Dart command builder.
+
+"0x02/0x80":
+  name: CameraPushState
+  direction: push
+  class_doc: >
+    Camera identity and connection state from GetPushStateInfo. This is not a
+    video-format message. Callers must validate sender/index and packet direction.
+  confidence: V
+  provenance: >
+    Classic DJI GO 3.1.8 DataCameraGetPushStateInfo getConnectState (offset 0 bit 0),
+    getCameraType (33), getVerstion (36). FC300X=4. Seven identical 37-byte pushes
+    in captures/sessions/2026-10-23/aoa_relay_server.log. See docs/camera-video-push.md.
+  ids:
+    - {cmdset: 0x02, cmdid: 0x80, catalog_name: CAMERA/GetPushStateInfo}
+  min_length: 34
+  fields:
+    - {name: connected, kind: bitfield_u8, offset: 0, bit: 0, targets: [python, dart], confidence: V}
+    - {name: camera_type, kind: u8, offset: 33, targets: [python, dart], confidence: V}
+    - {name: protocol_version, kind: u8, offset: 36, min_length: 37, targets: [dart], confidence: V}
+
+"0x02/0x81":
+  name: CameraShotParams
+  direction: push
+  class_doc: >
+    Configured camera recording parameters from GetPushShotParams, not the
+    Lightbridge preview format. Raw enums are retained; absent extensions are null.
+    Callers must validate sender/index and packet direction.
+  confidence: V
+  provenance: >
+    Classic DJI GO 3.1.8 DataCameraGetPushShotParams getVideoFormat (13),
+    getVideoFps (14), getVideoStoreFormat (19), getVideoStandard (55),
+    getPrimaryVideoEncodeType (69 low nibble) and getSecondaryVideoEncodeType
+    (69 high nibble). Three identical 72-byte captured payloads. Enum interpretation
+    and model limits: docs/camera-video-push.md. Only one setting captured so far.
+  ids:
+    - {cmdset: 0x02, cmdid: 0x81, catalog_name: CAMERA/GetPushShotParams}
+  min_length: 20
+  fields:
+    - {name: resolution_code, kind: u8, offset: 13, targets: [python, dart], confidence: V}
+    - {name: frame_rate_code, kind: u8, offset: 14, targets: [python, dart], confidence: V}
+    - {name: container_code, kind: u8, offset: 19, targets: [python, dart], confidence: V}
+    - {name: video_standard, kind: u8, offset: 55, min_length: 56, targets: [dart], confidence: V}
+    - {name: video_encode_byte, kind: u8, offset: 69, min_length: 70, targets: [dart], confidence: V}
 
 "0x03/0x43":
   name: OsdGeneral

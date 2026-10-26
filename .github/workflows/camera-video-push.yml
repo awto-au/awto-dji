@@ -1,0 +1,37 @@
+name: Camera video push regression
+
+on:
+  pull_request:
+    paths:
+      - 'app/**'
+      - 'docs/schema/duml/**'
+      - 'scripts/re/camera_push_audit.py'
+      - 'scripts/re/test_camera_push_audit.py'
+      - 'scripts/re/duml_generated/camera_*.py'
+      - '.github/workflows/camera-video-push.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  camera-video-push:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      CI: 'true'
+      BOT: 'true'
+      FLUTTER_SUPPRESS_ANALYTICS: 'true'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.47.8'
+          channel: stable
+          cache: true
+      - run: python3 -m unittest discover -s scripts/re -p test_camera_push_audit.py
+      - run: dart pub get && dart analyze && dart test
+        working-directory: app/packages/duml
+      - run: flutter pub get && flutter test
+        working-directory: app/awto_dji_app

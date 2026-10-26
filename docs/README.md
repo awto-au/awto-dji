@@ -21,6 +21,7 @@ the current state and next steps, and `../CLAUDE.md` for agent onboarding.
 - `p3-usb-observations-2026-10-23.md` — what the P3 controller and aircraft do on USB: line settings, DUML replies, the aircraft's one-way log stream, DTR/RTS sensitivity.
 
 ## Telemetry & video
+- [camera-video-push.md](camera-video-push.md) - classic DJI GO camera recording settings from captured ShotParams/StateInfo pushes, field offsets, enums, model limits and remaining live comparison.
 - [pc-video-preview.md](pc-video-preview.md) — corrected AOA envelope parsing, PC extraction/FFmpeg checks and saved-capture limitations; supersedes the earlier no-demux-header claim.
 - `video-and-link.md` — what talks to the phone; OSD is client-rendered, not burned at the
   aircraft; video/telemetry mux; data-vs-burned-OSD tests.
