@@ -64,3 +64,15 @@ Verdict: both e50f images (P3 and P3S `m1900`) lift to noise, indistinguishable 
 - Consistent with the earlier statistical finding that CRAM is uniform random: encrypted or otherwise scrambled; this test does not distinguish the two.
 - `m2000` / `m2002`: no lift possible (different die, 02B130DD-class geometry); only the entropy result (7.997-7.998) stands.
 - Log: pluribus `tmp/logs/lift_realism.log` (not committed).
+
+## `m2001` Cyclone IV GX150 test pass (2026-10-26)
+
+Detection only; image read in place (`firmware/unpacked/C1_FW_V01.06.0000/C1_FW_V01.06.0000_m2001.bin`, SHA-256 `b6cc5e96f12446b1...`). Tool: pluribus `scripts/cycloneiv_image_pass.py`, tables learnt from 150 Quartus-built EP4CGX150 designs; method and corpus/control numbers in pluribus `docs/cycloneiv-bitstream.md` "Third-party image test pass".
+
+- Die: EP4CGX150 (full die, STINGRAY4), not EP4CGX110: option lane 1 bytes `00 20 0d` match every EP4CGX150 build and differ from every EP4CGX110 build (`00 a0 0d`) in one bit; that bit follows the die variant, not package or speed grade. Pluribus #117.
+- Decoded: 2,178,780 set CRAM bits (5.5% of positions); 6154 / 6154 CRAM frame CRCs valid; not encrypted.
+- Verdict: real logic. 89,283 of 149,760 LEs carry a nonzero mask (59.6%), 7,077 of 9,360 LABs active; no constant masks; 3,077 distinct masks; common functions `ff00` (buffer) 5,494, `9617` 3,102, `698e` 2,904, `f0f0` 2,370; 11,337 carry-form masks (12.7%); mask support 4 / 3 / 2 / 1 inputs: 50.1 / 31.7 / 8.9 / 9.3%.
+- Routing: 6.4% of nonzero LAB muxes read as no known source (built designs 3.6-4.2%, shuffled control 43%); 73.1% of the LE inputs a mask depends on trace to one driver (built designs 74-82%, control 2.2%).
+- IO: 16 output and 21 input sites match the learnt signatures (only the 176 / 249 sites seen >= 12 times in the corpus have one); edges right 10 + 12, top 5 + 7, bottom 1 + 2, none on the left.
+- Claimed by the decode: 90.1% of set bits (unclaimed 214,628: clock tree, IO routing, M9K, multipliers, PLL, transceivers).
+- Not done: a lifted netlist; the checks show statistics, not correctness.
