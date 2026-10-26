@@ -84,14 +84,26 @@ class AoaMux:
                     end = offset + 8 + size
                     if end > n:
                         break
+                    # On the command channel, the sender's declared envelope
+                    # length occasionally overstates the real DUML frame
+                    # inside it, swallowing the next envelope's header into
+                    # this payload (docs/aoa-live-test-2026-10-26.md). Trim to
+                    # the actual CRC-valid DUML length when it's shorter, same
+                    # check as the bare-frame path - keep in sync with
+                    # aoa_mux.dart.
+                    payload_end = end
+                    if channel == COMMAND:
+                        real_length = self._bare_duml_length(offset + 8)
+                        if real_length and real_length < size:
+                            payload_end = offset + 8 + real_length
                     self.discarded += offset - discard_start
-                    payload = bytes(self.buf[offset + 8:end])
+                    payload = bytes(self.buf[offset + 8:payload_end])
                     packet = MuxPacket(channel, payload)
                     result.append(packet)
                     self.packets[channel] += 1
-                    self.payload_bytes[channel] += size
-                    offset = end
-                    discard_start = end
+                    self.payload_bytes[channel] += len(payload)
+                    offset = payload_end
+                    discard_start = payload_end
                     continue
             elif n - offset >= 2 and self.buf[offset + 1] == 0xCC:
                 break  # looks like an envelope start, not enough bytes for the header yet

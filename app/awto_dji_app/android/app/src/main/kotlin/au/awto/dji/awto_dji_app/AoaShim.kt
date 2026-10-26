@@ -84,15 +84,35 @@ class AoaShim(private val ctx: Context, messenger: BinaryMessenger) :
 
     private fun requestPermission(acc: UsbAccessory, result: MethodChannel.Result) {
         val action = "${ctx.packageName}.USB_PERMISSION"
-        val rx = object : BroadcastReceiver() {
+        lateinit var rx: BroadcastReceiver
+        lateinit var timeoutRunnable: Runnable
+        rx = object : BroadcastReceiver() {
             override fun onReceive(c: Context, i: Intent) {
+                if (permReceiver !== rx) return // already handled by the timeout below
                 ctx.unregisterReceiver(this)
                 permReceiver = null
+                main.removeCallbacks(timeoutRunnable)
                 if (i.getBooleanExtra(UsbManager.EXTRA_PERMISSION_GRANTED, false)) {
                     open(acc, result)
                 } else {
                     result.error("permission", "USB accessory permission denied", null)
                 }
+            }
+        }
+        // A real system dialog waiting on a human tap, not a hardware handshake -
+        // 60s is generous for someone to notice and respond, not a device timing
+        // bound. Without this, a non-interactive launch (e.g. `adb shell am start`)
+        // with nothing to answer the dialog hangs AoaTransport.connect() in
+        // LinkState.connecting forever (awto-dji, intent-driven-connect permission gap).
+        timeoutRunnable = Runnable {
+            if (permReceiver === rx) {
+                ctx.unregisterReceiver(rx)
+                permReceiver = null
+                result.error(
+                    "permission_timeout",
+                    "USB accessory permission dialog went unanswered for 60s",
+                    null,
+                )
             }
         }
         permReceiver = rx
@@ -106,6 +126,7 @@ class AoaShim(private val ctx: Context, messenger: BinaryMessenger) :
         val flags = if (Build.VERSION.SDK_INT >= 31) PendingIntent.FLAG_MUTABLE else 0
         val pi = PendingIntent.getBroadcast(ctx, 0, Intent(action).setPackage(ctx.packageName), flags)
         usb.requestPermission(acc, pi)
+        main.postDelayed(timeoutRunnable, 60_000)
     }
 
     private fun open(acc: UsbAccessory, result: MethodChannel.Result) {

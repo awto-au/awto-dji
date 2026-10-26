@@ -118,6 +118,54 @@ void main() {
     expect(mux.discarded, 0);
   });
 
+  test('back-to-back correctly-declared envelopes never leak into each other',
+      () {
+    // awto-dji#(envelope leak investigation): proves AoaMux's own slicing
+    // arithmetic is correct given an honest length field - two full command
+    // envelopes, each with no gap, each payload must be exactly its own
+    // DUML frame with no trailing bytes from the next envelope's header.
+    final mux = AoaMux();
+    final first = dumlFrame(sequence: 1, payload: [1, 2, 3]);
+    final second = dumlFrame(sequence: 2, payload: [4, 5]);
+    final wire = Uint8List.fromList([
+      ...envelope(AoaMux.command, first),
+      ...envelope(AoaMux.command, second),
+    ]);
+    final packets = mux.add(wire);
+    expect(packets.length, 2);
+    expect(packets[0].payload, first);
+    expect(packets[1].payload, second);
+    expect(mux.discarded, 0);
+  });
+
+  test(
+      'command envelope with an overstated length is trimmed to the real '
+      'DUML frame, recovering the leaked next envelope',
+      () {
+    // Reproduces the live symptom (docs/aoa-live-test-2026-10-26.md):
+    // LinkSession saw literal `55 cc <channel>` envelope-header bytes inside
+    // what should have been pure DUML payload. Here the first envelope's
+    // declared length is 8 bytes too long - exactly the size of a second
+    // envelope's header - so a naive full-length slice would swallow it.
+    final mux = AoaMux();
+    final realFrame = dumlFrame(sequence: 1, payload: [1, 2, 3]);
+    final second = envelope(AoaMux.command, dumlFrame(sequence: 2, payload: [9]));
+    final overstated = ByteData(8)
+      ..setUint16(0, 0xcc55, Endian.little)
+      ..setUint16(2, AoaMux.command, Endian.little)
+      ..setUint32(4, realFrame.length + second.length, Endian.little);
+    final wire = Uint8List.fromList([
+      ...overstated.buffer.asUint8List(),
+      ...realFrame,
+      ...second,
+    ]);
+    final packets = mux.add(wire);
+    expect(packets.length, 2, reason: 'the leaked envelope must be recovered as its own packet');
+    expect(packets[0].payload, realFrame, reason: 'trimmed to the real frame, not the overstated length');
+    expect(packets[1].channel, AoaMux.command);
+    expect(mux.discarded, 0);
+  });
+
   test('bare frame bytes failing CRC16 are rejected, not falsely emitted', () {
     final mux = AoaMux();
     final frame = dumlFrame(payload: [1, 2, 3]);

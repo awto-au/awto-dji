@@ -108,15 +108,32 @@ class AoaMux {
         if (channel >= 0x5749 && channel <= 0x574d && length <= maxPayload) {
           final end = offset + 8 + length;
           if (end > _buffer.length) break;
+          // On the command channel, the sender's declared envelope length
+          // occasionally overstates the real DUML frame inside it, so the
+          // naive full-length payload ends up swallowing the next envelope's
+          // header (seen live as literal `55 cc <channel>` bytes inside what
+          // should be pure DUML payload). Validate against the actual DUML
+          // frame length (same CRC8+CRC16 check as the bare-frame path) and
+          // trim to it, leaving the leaked tail in the buffer to be rescanned
+          // as its own envelope/frame instead of silently appending it here.
+          var payloadEnd = end;
+          if (channel == command) {
+            final realLength = _bareDumlLength(offset + 8);
+            if (realLength != null &&
+                realLength > 0 &&
+                realLength < length) {
+              payloadEnd = offset + 8 + realLength;
+            }
+          }
           _discard(discardStart, offset);
           final packet = AoaPacket(
             channel,
-            Uint8List.fromList(_buffer.sublist(offset + 8, end)),
+            Uint8List.fromList(_buffer.sublist(offset + 8, payloadEnd)),
           );
           result.add(packet);
           onPacket?.call(packet);
-          offset = end;
-          discardStart = end;
+          offset = payloadEnd;
+          discardStart = payloadEnd;
           continue;
         }
       }

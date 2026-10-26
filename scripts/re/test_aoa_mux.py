@@ -50,6 +50,34 @@ class MuxTests(unittest.TestCase):
         self.assertEqual(packets, [(CAMERA_VIDEO, b'good')])
         self.assertEqual(mux.discarded, len(bad))
 
+    def test_back_to_back_correctly_declared_envelopes_never_leak(self):
+        # Proves AoaMux's own slicing arithmetic is correct given an honest
+        # length field - mirrors aoa_mux_test.dart.
+        first = build_frame(2, 14, 1, 2, 0x09, 0x16, b'\x01\x02\x03')
+        second = build_frame(2, 14, 2, 2, 0x09, 0x16, b'\x04\x05')
+        mux = AoaMux()
+        packets = mux.feed(envelope(COMMAND, first) + envelope(COMMAND, second))
+        self.assertEqual(packets, [(COMMAND, first), (COMMAND, second)])
+        self.assertEqual(mux.discarded, 0)
+
+    def test_command_envelope_with_overstated_length_is_trimmed(self):
+        # Reproduces the live symptom (docs/aoa-live-test-2026-10-26.md):
+        # LinkSession saw literal `55 cc <channel>` bytes inside what should
+        # have been pure DUML payload - the declared length was 8 bytes too
+        # long, exactly the size of the next envelope's header, so a naive
+        # full-length slice swallowed it. Mirrors aoa_mux_test.dart.
+        real_frame = build_frame(2, 14, 1, 2, 0x09, 0x16, b'\x01\x02\x03')
+        second = envelope(COMMAND, build_frame(2, 14, 2, 2, 0x09, 0x16, b'\x09'))
+        overstated_header = b'\x55\xcc' + struct.pack(
+            '<HI', COMMAND, len(real_frame) + len(second))
+        mux = AoaMux()
+        packets = mux.feed(overstated_header + real_frame + second)
+        self.assertEqual(len(packets), 2,
+                          'the leaked envelope must be recovered as its own packet')
+        self.assertEqual(packets[0], (COMMAND, real_frame))
+        self.assertEqual(packets[1][0], COMMAND)
+        self.assertEqual(mux.discarded, 0)
+
     def test_bare_duml_frame_recovered_without_envelope(self):
         bare = build_frame(2, 14, 7, 2, 0x09, 0x08, b'\x01\x02')
         wire = envelope(COMMAND, b'first') + bare + envelope(COMMAND, b'second')
