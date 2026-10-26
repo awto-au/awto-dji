@@ -1,8 +1,8 @@
 import 'dart:async';
 
+import 'package:duml/duml.dart';
 import 'package:flutter/material.dart';
 
-import '../link/gimbal_commands.dart';
 import '../link/link_session.dart';
 
 /// Gimbal speed control (cmdset 0x04 / 0x0c), confirmed 2026-10-24 against real
@@ -18,7 +18,7 @@ class GimbalScreen extends StatefulWidget {
 }
 
 class _GimbalScreenState extends State<GimbalScreen> {
-  final _gimbal = GimbalCommands(0x6800);
+  int _seq = 0x6800;
   Timer? _holdTimer;
   String? _lastError;
 
@@ -29,11 +29,11 @@ class _GimbalScreenState extends State<GimbalScreen> {
   void _startHold({double pitch = 0, double yaw = 0}) {
     _holdTimer?.cancel();
     void send() {
-      final frame = _gimbal.speedControl(
-        pitchDegPerSec: pitch,
-        yawDegPerSec: yaw,
+      final frame = GimbalSpeedControl(
+        pitch: pitch,
+        yaw: yaw,
         takeControl: true,
-      );
+      ).encode(receiverType: DeviceType.gimbal, sequence: _seq++);
       widget.session.transport.write(frame).catchError((Object e) {
         setState(() => _lastError = 'Send failed: $e');
       });
@@ -46,7 +46,9 @@ class _GimbalScreenState extends State<GimbalScreen> {
   void _endHold() {
     _holdTimer?.cancel();
     _holdTimer = null;
-    final frame = _gimbal.speedControl(takeControl: false); // release, matches real app
+    // release, matches real app
+    final frame = GimbalSpeedControl(takeControl: false)
+        .encode(receiverType: DeviceType.gimbal, sequence: _seq++);
     widget.session.transport.write(frame).catchError((Object e) {
       setState(() => _lastError = 'Release send failed: $e');
     });

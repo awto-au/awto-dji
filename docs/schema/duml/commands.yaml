@@ -1,0 +1,751 @@
+# Canonical, single-file DUML command/field schema (awto-dji#33). One entry per
+# command/push, keyed by its DUML code (primary cmdset/cmdid as "0xSS/0xII"), not by
+# name - matches how the real wire identifies a command. A command registered under
+# more than one (cmdset,cmdid) pair still lists every alias in its own `ids:`; the map
+# key is just the first (primary) one.
+#
+# Generates, per entry: scripts/re/duml_generated/<snake_name>.py,
+# app/packages/duml/lib/src/generated/<snake_name>.dart, tests for both (if `tests:`
+# is present), and docs/schema/duml/generated/<snake_name>.md. See
+# docs/schema/duml/README.md for the field format and regenerate command. Do not
+# hand-edit any generated file.
+#
+# Status: 12 of ~723 known commands (scripts/re/duml_catalog.py) migrated so far -
+# migrate incrementally, per the issue's own instruction. Everything else in
+# duml_catalog.py is still outside this file. Known still-unmigrated cases, and why:
+# - Get*/Set* pairs that share one (cmdset,cmdid) for both an empty-payload outgoing
+#   request and a payload-bearing incoming reply (GetVersion 0x00/0x01, GetAELock
+#   0x02/0x69, RequestGimbalCtrPermission's reply) - this file only supports one
+#   direction per id; the push (reply-decode) side is migrated, the empty-request
+#   encode side is left as the existing hand-written Dart command builder.
+
+"0x03/0x43":
+  name: OsdGeneral
+  direction: push
+  class_doc: >
+    Flight Controller "OSD General Data" push, the main telemetry message. Same
+    class is registered under two cmdset/cmdid pairs in the real app (CmdSet.java):
+    FLYC.GetPushCommon(3,0x43) and OSD.GetPushCommon(9,0x01) both resolve to
+    dji.midware.data.model.P3.DataOsdGetPushCommon.
+  confidence: U  # the push ITSELF: 0x03/0x43 never seen live; 0x09/0x01 confirmed
+                 # 34,653x same session (awto-dji#16). Field layout below is V/I per-field.
+  provenance: >
+    dji.midware.data.model.P3.DataOsdGetPushCommon (dji.go.v4 decompile, gitignored,
+    not in this repo). Offsets 0-29 originally from the public o-gs/dji-firmware-tools
+    Wireshark dissector; offsets 30-52 are a byte-for-byte port of the real class's
+    get(offset,len,...) calls. See awto-dji#16.
+
+  # (cmdset, cmdid) pairs this struct answers under - both must be matched.
+  ids:
+    - {cmdset: 0x03, cmdid: 0x43, catalog_name: "FLYC/GetPushCommon"}
+    - {cmdset: 0x09, cmdid: 0x01, catalog_name: "OSD/GetPushCommon#OSD"}
+
+  # Payload length below this is not an OSD General push at all (matches() gate).
+  min_length: 30
+
+  # Target languages this schema currently generates. python only gets fields with
+  # "python" in targets (today: just the geometric 9 - duml_telemetry.py's
+  # _osd_general_push never ported the rest; see each field's targets below).
+  fields:
+    - name: longitude
+      dart_name: longitude
+      kind: f64_rad_to_deg
+      offset: 0
+      targets: [python, dart]
+      confidence: V
+
+    - name: latitude
+      kind: f64_rad_to_deg
+      offset: 8
+      targets: [python, dart]
+      confidence: V
+
+    - name: relative_height
+      dart_name: relativeHeight
+      kind: i16_scaled
+      offset: 16
+      scale: 10
+      targets: [python, dart]
+      confidence: V
+
+    - name: vgx
+      kind: i16_scaled
+      offset: 18
+      scale: 10
+      targets: [python, dart]
+      confidence: V
+
+    - name: vgy
+      kind: i16_scaled
+      offset: 20
+      scale: 10
+      targets: [python, dart]
+      confidence: V
+
+    - name: vgz
+      kind: i16_scaled
+      offset: 22
+      scale: 10
+      targets: [python, dart]
+      confidence: V
+
+    - name: pitch
+      kind: i16_scaled
+      offset: 24
+      scale: 10
+      targets: [python, dart]
+      confidence: V
+
+    - name: roll
+      kind: i16_scaled
+      offset: 26
+      scale: 10
+      targets: [python, dart]
+      confidence: V
+
+    - name: yaw
+      kind: i16_scaled
+      offset: 28
+      scale: 10
+      targets: [python, dart]
+      confidence: V
+
+    # --- extended fields: Dart-only so far (not yet ported to the Python side) ---
+
+    - name: flyc_version
+      dart_name: flycVersion
+      kind: u8
+      offset: 47
+      min_length: 48
+      targets: [dart]
+      confidence: V
+      doc: >
+        getFlycVersion() - FC protocol/firmware generation. Needed to pick the
+        motor_failed_cause decode path.
+
+    - name: motor_up
+      dart_name: motorUp
+      kind: bitfield_u32
+      offset: 32
+      bit: 3
+      min_length: 36
+      targets: [dart]
+      confidence: V
+      doc: isMotorUp() - bit 3 of the flags int32 at offset 32.
+
+    - name: motor_blocked
+      dart_name: motorBlocked
+      kind: bitfield_u32
+      offset: 32
+      bit: 27
+      min_length: 36
+      targets: [dart]
+      confidence: V
+      doc: isMotorBlock() - arming interlock (props-off/no-arm) engaged.
+
+    - name: compass_error
+      dart_name: compassError
+      kind: bitfield_u32
+      offset: 32
+      bit: 16
+      min_length: 36
+      targets: [dart]
+      confidence: V
+      doc: getCompassError() - bit 16 of the flags int32.
+
+    - name: imu_preheated
+      dart_name: imuPreheated
+      kind: bitfield_u32
+      offset: 32
+      bit: 12
+      min_length: 36
+      targets: [dart]
+      confidence: V
+      doc: isImuPreheatd() - bit 12 of the flags int32.
+
+    - name: motor_failed_cause
+      dart_name: motorFailedCause
+      kind: motor_failed_cause_p3   # branchy - see README "Escape hatch" section
+      byte_offset: 38
+      flyc_version_field: flyc_version
+      alt_byte_offset: 51
+      enum_ref: MotorStartFailedCause
+      min_length: 39
+      targets: [dart]
+      confidence: V
+      doc: >
+        getMotorFailedCause() - why the arming interlock is up, or the live fault.
+        Decode path depends on flyc_version (>=26: byte38 direct; else byte38 top
+        bit, falling back to byte38&0x7f or byte51 depending on payload length).
+
+    - name: imu_init_fail_reason
+      dart_name: imuInitFailReason
+      kind: enum_u8
+      offset: 49
+      enum_ref: ImuInitFailReason
+      min_length: 50
+      targets: [dart]
+      confidence: V
+      doc: getIMUinitFailReason() - IMU init/preflight/calibration state.
+
+"0x00/0x0b":
+  name: RestartDevice
+  direction: command
+  class_doc: >
+    COMMON RestartDevice. Reboots the target device: after the ack, the device stops
+    feeding its own watchdog, which resets the chip after watchdog_ms.
+  confidence: V
+  provenance: >
+    docs/ground-upgrade-path.md "0x0B Reboot Chip" (m1400 handler 0x5124, firmware-side
+    decode of the payload layout and the mode-byte error case) + real-hardware
+    confirmation 2026-10-24 against the ground RC (USB-serial device re-enumerated, DUML
+    sequence counter reset to 0, right when sent). docs/data/apk-dynamic-cmdset-ids.tsv
+    confirms cmdset 0x00/cmdid 0x0b is COMMON/RestartDevice generically, not RC-specific.
+
+  ids:
+    - {cmdset: 0x00, cmdid: 0x0b, catalog_name: "COMMON/RestartDevice"}
+
+  payload_length: 6
+
+  fields:
+    - name: reserved
+      kind: u8
+      offset: 0
+      role: const
+      value: 0
+      targets: [python, dart]
+      confidence: V
+      doc: always 0 (m1400 handler 0x5124 byte0, unused by that handler).
+
+    - name: mode
+      kind: u8
+      offset: 1
+      role: param
+      default: 1
+      valid: [0, 1]
+      targets: [python, dart]
+      confidence: V
+      doc: >
+        must be 0 or 1, else the device replies error 0xE3 (m1400 handler 0x5124).
+        Meaning of 0 vs 1 beyond "valid" not decoded.
+
+    - name: watchdog_ms
+      dart_name: watchdogMs
+      kind: u32
+      offset: 2
+      role: param
+      default: 1000
+      targets: [python, dart]
+      confidence: I
+      doc: >
+        ms until the stopped watchdog resets the chip. 1000ms confirmed working against
+        the ground RC 2026-10-24, not measured as a minimum.
+
+  # Only behavioral tests here, not byte-exact ones - an expect_payload_hex would
+  # just be the same offset/value arithmetic above, hand-recomputed (got it wrong
+  # twice doing exactly that; see docs/schema/duml/README.md "Tests"). No raw
+  # capture of the real 2026-10-24 bench confirmation was kept, so there is no real
+  # captured frame to cite either - if one turns up later, cite it as prose (exact
+  # bytes + capture log path) in a doc: line, not as a hand-derived hex field.
+  tests:
+    - name: mode_out_of_range_rejected
+      doc: anything but 0/1 must be rejected locally, not sent (device would reply 0xE3).
+      params: {mode: 2, watchdog_ms: 1000}
+      expect_error: true
+
+"0x04/0x0a":
+  name: GimbalAngleControl
+  direction: command
+  class_doc: >
+    Gimbal AngleControl. Source: DataGimbalAngleControl.java, confirmed 2026-10-24
+    against real dji.pilot decompile (dynamic/memscan unpack). An exhaustive call-site
+    search of the decompiled app found this used only for RC master/slave handoff and
+    the third-party Mobile SDK layer - not the app's own interactive FPV gimbal UI,
+    which uses GimbalSpeedControl (0x04/0x0c) instead.
+  confidence: V
+  provenance: >
+    dji.pilot decompile (dynamic/memscan unpack, gitignored, not in this repo),
+    DataGimbalAngleControl.java. Was app/awto_dji_app/lib/link/gimbal_commands.dart's
+    `angle()` and scripts/re/duml_commands.py's `GimbalAngleControl`/`gimbal.angle`,
+    hand-duplicated in both languages - migrated here to stop that.
+  ids:
+    - {cmdset: 0x04, cmdid: 0x0a, catalog_name: "GIMBAL/AngleControl"}
+  payload_length: 10
+  fields:
+    - name: yaw
+      kind: i16_scaled
+      offset: 0
+      scale: 10
+      role: param
+      default: 0.0
+      targets: [python, dart]
+      confidence: V
+      doc: degrees.
+    - name: roll
+      kind: i16_scaled
+      offset: 2
+      scale: 10
+      role: param
+      default: 0.0
+      targets: [python, dart]
+      confidence: V
+      doc: degrees.
+    - name: pitch
+      kind: i16_scaled
+      offset: 4
+      scale: 10
+      role: param
+      default: 0.0
+      targets: [python, dart]
+      confidence: V
+      doc: degrees.
+    - name: duration
+      kind: u16
+      offset: 6
+      role: param
+      default: 300
+      targets: [python, dart]
+      confidence: V
+      doc: ms. APK default 300.
+    - name: flags
+      kind: u8
+      offset: 8
+      role: const
+      value: 0x24
+      targets: [python, dart]
+      confidence: V
+      doc: >
+        opaque: doPack() bit-packs permission/mode flags via a shift chain that
+        destroys most of the earlier bits, verified by hand-tracing with all
+        class-defaults (permission=False, 3 APK-default-True flags) giving exactly
+        0x24. The byte genuinely carries ~1 surviving bit; 0x24 is the only value
+        tested.
+    - name: overtime
+      kind: u8
+      offset: 9
+      role: param
+      default: 10
+      targets: [python, dart]
+      confidence: V
+
+"0x04/0x14":
+  name: GimbalAbsAngleControl
+  direction: command
+  class_doc: >
+    Gimbal AbsAngleControl - a distinct command from AngleControl (0x0a), not a
+    variant: no duration field, and the flags byte is explicit here (not opaque).
+    Source: DataGimbalAbsAngleControl.java, confirmed byte-for-byte 2026-10-24 against
+    real dji.pilot decompile.
+  confidence: V
+  provenance: >
+    dji.pilot decompile, DataGimbalAbsAngleControl.java. Defaults (yaw/roll invalid,
+    pitch only) match a real-hardware test (2026-10-24); the app's own un-set default
+    is all-axes-valid (every bit 0) - not confirmed our pitch-only default is
+    required, only that it is what was tested. Was
+    scripts/re/duml_commands.py's `GimbalAbsAngleControl`/`gimbal.absAngle`.
+  ids:
+    - {cmdset: 0x04, cmdid: 0x14, catalog_name: "GIMBAL/AbsAngleControl"}
+  payload_length: 8
+  fields:
+    - name: yaw
+      kind: i16_scaled
+      offset: 0
+      scale: 10
+      role: param
+      default: 0.0
+      targets: [python, dart]
+      confidence: V
+    - name: roll
+      kind: i16_scaled
+      offset: 2
+      scale: 10
+      role: param
+      default: 0.0
+      targets: [python, dart]
+      confidence: V
+    - name: pitch
+      kind: i16_scaled
+      offset: 4
+      scale: 10
+      role: param
+      default: 0.0
+      targets: [python, dart]
+      confidence: V
+    - name: flags
+      kind: packed_u8
+      offset: 6
+      targets: [python, dart]
+      confidence: V
+      doc: >
+        "invalid" = ignore this axis, hold current position. Defaults match the one
+        real-hardware-tested config (2026-10-24): yaw/roll invalid, pitch only.
+      bits:
+        - {name: control_mode, dart_name: controlMode, shift: 0, width: 1, default: false, type: bool}
+        - {name: yaw_invalid, dart_name: yawInvalid, shift: 1, width: 1, default: true, type: bool}
+        - {name: roll_invalid, dart_name: rollInvalid, shift: 2, width: 1, default: true, type: bool}
+        - {name: pitch_invalid, dart_name: pitchInvalid, shift: 3, width: 1, default: false, type: bool}
+    - name: overtime
+      kind: u8
+      offset: 7
+      role: param
+      default: 10
+      targets: [python, dart]
+      confidence: V
+
+"0x04/0x01":
+  name: GimbalControl
+  direction: command
+  class_doc: >
+    Gimbal Control - simpler mode-based control. Source: DataGimbalControl.java,
+    field order (pitch/roll/yaw/mode_byte) and mode_byte=(mode<<6)|(isReset<<5)
+    confirmed byte-for-byte 2026-10-24 against real dji.pilot decompile.
+  confidence: V
+  provenance: >
+    dji.pilot decompile, DataGimbalControl.java. mode: 0=YawNoFollow, 1=FPV,
+    2=YawFollow (enum also has OTHER=100, not used here). Was
+    scripts/re/duml_commands.py's `GimbalControl`/`gimbal.control`.
+  ids:
+    - {cmdset: 0x04, cmdid: 0x01, catalog_name: "GIMBAL/Control"}
+  payload_length: 7
+  fields:
+    - name: pitch
+      kind: i16
+      offset: 0
+      role: param
+      default: 0
+      targets: [python, dart]
+      confidence: V
+    - name: roll
+      kind: i16
+      offset: 2
+      role: param
+      default: 0
+      targets: [python, dart]
+      confidence: V
+    - name: yaw
+      kind: i16
+      offset: 4
+      role: param
+      default: 0
+      targets: [python, dart]
+      confidence: V
+    - name: mode_byte
+      kind: packed_u8
+      offset: 6
+      targets: [python, dart]
+      confidence: V
+      bits:
+        - {name: is_reset, dart_name: isReset, shift: 5, width: 1, default: false, type: bool}
+        - {name: mode, shift: 6, width: 2, default: 0, valid: [0, 1, 2]}
+
+"0x04/0x0c":
+  name: GimbalSpeedControl
+  direction: command
+  class_doc: >
+    Gimbal SpeedControl. THIS is the command the real app actually uses for
+    interactive single-pilot gimbal control - confirmed 2026-10-24 against
+    dji.pilot's real FPV gimbal UI (DJIFpvGimbalPitchView.java): sent continuously on
+    a 40ms timer while a control button is held (permission bit + speed), then one
+    final permission-release + zero-speed send on release. An exhaustive call-site
+    search of the whole decompiled app found AngleControl/AbsAngleControl/Control/
+    RcRequestGimbalCtrPermission used only for RC master/slave handoff and the
+    third-party Mobile SDK layer - NOT this app's own gimbal control path.
+  confidence: V
+  provenance: >
+    dji.pilot decompile, DataGimbalSpeedControl.java +
+    DJIFpvGimbalPitchView.java. Permission is embedded as bit7 of the flags byte in
+    THIS SAME packet - there is no separate request/ack handshake for interactive
+    control (RcRequestGimbalCtrPermission, 0x06/0x22, appears to be for the
+    master/slave scenario, not this flow - matches it never getting a reply).
+    speedDegPerSec scale is I (inferred) - deg/s*10 by analogy with this project's
+    existing *10 convention; the UI's own speed constant is a raw 270, not
+    independently confirmed as a unit. Was
+    app/awto_dji_app/lib/link/gimbal_commands.dart's `speedControl()` and
+    scripts/re/duml_commands.py's `GimbalSpeedControl`/`gimbal.speedControl`.
+  ids:
+    - {cmdset: 0x04, cmdid: 0x0c, catalog_name: "GIMBAL/SpeedControl"}
+  payload_length: 7
+  fields:
+    - name: yaw
+      kind: i16_scaled
+      offset: 0
+      scale: 10
+      role: param
+      default: 0.0
+      targets: [python, dart]
+      confidence: I
+      doc: deg/s, inferred scale.
+    - name: roll
+      kind: i16_scaled
+      offset: 2
+      scale: 10
+      role: param
+      default: 0.0
+      targets: [python, dart]
+      confidence: I
+      doc: deg/s, inferred scale.
+    - name: pitch
+      kind: i16_scaled
+      offset: 4
+      scale: 10
+      role: param
+      default: 0.0
+      targets: [python, dart]
+      confidence: I
+      doc: deg/s, inferred scale.
+    - name: flags
+      kind: packed_u8
+      offset: 6
+      targets: [python, dart]
+      confidence: V
+      doc: >
+        bit7 = permission (1=take control, 0=release). The real app sends this
+        continuously while a button is held; for a one-shot test, send a few times
+        in a row (no separate permission request needed).
+      bits:
+        - {name: take_control, dart_name: takeControl, shift: 7, width: 1, default: true, type: bool}
+
+"0x02/0xb3":
+  name: CameraRequestIFrame
+  direction: command
+  class_doc: >
+    Camera RequestIFrame - no payload. Forces an SPS/PPS/IDR resend.
+  confidence: V
+  provenance: >
+    docs/aoa-live-test-2026-10-23.md. Was scripts/re/duml_commands.py's
+    `CameraRequestIFrame`/`camera.requestIFrame`.
+  ids:
+    - {cmdset: 0x02, cmdid: 0xb3, catalog_name: "CAMERA/RequestIFrame"}
+  payload_length: 0
+  fields: []
+
+"0x06/0x22":
+  name: RcRequestGimbalCtrPermission
+  direction: command
+  class_doc: >
+    RC RequestGimbalCtrPermission - empty payload. Receiver is DeviceType.osd (14),
+    not RC - DJI's own class targets that device type despite the cmdset being named
+    RC. Does NOT appear to be a prerequisite for interactive gimbal control - an
+    exhaustive call-site search of the real dji.pilot app found this used only for
+    the RC master/slave handoff scenario and the third-party Mobile SDK layer, never
+    in the app's own single-pilot FPV gimbal UI (which uses GimbalSpeedControl
+    instead, with permission embedded in that packet). Consistent with this command
+    never getting a reply despite being sent before every
+    AngleControl/AbsAngleControl attempt in earlier testing.
+  confidence: V
+  provenance: >
+    dji.pilot decompile, DataRcRequestGimbalCtrPermission.java. Was
+    app/awto_dji_app/lib/link/gimbal_commands.dart's `permissionRequest()` and
+    scripts/re/duml_commands.py's `RcRequestGimbalCtrPermission`/
+    `gimbal.requestCtrPermission`.
+  ids:
+    - {cmdset: 0x06, cmdid: 0x22, catalog_name: "RC/RequestGimbalCtrPermission"}
+  payload_length: 0
+  fields: []
+
+"0x04/0x08":
+  name: GimbalAutoCalibration
+  direction: command
+  class_doc: >
+    Gimbal AutoCalibration - the gimbal self-test/calibration trigger.
+  confidence: V
+  provenance: >
+    Real class DataGimbalAutoCalibration.start() (dji.go.v4 decompile,
+    dji/midware/data/model/P3/DataGimbalAutoCalibration.java) sends APP->GIMBAL,
+    NEEDACK.YES, EncryptType.NO, 1-byte payload from getSendData(). Confirmed
+    2026-10-24 against a real wire capture of this exact command working (real
+    pitch movement + mode change observed, awto-dji#16):
+    `550e046602040074200408008c2f` -> sender=APP, receiver=GIMBAL, ackType=
+    beforeExec (byte8 bits5-6 = 1), cmdSet=0x04, cmdId=0x08, payload=[0x00]. Was
+    app/awto_dji_app/lib/link/gimbal_commands.dart's `autoCalibration()` - not
+    previously in scripts/re/duml_commands.py's REGISTRY at all.
+  ids:
+    - {cmdset: 0x04, cmdid: 0x08, catalog_name: "GIMBAL/AutoCalibration"}
+  payload_length: 1
+  fields:
+    - name: trigger
+      kind: u8
+      offset: 0
+      role: const
+      value: 0
+      targets: [python, dart]
+      confidence: V
+      doc: >
+        the only value seen - getSendData()'s single byte in the one real capture
+        above. Meaning beyond "the trigger byte" not decoded.
+
+"0x04/0x05":
+  name: GimbalPushParams
+  direction: push
+  class_doc: >
+    Gimbal GetPushParams - the gimbal's own periodic status push (pitch/roll/yaw +
+    a status byte).
+  confidence: V
+  provenance: >
+    scripts/re/duml_telemetry.py's old `_gimbal_push` (struct.unpack_from("<hhh",
+    ...) + status byte) - used operationally throughout this repo's
+    verify.py/gimbal_sweep.py closed-loop tests (confirms real pitch/roll/yaw via
+    telemetry, not just "sent"). status byte: bit0 = error flag, bits6-7 = mode
+    (DataGimbalControl.MODE: 0=YawNoFollow, 1=FPV, 2=YawFollow - same enum as
+    GimbalControl's mode_byte>>6, see this file's 0x04/0x01 entry). Had no Dart
+    decoder before this entry - Python's was the only implementation.
+  ids:
+    - {cmdset: 0x04, cmdid: 0x05, catalog_name: "GIMBAL/GetPushParams"}
+  min_length: 7
+  fields:
+    - name: pitch
+      kind: i16_scaled
+      offset: 0
+      scale: 10
+      targets: [python, dart]
+      confidence: V
+      doc: degrees.
+    - name: roll
+      kind: i16_scaled
+      offset: 2
+      scale: 10
+      targets: [python, dart]
+      confidence: V
+      doc: degrees.
+    - name: yaw
+      kind: i16_scaled
+      offset: 4
+      scale: 10
+      targets: [python, dart]
+      confidence: V
+      doc: degrees.
+    - name: status
+      kind: u8
+      offset: 6
+      targets: [python, dart]
+      confidence: V
+      doc: >
+        bit0 = error flag, bits6-7 = mode (0=YawNoFollow, 1=FPV, 2=YawFollow). Left
+        raw here - decoding one two-bit value used in exactly one place isn't worth
+        a dedicated field kind; do that at the call site (see
+        scripts/re/duml_telemetry.py's GIMBAL_MODE_NAMES).
+
+"0x09/0x08":
+  name: RcSignalQuality
+  direction: push
+  class_doc: >
+    OSD GetPushSignalQuality - RC/OSD link signal-quality push, sent by the OSD
+    device (sender type 14) at a few Hz.
+  confidence: V
+  provenance: >
+    dji.go.v4 decompile, DataOsdGetPushSignalQuality.java (dji.pilot's own copy
+    could not be recovered, see awto-dji#16, but this struct is aircraft/OSD-side
+    protocol, not app-specific). byte0 bit7 = direction (set=Up/uplink, clear=
+    Down/downlink); byte0 bits0-6 = aggregate link quality 0-127 (the headline
+    metric - what getDownSignalQuality()/getUpSignalQuality() return). bytes1-2 =
+    per-antenna signed dBm (secondary breakdown - an earlier version of
+    app/packages/duml/lib/src/rc_signal.dart wrongly treated these two bytes as the
+    primary signal and concluded the link was strong while the real quality field
+    was reporting a mediocre ~42% the whole time). Was that file's RcSignalQuality
+    and scripts/re/duml_telemetry.py's `_rc_signal_push`, hand-duplicated in both
+    languages - migrated here to stop that.
+  ids:
+    - {cmdset: 0x09, cmdid: 0x08, catalog_name: "OSD/GetPushSignalQuality"}
+  min_length: 3
+  fields:
+    - name: aggregate_quality
+      dart_name: aggregateQuality
+      kind: bits_u8
+      offset: 0
+      shift: 0
+      width: 7
+      targets: [python, dart]
+      confidence: V
+      doc: 0-127.
+    - name: is_uplink
+      dart_name: isUplink
+      kind: bitfield_u8
+      offset: 0
+      bit: 7
+      targets: [python, dart]
+      confidence: V
+    - name: antenna1_dbm
+      dart_name: antenna1Dbm
+      kind: i8
+      offset: 1
+      targets: [python, dart]
+      confidence: V
+    - name: antenna2_dbm
+      dart_name: antenna2Dbm
+      kind: i8
+      offset: 2
+      targets: [python, dart]
+      confidence: V
+
+"0x00/0x01":
+  name: CommonVersion
+  direction: push
+  class_doc: >
+    COMMON GetVersion reply - any device (flight controller, gimbal, camera, RC...)
+    answers its own GetVersion request with this layout, identified only by which
+    device sent the reply (sender type), not by payload content.
+  confidence: V
+  provenance: >
+    dji.midware.data.model.P3.DataCommonGetVersion (dji.go.v4 decompile). Offsets
+    fixed awto-dji#32 (one byte later than this project's original, off-by-one
+    port): cross-checked against o-gs/dji-firmware-tools'
+    general_version_inquiry_dissector (dji-dumlv1-general.lua:120-160) and two
+    real captured GetVersion replies (captures/sessions/2026-10-24/duml_probe.log,
+    docs/identity-queries.md:18) - a real RC/GL300C reply decodes hardwareVersion
+    cleanly as "GL300C" at these offsets (garbled at the old ones), and an
+    unprogrammed device's reply decodes loaderVersion/firmwareVersion to
+    "255.255.255.254", matching the SD-card upgrade log's own placeholder pattern
+    (docs/firmware-upgrade-log-review.md:62-64). Was
+    app/packages/duml/lib/src/version.dart's CommonVersion and
+    scripts/re/fw_version_check.py's `decode_common_version`, hand-duplicated in
+    both languages - migrated here to stop that. The empty-payload outgoing
+    GetVersion *request* (scripts/re/duml_proto.py build_frame callers,
+    app/awto_dji_app/lib/link/diagnostics_commands.dart's getVersion()) shares this
+    same (cmdset,cmdid) but is a separate, still-hand-written encode path - this
+    schema format doesn't yet support one entry being both a push decode and a
+    command encode under the same id, so that empty-request side is deliberately
+    left unmigrated.
+  ids:
+    - {cmdset: 0x00, cmdid: 0x01, catalog_name: "COMMON/GetVersion"}
+  min_length: 30
+  fields:
+    - name: hardware_version
+      dart_name: hardwareVersion
+      kind: ascii_nul
+      offset: 2
+      length: 16
+      targets: [python, dart]
+      confidence: V
+      doc: ASCII, NUL-padded, e.g. "GL300C".
+    - name: firmware_version
+      dart_name: firmwareVersion
+      kind: version_quad
+      offset: 22
+      targets: [python, dart]
+      confidence: V
+      doc: >
+        "NN.NN.NN.NN" from bytes 25,24,23,22 (high-to-low byte order, matching the
+        real getter).
+    - name: loader_version
+      dart_name: loaderVersion
+      kind: version_quad
+      offset: 18
+      targets: [python, dart]
+      confidence: V
+      doc: same format, bytes 21,20,19,18 (bootloader).
+    - name: is_production
+      dart_name: isProduction
+      kind: bitfield_u32
+      offset: 26
+      bit: 31
+      targets: [python, dart]
+      confidence: V
+      doc: getInfo().isProduction.
+    - name: is_support_safe_upgrade
+      dart_name: isSupportSafeUpgrade
+      kind: bitfield_u32
+      offset: 26
+      bit: 30
+      targets: [python, dart]
+      confidence: V
+      doc: getInfo().isSupportSafeUpgrade.

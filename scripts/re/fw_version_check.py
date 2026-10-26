@@ -21,6 +21,7 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from _log import log  # noqa: E402
+from duml_generated import common_version  # noqa: E402
 from duml_proto import DeviceType, build_frame, send_via_proxy, session_log_dir  # noqa: E402
 from duml_telemetry import tail_frames  # noqa: E402
 
@@ -63,49 +64,10 @@ REFERENCE_VERSIONS = {
 DEFAULT_WAIT_S = 2.0
 
 
-def decode_common_version(payload):
-    """GetVersion response layout - offsets fixed this session (awto-dji#32), one byte
-    later than app/packages/duml/lib/src/version.dart CommonVersion.fromPayload's
-    offsets: that Dart decoder has an off-by-one (missing a second leading "unknown"
-    byte), confirmed against two independent sources:
-    1. o-gs/dji-firmware-tools' general_version_inquiry_dissector (externally RE'd,
-       unrelated to this repo's possibly-wrong-app APK decompile - see awto-dji#30),
-       /mnt/2tb/git/dji-firmware-tools/comm_dissector/wireshark/dji-dumlv1-general.lua
-       lines 120-160: response = unknown0(1B) + unknown1(1B) + hw(16B) + ldr(4B) +
-       app(4B) + flags(4B) [+ 1B or 4B trailer], hw starting at offset 2, not 1.
-    2. Two real captured GetVersion replies, captures/sessions/2026-10-24/duml_probe.log
-       (docs/identity-queries.md:18 for the first): with THESE (fixed) offsets, the
-       RC/GL300C reply's hw field decodes to a clean "GL300C" (the old offset produces
-       a garbled "\\x10GL300C"); an unprogrammed device's reply (same log, receiver
-       0x14) decodes loaderVersion AND firmwareVersion to "255.255.255.254" -
-       byte-for-byte the same placeholder pattern independently observed in the SD-card
-       upgrade log's own "[19 00]" lines (docs/firmware-upgrade-log-review.md:62-64).
-    Layout: hardwareVersion = ASCII @ payload[2:18] (NUL-terminated), firmwareVersion =
-    bytes[25,24,23,22] dotted, loaderVersion = bytes[21,20,19,18] dotted, info =
-    LE uint32 @26 (bit31=isProduction, bit30=isSupportSafeUpgrade). Needs 30 bytes
-    minimum (31/34-byte variants add a trailer the app firmware string doesn't need)."""
-    if len(payload) < 30:
-        return None
-    hw_bytes = payload[2:18]
-    nul = hw_bytes.find(0)
-    hw = hw_bytes[:nul if nul >= 0 else None].decode("ascii", "replace")
-
-    def dotted(hi, lo):
-        return ".".join(f"{payload[i]:02d}" for i in range(hi, lo - 1, -1))
-
-    info = int.from_bytes(payload[26:30], "little")
-    return {
-        "hardwareVersion": hw,
-        "firmwareVersion": dotted(25, 22),
-        "loaderVersion": dotted(21, 18),
-        "isProduction": bool((info >> 31) & 1),
-        "isSupportSafeUpgrade": bool((info >> 30) & 1),
-    }
-
-
 def query_device(log_path, offset, device_type, seq, wait_s):
     """Send GetVersion to device_type, wait up to wait_s for its reply. ->
-    decoded dict or None (no reply)."""
+    decoded dict (duml_generated.common_version.decode's keys, snake_case) or None
+    (no reply)."""
     frame = build_frame(sender=DeviceType.app, receiver=device_type, seq=seq,
                          ack_type=2, cmd_set=GETVERSION_CSET, cmd_id=GETVERSION_CID,
                          payload=b"")
@@ -113,7 +75,7 @@ def query_device(log_path, offset, device_type, seq, wait_s):
     for sender, _receiver, cset, cid, payload in tail_frames(log_path, wait_s,
                                                                 start_offset=offset):
         if cset == GETVERSION_CSET and cid == GETVERSION_CID and sender == device_type:
-            return decode_common_version(payload)
+            return common_version.decode(payload)
     return None
 
 
@@ -151,7 +113,7 @@ def main():
         if decoded is None:
             results.append((name, None, ref_version, ref_conf, "no reply"))
             continue
-        current = decoded["firmwareVersion"]
+        current = decoded["firmware_version"]
         if ref_version is None:
             status = "unknown (no reference version)"
         elif current == ref_version:
@@ -162,7 +124,7 @@ def main():
 
     print(f"{'device':<20} {'current fw':<14} {'latest-known':<14} {'conf':<5} status")
     for name, decoded, ref_version, ref_conf, status in results:
-        current = decoded["firmwareVersion"] if decoded else "-"
+        current = decoded["firmware_version"] if decoded else "-"
         log(f"{name}: current={current} reference={ref_version or 'none'} "
             f"({ref_conf or '-'}) status={status}")
         print(f"{name:<20} {current:<14} {ref_version or '-':<14} {ref_conf or '-':<5} {status}")

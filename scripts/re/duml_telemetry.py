@@ -11,11 +11,10 @@ silently break it again (add a test to test_duml_telemetry.py for any new field)
 """
 import os
 import re
-import struct
 import time
 
 from duml_catalog import CATALOG
-from duml_generated import osd_general
+from duml_generated import common_version, gimbal_push_params, osd_general, rc_signal_quality, restart_device
 from duml_proto import DeviceType
 
 LINE_RE = re.compile(
@@ -33,44 +32,25 @@ def parse_line(line):
     return int(sender, 16), int(receiver, 16), int(cset, 16), int(cid, 16), bytes.fromhex(payload)
 
 
-# name -> (cmdset, cmdid, decode(payload_bytes) -> dict)
-def _gimbal_push(b):
-    if len(b) < 7:
-        return None
-    pitch, roll, yaw = struct.unpack_from("<hhh", b, 0)
-    status = b[6]
-    return {
-        "pitch": pitch / 10, "roll": roll / 10, "yaw": yaw / 10,
-        "err": status & 1,
-        "mode": GIMBAL_MODE_NAMES.get(status >> 6, status >> 6),
-    }
-
-
 # DataGimbalControl.MODE - byte6>>6 of GetPushParams, also GimbalControl's mode_byte>>6.
+# Not schema-encoded (see docs/schema/duml/commands.yaml 0x04/0x05's `status` field doc):
+# one two-bit value used in exactly this one place isn't worth a dedicated field kind.
 GIMBAL_MODE_NAMES = {0: "YawNoFollow", 1: "FPV", 2: "YawFollow"}
 
 
-# OSD General ("GetPushCommon") is now schema-generated - see
-# docs/schema/duml/osd_general.yaml + docs/schema/duml/README.md (awto-dji#33 proof of
-# concept). duml_generated.osd_general.decode() replaces the hand-written
-# _osd_general_push that used to live here; regenerate with
-# `python3 -I scripts/re/gen_duml_schema.py` after editing the schema, never this file.
-
-
-def _rc_signal_push(b):
-    """hdLink/0x08 signal quality - Python port of
-    app/packages/duml/lib/src/rc_signal.dart's RcSignalQuality (V, confirmed 2026-10-24
-    against decompiled DataOsdGetPushSignalQuality.java)."""
-    if len(b) < 3:
+def _gimbal_push(b):
+    d = gimbal_push_params.decode(b)
+    if d is None:
         return None
-    def signed8(x):
-        return x - 256 if x >= 128 else x
-    byte0 = b[0]
-    return {
-        "aggregate_quality": byte0 & 0x7F, "is_uplink": bool(byte0 & 0x80),
-        "antenna1_dbm": signed8(b[1]), "antenna2_dbm": signed8(b[2]),
-    }
+    status = d.pop("status")
+    d["err"] = status & 1
+    d["mode"] = GIMBAL_MODE_NAMES.get(status >> 6, status >> 6)
+    return d
 
+
+# All pushes below are now schema-generated - see docs/schema/duml/commands.yaml +
+# docs/schema/duml/README.md (awto-dji#33). Regenerate with
+# `python3 -I scripts/re/gen_duml_schema.py` after editing the schema, never this file.
 
 # name -> (tuple of (cmdset, cmdid) pairs the decoder matches, decode_fn). A tuple of
 # pairs (not just one) because some real classes are registered under more than one
@@ -78,9 +58,11 @@ def _rc_signal_push(b):
 # matching only the first one found silently looked like "this telemetry never
 # arrives" for 2026-10-24's whole session until the second id was found.
 PUSH_DECODERS = {
-    "gimbal": (((0x04, 0x05),), _gimbal_push),  # GIMBAL/0x05 GetPushParams
+    "gimbal": (gimbal_push_params.IDS, _gimbal_push),  # GIMBAL/0x05 GetPushParams
     "osd": (osd_general.IDS, osd_general.decode),  # DataOsdGetPushCommon, both ids - schema-generated
-    "rc_signal": (((0x09, 0x08),), _rc_signal_push),  # hdLink/0x08 GetPushSignalQuality
+    "rc_signal": (rc_signal_quality.IDS, rc_signal_quality.decode),  # hdLink/0x08 GetPushSignalQuality
+    "restart_device": (restart_device.IDS, restart_device.decode),  # COMMON/RestartDevice, schema-generated
+    "version": (common_version.IDS, common_version.decode),  # COMMON/GetVersion reply
 }
 
 # (cmdset, cmdid) -> name, first CATALOG entry wins on duplicates (e.g. AngleControl/SetAngle).
