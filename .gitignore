@@ -39,3 +39,9 @@ sources/**/*.apk
 # see sources/dji-fpga-images/PROVENANCE.md manifest
 sources/dji-fpga-images/**/*.bin
 sources/dji-fpga-images/**/*.zip
+
+# Downloaded Lightbridge/drone RF IQ capture datasets - DATA NOT IN THE REPO,
+# see sources/lightbridge-iq/PROVENANCE.md manifest
+sources/lightbridge-iq/**/*.bin
+sources/lightbridge-iq/**/*.zip
+sources/lightbridge-iq/**/*.partial

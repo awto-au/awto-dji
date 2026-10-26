@@ -9,6 +9,14 @@ DJI FPGA firmware images (Lightbridge-generation `m1900`/`m2000`-`m2003` modules
 for the FPGA config-flash writer gap (issue #18). Full manifest, source URLs, SHA-256s and
 dead-end notes: `dji-fpga-images/PROVENANCE.md`.
 
+## lightbridge-iq/
+
+Public SDR IQ capture datasets of DJI (and other-vendor) drone RF links - GENESYS hovering-UAV
+Lightbridge captures, Tampere/Zenodo DJI RC+video recordings, KU Leuven drone RF dataset -
+gathered to actually feed `analyze_iq.py` (issue #71 / PR #62). ~54 GB total, three
+datasets. Full manifest, source URLs, checksums and a caveat on which captures are actually
+confirmed Lightbridge vs. other DJI link protocols: `lightbridge-iq/PROVENANCE.md`.
+
 ## apk/dji.pilot-3.1.83.apk
 
 - **What**: `dji.pilot` (DJI's classic "DJI GO" app, for older aircraft incl. Phantom 3 -
