@@ -5,147 +5,93 @@ import android.media.MediaCodec
 import android.media.MediaFormat
 import android.os.Handler
 import android.os.HandlerThread
+import android.os.Looper
+import android.util.Log
 import android.view.Surface
 import io.flutter.plugin.common.BinaryMessenger
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 import io.flutter.view.TextureRegistry
-import java.nio.ByteBuffer
-import java.util.ArrayDeque
 
-/**
- * Raw H.264 Annex-B NAL -> MediaCodec -> a Flutter Texture. No protocol logic: Dart
- * (lib/video/annexb_extractor.dart) finds the NALs in demultiplexed camera bytes and pushes them
- * here one at a time; this just re-prepends a start code and feeds the decoder.
- * Compile-checked only; untested without a real NAL stream from the aircraft.
- */
+/** H.264 Annex-B -> MediaCodec -> Flutter texture. Decoder failures never own the DUML link. */
 class VideoShim(
     private val context: Context,
     private val textures: TextureRegistry,
     messenger: BinaryMessenger,
 ) : MethodChannel.MethodCallHandler {
+    private val channel = MethodChannel(messenger, "au.awto.dji/video")
+    private val main = Handler(Looper.getMainLooper())
+    // One worker across reconnects: old teardown is queued BEFORE replacement startup.
+    private val thread = HandlerThread("video-decode").also { it.start() }
+    private val worker = Handler(thread.looper)
+    private var session: TextureSession? = null // Main thread only.
+    private var closed = false
 
-    private val startCode = byteArrayOf(0, 0, 0, 1)
-    private var entry: TextureRegistry.SurfaceTextureEntry? = null
-    private var codec: MediaCodec? = null
-    private var thread: HandlerThread? = null
-    private var handler: Handler? = null
-    private val pending = ArrayDeque<ByteArray>()
-    private val available = ArrayDeque<Int>()
-    private var configured = false
-    private var fedCount = 0L
-    private var droppedCount = 0L
-    private var submittedCount = 0L
-    private var renderedCount = 0L
-    private var surface: Surface? = null
+    private class TextureSession(
+        val entry: TextureRegistry.SurfaceTextureEntry,
+        val surface: Surface,
+        val decoder: DecoderSession,
+    )
 
-    init {
-        MethodChannel(messenger, "au.awto.dji/video").setMethodCallHandler(this)
-    }
+    init { channel.setMethodCallHandler(this) }
 
     override fun onMethodCall(call: MethodCall, result: MethodChannel.Result) {
         when (call.method) {
             "createTexture" -> createTexture(result)
-            "feedNal" -> {
+            "feedNal", "feedAccessUnit" -> {
                 val data = call.arguments as? ByteArray
-                if (data == null) {
-                    result.error("bad_arg", "feedNal needs bytes", null)
-                } else {
-                    feedNal(data)
-                    result.success(null)
-                }
-            }
-            "feedAccessUnit" -> {
-                val data = call.arguments as? ByteArray
-                if (data == null) result.error("bad_arg", "feedAccessUnit needs bytes", null)
+                if (data == null) result.error("bad_arg", "${call.method} needs bytes", null)
                 else {
-                    enqueue(data)
+                    val input = if (call.method == "feedNal") byteArrayOf(0, 0, 0, 1) + data else data
+                    session?.decoder?.offer(input)
                     result.success(null)
                 }
             }
-            "release" -> {
-                release()
-                result.success(null)
-            }
-            "stats" -> result.success(synchronized(pending) {
-                mapOf("fed" to fedCount, "dropped" to droppedCount,
-                    "submitted" to submittedCount, "rendered" to renderedCount,
-                    "pending" to pending.size, "available" to available.size)
-            })
+            "release" -> release { result.success(null) }
+            "stats" -> result.success(session?.decoder?.stats() ?: mapOf(
+                "fed" to 0L, "dropped" to 0L, "submitted" to 0L, "rendered" to 0L,
+                "pending" to 0, "available" to 0, "state" to "closed",
+            ))
             else -> result.notImplemented()
         }
     }
 
     private fun createTexture(result: MethodChannel.Result) {
+        if (closed) { result.error("video_closed", "Video shim is closed", null); return }
         release()
-        val e = textures.createSurfaceTexture()
-        entry = e
-        val thread = HandlerThread("video-decode").also { it.start() }
-        this.thread = thread
-        val handler = Handler(thread.looper)
-        this.handler = handler
-
-        val surface = Surface(e.surfaceTexture())
-        this.surface = surface
-        // 1280x720 default; MediaCodec re-negotiates actual size from the SPS once decoding
-        // starts (onOutputFormatChanged), so this is just a starting hint.
-        val format = MediaFormat.createVideoFormat("video/avc", 1280, 720)
-        val c = MediaCodec.createDecoderByType("video/avc")
-        c.setCallback(object : MediaCodec.Callback() {
-            override fun onInputBufferAvailable(codec: MediaCodec, index: Int) {
-                synchronized(pending) {
-                    if (!configured || codec !== this@VideoShim.codec) return
-                    // Keep ownership even when no NAL has arrived yet. A later
-                    // feedNal must drain this index; no second callback is promised.
-                    available.add(index)
-                    drainInput(codec)
-                }
-            }
-
-            override fun onOutputBufferAvailable(
-                codec: MediaCodec,
-                index: Int,
-                info: MediaCodec.BufferInfo,
-            ) {
-                synchronized(pending) {
-                    if (!configured || codec !== this@VideoShim.codec) return
-                    val render = info.size > 0
-                    codec.releaseOutputBuffer(index, render)
-                    if (render) {
-                        renderedCount++
-                        if (renderedCount == 1L) android.util.Log.i("VideoShim", "first decoded frame rendered")
+        var entry: TextureRegistry.SurfaceTextureEntry? = null
+        var surface: Surface? = null
+        try {
+            val e = textures.createSurfaceTexture()
+            entry = e
+            val output = Surface(e.surfaceTexture())
+            surface = output
+            val decoder = DecoderSession(
+                schedule = { delay, task -> worker.postDelayed({ task() }, delay) },
+                factory = { AndroidVideoCodec(output, worker) },
+                bootstrap = loadBootstrap(),
+                log = { message, error -> Log.w("VideoShim", message, error) },
+            )
+            val s = TextureSession(e, output, decoder)
+            session = s
+            decoder.start { ok ->
+                main.post {
+                    if (session !== s || closed) {
+                        result.error("video_cancelled", "Decoder initialization cancelled", null)
+                    } else if (ok) {
+                        result.success(e.id())
+                    } else {
+                        release()
+                        result.error("video_init", "Unable to start video decoder; see logcat", null)
                     }
                 }
             }
-
-            override fun onError(codec: MediaCodec, e: MediaCodec.CodecException) {
-                // Surfaced to Dart only via logcat for now - no error channel wired up yet.
-                android.util.Log.e("VideoShim", "codec error: ${e.diagnosticInfo}")
-            }
-
-            override fun onOutputFormatChanged(codec: MediaCodec, format: MediaFormat) {
-                android.util.Log.i("VideoShim", "output format: $format")
-            }
-        }, handler)
-        c.configure(format, surface, null, 0)
-        synchronized(pending) {
-            codec = c
-            configured = true
-            fedCount = 0
-            droppedCount = 0
-            submittedCount = 0
-            renderedCount = 0
-            // GO uses a bundled decoder-start picture for P3 Professional's
-            // 1280x720 stream. Read it from the owner's installed GO package;
-            // no vendor binary is bundled or redistributed by this app.
-            loadBootstrap()?.let { pending.add(it) }
+        } catch (error: Exception) {
+            // Surface/texture allocation can fail before the worker owns any decoder.
+            surface?.let { safely("surface release") { it.release() } }
+            entry?.let { safely("texture release") { it.release() } }
+            result.error("video_init", error.message, null)
         }
-        c.start()
-        result.success(e.id())
-    }
-
-    private fun feedNal(nal: ByteArray) {
-        enqueue(startCode + nal)
     }
 
     private fun loadBootstrap(): ByteArray? {
@@ -166,71 +112,61 @@ class VideoShim(
         }
     }
 
-    private fun enqueue(withStartCode: ByteArray) {
-        synchronized(pending) {
-            if (!configured) return
-            fedCount++
-            pending.add(withStartCode)
-            // Bound memory if Dart feeds faster than the decoder drains (shouldn't happen in
-            // steady state, but a stalled decoder must not grow this unboundedly).
-            while (pending.size > 300) {
-                pending.poll()
-                droppedCount++
-            }
-        }
-        // Both codec callbacks and drain run on the decoder handler. In
-        // particular, wake the decoder when buffers arrived before the NAL.
-        handler?.post {
-            synchronized(pending) {
-                val c = codec
-                if (configured && c != null) drainInput(c)
+    private fun release(complete: () -> Unit = {}) {
+        val old = session
+        session = null // No new feed can reach a retired session.
+        if (old == null) { complete(); return }
+        old.decoder.close {
+            // Codec release finishes before its output surface or texture is destroyed.
+            safely("surface release") { old.surface.release() }
+            main.post {
+                safely("texture release") { old.entry.release() }
+                complete()
             }
         }
     }
 
-    // Caller holds pending's monitor, serializing queue access with release().
-    private fun drainInput(codec: MediaCodec) {
-        while (pending.isNotEmpty() && available.isNotEmpty()) {
-            val index = available.removeFirst()
-            val nal = pending.removeFirst()
-            val buf: ByteBuffer = codec.getInputBuffer(index)
-                ?: throw IllegalStateException("Missing MediaCodec input buffer")
-            buf.clear()
-            if (nal.size > buf.remaining()) {
-                droppedCount++
-                codec.queueInputBuffer(index, 0, 0, 0, 0)
-                android.util.Log.w("VideoShim", "NAL exceeds input capacity: ${nal.size}")
-                continue
+    fun close() {
+        if (closed) return
+        closed = true
+        channel.setMethodCallHandler(null)
+        release()
+        // Already queued teardown runs; delayed recovery tasks are discarded by quitSafely.
+        worker.post { thread.quitSafely() }
+    }
+
+    private fun safely(operation: String, action: () -> Unit) {
+        try { action() } catch (error: Exception) { Log.w("VideoShim", "$operation failed", error) }
+    }
+}
+
+/** All methods and callbacks run on VideoShim's worker. Ownership checks live in DecoderSession. */
+internal class AndroidVideoCodec(private val surface: Surface, private val handler: Handler) : VideoCodec {
+    private val codec = MediaCodec.createDecoderByType("video/avc")
+
+    override fun start(events: VideoCodec.Events) {
+        codec.setCallback(object : MediaCodec.Callback() {
+            override fun onInputBufferAvailable(codec: MediaCodec, index: Int) = events.input(index)
+            override fun onOutputBufferAvailable(codec: MediaCodec, index: Int, info: MediaCodec.BufferInfo) =
+                events.output(index, info.size)
+            override fun onError(codec: MediaCodec, e: MediaCodec.CodecException) = events.error(
+                IllegalStateException(
+                    "${e.diagnosticInfo}; recoverable=${e.isRecoverable}; transient=${e.isTransient}", e,
+                ),
+            )
+            override fun onOutputFormatChanged(codec: MediaCodec, format: MediaFormat) {
+                Log.i("VideoShim", "output format: $format")
             }
-            buf.put(nal)
-            codec.queueInputBuffer(index, 0, nal.size, System.nanoTime() / 1000, 0)
-            submittedCount++
-        }
+        }, handler)
+        // Actual dimensions are negotiated from SPS, as before.
+        codec.configure(MediaFormat.createVideoFormat("video/avc", 1280, 720), surface, null, 0)
+        codec.start()
     }
 
-    private fun release() {
-        val oldCodec = synchronized(pending) {
-            configured = false
-            val old = codec
-            codec = null
-            pending.clear()
-            available.clear()
-            old
-        }
-        try {
-            oldCodec?.stop()
-        } catch (_: IllegalStateException) {
-            // Already stopped/never started.
-        }
-        oldCodec?.release()
-        thread?.quitSafely()
-        thread = null
-        handler = null
-        surface?.release()
-        surface = null
-        entry?.release()
-        entry = null
-    }
-
-    fun close() = release()
+    override fun inputBuffer(index: Int) = codec.getInputBuffer(index)
+    override fun queueInput(index: Int, size: Int, presentationTimeUs: Long) =
+        codec.queueInputBuffer(index, 0, size, presentationTimeUs, 0)
+    override fun releaseOutput(index: Int, render: Boolean) = codec.releaseOutputBuffer(index, render)
+    override fun stop() = codec.stop()
+    override fun release() = codec.release()
 }
