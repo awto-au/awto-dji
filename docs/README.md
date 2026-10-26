@@ -36,6 +36,7 @@ the current state and next steps, and `../CLAUDE.md` for agent onboarding.
 - `alternative-approaches.md` — cheapest routes to the ID + whitening.
 - `known-plaintext-plan.md` — all-0s / repetitive-telemetry known-plaintext for the scrambler.
 - `rf-sdr-and-repair.md` — SDR tooling and RF notes.
+- `lightbridge-phy-measured.md` — OFDM numerology, carrier map, pilots and frame timing measured from public DJI IQ captures (M100 = closest P3 proxy).
 - `safety-geofence.md` — public-airspace geofence gate (safety, not defeat).
 
 ## Active task

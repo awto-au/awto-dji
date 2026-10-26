@@ -33,6 +33,8 @@ Tags: **verified** = read from firmware/registers or checked against no-OS sourc
 | Gains: AGC code 1 (fast attack, inferred) both RX, max table idx 76, gain table 91 idx loaded | regs verified; TX attenuation not in script (unknown) |
 | Real DUML session driving this | unknown (functions called directly with forced state) |
 
+Over-the-air cross-check (Matrice 100 IQ, not P3): 1024 x 10937.5 Hz = 11.2 MS/s, CP 1/8, 864 used carriers, uplink on a 2 MHz grid — see `lightbridge-phy-measured.md`.
+
 ## Board variants: table B is Artosyn, not AD9363
 
 - Codes 2/4/5 = AD9363 boards (script A at `0x08016660`, table A, channel table A). Codes 6/7 = Artosyn AR8003 (script B `0x08018f9c`, table B `0x08016460`, channel table B `0x0801923f`): different chip, so the AD9363 decode here does not apply to them. Source: dji-firmware-tools variant names `ad*` / `ar*` (outside source, matches the code structure).
