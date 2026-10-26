@@ -6,7 +6,7 @@ Per-image status only. Family support, key mechanism and the detection evidence:
 |---|---|---|---|
 | `m1900` air (P3, Inspire 1, same bytes) | Cyclone V e50f | Yes, strong circumstantial | No: CRAM is opaque |
 | `m2000`, `m2002` ground | Cyclone V | Yes, strong circumstantial | No |
-| `m2001` ground (LB2) | Cyclone IV GX, best match EP4CGX150 | **No**: Cyclone IV cannot encrypt; header CRC ok, decompresses to 6,154 CRAM frames | Yes once pluribus decodes Cyclone IV GX fabric (pluribus #117) |
+| `m2001` ground (LB2) | Cyclone IV GX, **EP4CGX150** (header bits match our own EP4CGX150 build, not EP4CGX110; pluribus #117, 2026-10-26) | **No**: Cyclone IV cannot encrypt; header CRC ok, decompresses to 6,154 CRAM frames | Yes once pluribus decodes Cyclone IV GX fabric (pluribus #117) |
 | P3S `m1900` | not re-classified | - | - |
 
 - The Cyclone V verdict rests on the evidence in the pluribus doc; that doc's "4 third-party flash images" are these images.
