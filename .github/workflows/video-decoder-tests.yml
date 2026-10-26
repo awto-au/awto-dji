@@ -1,0 +1,20 @@
+name: Video decoder lifecycle
+on:
+  pull_request:
+    paths:
+      - 'app/awto_dji_app/android/**'
+      - 'scripts/test_video_decoder.py'
+      - '.github/workflows/video-decoder-tests.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  lifecycle:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - run: python3 scripts/test_video_decoder.py
