@@ -341,6 +341,9 @@ COMMANDS.update({
     "aoa-send":       _tool("scripts/re/aoa_send.py", "send one raw DUML frame via the AOA relay"),
     "get-identity":   _tool("scripts/re/get_identity.py", "query aircraft identity fields"),
     "usb-inventory":  _tool("scripts/re/usb_inventory.py", "snapshot DJI and USB-UART devices from sysfs"),
+    "phone":          _tool("scripts/re/phone_bench.py", "phone/RC bench ops: connect/stop/usb-state/send/trace"),
+    "keepalive":      _tool("scripts/re/keepalive.py", "PC-side periodic Get* sends to stop the RC idle-timing-out"),
+    "dji-pilot":      _tool("scripts/re/dji_pilot_bench.py", "drive DJI Pilot (reference app): select-aircraft/connect/screenshot"),
 })
 
 

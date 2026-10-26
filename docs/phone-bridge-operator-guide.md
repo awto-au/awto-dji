@@ -39,7 +39,58 @@ The phone has no fixed address - wireless-debugging picks a new port on every re
    (house DHCP), so re-ask rather than retrying the last known address blindly.
 
 At the time of writing the phone is a Samsung S9 (LineageOS), package
-`au.awto.dji.awto_dji_app`, with DJI GO 4 (`dji.go.v4`) also installed as a reference.
+`au.awto.dji.awto_dji_app`, with DJI Pilot (`dji.pilot`) also installed as a reference - the
+app that actually connects to the Phantom 3X.
+
+### Driving DJI Pilot as a reference app
+
+No intent exists to pick the aircraft model directly (internal app state, no exported
+extras for it) - this is the fastest known manual recipe, via `adb shell input tap`/
+`uiautomator dump`, not a shortcut:
+
+```
+adb -s <id> shell am force-stop dji.pilot
+adb -s <id> shell am start -n dji.pilot/.main.activity.DJILauncherActivity
+adb -s <id> shell input tap 719 382          # opens the aircraft-type dropdown
+```
+
+The dropdown opens scrolled to whatever family was last selected (often Inspire, not
+Phantom) - it does NOT remember the last selection across a force-stop+relaunch, so
+expect to redo this every time. Scroll the list to reach the Phantom 3 entries, then
+find and tap the exact row (coordinates shift with scroll position, don't hardcode
+them):
+
+```
+adb -s <id> shell input swipe 720 500 720 200 300     # scroll the open dropdown list
+adb -s <id> shell uiautomator dump /sdcard/ui.xml
+adb -s <id> shell cat /sdcard/ui.xml | tr '>' '>\n' | grep -B1 'text="PROFESSIONAL"' | grep -oE 'bounds="\[[0-9]+,[0-9]+\]\[[0-9]+,[0-9]+\]"'
+# tap the center of the row's bounds (parent item_content_ly, not just the PROFESSIONAL text node)
+```
+
+**Known unreliable:** that `input swipe` on the dropdown list does not consistently
+scroll it - it worked once (2026-10-26, operator did it manually on-device), and
+repeated attempts at the same coordinates/parameters via `adb shell input swipe`
+afterward did nothing (dump kept showing the same 3 Inspire rows). Not yet root-caused
+(possibly needs a real multi-touch fling gesture with specific velocity that `input
+swipe`'s single linear interpolation doesn't produce, or the list may not be a plain
+scrollable `ListView` despite `uiautomator`'s class name for it). If automating this,
+don't assume one `input swipe` call is sufficient - verify via a fresh `uiautomator
+dump` that the visible rows actually changed before proceeding, and be ready to fall
+back to asking the operator to swipe manually on-device.
+
+Then tap the big "Camera" button (`dji.pilot:id/v2_phantom_start_connect_btn`) to actually
+start the connect attempt - it looks like a camera-roll shortcut but it's the real connect
+trigger on this screen.
+
+Reference screenshots (Samsung S9, **1440x2960** - scale all coordinates above by
+`target_width/1440`, `target_height/2960` on a different phone):
+`docs/img/dji-pilot/aircraft-dropdown-phantom3-1440x2960.png` (dropdown open, Phantom 3 Professional
+visible), `docs/img/dji-pilot/phantom3-professional-selected-1440x2960.png` (selected, dropdown
+closed, "Camera"/connect button visible at the bottom).
+
+`dji.pilot/.main.activity.DJIAoaActivity` is the activity registered for
+`android.hardware.usb.action.USB_ACCESSORY_ATTACHED` - that's what actually opens the
+accessory once a model is selected; the launcher activity above is just the picker UI.
 
 ## Building and installing
 
