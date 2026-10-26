@@ -110,7 +110,17 @@ class VideoShim(
                 synchronized(pending) {
                     if (!configured || codec !== this@VideoShim.codec) return
                     val render = info.size > 0
-                    codec.releaseOutputBuffer(index, render)
+                    try {
+                        codec.releaseOutputBuffer(index, render)
+                    } catch (e: IllegalStateException) {
+                        // awto-dji#67: our configured/codec check above passed, but the
+                        // system can still transition the codec's real state outside any
+                        // lock we hold - self-heal rather than keep retrying a broken codec.
+                        android.util.Log.e("VideoShim", "releaseOutputBuffer on a codec our " +
+                            "own bookkeeping thought was healthy: ${e.message}")
+                        configured = false
+                        return
+                    }
                     if (render) {
                         renderedCount++
                         if (renderedCount == 1L) android.util.Log.i("VideoShim", "first decoded frame rendered")
@@ -121,6 +131,20 @@ class VideoShim(
             override fun onError(codec: MediaCodec, e: MediaCodec.CodecException) {
                 // Surfaced to Dart only via logcat for now - no error channel wired up yet.
                 android.util.Log.e("VideoShim", "codec error: ${e.diagnosticInfo}")
+                // awto-dji#67: an onError codec is no longer safely usable - carrying on
+                // with configured=true/codec=<this errored instance> is what let later
+                // enqueue()/drainInput() calls keep operating on it until it threw
+                // "Invalid to call at Released state" and killed the whole process. Mark
+                // it unusable now, the same way release() already does for our own
+                // intentional teardown, so those call sites' existing `configured`/
+                // `codec` checks correctly start skipping instead of retrying forever.
+                synchronized(pending) {
+                    if (codec === this@VideoShim.codec) {
+                        configured = false
+                        pending.clear()
+                        available.clear()
+                    }
+                }
             }
 
             override fun onOutputFormatChanged(codec: MediaCodec, format: MediaFormat) {
@@ -193,18 +217,33 @@ class VideoShim(
         while (pending.isNotEmpty() && available.isNotEmpty()) {
             val index = available.removeFirst()
             val nal = pending.removeFirst()
-            val buf: ByteBuffer = codec.getInputBuffer(index)
-                ?: throw IllegalStateException("Missing MediaCodec input buffer")
-            buf.clear()
-            if (nal.size > buf.remaining()) {
-                droppedCount++
-                codec.queueInputBuffer(index, 0, 0, 0, 0)
-                android.util.Log.w("VideoShim", "NAL exceeds input capacity: ${nal.size}")
-                continue
+            val buf: ByteBuffer
+            try {
+                buf = codec.getInputBuffer(index)
+                    ?: throw IllegalStateException("Missing MediaCodec input buffer")
+                buf.clear()
+                if (nal.size > buf.remaining()) {
+                    droppedCount++
+                    codec.queueInputBuffer(index, 0, 0, 0, 0)
+                    android.util.Log.w("VideoShim", "NAL exceeds input capacity: ${nal.size}")
+                    continue
+                }
+                buf.put(nal)
+                codec.queueInputBuffer(index, 0, nal.size, System.nanoTime() / 1000, 0)
+                submittedCount++
+            } catch (e: IllegalStateException) {
+                // awto-dji#67: same self-heal as onOutputBufferAvailable - our
+                // configured/codec check in the caller passed, but the codec's real
+                // state can still change outside any lock we hold (this is also a
+                // backstop for onError, in case some error path doesn't fire it first).
+                android.util.Log.e("VideoShim", "drainInput on a codec our own " +
+                    "bookkeeping thought was healthy: ${e.message}")
+                configured = false
+                droppedCount += pending.size + 1
+                pending.clear()
+                available.clear()
+                return
             }
-            buf.put(nal)
-            codec.queueInputBuffer(index, 0, nal.size, System.nanoTime() / 1000, 0)
-            submittedCount++
         }
     }
 

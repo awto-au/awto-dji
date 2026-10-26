@@ -11,6 +11,7 @@ import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.os.ParcelFileDescriptor
+import android.util.Log
 import io.flutter.plugin.common.BinaryMessenger
 import io.flutter.plugin.common.EventChannel
 import io.flutter.plugin.common.MethodCall
@@ -138,9 +139,27 @@ class AoaShim(private val ctx: Context, messenger: BinaryMessenger) :
 
     private fun closeAccessory() {
         generation++
+        val oldReader = reader
+        // input.close() first: closing the FileInputStream (not just the
+        // ParcelFileDescriptor wrapper) is what reliably interrupts a thread
+        // already blocked inside its read() call on this driver.
+        try { input?.close() } catch (_: java.io.IOException) {}
         try { pfd?.close() } catch (_: java.io.IOException) {}
         pfd = null; input = null; output = null
         reader = null
+        // A thread actually unblocked by the closes above returns in low
+        // single-digit ms; 200ms is a ~20x margin. Past that it's not going to
+        // return - it's a zombie still blocked reading the same accessory
+        // device, silently competing with whatever reader opens next for the
+        // RC's real data (see awto-dji#65). Logged so that's visible instead
+        // of invisible, since there is no safe way to force-kill it.
+        oldReader?.let {
+            it.join(200)
+            if (it.isAlive) {
+                Log.w("AoaShim", "reader thread outlived close() by >200ms - " +
+                    "likely a zombie still blocked in read(), may steal future accessory data")
+            }
+        }
     }
 
     fun close() {
