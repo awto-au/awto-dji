@@ -8,7 +8,7 @@ Stages:
 - T, CP:     symbol period from the cyclic spectrum of the lag-Tu product; CP = T - Tu.
 - carriers:  CP-stripped FFTs at the folded symbol timing -> occupied/null/pilot-like bins.
 
-Usage: python3 -I scripts/re/lightbridge_ofdm_params.py FILE --fs 120e6 [--dtype int16|f16]
+Usage: python3 -I scripts/re/lightbridge_ofdm_params.py FILE --fs 120e6 [--dtype int16|f16|f64]
 """
 import argparse
 import json
@@ -44,9 +44,12 @@ class Log:
         self.f.flush()
 
 
+DTYPES = {"int16": ("<i2", 2), "f16": ("<f2", 2), "f64": ("<f8", 8)}  # (numpy dtype, bytes/component)
+
+
 def load(path, nsamp, dtype, offset):
-    np_dt = "<i2" if dtype == "int16" else "<f2"
-    raw = np.fromfile(path, dtype=np_dt, count=2 * nsamp, offset=offset * 4)  # 2 x 2-byte per sample
+    np_dt, comp_bytes = DTYPES[dtype]
+    raw = np.fromfile(path, dtype=np_dt, count=2 * nsamp, offset=offset * 2 * comp_bytes)
     raw = raw[: (raw.size // 2) * 2].astype(np.float32).reshape(-1, 2)
     x = (raw[:, 0] + 1j * raw[:, 1]).astype(np.complex64)
     return x - x.mean()
@@ -379,7 +382,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("file")
     ap.add_argument("--fs", type=float, required=True, help="native sample rate, Hz")
-    ap.add_argument("--dtype", choices=["int16", "f16"], default="int16")
+    ap.add_argument("--dtype", choices=list(DTYPES), default="int16")
     ap.add_argument("--nsamp", type=int, default=1 << 25, help="complex samples to read")
     ap.add_argument("--offset", type=int, default=0, help="complex samples to skip")
     ap.add_argument("--max-bursts", type=int, default=12, help="bursts to run OFDM stages on")
