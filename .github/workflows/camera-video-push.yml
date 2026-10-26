@@ -33,5 +33,10 @@ jobs:
       - run: python3 -m unittest discover -s scripts/re -p test_camera_push_audit.py
       - run: dart pub get && dart analyze && dart test
         working-directory: app/packages/duml
-      - run: flutter pub get && flutter test
+      - run: >-
+          flutter pub get &&
+          flutter analyze --no-fatal-infos
+          lib/link/link_session.dart lib/ui/camera_video_info.dart lib/ui/video_screen.dart
+          test/camera_video_info_test.dart &&
+          flutter test
         working-directory: app/awto_dji_app
