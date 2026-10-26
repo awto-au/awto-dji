@@ -1,7 +1,9 @@
 """Phone relay v1 framing and independent DUML decoding (no device I/O).
 
 Header: AWTO, version u8=1, kind u8, channel u16 LE, length u32 LE.
-Kinds: 1=original AOA envelope, 2=discarded USB bytes.
+Kinds: 1=original AOA envelope (post-AoaMux), 2=discarded USB bytes (AoaMux's own
+discard decision). True pre-AoaMux raw bytes are a separate UDP stream, not a kind
+here - see aoa_relay_server.py's UDP listener and app/awto_dji_app/lib/debug/udp_raw_relay.dart.
 """
 import struct
 

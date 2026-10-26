@@ -6,24 +6,35 @@ hex-encoded DUML frames (one per line) from a command FIFO and forwards them to 
 which writes them straight to the accessory - a PC-side command proxy with no app UI
 involved. Send with scripts/re/aoa_send.py, not by typing into the FIFO directly.
 
+Also runs a UDP listener on port+1 for the raw ground-truth stream (see
+app/awto_dji_app/lib/debug/udp_raw_relay.dart): one datagram per accessory byte
+chunk, verbatim, before AoaMux touches it. Decoded
+independently of the TCP side's AoaMux-sourced output, so the two can be diffed instead
+of trusting AoaMux's own framing - that's the whole point, since DUML's self-described
+length/CRC can't be used to validate DUML's own framing.
+
 Usage: python3 -I scripts/re/aoa_relay_server.py [--port 9900]
 Point the app's "Diag relay host:port" field at this machine's LAN IP:port.
-Log: captures/sessions/<today>/aoa_relay_server.log (raw hex) and
-     captures/sessions/<today>/aoa_relay_frames.log (decoded) - tracked, real-hardware data.
+Log: captures/sessions/<today>/aoa_relay_server.log (raw hex, all kinds) and
+     captures/sessions/<today>/aoa_relay_frames.log (decoded from AoaMux's own output).
+Ground truth: captures/sessions/<today>/aoa_relay_frames_raw.log - the same decode run
+     independently over the raw UDP stream, so AoaMux's own demuxing can be diffed
+     against it instead of trusted blindly.
 Command FIFO: tmp/aoa_send.fifo (created on startup; one hex-encoded frame per line)
 """
 import argparse
 import os
 import socket
+import struct
 import sys
 import threading
 import time
+import zlib
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from duml_proto import repo_root, session_log_dir  # noqa: E402
 from aoa_mux import AoaMux, CAMERA_VIDEO, COMMAND  # noqa: E402
-from relay_records import (RecordParser, command_verdict,
-                           ENVELOPE, DISCARDED)  # noqa: E402
+from relay_records import RecordParser, command_verdict, ENVELOPE, DISCARDED  # noqa: E402
 
 
 def crc8(seed, data):
@@ -116,6 +127,7 @@ def main():
     log_dir = session_log_dir()
     rawf = open(os.path.join(log_dir, "aoa_relay_server.log"), "a", buffering=1)
     framef = open(os.path.join(log_dir, "aoa_relay_frames.log"), "a", buffering=1)
+    framef_raw = open(os.path.join(log_dir, "aoa_relay_frames_raw.log"), "a", buffering=1)
 
     def log(line):
         print(line, flush=True)
@@ -126,6 +138,12 @@ def main():
         full = f"{ts} {line}"
         print("FRAME " + full, flush=True)
         framef.write(full + "\n")
+
+    def logframe_raw(line):
+        ts = time.strftime("%Y-%m-%dT%H:%M:%S")
+        full = f"{ts} {line}"
+        print("RAWFRAME " + full, flush=True)
+        framef_raw.write(full + "\n")
 
     fifo_path = os.path.join(repo_root(), "tmp", "aoa_send.fifo")
     if os.path.exists(fifo_path):
@@ -163,6 +181,39 @@ def main():
                         log(f"=== command send failed: {e} ===")
 
     threading.Thread(target=fifo_reader, daemon=True).start()
+
+    # Ground-truth raw stream: UDP on port+1, one datagram per accessory byte chunk,
+    # verbatim, before AoaMux sees it. Long-lived (not per-TCP-connection) since it's
+    # independent of the TCP relay entirely - see udp_raw_relay.dart.
+    raw_framer = StreamDemuxer()
+    raw_seq_state = {"last": None}
+
+    def udp_listener():
+        udp = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        udp.bind(("0.0.0.0", args.port + 1))
+        log(f"=== raw ground-truth UDP listener on 0.0.0.0:{args.port + 1} ===")
+        while True:
+            datagram, addr = udp.recvfrom(1024 * 1024 + 8)
+            if len(datagram) < 8:
+                log(f"=== raw UDP: {len(datagram)}B datagram from {addr}, too short for header ===")
+                continue
+            seq, stated_crc = struct.unpack_from("<II", datagram, 0)
+            payload = datagram[8:]
+            actual_crc = zlib.crc32(payload)
+            if actual_crc != stated_crc:
+                log(f"=== raw UDP: CRC mismatch seq={seq} stated={stated_crc:#010x} "
+                    f"actual={actual_crc:#010x} - datagram corrupted in transit ===")
+                continue
+            last = raw_seq_state["last"]
+            if last is not None and seq != (last + 1) & 0xffffffff:
+                log(f"=== raw UDP: sequence gap, expected {(last + 1) & 0xffffffff} got {seq} "
+                    f"- dropped/reordered datagram(s) ===")
+            raw_seq_state["last"] = seq
+            ts = time.strftime("%Y-%m-%dT%H:%M:%S")
+            log(f"{ts} RAWUDP seq={seq} +{len(payload)}B {payload.hex()}")
+            raw_framer.feed(payload, logframe_raw)
+
+    threading.Thread(target=udp_listener, daemon=True).start()
 
     srv = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     srv.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)

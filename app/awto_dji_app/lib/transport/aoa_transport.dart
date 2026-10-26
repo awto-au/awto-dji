@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 
 import '../debug/tcp_relay.dart';
 import '../debug/relay_record.dart';
+import '../debug/udp_raw_relay.dart';
 import '../link/duml_protection.dart';
 import '../video/annexb_extractor.dart';
 import '../video/video_decoder.dart';
@@ -54,6 +55,7 @@ class AoaTransport extends BaseTransport {
   final EventChannel _events;
   StreamSubscription<dynamic>? _sub;
   TcpRelay? _relay;
+  UdpRawRelay? _udpRaw;
   final _nals = AnnexBExtractor();
   final DumlProtection _protection;
   final _mux = AoaMux();
@@ -105,11 +107,18 @@ class AoaTransport extends BaseTransport {
         },
       );
       relayConnecting = _relay!.connect();
+      // Raw ground-truth stream lives on its own UDP port (TCP relay port + 1,
+      // see scripts/re/aoa_relay_server.py's UDP listener) - independent of
+      // the TCP relay above, never gated on it.
+      _udpRaw = UdpRawRelay(relayHost!, relayPort! + 1);
+      unawaited(_udpRaw!.connect());
     }
     try {
       _sub = _events.receiveBroadcastStream().listen(
         (dynamic b) {
           final chunk = b as Uint8List;
+          // Ground truth for the PC side, independent of AoaMux - see UdpRawRelay.
+          _udpRaw?.send(chunk);
           _mux.add(chunk);
         },
         onError: (Object e) {
@@ -142,6 +151,8 @@ class AoaTransport extends BaseTransport {
       await relayConnecting;
       await _relay?.close();
       _relay = null;
+      _udpRaw?.close();
+      _udpRaw = null;
       await videoDecoder?.stop();
       setState(LinkState.failed, error: '${e.code}: ${e.message}');
     } on MissingPluginException {
@@ -150,6 +161,8 @@ class AoaTransport extends BaseTransport {
       await relayConnecting;
       await _relay?.close();
       _relay = null;
+      _udpRaw?.close();
+      _udpRaw = null;
       await videoDecoder?.stop();
       setState(LinkState.failed, error: 'not available on this platform');
     }
@@ -164,6 +177,8 @@ class AoaTransport extends BaseTransport {
     _nals.reset();
     await _relay?.close();
     _relay = null;
+    _udpRaw?.close();
+    _udpRaw = null;
     await videoDecoder?.stop();
     try {
       await _method.invokeMethod<void>('disconnect');
