@@ -52,7 +52,7 @@ class VideoScreen extends StatelessWidget {
             right: 16,
             bottom: 16,
             child: FloatingActionButton.extended(
-              onPressed: () => (transport as AoaTransport).requestIFrame(),
+              onPressed: () => transport.requestIFrame(),
               icon: const Icon(Icons.refresh),
               label: const Text('Request keyframe'),
             ),
