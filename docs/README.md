@@ -28,6 +28,13 @@ the current state and next steps, and `../CLAUDE.md` for agent onboarding.
 ## Firmware & hardware
 - `firmware-overview.md`, `binary-analysis.md`, `kernel-analysis.md`, `code-provenance.md`,
   `license-compliance.md`.
+- [standalone-lightbridge-ig800.md](standalone-lightbridge-ig800.md) — the retail
+  standalone DJI Lightbridge (hardware family `IG800`, not the Phantom-3-integrated
+  module): product history/specs from DJI's own hosted docs, full release version table,
+  and firmware provenance - DJI itself never published firmware for it (confirmed from the
+  Download Center's own JSON data); decrypted ground-decoder UBL/U-Boot/kernel and an
+  encrypted final-version update package recovered from a 2016 forum thread instead;
+  binaries in `../sources/lightbridge-ig800-firmware/`.
 - `fpga-images.md`, `fpga-interfaces.md`, `fpga-emulation-plan.md`, `bitstream-to-verilog.md`,
   `m2001-decomp-findings.md` — FPGA bitstream RE. The earlier m2001 Mistral decode is void (#114); `fpga-images.md` has the family verdicts, `m1900`/`m2000`/`m2002` appear encrypted.
 

@@ -39,3 +39,7 @@ sources/**/*.apk
 # see sources/dji-fpga-images/PROVENANCE.md manifest
 sources/dji-fpga-images/**/*.bin
 sources/dji-fpga-images/**/*.zip
+
+# Standalone Lightbridge (IG800) firmware archives - DATA NOT IN THE REPO,
+# see sources/lightbridge-ig800-firmware/PROVENANCE.md manifest
+sources/lightbridge-ig800-firmware/**/*.zip
