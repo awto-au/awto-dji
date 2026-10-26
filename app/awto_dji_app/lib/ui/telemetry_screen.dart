@@ -31,15 +31,13 @@ class TelemetryScreen extends StatelessWidget {
                 ('Alt', osd == null ? '-' : '${osd.relativeHeight.toStringAsFixed(1)} m'),
                 ('GS', gs == null ? '-' : '${gs.toStringAsFixed(1)} m/s'),
                 ('VS', osd == null ? '-' : '${osd.vgz.toStringAsFixed(1)} m/s'),
+                ('Pitch', osd == null ? '-' : '${osd.pitch.toStringAsFixed(1)} deg'),
+                ('Roll', osd == null ? '-' : '${osd.roll.toStringAsFixed(1)} deg'),
+                ('Yaw', osd == null ? '-' : '${osd.yaw.toStringAsFixed(1)} deg'),
               ],
               key: const Key('safety-card'),
               trailing: _gateBadge(context, safety),
             ),
-            _card('Attitude', [
-              _row('Pitch', osd == null ? '-' : '${osd.pitch.toStringAsFixed(1)} deg'),
-              _row('Roll', osd == null ? '-' : '${osd.roll.toStringAsFixed(1)} deg'),
-              _row('Yaw', osd == null ? '-' : '${osd.yaw.toStringAsFixed(1)} deg'),
-            ]),
             _card('RC signal', [
               _row('Quality', session.latestSignal == null
                   ? '-' : '${session.latestSignal!.aggregateQuality}/127 '
@@ -162,15 +160,15 @@ class _LinkCard extends StatelessWidget {
       session.byteRates(const Duration(seconds: 5), now),
       session.byteRates(const Duration(minutes: 1), now),
     ];
-    String kbps(double Function(ByteRates) pick) =>
-        rates.map((r) => pick(r).toStringAsFixed(1)).join(' / ');
+    String mbps(double Function(ByteRates) pick) =>
+        rates.map((r) => pick(r).toStringAsFixed(2)).join(' / ');
     return _card('Link health', [
-      _row('Transport', '${session.transport.name} (${session.linkState.name})'),
-      _row('Health', session.health.name),
+      _row('Transport / Health',
+          '${session.transport.name} (${session.linkState.name}) / ${session.health.name}'),
       _row('Received', _size(session.bytesReceived)),
-      _row('DUML KB/s 1s/5s/1m', kbps((r) => r.duml)),
-      _row('Video KB/s 1s/5s/1m', kbps((r) => r.video)),
-      _row('Other KB/s 1s/5s/1m', kbps((r) => r.other)),
+      _row('DUML Mbps 1s/5s/1m', mbps((r) => r.duml)),
+      _row('Video Mbps 1s/5s/1m', mbps((r) => r.video)),
+      _row('Other Mbps 1s/5s/1m', mbps((r) => r.other)),
       _row('Packets', '${session.packetCount}  (${session.packetsPerSecond(now).toStringAsFixed(0)}/s)'),
       _row('CRC errors', '${session.crcErrorCount}'),
       _row('Interval 1s/5s/1m (ms)', rolling((w) => w.meanMs)),

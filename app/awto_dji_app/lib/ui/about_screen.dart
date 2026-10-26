@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../link/link_session.dart';
 import '../transport/aoa_identity.dart';
+import '../transport/aoa_transport.dart';
 
 class AboutScreen extends StatelessWidget {
   const AboutScreen({super.key, required this.session});
@@ -30,6 +31,7 @@ class AboutScreen extends StatelessWidget {
             subtitle: Text(
                 '${session.bytesReceived} / ${session.packetCount} / ${session.crcErrorCount}'),
           ),
+          ..._channelTiles(session.transport),
           ListTile(
             title: const Text('AOA identity (manufacturer / model)'),
             subtitle: Text('${AoaIdentity.manufacturer} / ${AoaIdentity.model} '
@@ -44,4 +46,46 @@ class AboutScreen extends StatelessWidget {
       ),
     );
   }
+}
+
+/// What's actually flowing over which wire right now - not just the transport name.
+List<Widget> _channelTiles(Object transport) {
+  if (transport is! AoaTransport) {
+    return [
+      ListTile(
+        title: const Text('Channels'),
+        subtitle: Text('${transport.runtimeType}: no PC-side debug channels (accessory-only transports don\'t have them)'),
+      ),
+    ];
+  }
+  final tiles = [
+    const ListTile(
+      dense: true,
+      title: Text('Accessory (AOA, USB)'),
+      subtitle: Text('Bidirectional: DUML command bytes + camera video'),
+    ),
+  ];
+  final host = transport.relayHost;
+  final port = transport.relayPort;
+  if (host == null || port == null) {
+    tiles.add(const ListTile(
+      dense: true,
+      title: Text('PC debug relay'),
+      subtitle: Text('Not configured (no relay host/port set)'),
+    ));
+  } else {
+    tiles.add(ListTile(
+      dense: true,
+      title: Text('Debug relay (TCP $host:$port)'),
+      subtitle: Text(
+          'Out: AoaMux\'s own envelope/discard records${transport.relayVideo ? " + video" : " (video suppressed)"}. '
+          'In: command injection from a PC script straight to the accessory.'),
+    ));
+    tiles.add(ListTile(
+      dense: true,
+      title: Text('Raw ground truth (UDP $host:${port + 1})'),
+      subtitle: const Text('Out only: every accessory byte chunk, verbatim, before AoaMux touches it.'),
+    ));
+  }
+  return tiles;
 }

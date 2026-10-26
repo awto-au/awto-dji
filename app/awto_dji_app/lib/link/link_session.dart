@@ -15,7 +15,7 @@ class GapStats {
   final double meanMs, jitterMs, maxMs;
 }
 
-/// Throughput over a window, KB/s.
+/// Throughput over a window, Mbps (megabits/s, the usual USB/network unit).
 class ByteRates {
   const ByteRates(this.duml, this.video, this.other);
   final double duml, video, other;
@@ -182,7 +182,7 @@ class LinkSession extends ChangeNotifier {
 
   final _samples = Queue<(DateTime, int, int, int)>(); // (time, total, duml, video) cumulative
 
-  /// Throughput in KB/s over the last [window], split into DUML, video and everything else.
+  /// Throughput in Mbps over the last [window], split into DUML, video and everything else.
   ByteRates byteRates(Duration window, [DateTime? now]) {
     final n = now ?? _clock();
     if (_samples.isEmpty) return const ByteRates(0, 0, 0);
@@ -197,8 +197,10 @@ class LinkSession extends ChangeNotifier {
     final duml = cur.$3 - base.$3;
     final video = cur.$4 - base.$4;
     final other = math.max(0, (cur.$2 - base.$2) - duml - video);
-    double kbps(int b) => b / secs / 1024;
-    return ByteRates(kbps(duml), kbps(video), kbps(other));
+    // Decimal mega (SI), matching how USB/network link speeds are always quoted
+    // (e.g. "480 Mbps" USB 2.0 High Speed), not binary 1024*1024.
+    double mbps(int b) => b * 8 / secs / 1e6;
+    return ByteRates(mbps(duml), mbps(video), mbps(other));
   }
 
   static const _gapHistory = Duration(minutes: 1);

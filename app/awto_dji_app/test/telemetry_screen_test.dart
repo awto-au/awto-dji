@@ -23,9 +23,10 @@ void main() {
 
     expect(find.textContaining('-33.8'), findsOneWidget); // latitude
     expect(find.text('Link health'), findsOneWidget);
-    expect(find.text('ok'), findsOneWidget);
-    expect(find.textContaining('DUML KB/s'), findsOneWidget);
-    expect(find.textContaining('Video KB/s'), findsOneWidget);
+    expect(find.textContaining('Transport / Health'), findsOneWidget);
+    expect(find.textContaining(' / ok'), findsOneWidget);
+    expect(find.textContaining('DUML Mbps'), findsOneWidget);
+    expect(find.textContaining('Video Mbps'), findsOneWidget);
 
     await tester.runAsync(() async {
       await session.stop();
