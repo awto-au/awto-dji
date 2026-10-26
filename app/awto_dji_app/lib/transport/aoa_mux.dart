@@ -1,5 +1,7 @@
 import 'dart:typed_data';
 
+import 'package:duml/duml.dart';
+
 class AoaPacket {
   AoaPacket(this.channel, this.payload);
   final int channel;
@@ -14,8 +16,21 @@ class AoaPacket {
   }
 }
 
+/// Minimum DUML frame size (SOF+verlen+hdrcrc8+sender+receiver+seq+cmdtype+cmdset+cmdid+crc16).
+const _minDumlFrame = 13;
+
 /// AOA envelope facts corroborated by GO's UsbAccessoryService/usb.P3.b.
 /// Headers and payloads may span any number of USB/TCP reads.
+///
+/// Real captures (awto-dji#64) show not every byte on the command channel is
+/// `55 cc`-enveloped: DUML frames sometimes arrive bare, with no envelope wrapper at
+/// all, interleaved with properly-enveloped ones from the same sender. Confirmed by two
+/// independent checks on live data: CRC8+CRC16 together give ~1-in-16.7M odds of a
+/// random byte run passing both (expected ~0 accidental matches over the discarded
+/// bytes in that capture; got thousands), and DUML sequence numbers across bare and
+/// enveloped frames from one sender are continuous (53% of consecutive transitions
+/// exactly `prev+1`, far beyond chance). So when envelope-matching fails at the current
+/// scan position, this also tries a bare DUML frame before falling back to a true discard.
 class AoaMux {
   static const command = 0x5749;
   static const cameraVideo = 0x574a;
@@ -49,6 +64,29 @@ class AoaMux {
     _buffer.clear();
   }
 
+  /// Length of a CRC-valid bare DUML frame starting at [offset], `null` if what's there
+  /// doesn't validate, `0` if there just isn't enough buffered yet to tell either way
+  /// (caller should wait for more data, not conclude it's not a frame).
+  ///
+  /// Checks the 8-bit header CRC - cheap, only needs 4 bytes - before ever waiting for
+  /// the rest of a declared-length frame. Skipping that gate and waiting on the length
+  /// field alone would stall resync on any coincidental `0x55` whose next two bytes
+  /// happen to decode to a large length (e.g. the leftover bytes of a rejected,
+  /// oversized-for-maxPayload envelope header) instead of falling through to it.
+  int? _bareDumlLength(int offset) {
+    if (_buffer.length - offset < 4) return 0;
+    final length = (_buffer[offset + 1] | (_buffer[offset + 2] << 8)) & 0x3FF;
+    if (length < _minDumlFrame) return null;
+    if (headerCrc8(_buffer.sublist(offset, offset + 3)) != _buffer[offset + 3]) {
+      return null;
+    }
+    if (_buffer.length - offset < length) return 0;
+    final frame = _buffer.sublist(offset, offset + length);
+    final storedCrc = frame[length - 2] | (frame[length - 1] << 8);
+    if (packetCrc16(frame, length) != storedCrc) return null;
+    return length;
+  }
+
   List<AoaPacket> add(Uint8List bytes) {
     _buffer.addAll(bytes);
     final result = <AoaPacket>[];
@@ -59,33 +97,44 @@ class AoaMux {
         offset++;
         continue;
       }
-      if (_buffer.length - offset < 2) break;
-      if (_buffer[offset + 1] != 0xcc) {
-        offset++;
+      if (_buffer.length - offset >= 2 && _buffer[offset + 1] == 0xcc) {
+        if (_buffer.length - offset < 8) break;
+        final channel = _buffer[offset + 2] | (_buffer[offset + 3] << 8);
+        final length =
+            _buffer[offset + 4] |
+            (_buffer[offset + 5] << 8) |
+            (_buffer[offset + 6] << 16) |
+            (_buffer[offset + 7] << 24);
+        if (channel >= 0x5749 && channel <= 0x574d && length <= maxPayload) {
+          final end = offset + 8 + length;
+          if (end > _buffer.length) break;
+          _discard(discardStart, offset);
+          final packet = AoaPacket(
+            channel,
+            Uint8List.fromList(_buffer.sublist(offset + 8, end)),
+          );
+          result.add(packet);
+          onPacket?.call(packet);
+          offset = end;
+          discardStart = end;
+          continue;
+        }
+      }
+      final bareLength = _bareDumlLength(offset);
+      if (bareLength == 0) break; // not enough data yet to tell - wait
+      if (bareLength != null) {
+        _discard(discardStart, offset);
+        final packet = AoaPacket(
+          command,
+          Uint8List.fromList(_buffer.sublist(offset, offset + bareLength)),
+        );
+        result.add(packet);
+        onPacket?.call(packet);
+        offset += bareLength;
+        discardStart = offset;
         continue;
       }
-      if (_buffer.length - offset < 8) break;
-      final channel = _buffer[offset + 2] | (_buffer[offset + 3] << 8);
-      final length =
-          _buffer[offset + 4] |
-          (_buffer[offset + 5] << 8) |
-          (_buffer[offset + 6] << 16) |
-          (_buffer[offset + 7] << 24);
-      if (channel < 0x5749 || channel > 0x574d || length > maxPayload) {
-        offset++;
-        continue;
-      }
-      final end = offset + 8 + length;
-      if (end > _buffer.length) break;
-      _discard(discardStart, offset);
-      final packet = AoaPacket(
-        channel,
-        Uint8List.fromList(_buffer.sublist(offset + 8, end)),
-      );
-      result.add(packet);
-      onPacket?.call(packet);
-      offset = end;
-      discardStart = end;
+      offset++;
     }
     _discard(discardStart, offset);
     if (offset > 0) _buffer.removeRange(0, offset);

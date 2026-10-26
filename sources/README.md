@@ -3,6 +3,12 @@
 Downloaded binaries used for RE, not committed (see `.gitignore`) - re-download or
 re-extract per the entry below, don't ask for a copy.
 
+## dji-fpga-images/
+
+DJI FPGA firmware images (Lightbridge-generation `m1900`/`m2000`-`m2003` modules) gathered
+for the FPGA config-flash writer gap (issue #18). Full manifest, source URLs, SHA-256s and
+dead-end notes: `dji-fpga-images/PROVENANCE.md`.
+
 ## apk/dji.pilot-3.1.83.apk
 
 - **What**: `dji.pilot` (DJI's classic "DJI GO" app, for older aircraft incl. Phantom 3 -

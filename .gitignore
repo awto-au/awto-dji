@@ -34,3 +34,8 @@ firmware/
 
 # Downloaded APKs - DATA NOT IN THE REPO, see sources/README.md manifest
 sources/**/*.apk
+
+# Downloaded/extracted DJI FPGA firmware images - DATA NOT IN THE REPO,
+# see sources/dji-fpga-images/PROVENANCE.md manifest
+sources/dji-fpga-images/**/*.bin
+sources/dji-fpga-images/**/*.zip

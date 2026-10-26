@@ -37,6 +37,40 @@ class MuxTests(unittest.TestCase):
         self.assertEqual(packets, [(CAMERA_VIDEO, b'good')])
         self.assertEqual(mux.discarded, len(bad))
 
+    def test_rejected_envelope_header_does_not_stall_as_bare_frame_candidate(self):
+        # Regression (awto-dji#64): an early version of the bare-frame fallback checked
+        # only the declared length before deciding to wait for a full frame to arrive, so
+        # a rejected (oversized-for-max_payload) envelope header's own bytes - misread as
+        # a DUML length field - could make the scanner stall waiting for a frame that
+        # would never complete, instead of resyncing immediately within the same feed().
+        # The fix (header CRC8 checked first, cheaply, before ever waiting) must hold.
+        mux = AoaMux(max_payload=64)
+        bad = b'\x55\xcc' + struct.pack('<HI', CAMERA_VIDEO, 65)  # rejected: 65 > max_payload
+        packets = mux.feed(bad + envelope(CAMERA_VIDEO, b'good'))
+        self.assertEqual(packets, [(CAMERA_VIDEO, b'good')])
+        self.assertEqual(mux.discarded, len(bad))
+
+    def test_bare_duml_frame_recovered_without_envelope(self):
+        bare = build_frame(2, 14, 7, 2, 0x09, 0x08, b'\x01\x02')
+        wire = envelope(COMMAND, b'first') + bare + envelope(COMMAND, b'second')
+        mux = AoaMux()
+        packets = mux.feed(wire)
+        self.assertEqual(packets, [(COMMAND, b'first'), (COMMAND, bare), (COMMAND, b'second')])
+        self.assertEqual(mux.discarded, 0)
+        self.assertEqual(mux.packets[COMMAND], 3)
+
+    def test_bare_candidate_with_bad_full_crc_is_rejected_not_stalled(self):
+        good = build_frame(2, 14, 7, 2, 0x09, 0x08, b'\x01\x02')
+        # Flip a payload byte: header CRC8 (bytes 0-2 only) still matches, so this
+        # passes the cheap first gate, but the full-frame CRC16 must then reject it.
+        corrupted = bytearray(good)
+        corrupted[-3] ^= 0xFF
+        wire = bytes(corrupted) + envelope(CAMERA_VIDEO, b'next')
+        mux = AoaMux()
+        packets = mux.feed(wire)
+        self.assertEqual(packets, [(CAMERA_VIDEO, b'next')])
+        self.assertEqual(mux.discarded, len(corrupted))
+
     def test_connection_boundary_discards_partial_frame(self):
         mux = AoaMux()
         self.assertEqual(mux.feed(envelope(COMMAND, b'hello')[:-1]), [])
