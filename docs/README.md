@@ -23,6 +23,7 @@ of fact-changes (docs state current facts only).
 - `p3-usb-observations-2026-10-23.md` — what the P3 controller and aircraft do on USB: line settings, DUML replies, the aircraft's one-way log stream, DTR/RTS sensitivity.
 
 ## Telemetry & video
+- [pinouts.md](pinouts.md) - index of every pin map, connector and pad fact, with status and source; known gaps linked to issues.
 - [chat-mining.md](chat-mining.md) - procedure to mine an old chat, prove where each item landed, and close it out; worked example from the 2026-10-26/27 coordinator + SDR chat.
 - [camera-video-push.md](camera-video-push.md) - classic DJI GO camera recording settings from captured ShotParams/StateInfo pushes, field offsets, enums, model limits and remaining live comparison.
 - [pc-video-preview.md](pc-video-preview.md) — corrected AOA envelope parsing, PC extraction/FFmpeg checks and saved-capture limitations; supersedes the earlier no-demux-header claim.
