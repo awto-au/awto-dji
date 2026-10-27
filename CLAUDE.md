@@ -18,6 +18,10 @@ core and (parked) MAVLink ground clients.
   as proof.
 - Cite exact offsets / reproduction commands so claims can be re-derived.
 
+## Firmware RE rules
+
+- `docs/re-rules.md` (applied here) → canonical `awto-dan/docs/embedded/embedded-rules.md`. Read before Ghidra work.
+
 ## Repo layout
 
 - `app/packages/duml/` — pure-Dart DUML codec + `tool/telemetry_scan.dart` (telemetry/ID
