@@ -100,7 +100,7 @@ Source: pasted transcript, truncated mid-sentence. Its work sat on the unmerged 
 | `duml_watch.log` "Breakthrough" (front port answers as `air_router`, `GL300C/WM320 A7_LPC1`) is bogus; stop citing it | V (operator decision) | Retraction `1f50e38` was not on `main` (`docs/fc-usb-duml.md:159-174` still asserted it). Now merged. #21's title still rests on it. |
 | The `A7_LPC1` string is in no firmware we hold | V | Chat grep of m0900 and m1400; the 2026-10-23 session docs that print it are separate logs and left alone. |
 | USART3 and ring-1 relays RF-link data to the FC without the command table | I (static) | `air-router-deep-dive.md` section 6a, merged. |
-| `ofdm_payload_descramble` XOR key is always zero, so no-op | I, not V | Operator doubted it; chat ended mid-check. Downgraded in place: bulk-copy and other write paths not excluded. |
+| `ofdm_payload_descramble` XOR key is always zero, so no-op | I, not V | Operator doubted it; chat ended mid-check. Downgraded in place. Later in the chat the flash-page `0x7b00` reload was excluded (copies 252 B ending one byte before the struct); other bulk copies and board variants are not. |
 | cmd 0xfe is an unauthenticated live radio-state write | V (decompiled) | Writes only the first 5 bytes (mode 1) or `+0x11c` (mode 2), so it does not reach the key. |
 | Rename `ofdm_*` to `fpga_link_*` (offered) | open | Unanswered. |
 | Renode never unmasks the USB IRQ (dynamic claim) | downgraded | Sim stalls in an unmodelled SD poll; static dead vector table still stands. |
@@ -137,5 +137,4 @@ Pasted transcripts already mined (examples 1 to 4) are not matched to a file her
 - S9 recovery: decide Smart Switch vs other; track on `awtoau/awto-samsung-s9#1`.
 - Hardware re-test of `7385613` (permission timeout, envelope trim).
 - Unmerged branch kept on purpose: `fix/video-decoder-lifecycle-67` (on hold).
-- #21: retitle / comment that its premise (front port answers as `air_router`) was retracted (draft, awaiting approval).
-- Finish the XOR-key check (bulk copies into `radio_state_s+0x64`); answer the `ofdm_*` rename question.
+- All other open items from the 10-session review are filed as one issue each (see issues titled `m0900:`, `app:`, `docs:`, `tools:`).

@@ -99,3 +99,7 @@ re-reading the old conclusion:
   whole `.text` section for any `bl #0x127e0` instruction (none found).
 - Files used: `scratchpad/m0800/x/dji/bin/encode_usb`, `scratchpad/m0800/x/dji/lib/libcommon.so`
   (already-extracted copies from this session's working directory; not re-extracted).
+
+## Caveats on the SPI2 and USART3 peers (added 2026-10-27, from a 2026-10-25 session)
+- All evidence that the SPI2 peer is the FPGA and the USART3 peer is the FPGA UART is firmware-only. No schematic, board photo or probe confirms it. The operator states, from the circuit, that it is the FPGA (W, operator claim, not independently checked).
+- GPS is not on the FPGA UART (I): `GetPushGpsInfo` (set 0x06 cmd 0x1b) is addressed to receiver type 3, which routes to USART1. Receiver types 2, 6, 13, 14, 16, 20 and 22 are the ones muxed onto USART3.

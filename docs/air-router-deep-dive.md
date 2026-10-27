@@ -329,10 +329,13 @@ interface. The two paths and the key are detailed bullet by bullet below.
   (XOR against zero), and the real work `ofdm_payload_descramble` does is the two-stage chained
   checksum, not encryption.** Possibly wired up for a board variant not active in this build,
   or vestigial from an earlier revision.
-  **Why this is I, not V (doubted by the operator, check unfinished):** the search covers
-  literal-address references and per-handler writes only. Not excluded: a bulk copy through a
-  base pointer with a computed offset (the 252-byte flash-page `0x7b00` reload, `fpga_cfg_load`,
-  any memcpy-style struct fill), or a write from another build or board variant. Command `0xfe`
+  **Why this is I, not V (doubted by the operator, check partly done):** the search covers
+  literal-address references and per-handler writes only. Excluded since: the 252-byte
+  flash-page `0x7b00` reload copies to `0x200019b8`-`0x20001ab3` (`radio_cfg_page_s`, ending one
+  byte before `radio_state_s` at `0x20001ab4`), so it cannot reach the key at `0x20001b18`
+  (`+0x64`). Not excluded: other bulk copies through a base pointer with a computed offset
+  (`fpga_cfg_load`, any memcpy-style struct fill), or a write from another build or board
+  variant. Command `0xfe`
   mode 1 writes only the first 5 bytes of the struct and mode 2 only `+0x11c`, so neither
   reaches `+0x64`. Over-the-air encryption is not ruled out by this finding
   (`what-is-actually-secret.md`, LAYER CAVEAT).
