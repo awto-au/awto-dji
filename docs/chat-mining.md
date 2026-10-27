@@ -8,6 +8,20 @@ Goal: extract what is needed, prove where it landed, then the chat can be droppe
 - Any repo-state claim ("uncommitted edits", "branch lost", "not merged") is checked against live `git` first. A session-start `git status` snapshot goes stale within minutes.
 - Mark each extracted item **V** (re-checked now) / **I** (inferred) / **U** (chat-only, unverified), per the verified/inferred convention in `CLAUDE.md`.
 
+## 1a. Enumerate first, then check every assertion
+- Before triage, list every assertion in the chat as a numbered row: repo state ("committed", "fixed", "pushed"), findings, decisions, external facts, open items, unfiled ideas.
+- No sampling: a chat's own "done" and "filed" claims are the ones most worth checking (`git log`, `gh issue view`, file exists).
+- Each row ends with a verdict (V / I / U / wrong) and a location. A row without one is not mined yet.
+- Include items the chat only implied or dropped (a plan the user approved but never executed).
+
+## 1b. Merge into existing documentation, do not append beside it
+- Search `docs/`, `HANDOVER.md`, `HISTORY.md`, open issues and recent comments for each item before writing.
+- Already documented and identical: link, do not copy.
+- Contradicts existing text: fix that text in place and state what is now true in one line. A stale "not resolved" / "needs X" left behind is a defect.
+- New: add to the doc that owns the topic and add its row to `docs/README.md` only if it is a new file.
+- Re-read everything this session has already posted (issue comments, docs) against the chat's newer facts. Correct or retract it the same way.
+- Work that belongs to another repo goes there (its docs or its issues). Do not park it here.
+
 ## 2. Triage every item into one bucket
 | Bucket | Check | Action |
 |---|---|---|
@@ -56,7 +70,32 @@ Lessons from this one:
 - A chat's "blocked on X" and "finding" lines age badly. Check later docs before carrying a finding forward; here the headline finding was disproved within days.
 - An issue body written from a chat keeps the chat's claim after the docs move on. Fix the title when a comment overturns it.
 
+## 5a. Worked example 3: S9 usbmon kernel + AOA fixes + Pixel, 2026-10-26
+Source: pasted transcript, truncated mid-sentence in an Intel WiMAX paste. Re-checked 2026-10-27.
+
+| Assertion in chat | Verdict | Where / result |
+|---|---|---|
+| Session work committed: #64 fix, #67 fix, Mbps UI, tooling/docs | V | `b33166e`, `8df2ddc`, `53f20b8`, `e26f633` |
+| Permission-wait timeout fix; envelope-leak "real bug, fixed" | V | `7385613` (60 s timeout; trims over-declared envelope length). The live-test doc still said "not resolved": **fixed in place** in `docs/aoa-live-test-2026-10-26.md`. |
+| Own earlier comment on #64 ("unresolved possible leak") | wrong | Contradicts `7385613`. Correction drafted, not yet posted. |
+| Zero-IDR evidence added to #26 | V | Comment present on #26. |
+| S9 parked in `awtoau/awto-samsung-s9#1`, kept out of this repo | V | Issue open. Build repo `awto-samsung-s9-build` has `docs/building.md` + scripts, 1 commit (`c9e472e`). |
+| heimdall 3 s `EndSession` timeout is an upstream bug to report | wrong | Chat's own test: patched build failed differently ("Failed to unpack received packet"). Hypothesis disproved, do not report it. |
+| Merging `fix/video-decoder-lifecycle-67` "would delete 31,883 lines" | wrong | That is a diff against an old base; a merge dry-run conflicts in one file only. Branch is on hold (memory: video-decoder-on-hold). |
+| S9 restored to a working state | U | Last known: stuck in Download Mode, original boot not restored; recovery path (Smart Switch) undecided. Only in #1. |
+| Pixel 3 XL as ground controller: bootloader unlocked, adb over WiFi (not persistent after reboot), stock kernel lacks `CONFIG_USB_MON`, root via magiskboot | U | In no repo doc or issue. Related: #70. |
+| Pixel BLE "more modern" than S9 | wrong | Both Bluetooth 5.0 class; premise dropped. |
+| Intel WiMAX PHY diagnostic interfaces | V | Already in `chats/2026-10-26-...md` and `docs/lightbridge-wimax-history.md`. |
+| DJI Pilot aircraft-dropdown swipe unsolved | V | `docs/phone-bridge-operator-guide.md` "Known unreliable"; the raw `sendevent` variants tried are not recorded. |
+
+Lessons:
+- A fix landing makes the docs and issue comments written before it wrong. Re-read what you posted.
+- A hypothesis a chat disproved itself must not be filed upstream.
+
 ## 6. Still to do
-- Delete the redundant remote branches: `rescue/glassfalcon-dangling-work`, `docs/glassfalcon-p3x-evaluation-20261026`, `ccr-31b4a6f2-8fofnf`, `backup/ccr-pre-sync-a28877b` (blocked by the harness; Dan runs `git push origin --delete ...`).
-- #2: retitle to the real gate (draft, awaiting approval).
-- #35: comment the camera-ELF userspace-emulation approach (draft, awaiting approval).
+- #64: correct the 2026-10-27 status comment (leak was a real bug, fixed in `7385613`).
+- #67: post the on-hold note.
+- Pixel 3 XL ground-controller plan: no home yet; propose a comment on #70 or a new issue.
+- S9 recovery: decide Smart Switch vs other; track on `awtoau/awto-samsung-s9#1`.
+- Hardware re-test of `7385613` (permission timeout, envelope trim).
+- Unmerged branches kept on purpose: `fix/video-decoder-lifecycle-67` (on hold), `claude/firmware-loading-trace-cbzvam` (8 conflicting docs).

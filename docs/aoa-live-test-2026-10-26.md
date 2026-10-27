@@ -29,8 +29,8 @@ auto-grant: the native `AoaShim.connect()` (`android/app/.../AoaShim.kt`) calls
 `usb.requestPermission()` and silently awaits a system `UsbPermissionActivity` dialog that
 nothing answers in a non-interactive launch. The Dart side (`AoaTransport.connect()`,
 `lib/transport/aoa_transport.dart`) sits in `LinkState.connecting` forever - no exception,
-no timeout, no log line past `[relay] connected to ...` - which is itself a gap (should at
-least time out and surface a "waiting for permission" status). Confirmed via
+no timeout, no log line past `[relay] connected to ...`. Fixed in `7385613`: a 60 s timeout
+on the permission wait now surfaces `LinkState.failed` (not re-tested on hardware). Confirmed via
 `adb shell dumpsys window | grep mCurrentFocus` showing
 `com.android.systemui/.usb.UsbPermissionActivity` focused, and a screenshot reading
 "Allow AWTO DJI to access DJI Inspire 1?". Manually tapping OK (adb `input tap`, matching
@@ -94,7 +94,10 @@ immediately; a second `CONNECT` intent then connected in well under a second.
   **already re-encoded** relay records (`AoaMux` packet -> `AoaPacket.encode()` ->
   `RelayRecord`), so a clean PC-side decode mainly confirms the phone's own demux
   round-trips consistently, not that `LinkSession`'s in-app byte stream is clean.
-- **U, flagged not resolved.** A recurring minority of `[link] bad frame` dumps contain the
+- **I, cause found; fixed in `7385613`, not re-verified on hardware.** `AoaMux` trusted a
+  declared envelope length that was sometimes longer than the real DUML frame, so the next
+  envelope's header leaked into the payload; it now trims to the CRC-checked frame length.
+  A recurring minority of `[link] bad frame` dumps contain the
   literal bytes `55 cc 49 57 ...` - i.e. what looks like an **un-stripped AOA envelope
   header for the very next command-channel packet** - sitting inside bytes `LinkSession`
   is treating as pure DUML payload, e.g. (verbatim from `logcat_raw.log`):
@@ -124,16 +127,11 @@ immediately; a second `CONNECT` intent then connected in well under a second.
 | `55 cc` envelope demux + DUML CRC (PC side) | V, 116 valid frames | V, 5959 valid frames (longer sample) |
 | Video channel present | V, 211 chunks | not seen this session (U, cause not established) |
 | `[link]`/`[transport]` debug chokepoints present | V | V |
-| In-app (`LinkSession`) frame quality vs PC-side decode | not directly compared | **new finding** - in-app bad-frame rate (~41%) higher than PC-side numbers suggest; possible envelope-header leak, not resolved |
+| In-app (`LinkSession`) frame quality vs PC-side decode | not directly compared | **new finding** - in-app bad-frame rate (~41%) higher than PC-side numbers suggest; envelope-header leak, fixed in `7385613` (not re-verified on hardware) |
 
 ## What's needed next
 
-1. Decide whether the permission-flow gap (no auto-grant, no timeout/error surfaced) is
-   worth fixing before this intent-driven flow is relied on for further unattended/scripted
-   testing - currently any fresh permission state hangs silently.
-2. Chase the `55 cc` leak into `LinkSession`'s byte stream: reproduce with a unit test
-   feeding `AoaMux` two back-to-back command-channel envelopes and checking the emitted
-   payloads never contain the next envelope's magic bytes.
-3. Re-run with video actively streaming (DJI GO app open, or send the existing I-frame
+1. Re-test the permission timeout (`7385613`) and the envelope-length trim on hardware.
+2. Re-run with video actively streaming (DJI GO app open, or send the existing I-frame
    request) to check whether the 0-video-chunks result here was a bench-state artifact or a
    real change.
