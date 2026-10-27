@@ -1,5 +1,11 @@
 # DJI app protocol comparison pipeline
 
+> **2026-10-25 update:** static decompilation is sufficient for classic DJI GO
+> 3.1.8; a device, sign-in and runtime memscan are not prerequisites for that build.
+> The human/runtime workflow below applies to packed builds. Use the [2026-10-25 P3 evidence audit](dji-go-p3-evidence-audit-2026-10-25.md)
+> and `apk_provenance.py` to pin identity, version, hashes and signature before
+> comparing trees. `pilot_dynamic` is classic GO 3.1.83, not enterprise Pilot.
+
 Goal: decompile every known DJI Android app and diff their DUML command
 implementations to find real protocol variations across apps/aircraft generations.
 Built 2026-10-24, validated against the two apps already decompiled this session
@@ -7,7 +13,7 @@ Built 2026-10-24, validated against the two apps already decompiled this session
 
 ## What's automated vs what needs the operator
 
-**Cannot be automated end to end** - every new app needs a human to:
+**Packed-app workflow (not a universal requirement)** - inspect the manifest and static DEX first. For builds whose relevant code is only available at runtime, the existing workflow is:
 1. Acquire the APK (see `sources/README.md`'s manifest convention - download it
    yourself and add an entry; no download link is hardcoded anywhere in this
    pipeline).

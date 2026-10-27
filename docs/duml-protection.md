@@ -1,5 +1,11 @@
 # DUML protection: XOR, component authentication, and pairing
 
+> **2026-10-25 provenance clarification:** GO 4 remains the source for the native
+> routine analysis below. Its applicability is independently supported by C1 code,
+> emulation vectors and captured P3 traffic, which this audit preserves. Classic
+> GO is `dji.pilot`, not enterprise Pilot; no new equivalence of its native code
+> is asserted here. See the [2026-10-25 P3 evidence audit](dji-go-p3-evidence-audit-2026-10-25.md).
+
 Reviewed 2026-10-24 against the locally unpacked DJI GO 4 v4.3.64 APK.
 V = verified in the named artifact; I = inference; U = unresolved.
 - Framing: DUML findings here are actuation risk over the wired interfaces (USB, UART,

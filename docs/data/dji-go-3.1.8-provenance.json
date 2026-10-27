@@ -1,0 +1,57 @@
+{
+  "file": "sources/apk/dji.pilot-3.1.8.apk",
+  "source_url": "https://mobile.softpedia.com/apk/dji-go/3.1.8/",
+  "acquired_on": "2026-10-25",
+  "size": 101595742,
+  "sha256": "f7a4eaaf0adf6bee86d1cd50c4a221824b17e97132807f0f4172f9b68b9f1965",
+  "package": "dji.pilot",
+  "label": "DJI GO",
+  "version_name": "3.1.8",
+  "version_code": "31018968",
+  "min_sdk": "16",
+  "target_sdk": "17",
+  "application_class": "dji.pilot.publics.objects.DJIApplication",
+  "dex": [
+    {
+      "name": "classes.dex",
+      "size": 7207200,
+      "sha256": "deb78b2ec83986e54fed1aca696167b983a6068c05b6fb2bd8ae68b89a6d1c16",
+      "class_defs": 3963
+    },
+    {
+      "name": "classes2.dex",
+      "size": 8614340,
+      "sha256": "9a5080fb6e4f9796cb8a54065bd5ae59d5304ea8787f1708aa06e67f560d6cc3",
+      "class_defs": 8310
+    },
+    {
+      "name": "classes3.dex",
+      "size": 5985668,
+      "sha256": "3577f6005816827a1b15cea424bfcc1ba9c03888236f38a5e1fb89d65ce38819",
+      "class_defs": 6123
+    },
+    {
+      "name": "classes4.dex",
+      "size": 5684168,
+      "sha256": "845e3a4310401584b6d301d5ac2fde7ed4370d1e015e63096f2a3aa120cc246c",
+      "class_defs": 7148
+    }
+  ],
+  "signature": {
+    "verifier": "Google apksig 8.7.3",
+    "verifier_jar_sha256": "c070ed1394629d74641aa0906f60b2ffa1ee77e6366a1f93437f59717b1aeb89",
+    "verified": true,
+    "v1": true,
+    "v2": false,
+    "signer_certificate_sha256": [
+      "01a42c94aa87020f41e8c252598df98b86a0acf6c05ff61c75f18fa29cad1dd4"
+    ],
+    "errors": [],
+    "warnings": [
+      "META-INF/LICENSE not protected by signature. Unauthorized modifications to this JAR entry will not be detected. Delete or move the entry outside of META-INF/.",
+      "META-INF/rxjava-computation-expressions.properties not protected by signature. Unauthorized modifications to this JAR entry will not be detected. Delete or move the entry outside of META-INF/.",
+      "META-INF/rxjava.properties not protected by signature. Unauthorized modifications to this JAR entry will not be detected. Delete or move the entry outside of META-INF/.",
+      "META-INF/services/com.fasterxml.jackson.core.JsonFactory not protected by signature. Unauthorized modifications to this JAR entry will not be detected. Delete or move the entry outside of META-INF/."
+    ]
+  }
+}

@@ -1,5 +1,11 @@
 # DJI GO 4 v4.3.64 APK: what a replacement app needs
 
+> **P3 applicability correction, 2026-10-25:** this is a historical **GO 4** report,
+> not analysis of the P3 Pro control app. Original DJI GO is `dji.pilot`; 3.1.8 is
+> contemporary with firmware 1.11.20. **V here means seen in GO 4, not verified on P3.**
+> P3-specific extrapolations below are corrected or superseded by the [2026-10-25 P3 evidence audit](dji-go-p3-evidence-audit-2026-10-25.md).
+> Independently verified framing, CRC, firmware and capture evidence is retained.
+
 Input: `firmware/apk/dji-go-4_v4.3.64.apk` (package `dji.go.v4`, versionCode 3036679, minSdk 21, git-ignored).
 Reproduce: `python3 -I scripts/re/apk_extract.py` (log `tmp/logs/apk_extract.log`, output `tmp/apk/`).
 Tags: **V** verified (seen in APK file) · **I** inferred · **U** unknown / not obtainable here.
@@ -38,8 +44,8 @@ Commands table: `data/apk-duml-commands.tsv`.
 - P3 Professional path:
   - RC USB (AOA, `T600`) is the only USB filter in the manifest (V); P3 Pro / Inspire 1 are the `T600` generation (matches `app/README.md`).
   - Wi-Fi path also exists in the app: `dji.midware.sockets.P3.SwUdpService`, `IpPortConfig$ConnectType`, `libudtjni.so` exports `UDT_SwUdp{Connect,Send,JoyStickSend,Close,...}` (V). Strings `P3C`, `UpgradeP3cComponent`, `stream_observer_desc_p3c_service` (V) -> this is the P3 Standard/4K (Wi-Fi aircraft) path (I). Addresses/ports: **U**.
-  - P3 Pro via Wi-Fi: no evidence either way; DJI GO 4 supports Pro only through RC USB (I).
-  - Also in app: Wi-Fi master/slave classes `DataWifi*` (RC's Wi-Fi AP/repeater) (V names). Whether Pro's RC Wi-Fi carries video to the phone: **U**.
+  - **Superseded:** the inference that GO 4 supports P3 Pro through RC USB. The observed GO 4 compatibility screen redirected the owned P3 Pro to classic DJI GO (`dji.pilot` 3.1.83, issue #16). Classic GO 3.1.8 independently implements the AOA path. Direct P3 Pro Wi-Fi control is U; do not confuse it with Wi-Fi P3 variants.
+  - Also in GO 4: Wi-Fi master/slave classes `DataWifi*` (V names). The earlier AP/repeater interpretation is superseded as a P3 Pro assertion: shared class presence does not identify hardware or prove a P3 Pro phone-video path.
 
 ## 2. DUML layer (as implemented in the app)
 - Enums in `dji.midware.data.config.P3`: `DataConfig$CMDTYPE`, `DataConfig$NEEDACK`, `DataConfig$EncryptType`, `DeviceType`, `CmdSet`, `ProductType` (V). Same field set as `packet.dart` (cmd-type/response, ack, encrypt, device types, cmd set) (I). Numeric values: **U**.
@@ -51,9 +57,9 @@ Commands table: `data/apk-duml-commands.tsv`.
 - Discrepancies vs `app/packages/duml` (cannot be fully compared without bytecode):
   - `catalog.dart` names sets 0x0a "mono", 0x0b "battery", 0x0e "automation". APK has `CmdId*` enums for: ADS_B, Camera, Center, Common, Dm368, EYE, Flyc, Gimbal, Glass, NarrowBand, OnBoardSDK, Osd, PayloadSDK, RTK, Rc, Recognize, Simulator, SmartBattery, Special, Wifi (V). No "mono"/"automation"; "SmartBattery" is separate from "Center". Re-check `cmdSetName` numeric mapping against a capture (I).
   - APK separates `CmdIdCommon` (general, 0x00) and `CmdIdSpecial` (0x01) like the Dart `CmdSet` (V names).
-  - `packet.dart` has no `ProductType`/`Dpad`/`litchis` variants: APK has a second protocol `dji.midware.data.config.litchis.DataConfig` (`CmdId`, `CmdType`, `SubType`) (V). Not P3 (I).
+  - `packet.dart` has no `ProductType`/`Dpad`/`litchis` variants: APK has a second protocol `dji.midware.data.config.litchis.DataConfig` (`CmdId`, `CmdType`, `SubType`) (V). P3 product applicability U; the earlier "Not P3" inference from the namespace alone is superseded.
 
-## 3. Command catalog (P3-class)
+## 3. Command catalog (shared P3 namespace, not a P3 compatibility list)
 - Full table: `data/apk-duml-commands.tsv` (46 rows).
 - What the APK proves (V): the existence and grouping of ~730 `Data*` message classes under `dji.midware.data.model.P3` by cmd-set family (Camera ~170, Flyc ~120, Eye ~80, Rc ~65, Osd ~55, Wifi ~35, Gimbal ~30, SmartBattery ~15, Common ~35, Center ~10, Simulator ~15).
 - What it does not give (U): numeric (set,id) per class, payload layouts. Names map 1:1 to public dissector messages (I), but ids in the TSV are only filled where the repo's m0900 work verified them or `catalog.dart` already carries them.
@@ -68,16 +74,16 @@ Commands table: `data/apk-duml-commands.tsv`.
 - Video path: accessory read -> `UsbAccessoryService.onGetBody` (log strings: `dataType==22346`, modes default/dual/single, `putVideoBuffer`, `toTransVideoData(need packed / no need to pack)`) -> `DJIVideoPackManager.parseData` (JNI callback target in `libdjivideo.so`) -> decoder `dji.midware.media.DJIVideoDecoder` (V names/strings).
 - `dataType` 22346 (0x574A) is the video data type in that log line (V string; meaning of the value I).
 - `libdjivideo.so` (V from strings/exports): native threads `native_startRecvThread/startParseThread`, queues, `native_getDJIAVPaserHeaderMagic` (so the stream has a DJI AV header with a magic; value **U**, needs arm64 disassembly), `native_setDecodeMode/DecoderType/DataMode`, `native_setIsNeedPacked`, `native_transferVideoData`, FFmpeg `av_parser_*` + H.264 SPS/PPS/slice-header parsing, `native_putVideoStreamData`, live-stream push, MP4 muxer, x264 transcode.
-- Net effect: native lib splits the AV-header-framed payload into H.264 access units, tracks `spsFlag/ppsFlag`, hands NALs to MediaCodec (I). Annex-B vs length-prefixed: **V, Annex-B** - confirmed from a real capture, not inferred: `docs/aoa-live-test-2026-10-23.md` found 262/265 start-code occurrences (`00 00 00 01`/`00 00 01`) with real NAL type patterns (type 1 coded-slice, type 9 AUD) in the AOA byte stream, interleaved with DUML frames on the same raw pipe with no channel-ID header - the two framing patterns are structurally distinct enough to disambiguate without any DJI-specific demux logic. I-frame request exists: `DataCameraRequestForIFrame` (V name).
+- Net effect: native lib splits the AV-header-framed payload into H.264 access units, tracks `spsFlag/ppsFlag`, hands NALs to MediaCodec (I). Annex-B vs length-prefixed: **V, Annex-B** - confirmed from a real capture, not inferred: `docs/aoa-live-test-2026-10-23.md` found 262/265 start-code occurrences (`00 00 00 01`/`00 00 01`) with real NAL type patterns (type 1 coded-slice, type 9 AUD) in the AOA byte stream, interleaved with DUML frames on the same raw pipe. **Superseded:** the original no-channel-header / no-demux-required conclusion. `ground-fx3-m1601.md` and classic GO 3.1.8 `UsbAccessoryService` verify `55 CC <u16 type> <u32 length>` envelopes, with 0x5749 DUML and 0x574A video. I-frame request exists: `DataCameraRequestForIFrame` (V name).
 - `libvideoLib.so` (JNI `dji.pilot2.videolib.VideoLibWrapper`): playback/thumbnail/metadata/YUV scale/filter for files, not the live link (V exports). `libffmpeg.so` = codec library (V).
 - `LB2VideoController` is Lightbridge 2 (Inspire 2/P4-era) (I); P3 uses the default mode (I).
 
 ## 5. Firmware upgrade (Java layer names only)
 - Classes: `dji.dbox.upgrade.p4.statemachine.DJIUpgradeService`, `dji.pilot.upgrade.{UpgradeBaseComponent,UpgradeConfigInfo}`, `dji.pilot2.upgrade.{DataUpgradeActivity,P4UpgradeActivity}`, `UpgradeP3cComponent`, `UpgradeLonganMobile2Component` (V names).
 - Messages: `DataCommonRequestUpgrade`, `DataCommonControlUpgrade`, `DataCommonGetPushUpgradeStatus(+Info)`, `DataCommonTransferFile{Request,Data,DataExtended,RealTimeData,Verify}`, `DataCommonGetCfgFile`, `DataCommonSetNewestVersions`, `DataCameraControlUpgrade`, `DataCameraGetPushRequestUpgrade`, `DataOsdSetUpgradeTip` (V names).
-- Source of firmware: strings `UpgradeConfigInfo getFile for net success`, download UI strings (`v2_upgrade_activity_downing_desc`, `..._down_success`), `mine_settings_clean_upgrade_cache` -> downloaded from DJI servers into an app cache, then pushed to the aircraft (V strings; I flow). Bundled firmware: none seen in assets listing (V).
+- Source of firmware: strings `UpgradeConfigInfo getFile for net success`, download UI strings (`v2_upgrade_activity_downing_desc`, `..._down_success`), `mine_settings_clean_upgrade_cache` -> download/cache behaviour exists in GO 4 (V strings). **Superseded for P3 Pro:** inferring an aircraft firmware push from those strings. The documented P3 Pro aircraft method is microSD; RC app-push and camera confirmation are separate. See the evidence audit for classic GO 3.1.8 code and remaining limits. Bundled firmware: none seen in assets listing (V).
 - Transfer layer enums `ITransferFileObject$TransferCmdType/TransferErrorCode/CommonTransferVerifyType/ProtocolType` (V names); values, block size, order of commands, status codes: **U**.
-- Cross-check with m0900 (`docs/fpga-upgrade-path.md`): m0900 handles 0x07/0x08/0x0A only; no 0x09 handler. APK names a *file-transfer* message family (`DataCommonTransferFile*`) which is a plausible carrier for the data stage that m0900 does not terminate (I). Not evidence of the 0x09 path.
+- Cross-check with m0900 (`docs/fpga-upgrade-path.md`): m0900 handles 0x07/0x08/0x0A only; no 0x09 handler. GO 4 names a *file-transfer* message family (`DataCommonTransferFile*`). **Superseded as a P3 hypothesis derived from class presence:** that family was not found in classic GO 3.1.8's static model tree / COMMON enum. The FPGA data route remains U; the independent m0900 finding stands.
 - Signature check of images: `libUpgradeVerify` exists (V), not analysed.
 - Field names present as strings (names only, usage not traced): `ChipId`, `HardwareIds`, `MCSN`, `SerialNumber`, `deviceId`, `authCode`, `cfgModel`, `activeSnModel` (V strings). Whether `ChipId` is sent in upgrade/activation requests: **U** (string existence only; this matches m0900 reply to request id 0x0904 carrying the STM32 UID, but the link is not proven).
 
@@ -85,15 +91,15 @@ Commands table: `data/apk-duml-commands.tsv`.
 - RC master/slave: `DataRcSetConnectMaster`, `DataRcGetConnectMaster`, `DataRcMasterSlaveId`, `DataRcSetMaster/GetMaster`, `DataRcGetSearchMasters`, `DataRcGetSlaveList` (V names) -> carried in cmd-set Rc (0x06) (I). Matches the "RC Connected Master Id Set/Get" DUML field in `docs/id-entry-point.md`.
 - Wi-Fi equivalents: `DataWifiConnectMasterWithIdAuthCode`, `DataWifiSetMasterSlaveAuthCode`, `DataWifiGetAuthCode`, `DataWifiGetPushMasterSlaveStatus` (V names).
 - Activation (server-assisted): `DataFlycGetPushActiveRequest` (aircraft asks) -> app contacts DJI -> `DataFlycSetActiveResult`; per-module `Data*ActiveStatus` (Flyc, Gimbal, Camera, Osd, Battery, Eagle, Glass); `DJIActiveController/DJIActiveSnModel/DJIActiveDeviceModel` (V names). Flow I; payloads and server contract not examined (scope: no activation bypass).
-- Strings seen: `v2_active_need_connect_internet_p3` -> activation needs internet for P3 (V string).
+- Strings seen: `v2_active_need_connect_internet_p3` (V string). A string alone does not verify the P3 activation transaction or offline-control policy; those behaviours remain U in this APK analysis.
 
-## 7. What a replacement app must do
+## 7. Historical GO 4-derived replacement-app hypotheses
 - Local-only (pure DUML over AOA), per the above (I):
   - Register accessory filter `manufacturer="DJI" model="T600"`, open the fd, run `DumlFramer` on the read stream.
   - Demux DUML from the AV stream (channel mux): **U**. Must be solved from a live capture; `DJIPluginLBChanneParser` is the part to replicate.
   - Read telemetry: pushes arrive unsolicited (OSD General etc.); some may need a request/subscribe or heartbeat first: **U**.
   - Keep-alive: `DataCommonPushHeart` exists (V name); direction and period **U**.
-  - Phone GPS push to FC (`DataFlycSendGpsInfo`, `DataAppPushGpsInfo`) is a normal app duty (V names).
+  - Phone GPS classes (`DataFlycSendGpsInfo`, `DataAppPushGpsInfo`) exist (V names). Whether/when P3 Pro requires these is U; a name is not a required session step.
   - Video: parse AV header (magic **U**), H.264 NALs to MediaCodec; request I-frame.
 - Needs DJI servers (V strings/hosts):
   - Login/account (`account-api.dji.com`), activation (`active.dji.com`), firmware config + download, maps/geo (`dict.djiservice.org`), flight-restriction data (not analysed), media/community.
@@ -202,8 +208,8 @@ device table (`wm220`/`wm330`-series, `rc001`-`rc240`, `rm500`, `pm410`, `gl811`
 references to were not in these particular 5 regions; they are almost certainly in one of
 the other ~50 dex files `frida-dexdump` listed at cold start but this session did not carve
 from live memory (would need another memscan pass with a different/larger region-size
-cutoff, done post-consent-flow). **Numeric DUML cmd-set/cmd-id values and the AOA accessory
-identity strings remain unconfirmed** — `docs/data/apk-duml-commands.tsv` and
+cutoff, done post-consent-flow). **Historical first-carve limitation, superseded by the second pass above:** numeric
+DUML values and AOA identity were unconfirmed in those five regions alone — `docs/data/apk-duml-commands.tsv` and
 `app/awto_dji_app/lib/transport/aoa_identity.dart`'s placeholders are unchanged.
 
 Tooling fixes made getting here (now in `scripts/re/apk_dynamic_unpack.py`, reproducible):

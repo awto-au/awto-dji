@@ -1,5 +1,12 @@
 # DJI GO 4 firmware-push sequence (static, from the decompiled APK)
 
+> **P3 firmware-upgrade conclusions superseded, 2026-10-25.** This report describes
+> GO 4 4.3.64. Absence of a P3 sender here is not evidence of aircraft incapability.
+> Original consumer GO is `dji.pilot`; firmware-era 3.1.8 has live legacy-sender
+> callers and some different wire defaults. The [2026-10-25 P3 evidence audit](dji-go-p3-evidence-audit-2026-10-25.md)
+> gives the verified artifacts, comparison and dated vendor SD-card/RC distinction.
+> All V tags below remain scoped to GO 4 unless explicitly independently corroborated.
+
 Static interoperability notes for the operator's own Phantom 3. Nothing was sent to any device.
 No key, cipher-table, signing or ATSHA204 value was read or recorded; fields that may hold such material are named, not decoded.
 Tags: **V** verified in decompiled code, **I** inferred, **U** unknown.
@@ -22,9 +29,9 @@ Already covered elsewhere, not repeated: `docs/ground-upgrade-path.md` (m1400), 
 - Decompiler artefacts: jadx names (`a`, `b`, `f10927c`) are obfuscated, behaviour is read from bodies. One constant is mis-resolved (`Build.VERSION_CODES_FULL.ECLAIR` in `TB/FileTransferStrategies.java:10-11`, true value U).
 - Byte order: all multi-byte fields are little-endian. V: `M/util/d.java:91-93` (`c(int)` 4 B), `:107-109` (`d(int)` 2 B), `:71-73` (`b(long)` 4 B), `:115-127` (`f(byte[],off,len)` read).
 
-## 0. Findings up front
+## 0. Findings up front (GO 4 only)
 
-- V: no class in this APK ties `ProductType` Phantom 3 (litchiC/S/X, P34K) to a firmware-push engine. `DJIUpDeviceType` has no P3 entry (`DB/constants/DJIUpDeviceType.java:9-32`).
+- V in the original GO 4 trace only: no class in this APK ties `ProductType` Phantom 3 (litchiC/S/X, P34K) to a firmware-push engine. **Superseded as a cross-version conclusion:** classic GO 3.1.8 wires a legacy sender; P3 Pro aircraft reachability is still U. `DJIUpDeviceType` has no P3 entry (`DB/constants/DJIUpDeviceType.java:9-32`).
 - V: four distinct push mechanisms exist, all on cmdset 0 (COMMON): (R) ground RC module push, (L) legacy per-module sender with no static callers, (T) P4-era tar/multi-file engine, (C) camera-hosted flow where the app only confirms.
 - V: `RequestSendFiles`/`AckReceiveFiles`/`SetResendFiles` are the **media (photo/video) download** protocol, not firmware (`pilot/fpv/control/g.java:86,265,425-472`).
 - V: classes named `DataCamera*` are the same COMMON cmdset-0 commands seen from the camera as peer. Model class = `"Data" + SenderDeviceName + CmdName` (`M/data/config/P3/c.java:24-26`, `CmdSet.java:195-202`). They are not cmdset 2.
@@ -323,11 +330,13 @@ V sequence from the app side (`pilot/publics/objects/DJIBaseActivity.java`; same
 - V connection gates: `ServiceManager.isRemoteOK()` and `isOK()` for aircraft components (`pilot/upgrade/f/x.java:44-46`); RC components need only `isOK()` (`f/a0.java:45`); motors not up (`DB/statemachine/b.java:39-41`, `P3/DataUpgradeSelfRequest.java:89-95`); battery minimum (2.4); `DataCommonRequestUpgrade` ack flags (1.2).
 - V: size/precondition errors the device can return: Ccode 233 SDCARD_FULL, 232 SDCARD_NOT_INSERTED, 249 UPDATE_MOTOR_WORKING, 251 DEVICE_LOW_POWER, 246 FIRM_MATCH_WRONG, 245 UPDATE_WRONG, 242 FM_CRC_WRONG.
 
-## 5. Reproducing it from our own code (plan only, nothing sent)
+## 5. Superseded P3 replay proposals (historical only, nothing sent)
 
 **This is a plan. No frame below has been sent to any device. Nothing here authorises flashing; vendor images are signature-checked (`libUpgradeVerify`, not analysed) and the check location (app vs device) is U.**
 
-Prerequisites (all V from the app): link up (RC and aircraft OK), motors off, battery at or above 40 percent, package for this exact product (header product string equal), package module versions newer than installed unless forced.
+**Superseded as a faithful P3 Pro replay:** Candidates A/B below combine GO 4 mechanisms without a confirmed P3 Pro product path. Candidate C is the separately traced RC flow, not an aircraft flow. Do not treat GO 4 defaults as version-independent; the audit records 3.1.8 differences.
+
+Historical prerequisites (V in GO 4, P3 applicability unverified): link up (RC and aircraft OK), motors off, battery at or above 40 percent, package for this exact product (header product string equal), package module versions newer than installed unless forced.
 Sender is type 2 (APP), sender id 0; request, NEEDACK YES: byte 8 = `0x40`, cmdset 0.
 Tooling gap: `scripts/re/duml_proto.py` and `app/packages/duml/lib/src/packet.dart` define device types only up to 6/10/14; add 1 camera, 8 DM368, 9 OFDM, 13 DM368_G, 14 OSD, 16 TRANSFORM_G, 19 FPGA, 20 FPGA_G (`M/data/config/P3/DeviceType.java:6-30`). Catalog names exist (`duml_catalog.py:10-30`); payload builders for the structs in section 1 do not.
 
@@ -354,8 +363,8 @@ Unknowns that block a faithful P3 replay (U): see section 6.
 
 ## 6. Unknown
 
-- U: which flow, if any, GO 4 uses to move a P3 aircraft package: `LG/*` has no callers, T excludes P3, C needs the package already on the camera.
-- U: how the file gets onto the camera (SD) for Flow C; receiver type/id for Candidate A.
+- **Superseded question:** which GO 4 flow moves a P3 aircraft package. GO 4 is not its supported control app. **Current U:** whether a complete P3 Pro aircraft-push path is reachable in classic GO 3.1.8. Its generic sender has callers; normal connected-product UI gates are Wi-Fi/LonganMobile, and encrypted upgrade-group / factory paths remain unresolved. The documented P3 Pro aircraft update method uses microSD.
+- **Documented:** the user copies the aircraft package to microSD for the vendor P3 Pro update method. **U:** a programmatic transfer-to-camera route / receiver for the speculative Candidate A; a camera confirmation command does not establish such a transfer.
 - U: route of TranslateData frames addressed to type 20 inside the RC, and to type 19 on the air side.
 - U: meaning of header fields `0`, `4`, `8`, `46..63`, entry bytes `1..3`, `16`, `36..51`; signature enforcement (`libUpgradeVerify`) and where it runs.
 - U: GetVersion/GetDeviceStatus ack index base; GetPushUpgradeStatus item-version offset quirk; AckReceiveFiles overlapping getters.
