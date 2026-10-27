@@ -38,7 +38,7 @@ Consequence: **there is nothing cryptographically secret in this link.** No payl
 needs: re-implement a documented-family (WiMAX/LTE) PHY, read a cleartext address, solve one
 unkeyed scrambler. **None of it requires the FPGA netlist, the Mistral ALM model, or
 silicon** — those answer "how is the modem built", not "how do we talk to it". The FPGA
-analysis (`m2001-decomp-findings.md`, `fpga-emulation-plan.md`) stands as architecture, not
+analysis (`debris/m2001-decomp-findings.md`, `debris/fpga-emulation-plan.md`) stands as architecture, not
 as a dependency of the link goal.
 
 ### Caveat: compressed video is already near-random — entropy is not encryption
@@ -131,10 +131,10 @@ source.
 
 ## Firmware crypto search — nothing for the link
 
-Searched `m0900` (radio MCU), `m0100`/`m0101` (camera) for
+Searched `m0900` (`air_router_stm32f103`), `m0100`/`m0101` (camera) for
 `aes|cipher|encrypt|scrambl|key|session|nonce|handshake`:
 
-- `m0900` radio MCU: nothing (stripped bare-metal).
+- `air_router_stm32f103` (m0900): nothing (stripped bare-metal).
 - `m0100` camera: the only AES/key hits are **Wi-Fi/Bluetooth/TLS** — `wpa_supplicant`
   `CCMP`/`TKIP`, `hostapd`, OpenSSL certs. Those are the camera's Wi-Fi/app/cloud crypto,
   **not** the Lightbridge RF link.
@@ -185,7 +185,8 @@ Also in `m1400`: `MASTER`/`SLAVER`/`TestMaster`/`TestSlaver` (confirms the maste
 pairing), and `sha204p_send_slave_address` — an **ATSHA204 crypto-auth chip**. That is
 SHA-256 challenge-response for **component authentication (anti-counterfeit)**, not link
 encryption; it is the one real cryptographic element, and it authenticates *genuine
-hardware*, not the RF payload. (LB2 is also dual-band — a `5.8G VER ERR!` string — unlike
+hardware*, not the RF payload. (This `m1400` instance is **not** the only one, nor the primary:
+the main ATSHA204 board-auth is on the camera/A9 `m0100` — see `security-and-activation.md` §2.) (LB2 is also dual-band — a `5.8G VER ERR!` string — unlike
 the P3's 2.4 GHz-only Lightbridge.)
 
 **And Lightbridge is "based on WiMAX" (IEEE 802.16 OFDM)** per the receiver-board docs — a

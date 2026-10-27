@@ -8,8 +8,9 @@
 
 What goes into and out of the Lightbridge FPGA, and the bus types/widths. Interface
 *types* and control signals are documented (dji-firmware-tools OFDM-receiver-board wiki
-+ the module map); exact **widths are not published** and the radio MCU is stripped, so
-widths are the chips' standard buses, flagged as such. Confirming the exact widths is a
++ the module map); exact **widths are not published** and the adjoining MCU
+(`air_router_stm32f103` / `gnd_rc_lpc1765`) is stripped, so widths are the chips' standard
+buses, flagged as such. Confirming the exact widths is a
 logic-analyzer job (see end).
 
 ## Ground (remote controller) FPGA — Cyclone V `5CEFA4` (wiki-sourced; not confirmed by any bitstream)
@@ -28,7 +29,7 @@ Bitstream evidence on the part is mixed: m2000/m2002 are Cyclone V streams, m200
 Summary: RF samples in/out on the ~12-bit AD9363 port; video out on the 8/16-bit
 slave-FIFO parallel bus; config via SPI/GPIO; DUML via UART.
 
-## Air (aircraft) FPGA — `m1900`
+## Air (aircraft) FPGA — `m1900` (`air_fpga_cyclonev`)
 
 Less documented; from the module map and symmetry:
 
@@ -39,7 +40,7 @@ Ambarella A9SE camera ─► DaVinci DM368 (H.264 encode) ─► air FPGA (m1900
 - **DM368 → air FPGA:** encoded H.264 in. Interface **not publicly documented** — likely
   a parallel video/FIFO bus (unconfirmed).
 - **air FPGA ↔ AD9363:** same ~12-bit sample data port (TX).
-- **STM32F103 (`m0900`):** configures AD9363 (SPI) and drives FPGA config/reset.
+- **STM32F103 (`m0900` / `air_router_stm32f103`):** configures AD9363 (SPI) and drives FPGA config/reset.
 
 ## What the FPGA does (from the data flow)
 

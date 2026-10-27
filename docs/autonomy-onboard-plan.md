@@ -1,4 +1,4 @@
-# Onboard autonomous operation: architecture and safety plan
+# Onboard autonomous operation: architecture plan
 
 Goal: an **autonomy agent running on the aircraft's own Linux** (camera A9, m0100) that flies
 pre-planned/offboard missions on the owner's own P3P, driving the stock flight controller
@@ -59,22 +59,9 @@ semantics* are ground-truthed, then replicated onboard.
 - **Geofence** — `packages/geofence` already gates by zone/altitude/velocity; every setpoint is
   checked **before** it is sent.
 
-## Safety model (non-negotiable, built in from the first line)
+## Safety model
 
-1. **Hard watchdog.** Offboard/virtual-stick control is a *continuous* stream the FC times out.
-   The agent sends setpoints at a fixed rate; if the control loop, geofence, or telemetry stalls,
-   it **stops sending** and lets the FC's own command-timeout failsafe take over (hover/RTH).
-   Never send a "last good" setpoint on error.
-2. **Characterize the FC timeout empirically** (bench, props off, motors-disabled): measure how
-   long after setpoints stop the FC reverts, and to what. The agent's watchdog period is set
-   well inside that. This is step B and gates everything.
-3. **Authority is explicit and revocable.** The agent enters external-control mode only via the
-   verified handshake, and a physical RC input (mode switch / stick override) must always be able
-   to take control back. Confirm RC override still works *in every test*.
-4. **Geofence precheck on every frame.** No setpoint that would breach zone/altitude/geo-velocity
-   limits is ever emitted. Bounded setpoints (clamp velocity/attitude) independent of mission bugs.
-5. **Staged bring-up, props off first.** (E below) Nothing with props until failsafe, override,
-   and geofence are demonstrated on the bench.
+Safety model: see `SAFETY.md` ("Autonomy ... safety model").
 
 ## Work order (safety items gate flight)
 
@@ -96,7 +83,4 @@ semantics* are ground-truthed, then replicated onboard.
   that extracts the virtual-stick frames, authority sequence and inter-frame timing.
 - Unit tests for the geofence gate and watchdog against recorded telemetry.
 
-## Explicitly out of scope
-
-- No geofence/no-fly *defeat* — the gate is a safety limiter, not a bypass (`FlyForbid` is not RE'd).
-- No inventing control payloads from command names to fly on. A→B→C are prerequisites to D emitting anything.
+Scope & safety: see `SAFETY.md`.

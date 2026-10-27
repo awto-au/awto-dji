@@ -1,4 +1,4 @@
-# Ground USB (m1601, Cypress FX3): where DUML and video meet the phone
+# Ground USB (m1601, Cypress FX3, `gnd_fx3_cyusb2014`): where DUML and video meet the phone
 
 Owner hardware is a **GL300C** RC (`fc-usb-port.md`). On GL300b/c the ground DM368 (`m1300`) is
 removed. The phone-facing USB is a **Cypress FX3 / CYUSB2014** running module `m1601` (ThreadX,
@@ -102,7 +102,7 @@ DJI GO 4's own `dataType==22346` log line (`apk-analysis.md`) is the video case.
 | Chunks | **211 video, 11 DUML** |
 | CRC-valid DUML frames in DUML chunks | **116** |
 | CRC-valid DUML frames inside video chunks | **0** |
-| DUML senders | ground radio MCU (type 14) 73, FC (3) 15, camera (1) 12, gimbal (4) 8, air radio MCU m0900 (9) 3, air DM368 (8) 2, types 16/11/6 one each |
+| DUML senders | `gnd_rc_lpc1765` (type 14) 73, FC (3) 15, camera (1) 12, gimbal (4) 8, `air_router_stm32f103` m0900 (9) 3, air DM368 (8) 2, types 16/11/6 one each |
 
 So **all** DUML on the phone link, air-side included, arrives through the FX3's UART, and the
 FPGA parallel stream is video only.
@@ -166,7 +166,7 @@ switched between an **external** role and the **internal** FX2 bus:
 - **The FX2 bus itself** is switched between the A9 and the DM368 ("connect usb to A9 /
   connect usb to DM368", `DjiMsgStUsbSwitchStatusSet`).
 - **Upgrade interlock:** `[DJI_UEG] Please Discon USB Port.`
-- `DjiNotice1765SwitchUsb2A9` (1765 = DJI's legacy name for the air radio MCU) can request the
+- `DjiNotice1765SwitchUsb2A9` (1765 = DJI's legacy name for `air_router_stm32f103`) can request the
   switch.
 - W: the camera board has two TI TS3USB221A 2:1 USB muxes (`camera-linux-console-access.md`).
   I: one selects A9 ⇄ {external micro-USB, internal bus}, the other selects FX2 ⇄ {A9, DM368}.

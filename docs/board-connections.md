@@ -5,7 +5,7 @@
 - Tags: **V** verified in m0900 code or Renode; **W** wiki-sourced (service pads, parts, connector names), not independently checked; **I** inferred; **U** unknown.
 - Rates: `docs/data/m0900-buses.tsv`. Flow-level view: `docs/dataflow.md`.
 - The FPGA part `5CEFA4U19I7` is wiki-sourced (W). The ground firmware ships Cyclone V (m2000/m2002) and Cyclone III/IV-format (m2001) images (`fpga-images.md`); no bitstream-derived pin or net is used here.
-- Board role is unresolved: `rf-sdr-and-repair.md` calls P01007.06 the "OFDM Receiver board" yet wires `CENTER` to the ESC center board (aircraft side). The diagram follows the task framing (m0900 + Cyclone V + AD9363 + FX2LP on one board).
+- Board role: still open, but **the MCU on this board is confidently `air_router_stm32f103`** (it is STM32F103; the RC's own MCU, m1400 (`gnd_rc_lpc1765`), is LPC1765 — `naming-map.md`). Whether the *whole PCB* sits in the aircraft or the RC chassis is separate from that chip ID and is still **I, leans air** (`fpga-air-vs-ground.md` §"Still open (a)", `rf-sdr-and-repair.md` calls it the "OFDM Receiver board" yet wires `CENTER` to the ESC center board). The diagram follows the task framing (m0900 + Cyclone V + AD9363 + FX2LP on one board); the FPGA/FX2 nodes below are not given a canonical `air_`/`gnd_` name pending that resolution.
 
 ## Diagram
 
@@ -24,7 +24,7 @@ flowchart LR
     FX2P["FX2LP: IFCLK SLRD SLWR FLAGB FLAGC"]
   end
   XTAL["HSE crystal, 12 MHz I"]
-  MCU["STM32F103CBU6 m0900 72 MHz"]
+  MCU["STM32F103CBU6 m0900 72 MHz<br/>`air_router_stm32f103`"]
   CANT["CAN transceiver, part U"]
   FPGA["Cyclone V 5CEFA4U19I7"]
   FLASH["Config flash ATH520 64DM Y W"]
@@ -81,7 +81,7 @@ flowchart LR
 ## Gaps in the model
 
 - Two CAN-related facts conflict: wiki lists CAN pads, but `CENTER` pins in the only pin table are GND/5V/TX/RX, so which connector carries CANH/CANL (CAMERA?) is U.
-- FX2LP is shown on this board because `fpga-interfaces.md` places it here; whether the FX2LP is the aircraft's or the RC's is tied to the unresolved board role above.
+- FX2LP is shown on this board because `fpga-interfaces.md` places it here; whether the FX2LP is the aircraft's (`air_fx2_cy68013`) or the RC's (`gnd_fx2_cy68013`) is tied to the board-role question above.
 - `m0900`'s `SPI1` was checked as a candidate second register/config bus (issue #18, who
   writes the FPGA's `ATH520` config flash) — V, dead code, not used at all (see table above).
   Also checked whether `m0900` drives the FX2LP directly over a byte-wide parallel GPIO
@@ -97,4 +97,7 @@ flowchart LR
 5. FPGA to FX2LP bus width (8 or 16) and IFCLK; FX2LP USB speed; pin order of CAMERA and CENTER.
 6. CAN transceiver part, which connector carries CANH/CANL, and the board strap for `get_board_version` (RAM `0x200000d8`, codes 2/4/5/6/7).
 7. JTAG pad target (FPGA or MCU), flash part and its link to the FPGA, regulator tree.
-8. Whether this board is the aircraft's or the RC's receiver (DM368 or DM365 side).
+8. Whether this board is the aircraft's or the RC's receiver (DM368 or DM365 side) — **leans
+   aircraft** on the MCU-chip evidence alone (I; `fpga-air-vs-ground.md`); a schematic/photo/JTAG
+   read would make it V. See that doc's "Prove-it plan" for the cheapest next step (a live
+   GetVersion query, no hardware opened).

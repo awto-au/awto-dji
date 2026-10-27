@@ -46,7 +46,7 @@ http://flysafe.aasky.net/api/v3/geofence/sdk_static_data
 
 That is DJI's **FlySafe geofence static-data feed** — the source the app downloads
 no-fly zones from. (The AES/API/signature *keys* are present but their values were not
-extracted; harvesting vendor credentials is out of scope and unnecessary.)
+extracted.)
 
 ## What this tells us for the direct app
 

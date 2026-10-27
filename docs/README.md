@@ -4,9 +4,11 @@ Analysis and planning docs for the awto-dji project (talking to a DJI Phantom 3 
 directly, for a device the operator owns). Grouped by topic; start with `../HANDOVER.md` for
 the current state and next steps, and `../CLAUDE.md` for agent onboarding.
 
+**`SAFETY.md`** — the single source for all safety, flight-gating, geofence/NFZ, RF-power and
+repair-scope rules. Technical docs link here and do not repeat them. **`HISTORY.md`** — dated log
+of fact-changes (docs state current facts only).
+
 ## Protocol & control plane (the practical path)
-- [usb-test-matrix.md](usb-test-matrix.md) — per-port bench evidence, open USB tests, and a cached-descriptor watcher for cable/power correlation.
-- [fx3-usb-modes.md](fx3-usb-modes.md) — ground USB firmware's alternate bulk interfaces, GPIO/configuration mode selection, and the currently verified PC serial path; PC bulk access remains unverified.
 - [duml-protection.md](duml-protection.md) — separates APK SIMPLE XOR, ATSHA204 component authentication, RC master/slave connection and unresolved aircraft-radio protection; traces the XOR inputs.
 - `protocol-verification.md` — DUML wire format verified byte-exact against a real packet.
 - `control-plane-re.md` — reverse the MCU control plane, not the FPGA; external corroboration.
@@ -37,8 +39,9 @@ the current state and next steps, and `../CLAUDE.md` for agent onboarding.
   Download Center's own JSON data); decrypted ground-decoder UBL/U-Boot/kernel and an
   encrypted final-version update package recovered from a 2016 forum thread instead;
   binaries in `../sources/lightbridge-ig800-firmware/`.
-- `fpga-images.md`, `fpga-interfaces.md`, `fpga-emulation-plan.md`, `bitstream-to-verilog.md`,
-  `m2001-decomp-findings.md` — FPGA bitstream RE. The earlier m2001 Mistral decode is void (#114); `fpga-images.md` has the family verdicts, `m1900`/`m2000`/`m2002` appear encrypted.
+- `fpga-images.md`, `fpga-interfaces.md`, `bitstream-to-verilog.md` — FPGA bitstream RE.
+  `fpga-images.md` has the family verdicts and per-chip emulator availability; `m1900`/`m2000`/`m2002` appear encrypted. The earlier m2001 Mistral decode is void (#114): retired to `debris/m2001-decomp-findings.md`, `debris/fpga-emulation-plan.md`.
+- `fpga-air-vs-ground.md` — which FPGA image is air vs ground: m1900 = air, m2000/01/02 = ground, V at package + MCU-routing + DJI's own in-firmware `FPGA.A`/`FPGA.G` name table; open sub-questions (#9 board role, which rev per RC, m2001 family) + a cheapest-first prove-it plan.
 
 ## RF / SDR / recovery strategy
 - `minimal-recovery.md` — eliminate the complex FPGA; recover only the small DJI-specific bits.
@@ -46,22 +49,37 @@ the current state and next steps, and `../CLAUDE.md` for agent onboarding.
 - `known-plaintext-plan.md` — all-0s / repetitive-telemetry known-plaintext for the scrambler.
 - `rf-sdr-and-repair.md` — SDR tooling and RF notes.
 - `lightbridge-phy-measured.md` — OFDM numerology, carrier map, pilots and frame timing measured from public DJI IQ captures (M100 = closest P3 proxy).
-- `safety-geofence.md` — public-airspace geofence gate (safety, not defeat).
 
 ## Active task
 - `renode-task.md` — **TASK**: build Renode from source, emulate `m0900`, capture the AD9363 config (closes the PHY-params open item).
 - `phy-params.md` — result slot + capture method for the above. Tooling in `../renode/` is **built and validated**; the capture is blocked only on the `m0900` firmware image (not in repo).
 
+- `prior-art.md` — positioning vs existing DJI RE (o-gs/dji-firmware-tools): what we reuse (extraction, decryption, the param-table/defaults dump = `dji_flyc_param_ed.py`), what's new here (SPL ID, I/O pin map, control-authority, sim/RC-loss, Linux→FC, FPGA), and that upstream already ships an `m0306` symbol map worth cross-checking (GPL-3.0, compatible).
+- `stm32-reversing-process.md` — the repeatable STM32 checklist (Ghidra, SVD, SPL/HAL/LL ID, string-anchored naming, param tables) distilled from reversing m0306.
+- `lpc-reversing-process.md` — the NXP/LPC parallel (m1400): what's the same (xV4, string-anchoring, V/I/U), what's different (no DJI AES wrapper, LPCOpen/IAP not SPL, legacy-SPI0 gotcha, no Ghidra project built yet), and the open SVD/tooling gaps.
+
 ## System data flow and buses (m0900-derived)
+- `naming-map.md` — **adopted** canonical names for every module (`side_role_chip`, e.g. `air_fc_stm32f427`, `air_router_stm32f103`, `gnd_fx3_cyusb2014`) and bus (`medium_side_roleA_roleB`, e.g. `uart_air_router_fc`, `can_air_primary`), each tagged V/I/U.
 - `dataflow.md` — video / telemetry / control planes as Mermaid; where DUML is injected, forwarded, consumed in `m0900`; control + telemetry sequences; unknowns list. Every edge tagged verified / inferred / unknown.
+- `uart-spi-speed-crosscheck.md` — every claimed UART/SPI link across air+ground, both ends tagged V/I/U, speeds compared where both sides have a real number: almost every hop has only one side independently measured. Confirms `air_venc`'s (DM368) `ttyS1` baud (115200, not assumed) but finds its peer was never identified at all — three live candidates, none eliminated. Independently re-verifies (fresh tooling, not re-reading the old conclusion) that DUML is not spliced into the video stream.
 - `board-connections.md` — P01007.06 connection diagram from firmware + wiki (**not a schematic**); what a real schematic would confirm.
 - `fc-message-path.md` — m0306 (FC) message handling: it's AES-encrypted (decrypt with scripts/re/xv4_decrypt.py), its byte entry points (CAN1/2, USARTs), the DUML CRC16 validator, and why the (set,id) command map needs a Ghidra-scale trace next.
+- `data/m0306-param-defaults.tsv` — all 834 FlycExportParam fields with flash min/max/default (`scripts/re/fc_param_table.py --defaults`): bauds, flight limits, failsafe actions, SDK/API control profile.
+- `fc-replacement-plan.md` — plan for a clean-room replacement FC app the stock loader will accept (no signature; loader preserved = low brick risk), whose first job is a DUML read_memory command to dump the resident bootloader; components (STM32 HAL + FreeRTOS + operator framework + ported DUML + CAN PD0/PD1), an FC Sim built first, acceptance checklist (0x77557755 marker), and a motors-off/no-flight safety gate.
+- `security-and-activation.md` — consolidated reference for the distinct gates: DJI product activation (the real firmware motor gate, DJI-software-driven), ATSHA204 component auth (anti-counterfeit crypto MAC, on-device but demonstrated effect = client authorization by Ethernet MAC; flight-block unverified), device identity (UID/SN), firmware integrity (no signature), and RF link (unkeyed). Summary table of what each gates and whether it is a hardware or DJI-software block.
+- `fc-auth-enforcement-trace.md` — traces what the FC activation check and the A9 ATSHA204 MAC/SN checks' callers do on failure (issue #45): FC activation is a true motor-start block (V, addresses re-derived for V01.11.0020); the A9 MAC/SN check gates ≥1 on-device A9 feature (I/U which), with no path found to the FC or flight/boot.
+- `atsha204-repair-note.md` — repair note for a failed ATSHA204 component-auth chip on an owned board: what it is (anti-counterfeit SHA-256 component auth; primary on the camera/A9 m0100 via DjiEncryptCheckA9Mac/CheckSN vs the A9 NAND copy, also on the RC m1400 get_mac/sha204p_*; not safety/regulatory/link-encryption), and the stub process (replace the chip, or patch the get_mac-result branch since the firmware has no signature). Dual-use/safety caveats noted.
+- `fc-bootloader.md` — m0306 FC boot/upgrade: a separate factory-fixed "Loader" (app at 0x08020000 leaves 128KB loader region; no loader in the OTA package), the DUML cmdset-0 streamed-reflash protocol (RequestUpgrade→TranslateData→RestartDevice, flash erase/write/CRC result codes), and the app is single-image but the decompiled RAM updater m0305 has two-slot validate+boot logic and bank2 awareness (A/B-capable at the loader level); m0305 is a full RAM-resident flash driver + option-byte writer + DUML-over-CAN receiver.
+- `fc-io-inventory.md` — m0306 FC I/O + software inventory: STM32F427 peripheral usage (TIM2 µs time-base, CAN1/2 inter-MCU link, UARTs/SPIs/I2C, USB_OTG_HS, FSMC), sensors (MPU-6500 IMU, HMC5883/IST8303 compass, baro, GPS), and software identity (µC/OS-III, DJI own `hal_*` not ST HAL, FDI-AHRS fusion, no open-source FC code). Reproduce with `scripts/re/fc_io_inventory.py`.
 - `autonomy-onboard-plan.md` — architecture + safety plan for an onboard-Linux autonomy agent driving the stock FC with setpoints: component map, the verified-capture rule for control semantics, the watchdog/authority/geofence safety model, and the A–E work order.
 - `linux-to-fc-path.md` — whether the camera A9 Linux and the DM368 Linux can reach the FC: yes, via netlink→rpmsg→camera RTOS DUML router (type 3 → UART ch0) or DM368 ttyS1; neither Linux originates FC traffic in stock firmware.
 - `fpga-pinout-model.md` — each FPGA's external buses derived from the chips around it (FX2/FX3 slave-FIFO settings, m0900/m1400 SPI+GPIO, UART DUML, AD9363), with I/O estimates and how to confirm on hardware.
 - `ground-fx3-m1601.md` — GL300C ground USB (Cypress FX3, `m1601`): iPhone iAP2 and Android AOA roles, DMA channels, the UART DUML session, and the `55 CC <type> <len>` RC->phone chunk header (`0x5749` DUML, `0x574A` video); tools `scripts/re/fx3_m1601.py`, `scripts/re/aoa_chunk_decode.py`.
 - `m0800-dm368-provenance.md` — m0800 (air DM368) decrypted and compared with public TI DVSDK 4.02 / linuxutils / U-Boot / UBL / mainline 2.6.32.17 sources; what is unchanged TI code and what DJI modified (`scripts/re/ref_string_diff.py`).
 - `m0900-can-channels.md` — the two CAN DUML links (0x412/0x413 camera/gimbal, 0x414/0x415 receiver type 30 only) and the correction that FC-type traffic goes out USART1, not CAN; `scripts/re/m0900_can_channels.py` asserts it.
+- `air-router-deep-dive.md` — full `air_router_stm32f103` (m0900) command surface, the complete dispatch table (37 records) walked end to end: closes the 16-bit nested-table reach, the watchdog-reboot primitive (RAM flag `0x200000c8`), flash pages `0x7800`/`0x7b00`'s use, and the cmdset-9 SetFPGA/Set9363 naming mismatch; narrows the Update-Transmit hand-off mechanism (still open: what the absent bootloader does with it); confirms CAN camera/gimbal traffic is pure pass-through, verified negative.
+- `air-router-io-and-naming.md` — completeness follow-up to `air-router-deep-dive.md`: ports 17 more handler names from the upstream `V01.07.0060` map by direct `(set,cmd)`-key correspondence (one upstream name, `cmd_exec_flyc_unlimit_state`, reported as a non-reconciling mismatch rather than forced); fully decompiles cmd `0xfe`/`0xff`/`0x0c` (the `0xff` "catchall" turns out to answer a hardcoded FPGA firmware-ID string for receiver type `0x13`, not a no-op); full GPIO/peripheral I/O inventory (new pins `PA4`, `PB3+PB6`, a `PA1` pulse-strobe candidate antenna/quadrant-switch relay); builds the first Ghidra project for `m0900` and types `radio_state_s`/`radio_cfg_page_s` as real structs (found RAM-contiguous).
+- `air-router-stm32-full-pass.md` — the first *systematic* (not opportunistic) STM32-reversing-process pass on `m0900`, mirroring the m0306 pass: confirms StdPeriph/SPL by code structure (3 independent idioms + a reproducible NVIC/IRQn table), triages the full 152-address literal-pool sweep (42 proven false positives, out-of-SRAM-range), and resolves 13 of 24 globals in the `0x200000a0-0x200001fe` cluster to real Ghidra `Structure` types (`PA1FaultCounters`, `AntennaQuadrantState`, `FpgaSensorAvgState`, `FlycDetectSampler`, full definitions in `docs/symbols/m0900-structs.h`), with 3 honestly left open rather than guessed.
 - `data/m0900-buses.tsv` — clock tree, SPI2, USART1/2/3, CAN1 rates with arithmetic and code addresses; unused buses listed.
 
 ## Provenance
@@ -71,9 +89,7 @@ the current state and next steps, and `../CLAUDE.md` for agent onboarding.
 - [m0101-threadx-reversing.md](m0101-threadx-reversing.md) — `m0101` camera loader reversed from scratch: ARM Cortex-A9/ThreadX confirmed, full Ghidra pass, NAND partition map, SD-card firmware-update flow, cross-module link to `m0100`'s UEG layer, FPGA/switch-mux negative findings.
 - `firmware-reference-versions.md` — per-module "latest known-good" table for `fw_version_check.py` (awto-dji#32): local firmware archive vs SD-log vs online sources, V/I confidence per module.
 
-## Safety / scope
-See `../CLAUDE.md` → "Scope & safety constraints". This is interoperability for an owned
-aircraft: no geofence defeat, no extraction of secret key values, structural analysis only.
+## Upgrade paths, USB ports & app protocol
 - [fpga-bringup.md](fpga-bringup.md): m0900 boot flow, board straps, FPGA GPIO lines, FPGA boot handshake
 - [fpga-upgrade-path.md](fpga-upgrade-path.md): m0900 upgrade commands, FPGA update handshake, where the chip UID is sent
 - [air-id-and-stream-survey.md](air-id-and-stream-survey.md): all air modules (+ P3S/P3C/P3SE/P3XW): FPGA-stream contact, chip/die ID reads, update-engine path (FX2LP, DM368, FPGA); symbols in `symbols/air_modules.tsv`

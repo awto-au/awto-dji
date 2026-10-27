@@ -2,7 +2,7 @@
 
 **Owner:** next agent (Selwyn or a spawned session). **Goal:** close the one open PHY-params
 proof in `HANDOVER.md` — recover the exact OFDM channel parameters (centre frequency, channel
-bandwidth, sample rate, gains) by **emulating the air MCU `m0900` (STM32F103) in Renode and
+bandwidth, sample rate, gains) by **emulating the air MCU `m0900` (`air_router_stm32f103`) in Renode and
 capturing the SPI register writes it makes to the AD9363**, then decoding them against the
 public ADI UG-570 register map.
 
@@ -47,7 +47,7 @@ source tree is. Build from source so these are editable.
 4. Decode the sequence against UG-570 -> BBPLL / sample-rate / RF-PLL (centre freq) / RX-TX
    bandwidth / gain. Write the result to `docs/phy-params.md` with the raw sequence + decode.
 5. (Optional) attach a Verilated subnetlist of the FPGA LFSR/framing as a Renode peripheral
-   for the co-sim described in `docs/fpga-emulation-plan.md`.
+   for the co-sim described in `docs/debris/fpga-emulation-plan.md`.
 
 ## Deliverable
 
@@ -58,5 +58,4 @@ result.
 
 ## Scope / safety
 
-Interoperability for an owned aircraft (see `CLAUDE.md`): structural RF-parameter recovery,
-public register map. No key extraction, no geofence work.
+Scope & safety: see `SAFETY.md`.

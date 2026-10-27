@@ -88,22 +88,14 @@ Matches by class name, only compares records both apps extracted at `V` confiden
 classes present in only one app, classes that fully agree, and classes that diverge
 (different cmdset/cmdid/field offsets).
 
-**Known limitation, confirmed real, not hypothetical:** extraction is regex-based
-over decompiled Java, and jadx has more than the three decompile-style variations
-already normalized (cast prefixes, local-array aliasing, array-literal
-initializers). Validated 2026-10-24 comparing `dji.go.v4` vs `dji.pilot`: before any
-normalization, only 2 classes "agreed" and 46 "diverged"; after normalizing casts
-and local-array aliasing, 44 agreed and 56 diverged; after also normalizing
-array-literal initializers, 155 agreed and 61 diverged. Every divergence
-hand-checked so far (`DataGimbalControl`, `DataGimbalAbsAngleControl`,
-`DataGimbalSpeedControl` - already confirmed identical in both apps earlier this
-session by direct source reading) turned out to be decompile-style noise, not a
-real protocol difference. **Treat `compare_duml_apps.py`'s "DIVERGE" output as a
-worklist to hand-check, not as confirmed findings** - the prior, based on everything
-checked so far, is that most remaining divergences are further decompile-style
-variations this tool doesn't normalize yet, not real cross-app protocol
-differences. Improve the normalizer as new patterns are found rather than trusting
-raw diff output.
+**Known limitation, confirmed real, not hypothetical:** extraction is regex-based over decompiled Java, and jadx has more than the three decompile-style variations already normalized (cast prefixes, local-array aliasing, array-literal initializers).
+- Validated 2026-10-24 comparing `dji.go.v4` vs `dji.pilot`:
+  - before any normalization: 2 classes "agreed", 46 "diverged";
+  - after normalizing casts and local-array aliasing: 44 agreed, 56 diverged;
+  - after also normalizing array-literal initializers: 155 agreed, 61 diverged.
+- Every divergence hand-checked so far (`DataGimbalControl`, `DataGimbalAbsAngleControl`, `DataGimbalSpeedControl`; already confirmed identical in both apps earlier this session by direct source reading) turned out to be decompile-style noise, not a real protocol difference.
+- **Treat `compare_duml_apps.py`'s "DIVERGE" output as a worklist to hand-check, not as confirmed findings.** The prior is that most remaining divergences are further decompile-style variations this tool doesn't normalize yet.
+- Improve the normalizer as new patterns are found rather than trusting raw diff output.
 
 ## Candidate app list for future runs
 

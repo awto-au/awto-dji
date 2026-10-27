@@ -11,7 +11,7 @@ Status of each claim: **V** verified here, **W** from the o-gs wiki / issues (no
 - **V** The USB device is implemented in the flight-controller firmware itself (`m0306` carries the `DJI CONTROLLER` / `0001A0000000` strings), not a separate bridge chip.
 
 ## CPU behind it
-- **W** Flight controller ("MC", P01006.05): STM32F427IIH6, Cortex-M4F, 180 MHz, 2 MB flash. Firmware modules `m0305` (loader), `m0306` (app).
+- **W** Flight controller ("MC", P01006.05), `air_fc_stm32f427`: STM32F427IIH6, Cortex-M4F, 180 MHz, 2 MB flash. Firmware modules `m0305` (loader), `m0306` (app).
 - **W** Same board also carries MPU-6500 IMU, MS5607 barometer, ATSHA204 (component auth), micro-SD (flight logs).
 - **W** Readout protection level 2 on the factory ROM bootloader; BOOT0 / SWD pads exist.
 - Not the ESC MCUs: four TMS320F28027F ("IESC2000", `m1200`-`m1203`) sit on the center board.
@@ -221,6 +221,12 @@ truncated/garbled "CONFIG") - the lsusb database label "Mavic Mini MR1SD25 Remot
 controller" is almost certainly a generic cached USB-ID-database string DJI reused across
 RC hardware revisions, not evidence this is actually Mavic Mini hardware.
 
+**Resolved (2026-10-25):** this is `gnd_rc_lpc1765`'s (m1400) **own on-chip USB device
+stack**, not the FX3 (`gnd_fx3_cyusb2014`) and not a second bridge chip — the manufacturer/
+product/serial strings above are literal constants inside m1400's own compiled image, and
+the port's `VCOM`/`MSCM` class-tag pair matches this doc's own FC-side pattern exactly. Full
+finding: `ground-upgrade-path.md` §"Q5: the RC's own micro-USB port".
+
 - **V.** `scripts/probe_fc_usb.py` run against `/dev/ttyACM4` (the RC port): same result as
   the aircraft port - 0 bytes passive, 0 bytes on Get-Version to all four `TARGETS`.
 - **V.** Retried Get-Version addressed to receiver `0x06` (RC devicetype, per this repo's
@@ -329,28 +335,18 @@ different fixed combos (0/1, 1/1, 1/0) all worked when set once before open; a p
   `TIOCMSET` call at all afterward (accepting `cdc_acm`'s default auto-assert, confirmed
   DTR=1/RTS=1 - one of the three combos the Windows test found working). 15 s listen:
   **still 0 bytes.**
-- **Confound, not controlled for:** getting `/dev/ttyACM11` back required an explicit
-  unbind/bind of the USB device (its interfaces had been claimed via `usbfs` by something that
-  exited without releasing them - cause not identified) immediately before this test. That
-  rebind is itself a device-level reconfiguration (likely another `SET_LINE_CODING`/line-state
-  equivalent), so this test does not cleanly isolate "clean single open" from "freshly
-  re-enumerated after an unrelated reset."
-- **Also uncontrolled:** the aircraft is stationary on a bench; the log lines seen in the
-  Windows capture (`gimbal pitch/roll/yaw`, `gps init`, `compass stuck`) look like transient
-  boot/state-change events, not a guaranteed continuous stream - silence here may mean "nothing
-  new to log" rather than "stream gated."
+- **Confound, not controlled for:** getting `/dev/ttyACM11` back required an explicit unbind/bind of the USB device immediately before this test. Its interfaces had been claimed via `usbfs` by something that exited without releasing them (cause not identified).
+  - That rebind is itself a device-level reconfiguration (likely another `SET_LINE_CODING`/line-state equivalent).
+  - So this test does not cleanly isolate "clean single open" from "freshly re-enumerated after an unrelated reset."
+- **Also uncontrolled:** the aircraft is stationary on a bench. The log lines seen in the Windows capture (`gimbal pitch/roll/yaw`, `gps init`, `compass stuck`) look like transient boot/state-change events, not a guaranteed continuous stream.
+  - Silence here may mean "nothing new to log" rather than "stream gated."
 - **V, tried.** Replicated Windows' exact two-stage line-coding sequence (`tcsetattr` to 9600,
   then to 115200 on the same fd, no close in between): **still 0 bytes**, 10 s listen.
-- **Status: still inconclusive on Linux, but the negative result is now thorough.** Across this
-  port specifically, tried: baud 9600/115200/two-stage, all three DTR/RTS combos the Windows
-  test found working (pre- and post-open), 5 receiver addresses, byte-exact packet replay of
-  the working Windows request, and a clean single-open with no post-open control-line change -
-  silent every time, on the same physical device that answers correctly from Windows on the
-  same host. The real remaining uncontrolled variable is whether the aircraft has anything to
-  spontaneously log *right now* (idle on a bench, not flying) - not something further
-  port/baud/DTR tuning can resolve. Not pursuing further on this specific angle without new
-  information (e.g. a capture confirming the log stream is genuinely continuous/periodic, not
-  event-triggered).
+- **Status: still inconclusive on Linux, but the negative result is now thorough.**
+  - Tried on this port: baud 9600/115200/two-stage, all three DTR/RTS combos the Windows test found working (pre- and post-open), 5 receiver addresses, byte-exact packet replay of the working Windows request, and a clean single-open with no post-open control-line change.
+  - Silent every time, on the same physical device that answers correctly from Windows on the same host.
+  - The real remaining uncontrolled variable is whether the aircraft has anything to spontaneously log *right now* (idle on a bench, not flying). Further port/baud/DTR tuning cannot resolve that.
+  - Not pursuing this angle without new information (e.g. a capture confirming the log stream is genuinely continuous/periodic, not event-triggered).
 
 ## Cross-product cmdset fuzz - also silent (2026-10-23)
 
@@ -377,6 +373,6 @@ doesn't nominally use, e.g. `FPGA Air`(19), `FPGA Ground`(20), `Automation`(16),
 2. If a live Assistant capture is still wanted: the silent exit is NOT a network/CEF-startup issue (refuted above, with independent host-side confirmation) - every DJI engine binary tried (DJIService.exe standalone included) exits the same voluntary way, pointing at a shared gate in DJI's own startup code (possibly anti-tamper/environment detection, akin to the DJI GO 4 APK's AppGuard packer). Next: x86-disassemble the shared init path in `DJIDevice.dll`/`DJIService.exe` to find the actual gate condition, or try real Windows/a VM instead of Wine to sidestep it entirely.
 3. Rule out line-coding/baud dependence with a CDC SET_LINE_CODING sweep.
 
-Scope: owned aircraft, interoperability only (see `../CLAUDE.md`). No key extraction, no geofence or flight-restriction work.
+Scope & safety: see `SAFETY.md`.
 
 Tools: `scripts/probe_fc_usb.py`, `scripts/re/fc_usb_xrefs.py`. Wiki: https://github.com/o-gs/dji-firmware-tools/wiki/P3X-ESC-center-board , https://github.com/o-gs/dji-firmware-tools/wiki/P3-Flight-Controller-aka-MC

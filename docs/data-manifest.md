@@ -14,7 +14,7 @@ hash, so the analysis is fully reproducible without redistributing proprietary d
 |---|---|---|---|
 | `P3X_FW_V01.11.0020.bin` | `cecc3acdb09bb416f15feeff409220493b3b1b74344b736aa566ce3e197e7149` | 66,233,768 | Phantom 3 Pro firmware container (aircraft side) |
 | `WM610_FW_V01.11.01.50.bin` | `bc2d8e1d2a110c4573d7d3b9af935ad3b61c48db8e5f9d3745fdf2c51310540e` | 73,350,122 | Inspire 1 / WM610 (same LB family; cross-ref) |
-| `c1.bin` | `38de9e3fe0664fb43b85c11eabeed0c026dd15f80d402091ac68a0364f23d942` | 30,046,440 | C1 ground RC firmware container |
+| `c1.bin` (= `C1_FW_V01.06.0000.bin`) | `38de9e3fe0664fb43b85c11eabeed0c026dd15f80d402091ac68a0364f23d942` | 30,046,440 | C1 ground RC firmware container. **Source confirmed live 2026-10-25:** `https://dl.djicdn.com/downloads/lightbridge2/C1_FW_V01.06.0000.bin` (AWS S3/CloudFront, `Last-Modified: 2016-04-06`) — hash verified exact match on download. Not linked from DJI's current product page (`ground-fx3-m1601.md`), but the direct CDN path still serves it. |
 | `Phantom_3_Professional_Firmware_v1.3.20__en.zip` (official, `dl.djicdn.com/downloads/phantom_3/en/`) | `1e2e587daf55ce46f54872b6caadbc330a2402cb59e71c330d3f1a635ebbfc64` | 55,965,540 | contains `P3X_FW_V01.03.0020.bin` (`788a14cb...f69c15`, 95,876,112): last combined aircraft + RC package, so the RC modules are publicly downloadable. `m1601` 02.00.0002 = `4eb9d11374336047542ece7ace7a4be050fc03d87a2810aed281b6c1cda0a114` (184,036 B); `m2001` = same SHA as `c1_m2001.bin` |
 
 Unpack with dji-firmware-tools `dji_xv4_fwcon.py` → per-module `.bin`. Key modules analysed
@@ -22,8 +22,9 @@ Unpack with dji-firmware-tools `dji_xv4_fwcon.py` → per-module `.bin`. Key mod
 
 | Module | SHA-256 | Size | Role |
 |---|---|---|---|
-| `P3X_FW_V01.11.0020_m0900.bin` | `72156b4b18e8db4c35c74cf2e8ae90d216fd260cdb5b508087840a8d7313fe6d` | 75,796 | air radio MCU (STM32F103) |
-| `c1_m1400.bin` | `43bc7d6cb9f9c916dcfee0146378a3a6c823d0c65ac9613ca5adecae25f9d93f` | 155,304 | ground radio MCU (LPC1765) — all MCU proofs are against this |
+| `P3X_FW_V01.11.0020_m0900.bin` | `72156b4b18e8db4c35c74cf2e8ae90d216fd260cdb5b508087840a8d7313fe6d` | 75,796 | air-side DUML router (`air_router_stm32f103`) |
+| `c1_m1400.bin` | `43bc7d6cb9f9c916dcfee0146378a3a6c823d0c65ac9613ca5adecae25f9d93f` | 155,304 | ground RC MCU (`gnd_rc_lpc1765`) — all MCU proofs are against this |
+| `c1_m1401.bin` | `85171a356399e1a47bcf9227c6605aaff109b32b347ca42732946091ed93df49` | 139,092 | ground RC MCU, alternate chip (LPC1549) — which family the owner's board actually has is open, see `ground-upgrade-path.md` §Q6 |
 | `c1_m2001.bin` | `b6cc5e96f12446b12d7d384a6b873cf29653fb0ac34353442124b8480f9a73ca` | 8,388,608 | ground Lightbridge FPGA container (Cyclone III/IV-format payload; best match EP4CGX150) |
 
 ## Apps - DJI copyright, not stored

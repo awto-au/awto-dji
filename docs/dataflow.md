@@ -5,7 +5,7 @@ Built from firmware evidence (m0900 `P3X_FW_V01.11.0020`, app base `0x08008000`)
 - **V** verified: read from m0900 code or Renode readback (address cited).
 - **I** inferred: reasoned from firmware/docs/wiki, not observed.
 - **U** unknown: no evidence either way.
-- Bus rates: `docs/data/m0900-buses.tsv` (derivations there). Scope: architecture only, no keys, no geofence, no control bypass (`CLAUDE.md`).
+- Bus rates: `docs/data/m0900-buses.tsv` (derivations there). Scope & safety: see `SAFETY.md`.
 
 ## 1. Rate summary (m0900 side, all derived)
 
@@ -26,47 +26,48 @@ Built from firmware evidence (m0900 `P3X_FW_V01.11.0020`, app base `0x08008000`)
 ## 2. Overview — three planes plus shared RF link
 
 - Blue thick = video. Green solid = telemetry (aircraft to app). Red dashed = control (app to aircraft). Grey dotted = configuration. Dark thick = shared RF path (all planes ride it).
-- DM365 position between ground FPGA and FX2LP is **I**: `fpga-interfaces.md` draws FPGA to FX2LP directly, `video-and-link.md` puts DM365 between.
+- Ground RC shown is the owner's **GL300C**: phone USB = **FX3 m1601**, DM365 (`m1300`) removed (`ground-fx3-m1601.md`). The GL300a/HDMI variant instead uses FX2LP `m1600` + DM365 `m1300` — not drawn.
 
 ```mermaid
 flowchart LR
   subgraph PHONE["Phone"]
     APP["App / DJI GO"]
   end
-  subgraph RC["Remote controller ground side"]
-    FX2["FX2LP CY7C68013A m1600"]
-    DM365["DM365 m1300"]
-    M1400["m1400 LPC1765"]
-    GFPGA["Ground FPGA m2000/m2001/m2002"]
+  subgraph RC["RC ground side (GL300C)"]
+    FX3["FX3 m1601 phone USB<br/>`gnd_fx3_cyusb2014`"]
+    M1400["m1400 LPC1765<br/>`gnd_rc_lpc1765`"]
+    GFPGA["Ground FPGA m2000/m2001/m2002<br/>`gnd_fpga_cyclonev_r0/r1/r2`"]
     GAD["Ground AD9363"]
   end
-  RF(("2.4 GHz OFDM link"))
+  RF(("2.4 GHz OFDM link<br/>`rf_air_gnd`"))
   subgraph AIR["Aircraft"]
     AAD["Air AD9363"]
-    AFPGA["Air FPGA m1900"]
-    M0900["m0900 STM32F103 72 MHz"]
-    DM368["DM368 m0800 encoder"]
-    CAM["Camera A9SE m0100"]
-    FC["Flight controller m0306"]
+    AFPGA["Air FPGA m1900<br/>`air_fpga_cyclonev`"]
+    M0900["m0900 STM32F103 72 MHz<br/>`air_router_stm32f103`"]
+    DM368["DM368 m0800 encoder<br/>`air_venc_dm368`"]
+    FX2A["FX2LP m1500 (air)<br/>`air_fx2_cy68013`"]
+    CAM["Camera A9SE m0100<br/>`air_cam_a9se`"]
+    FC["Flight controller m0306 (STM32F427, SPL, uC/OS-III)<br/>`air_fc_stm32f427`"]
   end
 
-  CAM ==>|"U: H.264 bus unknown"| DM368
-  DM368 ==>|"U: parallel/FIFO/USB unknown"| AFPGA
+  CAM ==>|"U: H.264 bus"| DM368
+  DM368 ==>|"V: USB bulk EP2"| FX2A
+  FX2A ==>|"I: 8-bit slave FIFO, AUTO"| AFPGA
   AFPGA <-->|"I: I/Q ~12-bit port, 11.2 MHz"| AAD
   AAD <-->|"I: 2404-2480 MHz, 39 ch"| RF
   RF <-->|"I: same"| GAD
   GAD <-->|"I: I/Q ~12-bit port"| GFPGA
-  GFPGA ==>|"I: H.264, bus unknown"| DM365
-  DM365 ==>|"I: slave FIFO 8 or 16-bit"| FX2
-  FX2 ==>|"I: USB 2.0 AOA"| APP
+  GFPGA ==>|"V: 8-bit GPIF, PIB sock 2"| FX3
+  FX3 ==>|"V: USB chunk 55 CC 574A H.264"| APP
 
   FC -->|"V m0900 side: USART1 256228 baud, RX ring 0x2000002b"| M0900
-  M0900 -->|"V: USART3 8N1 257143 baud actual, DMA"| AFPGA
+  M0900 -->|"V: USART3 8N1 257143 baud, DMA"| AFPGA
   GFPGA -->|"I: UART DUML"| M1400
-  M1400 -->|"U: path to FX2LP/phone"| FX2
+  M1400 -->|"V: 115200 UART (peer m1400 I)"| FX3
+  FX3 -->|"V: USB chunk 55 CC 5749 DUML"| APP
 
-  APP -.->|"I: USB AOA"| FX2
-  FX2 -.->|"U: path to m1400"| M1400
+  APP -.->|"V: USB bare DUML"| FX3
+  FX3 -.->|"V: 115200 UART (peer m1400 I)"| M1400
   M1400 -.->|"I: UART DUML"| GFPGA
   AFPGA -.->|"V: USART3 8N1 257143 baud, IDLE-framed DMA RX"| M0900
   M0900 -.->|"V: USART1 uart_send port 1, types 3 5 10 11 12, every board"| FC
@@ -75,16 +76,47 @@ flowchart LR
   AFPGA ---|"V: AD9363 SPI relayed by FPGA, rate U"| AAD
   M1400 ---|"V: GPIO strobes, no SSP"| GFPGA
 
-  linkStyle 0,1,6,7,8 stroke:#1f77b4,stroke-width:3px
-  linkStyle 2,3,4,5 stroke:#444444,stroke-width:3px
-  linkStyle 9,10,11,12 stroke:#2ca02c,stroke-width:2px
-  linkStyle 13,14,15,16,17 stroke:#d62728,stroke-width:2px,stroke-dasharray:5 3
-  linkStyle 18,19,20 stroke:#888888,stroke-width:1px,stroke-dasharray:2 2
+  linkStyle 0,1,2,7,8 stroke:#1f77b4,stroke-width:3px
+  linkStyle 3,4,5,6 stroke:#444444,stroke-width:3px
+  linkStyle 9,10,11,12,13 stroke:#2ca02c,stroke-width:2px
+  linkStyle 14,15,16,17,18 stroke:#d62728,stroke-width:2px,stroke-dasharray:5 3
+  linkStyle 19,20,21 stroke:#888888,stroke-width:1px,stroke-dasharray:2 2
 ```
 
-- Edge 10/16: that USART3 faces the air FPGA/link is **I**. Evidence: `packet_send` sends receiver types 2, 6, 13, 14, 16, 20, 22 (app, RC, ground modules) out USART3 on every board code (section 3). The USART3 to FPGA wiring needs a schematic.
-- Edge 9/17 (**corrected 2026-10-24**, `m0900-can-channels.md`): `packet_send` routes type 3 (and 5, 10, 11, 12, 18, 21, 23) to `0x0801261c` = `uart_send(1)` = **USART1 on every board** (V). That the far end is the FC is **I** (receiver type 3). An earlier version of this doc said these types went to CAN on boards 2/4/5/6, which was a misread `tbb` target. CAN 0x412/0x413 carries camera/gimbal (types 1, 4, 8, 15); CAN 0x414/0x415 carries only type 30.
+- Air video (edges 0-2): DM368 sends raw H.264 over USB bulk EP2 into the air FX2 (`m1500`), which bridges an 8-bit slave FIFO to the air FPGA — V for the USB and FIFO config, I that the FIFO peer is the FPGA (`m0800-dm368-provenance.md` §5/§7).
+- Ground video/DUML split (edges 7-8, 12-15): the ground FPGA feeds the FX3 video on an 8-bit GPIF port and DUML on a 115200 UART (peer m1400, I); the FX3 interleaves both to the phone as `55 CC`-tagged USB chunks (`ground-fx3-m1601.md`). V in FX3 code and a capture.
+- Edge 10/17: that USART3 faces the air FPGA/link is **I**. `packet_send` sends receiver types 2, 6, 13, 14, 16, 20, 22 out USART3 on every board code (section 3). The USART3-to-FPGA wiring needs a schematic.
+- Edge 9/18 (`m0900-can-channels.md`): `packet_send` routes types 3, 5, 10, 11, 12, 18, 21, 23 to `uart_send(1)` = **USART1 on every board** (V); the far end being the FC is **I** (receiver type 3). CAN 0x412/0x413 carries camera/gimbal (types 1, 4, 8, 15); CAN 0x414/0x415 carries only type 30.
 - The docs' "CENTER UART 256000 8N1 to FC" **is** reproduced: CENTER = USART1 (section 5, item 1).
+
+## 2a. Message flow in words
+
+Same edges as the section 2 mermaid, as a words-only walkthrough. Canonical names from
+`naming-map.md`. V/I/U per-hop as in the diagram; nothing here claims more than the diagram does.
+
+**Control (phone → FC).** Phone → (V) `gnd_fx3_cyusb2014` USB, bare DUML → (V, FX3 end; peer
+`gnd_rc_lpc1765` I) `uart_gnd_rc_fx3` 115200 UART → `gnd_rc_lpc1765` → (I) ground FPGA, UART DUML
+→ (I) `rf_air_gnd` 2.4 GHz OFDM → (I) ground FPGA's air counterpart, `air_fpga_cyclonev` → (V)
+`uart_air_router_fpga` USART3 257143 baud, DMA → `air_router_stm32f103` (m0900) → (V route; FC
+end I) `uart_air_router_fc` USART1, `uart_send` port 1, types 3/5/10/11/12 → `air_fc_stm32f427`.
+
+**Telemetry (FC → phone), using OSD General (set 0x03 id 0x43) as the concrete example.**
+`air_fc_stm32f427` → (V m0900 side; FC source I) `uart_air_router_fc` USART1 256228 baud →
+`air_router_stm32f103`, which **re-addresses and forwards twice** (both V, decompiled):
+- byte5 → type 2 (app), CRC16 recomputed → (V) `uart_air_router_fpga` USART3 257143 baud →
+  `air_fpga_cyclonev` → (I) `rf_air_gnd` → (I) ground FPGA → (I) `uart_gnd_rc_fpga` DUML-over-UART
+  → `gnd_rc_lpc1765` → (V FX3 end; peer I) `uart_gnd_rc_fx3` 115200 UART → `gnd_fx3_cyusb2014` →
+  (V) `usb_gnd_fx3_phone`, chunk `55 CC 5749` → phone.
+- byte5 → type 1 (camera), CRC16 recomputed → (V) `can_air_primary` std ID `0x412` →
+  `air_cam_a9se`. (Not drawn in the section 2 diagram; from the section 3 router trace.)
+
+**Video (camera → phone).** `air_cam_a9se` → (U medium) H.264 bus → `air_venc_dm368` → (V)
+`usb_air_venc_fx2` bulk EP2, raw H.264 → `air_fx2_cy68013` → (V config; peer=FPGA I)
+`fifo_air_fx2_fpga` 8-bit slave FIFO, AUTO → `air_fpga_cyclonev` → (I) `rf_air_gnd` → (I) ground
+FPGA → (V) `gpif_gnd_fpga_fx3` 8-bit GPIF, PIB socket 2 → `gnd_fx3_cyusb2014` → (V)
+`usb_gnd_fx3_phone`, chunk `55 CC 574A` → phone.
+
+Keep this in sync with the section 2 mermaid; an edge added/changed there should be reflected here.
 
 ## 3. Where DUML is injected and removed — m0900 as a router
 
@@ -93,7 +125,7 @@ Evidence is all in m0900 code (V). Sender and wire-level framing inside the link
 - m0900 is a **DUML router**, not just a radio configurator.
 - Frame: byte 0 = 0x55, byte 5 = receiver (low 5 bits type, high 3 bits index), byte 9 = cmd set, byte 10 = cmd id.
 - Dispatch `0x0801198a` walks the 8-byte records at `0x0801a120` (`[handler|1, type, index, set, id]`). Match: handler runs (packet is **consumed** here). No match: tail-call `packet_send` (`0x080118d0`): packet is **forwarded** by receiver type.
-- Table `0x0801a0d8-0x0801a110` (ids `0x0901..0x0914`, `[handler|1, id16]`) is a second, 16-bit-id table. How it is reached is not traced (U).
+- Table `0x0801a0d8-0x0801a110` (ids `0x0901..0x0914`, `[handler|1, id16]`) is a second, 16-bit-id table. **Resolved 2026-10-25** (`air-router-deep-dive.md` §2): not a separate entry point — a *nested dispatch level*. The outer table's record for `cmd 0x2c / set 0x09 / type 9` is a one-instruction stub (`0x080125dc: b.w 0x080112da`) that tail-jumps into this table's matcher, which re-reads a 16-bit sub-id two bytes into that command's own payload.
 
 ```mermaid
 flowchart TD
@@ -101,7 +133,7 @@ flowchart TD
   U3["USART3 RX DMA 256 B, IDLE IRQ 0x0800ac42"]
   U2["USART2 RX board 7 only, IRQ 0x0800abe4"]
   CANRX["CAN RX0 IRQ 0x0800b23d, std ID 0x413 and 0x415"]
-  PUMP["RX pumps 0x08012626 USART1, 0x0801148c CAN 0x413, 0x08011882 CAN 0x415, 0x080103f8 USART3 + framer 0x08011a8e"]
+  PUMP["RX pumps feeding dispatch: 0x08012626 USART1, 0x0801148c CAN 0x413, 0x08011882 CAN 0x415 + framer 0x08011a8e (0x080103f8/USART3+SPI corrected below - it does NOT feed dispatch)"]
   DISP["dispatch 0x0801198a table 0x0801a120"]
   H43["set 0x03 id 0x43/0x44 handlers 0x08011ed5 0x08011f99: rewrite receiver, CRC16 0x08011eae, resend"]
   H42["set 0x03 id 0x42 handler 0x08012013: receiver becomes type 4, resend"]
@@ -116,9 +148,13 @@ flowchart TD
   SPI["SPI2 4.5 MHz to FPGA regs and AD9363"]
 
   U1 --> PUMP
-  U3 --> PUMP
   U2 --> PUMP
   CANRX --> PUMP
+  U3 --> RELAY
+  OFDMRX["ofdm_link_rx_statemachine 0x0800f978: polls FPGA via SPI2 reg 0xe9, ofdm_payload_descramble"]
+  OFDMRX --> RELAY
+  RELAY["0x080103f8 fpga_uart_to_fc_relay: parse DUML, no dispatch - blind forward"]
+  RELAY -->|"every complete frame, unconditional"| O1
   PUMP --> DISP
   DISP -->|"match 0x43 0x44"| H43
   DISP -->|"match 0x42"| H42
@@ -142,6 +178,36 @@ Notes (all V unless marked):
 - Handlers for set 0x03 ids 0x42/0x43/0x44 are keyed to receiver type 9 (m0900 itself). They rewrite byte 5 (0x43: to type 2 then type 1; 0x42: to type 4), recompute the CRC16 (seed 0x3692) and call `packet_send`. Reading: **FC pushes land on m0900, which fans them out to the app via USART3 and to camera/gimbal via CAN 0x412**. Sender of these pushes is not checked in the dispatch (FC is **I**; arrival port most likely USART1, I).
 - Set 0x09 handlers (`docs/symbols/m0900_V01.11.0020.tsv`): cmd 05 FPGA read, 06 write (hi==0xFE: FPGA reg, else AD9363), 07 read, 12 radio SET, 13 radio GET. Replies go through `packet_make_response` then `packet_send`.
 - Which physical port a given inbound packet arrived on is lost at the dispatch (no port field in the record): replies are routed by receiver type, not by arrival port.
+
+### TX is multiplexed by receiver type; RX from the link side is NOT demultiplexed — a real asymmetry, not an oversight (2026-10-25)
+
+Worth stating plainly rather than leaving implicit, since the two directions look different and
+that's correct, not a documentation gap:
+
+- **Outbound (m0900 → link), demultiplexed by receiver type**: `packet_send`'s routing table
+  (`0x080118e4`) inspects the DUML receiver byte and picks one of several outputs per type —
+  USART3, USART1, or one of two CAN queues. This is real demultiplexing: different logical
+  destinations genuinely go to different physical buses.
+- **Inbound (link → m0900), on the two paths that feed `fpga_uart_to_fc_relay`
+  (`0x080103f8` — USART3's RX ring, and `ofdm_link_rx_statemachine`'s SPI-sourced ring,
+  `air-router-deep-dive.md` §6a), there is NO demultiplexing at all.** This function parses each
+  byte stream for a complete DUML frame and, the instant one assembles, calls `send_usart1`
+  **unconditionally** — it never inspects the frame's receiver byte, never calls `duml_dispatch`,
+  never branches on type. Every frame that arrives this way goes to the FC, full stop, regardless
+  of who it's actually addressed to.
+- **This is consistent with, not contradicted by, the already-established CAN precedent**: §6 of
+  this doc and `air-router-deep-dive.md` §6 already show `m0900` passes camera/gimbal CAN traffic
+  (types 1/4/8/15) through **without inspecting it at all** — "pure pass-through," verified
+  negative. The same pattern repeats here: `m0900` isn't trying to be a smart router on the way
+  in from the link side; it hands the FC (or the CAN bus, for the other known pass-through) the
+  whole raw stream and lets the receiving node filter by its own address. That's a legitimate,
+  simpler design — the FC's own DUML stack is what's expected to drop frames not addressed to it
+  — but it does mean **the FC receives every downlink frame regardless of its receiver byte**,
+  not just the ones meant for it.
+- **Not yet checked**: whether `air_fc` actually does that filtering (drops frames not addressed
+  to its own receiver type) or whether some of this traffic is meant to reach the FC *specifically
+  so it can re-forward it further* (the FC has its own CAN bus to camera/gimbal, per
+  `naming-map.md`'s `can_air_fc2`, out of `m0900`'s scope to confirm). This is open, not assumed.
 
 ### Injection and removal points
 
@@ -228,30 +294,50 @@ sequenceDiagram
 7. **Ground path to the phone (GL300C):** **resolved 2026-10-24** (`ground-fx3-m1601.md`). The phone talks only to the FX3 (`m1601`: iAP2 for iPhone, AOA host for Android). DUML runs FX3 ⇄ UART 115200 ⇄ (I: m1400); video runs ground FPGA → FX3 GPIF. **Ground AD9363 config path**: still U.
 8. **Air over-the-air encryption** is not ruled out (`what-is-actually-secret.md` LAYER CAVEAT). MCU-layer DUML cleartext is shown; the link layer is not.
 9. FPGA-to-AD9363 SPI rate, data-port mode (LVDS vs CMOS), width: U. Fref 40 MHz: I.
-10. ~~Second CAN TX queue `0x20002538` ID word~~ **resolved**: StdId 0x414 (TX), paired with RX 0x415 (obj `0x20002554`, ring `0x200024b8+0xa0`, pump `0x08011882`, same parser callback and dispatch). Only receiver type 30 is routed to it, and whether it is live on a real bus is U (`m0900-can-channels.md`). Still open: how table `0x0801a0d8` (id16 dispatch) is reached.
+10. ~~Second CAN TX queue `0x20002538` ID word~~ **resolved**: StdId 0x414 (TX), paired with RX 0x415 (obj `0x20002554`, ring `0x200024b8+0xa0`, pump `0x08011882`, same parser callback and dispatch). Only receiver type 30 is routed to it, and whether it is live on a real bus is U (`m0900-can-channels.md`). ~~Still open: how table `0x0801a0d8` (id16 dispatch) is reached.~~ **Resolved 2026-10-25** (see item 2 above, `air-router-deep-dive.md` §2).
 11. HSE 12 MHz is a compiled literal; crystal on the board not read: I.
 12. Why SPI2 runs /8 (4.5 MHz) while PCLK1/2 would be 18 MHz: reason not recorded.
+13. **How a ground-originated DUML command addressed to camera (type 1) or gimbal (type 4)
+    actually reaches them, past `air_fc`. Genuinely open — not just untraced, actively
+    investigated this session and the obvious candidate was ruled out.** The confirmed part of
+    the chain: app → RF → air FPGA → `air_router` via USART3/SPI → `fpga_uart_to_fc_relay`
+    (§3a above) → `air_fc` over USART1, **unconditionally, regardless of receiver byte** (no
+    demultiplexing happens at `m0900`, confirmed). What happens at `air_fc` next is unresolved:
+    - Checked whether `air_fc`'s own command dispatch filters by receiver type before acting:
+      **no evidence found in three places checked** — the dispatch table itself (keyed purely on
+      `(cmd, cmd_set)`, no type field), an individual command handler (`FUN_080455aa`, never
+      touches the receiver byte), and the reply builder `duml_resp_send` (permissively echoes
+      the receiver byte back rather than gating on it). The actual top-level function that walks
+      the dispatch table has not been located (no literal-pool reference to its base address —
+      same "reached via computed/PC-relative addressing" obstacle hit elsewhere in this project),
+      so a gate could still exist upstream of everything checked; not ruled out, just not found.
+    - Checked the obvious forwarding candidate: `air_fc` has a real second CAN bus (`CAN2`,
+      `can2_bringup`, confirmed live hardware init) registered into a generic named-device table
+      (`FUN_0804f5ee`, an 8-slot registry) under the name `"can"`. **Ruled out as the DUML-
+      forwarding mechanism**: the table's other three members are named `"uart"`, `"usb"`, and
+      `"esc"` — that combination is the shape of a generic firmware-update/ESC-programming
+      transport abstraction, not a DUML-by-receiver-type router. `naming-map.md`'s own
+      `can_air_fc2` entry already listed this bus's role as unclear; it's still unclear, now for
+      a more specific, checked reason rather than an unexamined gap.
+    - **Net state: unknown, not "probably CAN2."** Whether `air_fc` forwards non-FC-addressed
+      frames anywhere at all — a different CAN bus, a UART, or simply processes/replies to them
+      locally regardless of address (consistent with the "no filter found" result above) — is
+      unresolved. (`docs/air-router-deep-dive.md` §6a for the confirmed `air_router`-side half of
+      this chain; this item covers only what happens after `air_fc`.)
 
-## 5a. Cross-check against the DJI GO 4 APK's cmdset-9 names - numbering does not match (2026-10-23)
+## 5a. Cross-check against the DJI GO 4 APK's cmdset-9 names (2026-10-23; resolved 2026-10-25)
 
 Per the revised scope decision in `apk-analysis.md` section 0 (numeric facts from the
 dynamically-unpacked dex only, never DJI's code), `docs/data/apk-dynamic-cmdset-ids.tsv` names
 cmdset 9 (app's internal name: `OSD`; this doc's/dissector's name: `HD Link`) commands `SetFPGA`
-(4), `GetFPGA`(5), `Set9363`(6), `Get9363`(7) - **four separate named commands**, not the single
-combined-write-with-discriminator-byte scheme this doc's own firmware trace found.
+(4), `GetFPGA`(5), `Set9363`(6), `Get9363`(7) - four separate named commands.
 
-- **V, does not reconcile cleanly.** This doc's own `m0900` dispatcher trace (section above,
-  `0x08012103`) found: cmd `05`=FPGA read, `06`=write (one command, internally distinguishing
-  FPGA-register-vs-AD9363 via payload byte `hi==0xFE`), `07`=another read variant, `12`/`13`=radio
-  SET/GET. `GetFPGA`(5) and `Get9363`(7) line up with the firmware's `05`/`07` reads, but
-  `SetFPGA`(4) does not match the firmware's combined write at `06`, and the firmware's
-  single-command-with-discriminator-byte design doesn't match having two separately named
-  `Set*` commands in the app's enum.
-- **U, not resolved:** whether this reflects (a) a different/later HD-Link generation's protocol
-  than what this specific `m0900` firmware (`P3X_FW_V01.11.0020`) implements, (b) this
-  particular APK version carrying dead/unused enum constants for a feature P3 doesn't support,
-  or (c) an error in the original firmware-side numbering note above. Flagged rather than
-  assumed - do not treat the two sources as confirming each other on this specific point.
+- **Resolved** (`air-router-deep-dive.md` §1b): the apparent mismatch was an earlier trace
+  stopping at cmd `06` without separately checking `04`. A full dispatch-table walk found
+  **cmd `0x04` is its own dedicated handler** (`0x080120e2`, direct `spi_fpga_raw_write`, no
+  AD9363 branch) distinct from cmd `0x06` (`0x08012122`, AD9363 write with a legacy FPGA-write
+  fallback for `hi==0xFE`). The firmware does have four separate handlers at 04/05/06/07,
+  matching the apk's four separately-named commands — not a numbering mismatch after all.
 - **I, still useful regardless:** cmdset 9 overall is confirmed real and rich - 58 named
   commands including signal quality, sweep frequency, channel status, MCS (modulation/coding
   scheme) control, LBT (listen-before-talk), link-mode, image-transmission-mode, reverse-link

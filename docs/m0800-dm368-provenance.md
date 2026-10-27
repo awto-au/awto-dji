@@ -1,4 +1,4 @@
-# m0800 (air DM368 encoder): what is TI reference code and what DJI changed
+# m0800 (`air_venc_dm368`, air DM368 encoder): what is TI reference code and what DJI changed
 
 Module `m0800` of `P3X_FW_V01.11.0020` (3,363,336 B, SHA-256 `672aff07...7f3f8c6`). Tags:
 **V** = shown by a reproducible comparison or by reading the file, **I** = inferred,
@@ -157,7 +157,7 @@ What the unmatched messages are:
     `PustABDM368SelfCheck`, `Enc_Serial_Encrypt_*`, `Enc_Serial_Is_Stream_Disable`,
     `Enc_Serial_Get_Encode_Mode`).
   - Status format: `T:%d:%d R:%d H:%d L:%d USB:%d BW:%d SBR:%d SFR:%d`.
-- **Out of scope here** (CLAUDE.md: no keys): `setsecurity`, `common/cross/at88.c`
+- `setsecurity`, `common/cross/at88.c`
   (I: Atmel AT88 CryptoMemory) and the `encryptThrFxn`/`/etc/key.bin` path are the component
   authentication / "encrypt query" already noted in `air-id-and-stream-survey.md`. They were
   inventoried, not analysed.
@@ -249,8 +249,13 @@ below read directly as C. Tools: capstone, ARM mode; `readelf -s/-r`.
    `Enc_Serial_PackAndSend` builds standard DUML: sync `0x55`, `CalCrc8` with seed `0x77`,
    `CalCrc16` with seed `0x3692`. This is the same framing as m0900 (`m0900-can-channels.md`
    §4). So the DM368 is an ordinary DUML node (I: receiver type 8, per the UEG table) for
-   version, loader, reboot, encode mode, stream enable and the encrypt check. The peer at the
-   other end of `ttyS1` is U.
+   version, loader, reboot, encode mode, stream enable and the encrypt check.
+   **Baud, V (2026-10-25):** `Serial_Create("/dev/ttyS1", 3, 1, 0)` — traced the baud-enum `3`
+   through `libcommon.so`'s own lookup table (keys `0-4` → `B9600/19200/38400/115200/230400`) to
+   **115200**, not assumed. **The peer at the other end of `ttyS1` is still U** — see
+   `uart-spi-speed-crosscheck.md` for the full air+ground inventory and the three live
+   candidates (A9 over a local UART, a dedicated UART↔CAN bridge chip, or unconnected/debug) —
+   none eliminated this session.
 
 **Result.** On the air side, the H.264 elementary stream (Annex-B slices) reaches the FIFO
 master **unframed and alone**. V: the path is DM368 → USB EP2 → FX2 → 8-bit slave FIFO. I: the

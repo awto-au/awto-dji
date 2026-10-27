@@ -1,4 +1,4 @@
-# m0900 boot: board straps, FPGA GPIO lines and bring-up sequence
+# m0900 (`air_router_stm32f103`) boot: board straps, FPGA GPIO lines and bring-up sequence
 
 Source: static disassembly of `P3X_FW_V01.11.0020_m0900.bin` (STM32F103, app base `0x08008000`)
 plus one Renode cold-boot test. Reproduce: `python3 scripts/re/m0900_trace.py dis <addr> <n>`.
@@ -38,7 +38,9 @@ flowchart TD
 - Main loop (`0x0800dc62`): three flags set by a tick counter (`0x0800c154`, divides by 5, 20
   and 100) at RAM `0x200000dc/dd/de` run periodic tasks: `0x80105da`, `0x8012626` (5-tick);
   `0x800b6ac`, `0x800b808`, `0x801148c`, `0x8011882`, `0x8011682`, `0x8011540`, `0x80118b8`,
-  `0x800c34a` (20-tick); `0x800bd74` (100-tick). Task meanings not decoded except where noted.
+  `0x800c34a` (20-tick); `0x800bd74` (100-tick, **resolved 2026-10-25**: the IWDG-feed gate —
+  reads RAM flag `0x200000c8`, feeds the watchdog unless it's set, `air-router-deep-dive.md`
+  §3). Other task meanings not decoded except where noted.
 
 ## GPIO lines (verified from code; roles inferred)
 

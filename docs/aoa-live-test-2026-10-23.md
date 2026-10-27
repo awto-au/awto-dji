@@ -72,27 +72,18 @@ Reanalysed the full relay capture (concatenated raw bytes across the whole sessi
 position, not just the first few the live framer happened to log:
 
 - **V.** 79 header-CRC8-valid SOF positions found; **75 of them also pass the full CRC16.**
-  Within each burst, consecutive valid frames sit with **zero gap** between them - i.e. the
-  stream genuinely is clean, correctly-framed, back-to-back DUML in those regions, not
-  multiplexed with any per-frame channel/length header.
-- **V.** Decoded all 75: real, live telemetry. `sender=0x03` (flight controller) pushes with
-  smoothly incrementing `seq` (11414->11420), `sender=0x04` (gimbal) and `sender=0x01` (camera)
-  likewise, all addressed to `receiver=0x02` (app/mobile devicetype). One frame
-  (`sender=0x08`/DM368 sky-end, `set=0x00 id=0xf0`) carries a readable ASCII status line:
-  `T:3174:558 R:0 H:1 L:1 USB:0 BW:80 SBR:5028 SFR:30` - a real air-side video-link status
-  string, not noise.
-- **Conclusion: there is no demux header to find.** The large gaps between bursts (50-90 KB)
-  are something else entirely sharing the same raw accessory pipe - almost certainly the video
-  stream, per `apk-analysis.md`'s already-correct note that there's "no second USB channel" -
-  not DUML frames with a missing wrapper. The earlier "most frames fail CRC" observation was the
-  framer's SOF-scanner finding occasional coincidental `0x55` bytes inside that non-DUML payload
-  (expected: roughly 1/256 chance per byte of a false CRC8 match) and correctly rejecting them on
-  CRC16 - ordinary resync behaviour, not a protocol problem needing a fix.
-- **What actually needs fixing, if anything:** cosmetic only - the relay script and the app's UI
-  log CRC16 failures as "errors" with equal visual weight to real frames, which reads as "mostly
-  broken" when it's actually "working exactly as designed, with expected noise in between."
-  Consider: only surface CRC16-valid frames by default, or label non-matches as "resync" rather
-  than "error".
+  - Within each burst, consecutive valid frames sit with **zero gap** between them.
+  - The stream is genuinely clean, correctly-framed, back-to-back DUML in those regions, not multiplexed with any per-frame channel/length header.
+- **V.** Decoded all 75: real, live telemetry.
+  - `sender=0x03` (flight controller) pushes with smoothly incrementing `seq` (11414->11420); `sender=0x04` (gimbal) and `sender=0x01` (camera) likewise. All are addressed to `receiver=0x02` (app/mobile devicetype).
+  - One frame (`sender=0x08`/DM368 sky-end, `set=0x00 id=0xf0`) carries a readable ASCII status line: `T:3174:558 R:0 H:1 L:1 USB:0 BW:80 SBR:5028 SFR:30`. A real air-side video-link status string, not noise.
+- **Conclusion: there is no demux header to find.**
+  - The large gaps between bursts (50-90 KB) are something else sharing the same raw accessory pipe. Almost certainly the video stream, per `apk-analysis.md`'s already-correct note that there's "no second USB channel"; not DUML frames with a missing wrapper.
+  - The earlier "most frames fail CRC" observation was the framer's SOF-scanner finding occasional coincidental `0x55` bytes inside that non-DUML payload (expected: roughly 1/256 chance per byte of a false CRC8 match) and correctly rejecting them on CRC16.
+  - That is ordinary resync behaviour, not a protocol problem needing a fix.
+- **What actually needs fixing, if anything:** cosmetic only.
+  - The relay script and the app's UI log CRC16 failures as "errors" with equal visual weight to real frames. That reads as "mostly broken" when it is "working exactly as designed, with expected noise in between."
+  - Consider: only surface CRC16-valid frames by default, or label non-matches as "resync" rather than "error".
 
 ## The raw AOA pipe is two interleaved elementary streams, no demux header (2026-10-23)
 
@@ -153,8 +144,7 @@ than guessing why.
 3. Make a longer capture (this one was ~500 KB) to see the burst period precisely and confirm it
    lines up with a plausible telemetry push rate (10 Hz typical for OSD per other docs in this
    repo).
-4. Work out what's safe to transmit back (per `../CLAUDE.md` scope: read-only telemetry/status
-   queries only - no flight-control, no geofence-adjacent commands). Candidate safe sends, from
+4. Work out what's safe to transmit back (scope & safety: see `SAFETY.md`). Candidate safe sends, from
    already-public framing + this session's own captures: `0x00/0x01` (Get-Version),
    `0x00/0xff`-equivalent build-string query (confirmed working against the RC's own port in
    `docs/fc-usb-port.md`), and read-only OSD/status `Get*` messages named in

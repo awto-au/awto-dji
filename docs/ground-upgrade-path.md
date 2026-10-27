@@ -1,8 +1,7 @@
-# C1 ground: firmware / FPGA upgrade path and chip ID (m1400)
+# C1 ground: firmware / FPGA upgrade path and chip ID (m1400, `gnd_rc_lpc1765`)
 
 Source: static disassembly of `C1_FW_V01.06.0000_m1400.bin` (LPC1765, Cortex-M3). Tool: `scripts/re/mcu_trace.py`
-(capstone). Symbols: `docs/symbols/c1_m1400.tsv`. Interop analysis only: no keys, no signing/auth bypass, no
-geofence work (CLAUDE.md). Tags: **verified** (read from code/data), **inferred**, **unknown**.
+(capstone). Symbols: `docs/symbols/c1_m1400.tsv`. Scope & safety: see `SAFETY.md`. Tags: **verified** (read from code/data), **inferred**, **unknown**.
 Air-side counterpart: `docs/fpga-upgrade-path.md`, `docs/fpga-bringup.md`.
 
 ## Chip identity (m1400 = LPC1765, not STM32) [fw+spec]
@@ -175,12 +174,107 @@ Settles the conflict with `docs/control-plane-re.md` (which said the remote MCU 
 - LPC internal ISP ROM exists in the chip but is not part of the package (verified by absence). Whether the DJI bootloader receives the DUML
   Update Transmit data: **unknown** (same open question as m0900).
 
+## Q5: the RC's own micro-USB port — m1400's own on-chip stack, not a second bridge chip
+
+`fc-usb-port.md` captured a second DJI USB identity live, distinct from the phone-facing FX3
+(`gnd_fx3_cyusb2014`, `m1601`): `2ca3:0008`, manufacturer `DJI  CONFIF  `, product
+`DJI    CONTROLLER`, serial `0001A0000000`, answering DUML GetVersion with build
+`WM320_A7_LPC1 20170828/00`. Open question was whether this is **m1400's own USB peripheral**,
+a **second FX2/FX3 bridge chip** (DJI reuses FX2LP as a generic USB bridge elsewhere: `m1500`,
+`m1600`), or something else (an LPC boot-ROM mode was floated and ruled out below).
+
+- **V, confirmed directly against the real binary (2026-10-25).** `c1.bin`
+  (`C1_FW_V01.06.0000.bin`) re-obtained from `https://dl.djicdn.com/downloads/lightbridge2/
+  C1_FW_V01.06.0000.bin` (live, confirmed by exact SHA-256 match against `data-manifest.md` on
+  download) and unpacked with `xv4_extract.py`; `c1_m1400.bin`'s hash also matches exactly. A
+  `strings`/UTF-16LE scan of **this real file** finds the same literal constants reported
+  earlier from a symbol-map cross-check: `'DJI  CONFIF  '` (file offset `0x25397`), `'DJI
+  CONTROLLER'`, `'0001A0000000'`, `'VCOM'`, `'MSCM'`, `'0001AA000000'`. The offset matches the
+  IDA symbol map's `aDjiConfif` address (`0002F397`) exactly once the documented `+0xA000`
+  flash-offset convention (Addressing, above) is applied (`0x25397 + 0xA000 = 0x2F397`) —
+  confirms the earlier symbol-map corroboration and this direct read describe the same build.
+- **New caveat this direct read surfaces that the symbol map alone couldn't show: this
+  container's m1400 submodule is not the operator's current build.** Its own `Query Device
+  Info` string (cmd `0xFF`) reads `WM610 A7_1765 20160321/01` — dated **2016-03-21**. The
+  operator's actual hardware answered DUML GetVersion live (`fc-usb-port.md`) with `WM320_A7_LPC1
+  20170828/00` — dated **2017-08-28**, ~17 months later, different naming scheme entirely
+  (`WM610` is the Inspire-1/shared-Lightbridge-codebase tag per `data-manifest.md`'s
+  `WM610_FW_V01.11.01.50.bin` entry, not evidence of wrong hardware — the ground-radio firmware
+  is shared across products; it just means DJI pushed a newer m1400 build to the operator's unit
+  since this container was cut). So: the container hash matches `C1_FW_V01.06.0000` exactly, and
+  its other submodules (`m2001`, independently confirmed byte-identical to the operator's own
+  dump in `ground-fx3-m1601.md`) do match the operator's hardware — but **DJI updates modules
+  independently inside what looks like one version tag**, and this specific m1400 build predates
+  the one actually running. The `VCOM`/`MSCM`/`DJI CONFIF` pattern is confirmed real and part of
+  this firmware lineage; whether the *exact* live build still carries it at the same offsets
+  needs a newer package (or a live SWD/flash dump) to fully close.
+- No Ghidra project exists for m1400 at all (only `scripts/re/mcu_trace.py`, a lighter
+  capstone-based disassembler) — unlike the STM32 modules (`m0306`/`m0900`/`m0100`), which were
+  all taken through full Ghidra decompiler projects; `stm32-reversing-process.md` is explicitly
+  STM32-scoped and doesn't name m1400 as a target for that exact checklist (see
+  `lpc-reversing-process.md`).
+- **Settles it: this rules out a second bridge chip.** A separate FX2/FX3 (or any other) bridge
+  would hold its own descriptor strings in its own firmware/EEPROM, not inside m1400's compiled
+  code. Finding them here means **m1400 implements its own USB device stack** directly.
+- **Rules out "just an LPC boot-ROM/ISP mode" too, independently**: the port answers a real DUML
+  GetVersion with the *application's* build string — a bare ROM-level ISP bootloader doesn't
+  speak DUML (an application-layer protocol m1400's own firmware implements). The full running
+  app is behind this port.
+- **Matches the aircraft FC's pattern exactly.** `fc-usb-port.md`'s front micro-USB port carries
+  the identical `VCOM`/`MSCM` class-tag pair. DJI wrote the same composite CDC-VCOM +
+  Mass-Storage-Class USB device into **both** the STM32F427 (FC) and LPC1765 (RC) application
+  firmware independently, from a shared template — neither MCU delegates to a bridge chip for
+  its own-port USB identity.
+- **New, unresolved by this pass:** `MSCM` implies this port also exposes **mass storage** (a
+  flight/RC log, mirroring the FC side's `DJI DATA LOG 2.00` SCSI inquiry string) — what it
+  actually serves up here is not yet traced. The second serial `'0001AA000000'` (vs the primary
+  `'0001A0000000'`) is also unexplained — possibly a second logical unit/interface.
+- Reproduce: `strings -n4` + a UTF-16LE ASCII-run scan (`(?:[\x20-\x7e]\x00){4,}`) over the
+  m1400 image; no `0x2008c0xx` LPC17xx USB-peripheral-base literal dword was found by a flat
+  scan (base likely reached via `MOVW`/`MOVT` or a literal pool, not yet traced).
+
+## Q6: m1401 — a second, richly-named ground-radio variant (LPC1549, not LPC1765)
+
+`m1401` is a **different chip target**, not a second copy of m1400: SP `0x02008f60` sits in
+LPC15xx's SRAM0 region (`0x02000000+`), distinct from LPC17xx's `0x10000000+`. Same build
+vintage as m1400 (`WM610 A7_1549 20160321/01`, dated 2016-03-21 — confirmed directly against
+the real binary, re-extracted from the verified `c1.bin`, SHA-256 `85171a35...df49` matching
+the container's own listing).
+
+- **V, richer upstream symbols than m1400's own map.** `o-gs/dji-firmware-tools` vendors a
+  separate `C1_FW_V01.06.0000_m1401.map` (9.7 KB) + `.idc` (1.26 MB) — present locally at
+  `tools/symbols/` but not previously examined in this project. Named functions include
+  `App_TaskAdcKey_Worker`, `App_TaskRadio_Worker`, `App_TaskUnpack_Worker`,
+  `packet_hw_receive`, **`get_board_version`**, `ofdm_init_instruction`, and numerous
+  `cmd_exec_setXX_cmdYY` handlers — community RE annotations (upstream's own work, GPL-3.0),
+  not DJI's original symbols.
+- **`get_board_version` (file offset `0x11ce4`, decompiled this session, V for the
+  disassembly, I/U for full semantics):** calls a shared compare-and-log helper (same
+  "something change" / "no change" string pattern already documented for m1400's own sector-9
+  config-compare routine, `0x254` above) against a stored value at RAM `0x2000600`, logging the
+  result. **U:** no caller found by a direct BL/B.W scan (`who`) — likely reached via a function
+  pointer in one of the `cmd_exec_set*` tables rather than a direct call; not yet traced. What
+  exactly it reports as "the board version" (which register/strap, and how it maps to
+  `m2000`/`m2001`/`m2002` selection) is **the same open question as `fpga-air-vs-ground.md`'s
+  item (b)** — this function is the concrete next anchor for that, not yet fully traced.
+- The reset handler at file offset `0xa334` decodes cleanly (checks a RAM flag bit, branches on
+  stored byte values) — confirms this chip's `.text` segment sits at file offset 0 directly
+  (`--load 0`, no `+0xA000` correction, unlike m1400); the IDA map's `0003:` segment prefix is
+  `.text` starting at image offset 0 (map's own segment table, `Start 0003:00000000 Length
+  0000193E0H`).
+- **Open: which chip family does the operator's actual GL300C use — m1400 (LPC1765) or m1401
+  (LPC1549)?** The live-reported build (`fc-usb-port.md`: `WM320_A7_LPC1 20170828/00`) uses a
+  generic `LPC1` tag that doesn't disambiguate, and **neither** this 2016-03-21 `m1400` nor this
+  2016-03-21 `m1401` matches that later date regardless of which family is correct. Settling
+  this needs either the chip's own package marking (ties to the same board-opening work as
+  #59) or a newer firmware build for whichever family is actually fitted.
+
 ## Other modules (header .ini + magic bytes)
 
 - `m1400` 04.10.0006: "LPC1765 GROUND LB2" (this doc).
 - `m1401` 04.10.0006: ".ini: lightbridge MCU on ground model 01". String `WM610 A7_1549 20160321/01`; vector table SP `0x02008f60`
   (LPC1549 SRAM region) -> **LPC1549 variant of m1400** (verified strings/SP; part number inferred from `1549`). Contains
-  `FpgaErr` and `Encryption_Check_And_Set_Chip_Info` / `Common_Encrypt_Get_Chip2` assert strings. Not analysed further.
+  `FpgaErr` and `Encryption_Check_And_Set_Chip_Info` / `Common_Encrypt_Get_Chip2` assert strings. See Q6 below — now analysed.
 - `m1300` 02.26.0000: video decoder (DM365). File starts with ASCII `Salted__` = OpenSSL salted-encrypted blob (verified header; not decrypted, out of scope).
 - `m1600` 01.03.0256: ".ini: IG810 LB2_68013_RX". 2750 B, starts `C2 47 05 31 21`: Cypress FX2 (68013) EEPROM/boot load image (inferred from the C2 header). Full Ghidra pass below.
 - `m1601` 02.00.0006: ".ini: IG810 LB2_CY2014_RX". Starts `43 59 1C B0`: "CY" Cypress FX3 boot image signature, ARM code follows (inferred part: FX3). Full Ghidra pass below.

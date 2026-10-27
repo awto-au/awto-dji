@@ -49,7 +49,7 @@ Load base: the image begins with a Cortex-M vector table at `0x08000000` (SP
   dji-firmware-tools can wrap the raw image as ELF with the right base for analysis.
 - The **AD9361/AD9363 register map (UG-570)** and the **STM32F103 reference manual
   (RM0008)** for peripheral addresses — both public — are the decode keys.
-- Scope: `m0900` (aircraft, STM32F103) only. The remote radio MCU is **not** STM32:
+- Scope: `air_router_stm32f103` (`m0900`, aircraft) only. The remote radio MCU is **not** STM32:
   `m1400` is NXP LPC1765 (`docs/ground-upgrade-path.md`, "Chip identity"). `m1401` is LPC1549.
 - Debug-info check on `m0900` (2026-10-24): no ELF, no DWARF (`.debug_*`), no `.symtab`/`.strtab`,
   no map-file or source-path strings. Only format strings survive (e.g. `Fpga Cfg : OK`,
@@ -155,7 +155,7 @@ Reliable routes instead: (a) **static** — the SPI driver is already located
 (`~0x08001b70`, ST StdPeriph); trace its callers to the AD9361 register table/sequence;
 (b) **on-hardware SWD** capture of the live SPI during link bring-up. The emulator is
 better used for *stimulus generation in co-simulation* (drive the recovered FPGA netlist),
-per `fpga-emulation-plan.md`, than for booting the MCU to completion.
+per `debris/fpga-emulation-plan.md`, than for booting the MCU to completion.
 
 **Debug interfaces (evidence in code):** the `m2001` FPGA fabric exposes standard JTAG
 (`TCK`/`TMS`/`TDI` nodes) — a Cyclone-V config/boundary-scan interface — but there is **no
@@ -228,10 +228,13 @@ Unpacking `C1_FW_V01.06.0000` (Lightbridge 2) gave the **ground/RX side** the ai
 firmware lacked:
 
 - `m1300` — DM365 video **decoder** (ground), 4.4 MB.
-- `m1400`/`m1401` — ground radio MCU, **NXP LPC1765** (different chip from the air-side
-  STM32F103), v04.10.0006. **Least-stripped radio firmware found** — 683 strings, source
-  paths (`@LPC17xx_LIB\lpc17xx_rtc.c`), and the `ch/mcs/bw/snr/rssi/harq` link-telemetry
-  string (see link-security.md). Best MCU RE target so far.
+- `m1400` (`gnd_rc_lpc1765`) / `m1401` — ground RC MCU, **NXP LPC1765 / LPC1549
+  respectively** (two different alternate-board-revision chip targets, confirmed
+  2026-10-25 by vector-table SP — `ground-upgrade-path.md` §Q6 — not two copies of the
+  same chip; both different from the air-side STM32F103), v04.10.0006. **Least-stripped
+  radio firmware found** — 683 strings, source paths (`@LPC17xx_LIB\lpc17xx_rtc.c`), and
+  the `ch/mcs/bw/snr/rssi/harq` link-telemetry string (see link-security.md). Best MCU RE
+  target so far.
 - `m1600`/`m1601` — receiver USB firmware: FX2LP (`68013`) is a tiny 2.7 KB 8051 image;
   the CY2014 variant is 190 KB.
 - `m2000`/`m2001`/`m2002` — ground FPGA bitstream, **8 MB** (vs the air FPGA's 4 MB), three
@@ -245,7 +248,7 @@ LPC1765 ground MCU is the richer target for recovering the AD9363 config + link 
 
 Measured P3 vs Inspire 1 per module: **only `m1900` (the air FPGA bitstream) is
 byte-identical** (both `01.00.2144`, SHA `f3a55dea…`, 4 MiB). Every other module (camera,
-FC, gimbal, ESC, radio MCU, video) differs per product. So the OFDM modem is one shared,
+FC, gimbal, ESC, `air_router_stm32f103`, video) differs per product. So the OFDM modem is one shared,
 fixed bitstream across the Lightbridge family — one RE effort covers all, and there is no
 richer in-family variant to exploit.
 

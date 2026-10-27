@@ -11,7 +11,7 @@ third-party RTOS (µC/OS)**.
 - `strings` + targeted grep — toolchain/library name fingerprints.
 - **radare2 5.5.0** — disassembly; read Cortex-M vector tables to identify the chip and
   the RTOS context-switch handlers. (Load raw image with `-a arm -b 16 -m <base>`; bases
-  from the dji-firmware-tools README: FC `0x08020000`, radio MCU `0x08008000`.)
+  from the dji-firmware-tools README: FC `0x08020000`, `air_router_stm32f103` `0x08008000`.)
 - `binwalk` — signature/entropy scan of the big camera image.
 - **Ghidra 12.2 DEV is installed** (`/home/dan/tools/ghidra_12.2_DEV`, shim at
   `~/.local/bin/ghidra`), with native 8051 and ARM support; `support/analyzeHeadless` for
@@ -30,7 +30,7 @@ third-party RTOS (µC/OS)**.
 
 ## Chips (from Cortex-M vector tables)
 
-- **`m0900` radio MCU** — Cortex-M3 (STM32F103): initial SP `0x20004cb8`, reset into app
+- **`air_router_stm32f103` (m0900)** — Cortex-M3 (STM32F103): initial SP `0x20004cb8`, reset into app
   at `0x08008200` (bootloader occupies `0x08000000`–`0x08008000`).
 - **`m0306` A3 flight controller** — Cortex-M4, **STM32F427** (`docs/dataflow.md` §7.9
   external corroboration, `o-gs/dji-firmware-tools` wiki pinout for the P3X FC board;
@@ -80,7 +80,7 @@ third-party RTOS (µC/OS)**.
 | **`m0306` A3 flight controller** | **µC/OS-III** (Micrium RTOS) + **CMSIS startup** + **ST StdPeriph-pattern drivers** | `uC/OS-III Idle Task`/`Stat Task`/`Tick Task` strings (refines the earlier generic "µC/OS" to the specific **III** generation); PendSV (`0x0802c79f`) + SysTick (`0x08029de3`) handlers populated = preemptive scheduler. **CMSIS**: startup fn `0x0802258c` is a textbook `SystemInit()`-style HSE→PLL→FLASH-latency bring-up (HSE `ON`/wait-ready, `RCC_PLLCFGR` write, `FLASH_ACR` wait-states+prefetch/cache enable, `PLLON`/wait-ready, `RCC_CFGR` `SW`→PLL + wait `SWS`) — same boilerplate CMSIS device-support file ships for every STM32F4 part. **StdPeriph pattern**: the RCC clock-enable calls (`0x0803addc` etc.) dispatch through a cluster of near-identical bit-set/clear wrappers (`0x0806d5f0`-`0x0806d7ca`, one per peripheral) — the same `RCC_xxxPeriphClockCmd(periph, state)` shape already identified in `m0900` (control-plane-re.md), not the newer HAL's `__HAL_RCC_*_CLK_ENABLE` macro-inlined form. No DJI `hal_*` sensor-abstraction strings found in `m0900`/`m0400`, but `m0306` has its own (`hal_compass_add` etc.) — a DJI-internal sensor HAL layered *above* the StdPeriph/CMSIS base, not a vendor middleware. |
 | `m0101` camera loader | **ThreadX** (Express Logic RTOS) + IAR | strings |
 | `m0100` camera | **Linux**, glibc, busybox, OpenSSL, wpa_supplicant, zlib, libjpeg, dropbear, ThreadX | strings (see license-compliance.md) |
-| `m0900` radio MCU | none named — small bare-metal (likely ST StdPeriph/CMSIS + custom) | disासm + strings |
+| `air_router_stm32f103` (m0900) | none named — small bare-metal (likely ST StdPeriph/CMSIS + custom) | disासm + strings |
 | `m0400` gimbal | none found: no ST StdPeriph/HAL/CMSIS/RTOS names, no assert or source-path strings (V). FunctionID/FLIRT not run (U) | strings + Ghidra literal xrefs (issue #41) |
 
 **Conclusion.** The flight-critical A3 controller is DJI *application* code running on the

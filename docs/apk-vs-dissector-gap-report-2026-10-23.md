@@ -66,9 +66,7 @@ only; no 0x09 handler" - the same COMMON command numbering context; no renumberi
 
 ## Superseded P3 flight-sequence inference (names and IDs retained)
 
-Scope note: this is the same category of information the public dissector already documents in
-detail (command existence, names, rough grouping) - not new exploit material, and this repo's
-stated scope explicitly keeps geofence/flight-restriction logic out of catalogued detail. Listed
+Scope & safety: see `SAFETY.md`. Listed
 here because it's needed for `awto_dji_app`'s own interoperability work on the owner's aircraft.
 
 **Historical hypothesis only, P3 order/authority not verified.** Names cannot establish a protocol sequence. Retained for provenance, superseded as a P3 implementation recipe. Real IDs
@@ -138,7 +136,7 @@ Checked whether any command dumps the Lightbridge FPGA's own die/chip ID.
 - **V.** The only other "chip state" command found, `general_encrypt_config`'s
   `GetChipState`/`GetModuleState` (`dji-dumlv1-general.lua` line ~570, cmd_type 1/2), is the
   ATSHA204/AT88 component-auth chip (returns "At88 chip state flags", config/data-zone lock
-  bits) - out of this repo's scope anyway (`../CLAUDE.md`: no ATSHA204 key extraction), and
+  bits), and
   still not an FPGA readout.
 - **V.** `DataCameraGetSensorID.java` exists but queries the camera's image sensor, not the
   Lightbridge FPGA - a different "ID" command entirely, same naming-looks-relevant trap.

@@ -5,15 +5,16 @@ Family evidence: pluribus `docs/cyclonev-compressed-rbf.md`, `scripts/fpga_famil
 
 | Image | Role | Size | Used | Version | Entropy | SHA-256 (16) | Family |
 |---|---|---|---|---|---|---|---|
-| P3 `m1900` | air FPGA (TX) | 4 MiB | 2.06 MB | 01.00.2144 | 7.98 | `f3a55dea4dc8c0d4` | Cyclone V e50f-family (header/PRAM CRC); CRAM encrypted |
-| Inspire 1 `m1900` | air FPGA (TX) | 4 MiB | 2.06 MB | 01.00.2144 | 7.98 | `f3a55dea4dc8c0d4` | same image |
-| LB2 `m2000` | ground FPGA rev 00 | 8 MiB | 4.65 MB | 01.00.2107 | 7.99 | `39a74d8d4a69ebaf` | Cyclone V (0x80 preamble, nibble-shifted sync); encrypted |
-| LB2 `m2001` | ground FPGA rev 01 | 8 MiB | 2.12 MB | 01.01.2107 | 5.84 | `b6cc5e96f12446b1` | Cyclone III/IV-format; best match EP4CGX150 |
-| LB2 `m2002` | ground FPGA rev 02 | 8 MiB | 4.80 MB | 01.02.2109 | 7.99 | `30aa24c31e5180a7` | Cyclone V; encrypted |
+| P3 `m1900` | air FPGA (TX, `air_fpga_cyclonev`) | 4 MiB | 2.06 MB | 01.00.2144 | 7.98 | `f3a55dea4dc8c0d4` | Cyclone V e50f-family (header/PRAM CRC); CRAM encrypted |
+| Inspire 1 `m1900` | air FPGA (TX, `air_fpga_cyclonev`) | 4 MiB | 2.06 MB | 01.00.2144 | 7.98 | `f3a55dea4dc8c0d4` | same image |
+| LB2 `m2000` | ground FPGA rev 00 (`gnd_fpga_cyclonev_r0`) | 8 MiB | 4.65 MB | 01.00.2107 | 7.99 | `39a74d8d4a69ebaf` | Cyclone V (0x80 preamble, nibble-shifted sync); encrypted |
+| LB2 `m2001` | ground FPGA rev 01 (`gnd_fpga_cyc4gx_r1`) | 8 MiB | 2.12 MB | 01.01.2107 | 5.84 | `b6cc5e96f12446b1` | Cyclone III/IV-format; best match EP4CGX150 |
+| LB2 `m2002` | ground FPGA rev 02 (`gnd_fpga_cyclonev_r2`) | 8 MiB | 4.80 MB | 01.02.2109 | 7.99 | `30aa24c31e5180a7` | Cyclone V; encrypted |
 | P3S `m1900` | air FPGA (TX) | 4 MiB | 2.01 MB | — | — | (independent sample) | not re-classified |
 
 ## Observations
 
+- Air/ground assignment (m1900 = air, m2000/01/02 = ground) is V from the package split + MCU routing + DJI's own in-firmware `FPGA.A`/`FPGA.G` module-name table in `m0100` — see `fpga-air-vs-ground.md`.
 - Air FPGA is one shared bitstream: P3 and Inspire 1 `m1900` are byte-identical (sources: `P3X_FW_V01.11.0020`, `WM610_FW_V01.11.01.50`).
 - Ground FPGA has three board-revision variants (`m2000/01/02`, versions 2107/2107/2109) from `C1_FW_V01.06.0000`; they differ ~55% from each other.
 - The three ground images are not the same family: m2000/m2002 are Cyclone V streams, m2001 is Cyclone III/IV-format.
@@ -76,3 +77,14 @@ Detection only; image read in place (`firmware/unpacked/C1_FW_V01.06.0000/C1_FW_
 - IO: 16 output and 21 input sites match the learnt signatures (only the 176 / 249 sites seen >= 12 times in the corpus have one); edges right 10 + 12, top 5 + 7, bottom 1 + 2, none on the left.
 - Claimed by the decode: 90.1% of set bits (unclaimed 214,628: clock tree, IO routing, M9K, multipliers, PLL, transceivers).
 - Not done: a lifted netlist; the checks show statistics, not correctness.
+
+## Running a decoded stream — emulator availability per chip
+
+No netlist exists yet, so this is method, not current capability.
+
+- **MCUs m0900 (STM32F103) / m1400 (LPC1765):** Renode models the peripherals, runs unmodified firmware, and co-sims Verilated HDL peripherals — the right tool (write a `.repl`). QEMU has partial STM32 board models.
+- **Cyclone-V FPGA:** Project Mistral is the bitstream→netlist decoder (same project family as IceStorm/Trellis/prjxray). It maps LAB/LUT/FF/routing but not DSP/M10K internals yet. No tool runs a foreign `.rbf` as opaque silicon without decoding it first; full fidelity = load the de-packed bitstream on a matching 5CEBA4/e50f board.
+- **A9SE / DM368 / DM365:** no full emulator (QEMU user-mode, CPU only).
+- **AD9363 / FX2LP:** behavioral models, attachable to Renode.
+
+Once a stream decodes: decode→netlist→Verilator sim, black-boxing DSP/M10K, with MCU firmware in Renode as stimulus and a known all-0s payload; reconcile sim output against a real capture to constrain the black boxes. Fuller writeup (premise void — assumes a decoded netlist that does not exist): `debris/fpga-emulation-plan.md`.

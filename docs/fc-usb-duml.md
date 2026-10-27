@@ -1,10 +1,10 @@
-# Front micro-USB (m0306 flight controller): why it never answers DUML
+# Front micro-USB (m0306 / `air_fc_stm32f427` flight controller): why it never answers DUML
 
 Firmware: `P3X_FW_V01.11.0020_m0306.bin` (STM32F427IIH6, app base `0x08020000`, SP
 `0x2002ff00`, reset `0x08021965`, RTOS strings identify **Micrium uC/OS-III**). Reproduce
 disasm: `python3 scripts/re/mcu_trace.py --img firmware/unpacked/P3X_FW_V01.11.0020_m0306.bin
 --base 0x08020000 --load 0x08020000 dis <addr> <n>`.
-Scope (`CLAUDE.md`): read/trace-only, no control-command sending, no geofence work.
+Scope & safety: see `SAFETY.md`.
 Tags: **V** verified (code/Renode), **I** inferred, **U** unknown.
 
 ## Headline finding
@@ -27,37 +27,43 @@ point to a distinct real handler — a table of 6-byte `movs r0,#IRQn; b.w #0x80
 this firmware does implement real interrupt handling elsewhere; USB OTG is a genuine,
 deliberate gap, not an artifact of the search method.
 
-**V (Renode, dynamic confirmation).** Forced NVIC enable+pend on OTG_HS (IRQn 77, since
-Renode has no STM32 OTG device-controller peripheral model — same "forced register state
-instead of full peripheral emulation" method used for m0900's AD9363 SPI writers,
-`docs/fpga-bringup.md`): `sysbus WriteDoubleWord 0xE000E108 0x2000` (ISER2 bit13) then
-`0xE000E208 0x2000` (ISPR2 bit13), `emulation RunFor "00:00:00.001"`. Result: `cpu PC` =
-`0x080219a0` and stays there after another 1ms step — the CPU parks in `Default_Handler`
-permanently the instant any OTG_HS interrupt is actually taken, exactly as the static
-disasm predicts. Reproduce: `python3 scripts/re/m0306_probe.py` (log
-`tmp/logs/m0306_probe.log`); platform `renode/platforms/m0306.repl` (extends stock
-`platforms/cpus/stm32f429.repl` — closest public SVD match to the real F427; unlike m0900's
-F103 it did not need an RCC_CFGR tag workaround, since the stock F4 repl already models
-`STM32F4_RCC`).
+**V (Renode, dynamic confirmation).** Forced NVIC enable+pend on OTG_HS (IRQn 77), since Renode has no STM32 OTG device-controller peripheral model. Same "forced register state instead of full peripheral emulation" method used for m0900's AD9363 SPI writers, `docs/fpga-bringup.md`.
+- Commands: `sysbus WriteDoubleWord 0xE000E108 0x2000` (ISER2 bit13) then `0xE000E208 0x2000` (ISPR2 bit13), `emulation RunFor "00:00:00.001"`.
+- Result: `cpu PC` = `0x080219a0` and stays there after another 1ms step. The CPU parks in `Default_Handler` permanently the instant any OTG_HS interrupt is actually taken, exactly as the static disasm predicts.
+- Reproduce: `python3 scripts/re/m0306_probe.py` (log `tmp/logs/m0306_probe.log`); platform `renode/platforms/m0306.repl`.
+- The platform extends stock `platforms/cpus/stm32f429.repl` (closest public SVD match to the real F427). Unlike m0900's F103 it did not need an RCC_CFGR tag workaround, since the stock F4 repl already models `STM32F4_RCC`.
 
 ## Does the firmware ever even arm USB OTG at the NVIC?
 
-**V (Renode).** Booted the real image from its own reset vector, then read NVIC `ISER1`
+**V (Renode), but downgraded (2026-10-25) — read the caveat below before citing this.**
+Booted the real image from its own reset vector, then read NVIC `ISER1`
 (`0xE000E104`) / `ISER2` (`0xE000E108`) at t=2000ms simulated (`renode/scripts/
 m0306_probe_long.resc`, log `tmp/logs/m0306_probe_long.log`): `0x871018A1` / `0x000803F3`.
 Decoded enabled IRQn set: `{32,37,39,43,44,52,56,57,58,63,64,65,68,69,70,71,72,73,83}` —
 USART1(37)/USART3(39)/TIM6(56)/TIM7(57)/UART5(83)/DMA/I2C channels are all armed (positive
 control: normal driver init *did* run by this point) but **none** of OTG_FS_WKUP(42) /
-OTG_HS_EP1_OUT/IN(74/75) / OTG_HS_WKUP(76) / OTG_HS(77) are ever present, at any of the
-sampled points up to 2s simulated boot. So the gate is two deep: even if the dead vector
-weren't dead, the firmware never unmasks the interrupt that would reach it.
+OTG_HS_EP1_OUT/IN(74/75) / OTG_HS_WKUP(76) / OTG_HS(77) are present **within this 2s simulated
+window**.
 
-**V (Renode, side note, not chased further).** By t=2000ms the CPU was found spinning in an
+**V (Renode, side note).** By t=2000ms the CPU was found spinning in an
 SD-card status poll (`PC 0x0805b102`, reading `SDIO:STA 0x40012C34`, which Renode's generic
 SVD model always returns as `0`) — an environment-dependent stall, the same category as
-m0900's board-strap gate, just for an SD logger rather than a radio. Flagged as open; all the
-non-USB peripherals above were already armed before this point, so it's unlikely to be
-hiding a later USB-enable, but not proven.
+m0900's board-strap gate, just for an SD logger rather than a radio.
+
+**Caveat, raised 2026-10-25, not yet resolved — this materially weakens the "never unmasks
+USB" claim above.** The 2s window this test covers *ends inside that same SD-card stall* —
+the firmware never gets past it in simulation, because Renode's generic model can't satisfy
+whatever `STA` bit it's polling for. The claim "the gate is two deep: even if the dead vector
+weren't dead, the firmware never unmasks the interrupt" is **only true up to the point the
+simulated boot gets stuck**. If real hardware's SD card actually answers that poll (which it
+would, SD hardware being present on the real board), boot proceeds past this point into code
+Renode never reaches — and nothing here establishes what that code does. **Downgrade: the
+dead vector-table entries (previous section) are solid, chip/emulator-independent, static
+evidence; "never unmasked, full stop" is not — it is "never unmasked before the point this
+specific Renode run stalls on an unmodeled SD peripheral," which is a weaker claim.** Closing
+this needs either a Renode re-run with the SDIO `STA` register patched/stubbed to let boot
+continue (not done — the Renode binary used in the earlier session isn't available in this
+one), or a real-hardware test. Not attempted further this pass.
 
 **V (Renode).** At the earlier 50/100/150/200ms samples (`renode/scripts/m0306_probe.resc`,
 log `tmp/logs/m0306_probe.log`) PC was pinned at `0x0806816c` (`b #0x8068154`), a tight loop
@@ -98,22 +104,95 @@ isn't re-walked.
 
 ## Interpretation (not proven by code)
 
-**I.** `"VCOM"` vs `"MSCM"` read as two USB personalities (CDC-ACM vs mass-storage), and
-`"Assistant protect"` / `"assistant connect changed:last(%u) != current(%u)"` / the config
-key `"assistant_timeout_0"` (all string-verified, V for existence) look like a boot-time
-"Assistant window": known DJI A3-family behavior is a short post-power-on window during
-which DJI Assistant PC software can attach; after a timeout with no handshake the firmware
-moves on. Combined with the Renode findings above, the likeliest explanation for "accepts
-bytes, never replies" is: the probe connects to a FC that is **already past** that window (or
-one that, in this firmware image, never enables OTG-interrupt service at all) — the hardware
-OTG peripheral still ACKs USB transport-layer traffic (control transfers for enumeration,
-bulk-OUT framing) regardless of software, but nothing ever reads the result into a DUML
-parser. **Not verified**: the actual content of the one-shot boot init (I did not find/trace
-the consumer of `assistant_timeout_0`, nor a receive-processing function reachable from
-either call chain above), and whether the operator's physically connected FC runs this exact
-firmware build (image `.ini` version `02.04.5170`; other P3X FC images checked in
-`docs/air-id-and-stream-survey.md` cross-check table have **no** UID literal and may differ
-in this area too).
+**I.** `"VCOM"` vs `"MSCM"` read as two USB personalities (CDC-ACM vs mass-storage).
+- `"Assistant protect"` / `"assistant connect changed:last(%u) != current(%u)"` / the config key `"assistant_timeout_0"` (all string-verified, V for existence) look like a boot-time "Assistant window".
+- Known DJI A3-family behavior: a short post-power-on window during which DJI Assistant PC software can attach; after a timeout with no handshake the firmware moves on.
+- Combined with the Renode findings above, the likeliest explanation for "accepts bytes, never replies": the probe connects to a FC that is **already past** that window (or one that, in this firmware image, never enables OTG-interrupt service at all).
+- The hardware OTG peripheral still ACKs USB transport-layer traffic (control transfers for enumeration, bulk-OUT framing) regardless of software, but nothing ever reads the result into a DUML parser.
+- **Not verified**:
+  - the actual content of the one-shot boot init (I did not find/trace the consumer of `assistant_timeout_0`, nor a receive-processing function reachable from either call chain above);
+  - whether the operator's physically connected FC runs this exact firmware build (image `.ini` version `02.04.5170`; other P3X FC images checked in `docs/air-id-and-stream-survey.md` cross-check table have **no** UID literal and may differ in this area too).
+
+## The receiver=0x0e / "GL300C" reply content, re-examined (2026-10-25)
+
+The "Breakthrough" section's `GL300C`/`WM320 A7_LPC1 20170828/00` reply at receiver `0x0e`
+raised an architecture question: does m0306 locally fabricate that identity, or genuinely
+forward the request to the real `air_router_stm32f103`? Two concrete findings, neither fully closing it:
+
+- **V, decompiled `duml_resp_send` (`0x0806d334`), existing Ghidra project
+  (`scratchpad/ghproj/m0306`).** The reply-builder's sender byte is built from the *request's
+  own receiver byte* (`*(byte*)(param_1+5)`), not a validity check against "am I this type":
+  `if ((~bVar2 & 0x1f) == 0) bVar2 = 3;` — i.e. only the broadcast wildcard (`0x1f`, all 5 type
+  bits set) gets special-cased to answer as FLYC (device type 3); **every other receiver value
+  is echoed straight back as the reply's claimed sender**. This is a permissive echo, not an
+  identity check — on its own it would explain the reply's *header* claiming to be from `0x0e`,
+  but says nothing about where the *payload content* (`GL300C`, the version string) comes from.
+- **V, `GL300C`/`WM320 A7_LPC1 20170828/00` are NOT literal strings anywhere in m0306's own
+  decrypted flash** (`scratchpad/dec/P3X_FW_V01.11.0020_m0306.bin`, full `strings` sweep) —
+  rules out "stale shared-codebase boilerplate string" as the explanation.
+- **V, found instead:** `REQ_APP_WM610` (`0x8064530`) and a parameter/debug-name cluster
+  `g_real.wm610_app_command.function_command_0` / `..._state_0` (`0x80f74ca`/`0x80f828a`) —
+  naming consistent with the `g_config.*`/`g_real.*` debug-name convention already established
+  for the 834-entry param table (`fc-io-inventory.md`/`fc_param_table.py`), not raw code. This
+  is a real, named mechanism in m0306 for talking to a WM610-family (shared-Lightbridge) device
+  — consistent with, though not proof of, the forward-to-radio-MCU hypothesis.
+- **U, dead end by the documented method, not yet solved another way:** `mcu_trace.py str`
+  found **zero literal-pool xrefs** to either string — the same "code addresses the struct by
+  RAM base, not by re-loading the string's flash address" dead end already recorded above for
+  `VCOM`/`MSCM`. The right next step is the **param-table route**, not string-xref: find this
+  cluster's entry in the `FlycExportParam` array by its debug name (same method
+  `fc_param_table.py` uses for the other 834 entries) to get its RAM address, then trace who
+  reads/writes *that* address — not attempted this session.
+- **Net effect: narrowed, not solved.** The reply's claimed sender (`0x0e`) is now explained
+  (permissive echo, V). Whether the reply's *content* is live-forwarded from the real `air_router_stm32f103`
+  over an internal bus, or populated from a cached/shared RAM table the FC maintains about
+  paired components, remains **U** — but "stale copy-pasted string" is now ruled out, and a
+  real WM610-communication mechanism (not previously documented) is confirmed to exist.
+
+## Does `air_fc_stm32f427` itself forward DUML frames by receiver type? (2026-10-25)
+
+Direct trace, continuing from the `duml_resp_send` echo-rule finding above, looking for a
+generic "not mine, pass it on" mechanism (the thing that would have explained the front-port
+reply answering as `air_router`, per the now-**retracted** "Breakthrough" log above) or a
+generic debug/bus-sniff command. **Caveat (2026-10-25): since this was written, the premise —
+that the front port answers as `air_router`/`GL300C` at all — was retracted** (the log it came
+from is disregarded per the operator, and separately, that identity string was never found in
+either chip's firmware). The code findings below about `air_fc`'s own dispatch table are still
+directly observed and stand on their own; the "simplest explanation" paragraph at the end,
+which was built to explain the now-retracted observation, should be read as **narrower than
+written**: it shows `air_fc` has no generic forward/debug command in its own table, nothing
+more — it is not evidence of what the front port actually reaches, which is open again.
+
+- **V, decompiled `scratchpad/ghproj/m0306`.** `air_fc`'s own incoming-command dispatch is a
+  flat (funcptr, key) table at `0x080ab440`-`0x080ab644` (~65 entries, 8 bytes each: thumb
+  function pointer + 16-bit key `(cmd<<8)|cmd_set`). Decoded every entry: **all but six are
+  `cmd_set=0x03` (FLYC)**; the rest are `0x01`/`0x02`/`0x04`/`0x06`/`0x07` — still all
+  `air_fc`'s own owned command sets, none a generic/wildcard/catchall key (no `0xff`-style
+  entry like `air_router`'s cmdset-9 catchall). Two entries have a null function pointer
+  (`cmd=0x51`/`0xaa`, `set=0x03`) — declared-but-unimplemented FLYC commands, not forwarding
+  stubs.
+  Reproduce: `scratchpad/ghscripts/fc_table_search.py` (locates the table by scanning for
+  known leaf-handler addresses as literal pointer values) then
+  `scratchpad/ghscripts/fc_table_dump.py` (dumps the raw words) — both ad hoc, not committed.
+- **V, zero direct callers.** None of the table's leaf handlers (`FUN_08043a1c` etc.) have any
+  direct-call xref in the whole image — confirmed function-pointer-table-only dispatch,
+  consistent with (and the same shape as) `air_router`'s own dispatch tables.
+- **Conclusion: no generic receiver-forward and no debug/bus-sniff command found in `air_fc`'s
+  own traced command surface.** Combined with the headline finding above (USB OTG interrupts
+  are dead code — never even unmasked at the NVIC) and the public wiki's own description of
+  the front port as a **UART** interface (115200 8N1), not real USB-CDC, the simplest
+  explanation for "the front port answers as `air_router`" is now: **the micro-USB connector
+  is a USB-to-UART adapter external to `air_fc`, tapping the same internal UART DUML bus that
+  `air_router` also listens on** — so a query addressed to `air_router` (`0x0e`) is answered
+  by the real `air_router_stm32f103`, physically present on the same bus, not by any forwarding
+  logic inside `air_fc`. `air_fc`'s own USB-OTG silicon plays no role at all. This is **I**
+  (inferred from the combination of findings above), not itself code-traced — the actual wiring
+  between the front connector, `air_fc`'s UART peripherals, and `air_router`'s bus has not been
+  confirmed from a schematic or a bus-level capture.
+- **Still open (U):** which of `air_fc`'s UART peripherals (if any) is physically the one wired
+  to the front connector, and whether `air_fc` itself ever transmits/receives on that same
+  wire (shared bus vs. point-to-point) — would need either a schematic or a logic-level capture
+  to settle, not a further static trace.
 
 ## Open / not resolved
 
@@ -128,24 +207,14 @@ in this area too).
 
 ## Public corroboration (2026-10-24)
 
-- **W** (`o-gs/dji-firmware-tools` wiki, "Firmware m0306" page, "Interfaces" section,
-  <https://github.com/o-gs/dji-firmware-tools/wiki/Firmware-m0306>, by the project's
-  maintainer): "Hooking a PC to the micro-USB connector in front of the drone gives
-  access to an UART interface... The interface also allow injecting commands to the
-  drone, as long as they meet the DUML binary packet format.” Same 115200 8N1 as we use.
-  No special unlock/handshake byte sequence for *this* port (the FC's front USB) is
-  documented anywhere public found this session (wiki, forums, GitHub issues) — the
-  wiki states it should just work.
-  **Update (2026-10-24, later same day):** `camera-linux-console-access.md` (a
-  *different* port, the camera's Ambarella Linux) has since added a firmware-side
-  trace of a matching RTOS file-gate (specific disassembled addresses, see that doc's
-  “SD-card diagnostic logging marker” section) and a card-side result —
-  `MISC/LOG/CameraLogCur.log` now exists, 42,466 bytes. This is real evidence, not
-  nothing, but it doesn't establish that the marker *specifically* caused that file —
-  causation is still unproven, per that doc's own “Update” note. `0x40003000` itself
-  is still only confirmed as the example argument to the `t dji console [addr]` shell
-  command, not as an established filename convention. Still worth corroborating
-  independently rather than treating either doc's framing as settled.
+- **W** (`o-gs/dji-firmware-tools` wiki, "Firmware m0306" page, "Interfaces" section, <https://github.com/o-gs/dji-firmware-tools/wiki/Firmware-m0306>, by the project's maintainer): "Hooking a PC to the micro-USB connector in front of the drone gives access to an UART interface... The interface also allow injecting commands to the drone, as long as they meet the DUML binary packet format.” Same 115200 8N1 as we use.
+  - No special unlock/handshake byte sequence for *this* port (the FC's front USB) is documented anywhere public found this session (wiki, forums, GitHub issues). The wiki states it should just work.
+  - **Update (2026-10-24, later same day):** `camera-linux-console-access.md` (a *different* port, the camera's Ambarella Linux) has since added two things:
+    - a firmware-side trace of a matching RTOS file-gate (specific disassembled addresses, see that doc's “SD-card diagnostic logging marker” section);
+    - a card-side result: `MISC/LOG/CameraLogCur.log` now exists, 42,466 bytes.
+  - This is real evidence, but it doesn't establish that the marker *specifically* caused that file; causation is still unproven, per that doc's own “Update” note.
+  - `0x40003000` itself is still only confirmed as the example argument to the `t dji console [addr]` shell command, not as an established filename convention.
+  - Still worth corroborating independently rather than treating either doc's framing as settled.
 - This is independent confirmation the port is *supposed* to answer DUML, which makes
   this repo's total silence the anomaly to explain, not evidence the port is DUML-dead
   by design. Strengthens the "Assistant window" / boot-timing hypothesis below over the
@@ -156,7 +225,24 @@ in this area too).
   will provide a serial interface with startup logs on the USB output"), consistent with
   what we see, but does not mention commands failing to get a reply as a known issue.
 
-## Breakthrough, live hardware (2026-10-24): the port answers, reliably, once caught
+## Breakthrough, live hardware (2026-10-24) — RETRACTED (2026-10-25), do not cite
+
+**Operator instruction (2026-10-25): `captures/sessions/2026-10-24/duml_watch.log` is
+disregarded — stop treating it as a reference.** Everything below this point that depends
+on that log (the "port answers as `air_router`" claim, the receiver sweep, the `0x14`
+anomaly, all of §"Follow-up probing on the same live session") is retracted along with it,
+not just flagged open. The identity string it reported (`GL300C`/`WM320 A7_LPC1
+20170828/00`) was independently found to not exist in either `air_fc`'s or `air_router`'s
+own firmware (`docs/air-router-io-and-naming.md`'s follow-up, 2026-10-25), which is what
+originally put this log in doubt. Do not use this section, or any downstream doc that cites
+it, as evidence for what the front port actually is or does. The real architecture question
+it was trying to answer — what `air_fc`'s front port actually reaches — is open again,
+pending a clean re-test (RC physically disconnected, fresh capture).
+
+The section is kept below, struck through in spirit, only so the retraction itself has a
+paper trail; treat none of its content as established.
+
+<!-- BEGIN RETRACTED SECTION — do not cite -->
 
 Prior sessions concluded this port never replies. That conclusion was an artifact of
 probing with a tool that gives up the moment the USB device drops — which is exactly
@@ -174,20 +260,20 @@ power-cycle of the aircraft.
   **`GL300C`** / **`WM320 A7_LPC1 20170828/00`** — byte-identical to what the RC itself
   reports at the same receiver over its own port (`docs/identity-queries.md`).
   **Correction to the architecture model**: receiver `0x0e` on this port is not the
-  flight controller - it is the aircraft's own OFDM/radio MCU (an m0900-family chip,
+  flight controller - it is the aircraft's own `air_router_stm32f103` (an m0900-family chip,
   same firmware build as the RC's), reached the same way DUML reaches the RC's radio
   MCU. The "front USB port = flight controller" framing in this doc's title and earlier
-  sections needs qualifying: USB on this port reaches the radio MCU by default; the FC
+  sections needs qualifying: USB on this port reaches `air_router_stm32f103` by default; the FC
   itself may sit behind it, not be it.
 - **V**: a receiver sweep (camera `0x01`, FLYC `0x03`, gimbal `0x04`, center board
   `0x05`, remote controller `0x06`, and indexed variants) against the *same live,
   confirmed-responsive* port got **no reply from anything except `0x0e`** - bracketed
   by two more `0x0e` pings that both succeeded, so the silence on other receivers isn't
   the link dying mid-sweep. Whether that's because this port's DUML only routes to the
-  radio MCU (not relayed onward to FLYC/camera/gimbal), or those other receiver
+  `air_router_stm32f103` (not relayed onward to FLYC/camera/gimbal), or those other receiver
   addresses are simply wrong for this bus, is **U**.
 - **U**: GetSerialNum (`00/51`, payload `04`/FlycNum) at `0x0e` got no reply - consistent
-  with `0x0e` being the radio MCU, which (like the RC) doesn't implement that query.
+  with `0x0e` being `air_router_stm32f103`, which (like the RC) doesn't implement that query.
   The aircraft's own serial/FlycNum still needs a receiver that reaches the FC, which
   this port hasn't shown yet.
 - Reproduce: `python3 -I scripts/re/duml_watch.py /dev/ttyACM11 --minutes 10`, then
@@ -202,36 +288,24 @@ at PC (`0x0a`) throughout except one explicit check.
 - **V**: `GetSerialNum` (`00/51`) at `0x0e` got no reply for payload `01`/`02`/`03`/`04`
   (BoardNum/ChipId/ModuleNum/FlycNum) - confirms, doesn't just repeat, the earlier
   single-payload result: `0x0e` implements none of the four index variants.
-- **V**: RC-cmdset `GetMaster` (`06/07`) at `0x0e` replied `00` - "not connected to a
-  master", same bit pattern the RC itself reports on its own port
-  (`docs/identity-queries.md`). Read with caution: this is RC role/pairing-role state
-  (`cpu-reversing-proof.md`'s dual-remote state machine), not aircraft-ID binding, and
-  we're on a USB cable, not the RF link, so "no master" here may just mean "no RF
-  session active over USB", not that the aircraft is unpaired. `RcGetName` (`06/09`) and
-  `RcGetConnectMaster` (`06/0d`) at `0x0e` both got no reply.
+- **V**: RC-cmdset `GetMaster` (`06/07`) at `0x0e` replied `00` - "not connected to a master", same bit pattern the RC itself reports on its own port (`docs/identity-queries.md`).
+  - Read with caution: this is RC role/pairing-role state (`cpu-reversing-proof.md`'s dual-remote state machine), not aircraft-ID binding.
+  - We're on a USB cable, not the RF link, so "no master" here may just mean "no RF session active over USB", not that the aircraft is unpaired.
+  - `RcGetName` (`06/09`) and `RcGetConnectMaster` (`06/0d`) at `0x0e` both got no reply.
 - **V**: sender spoofed to `0x0e` (OSD) instead of PC, receiver still `0x0e` - no reply.
   Not evidence of anything specific (self-addressed self-sender is an odd combination
   generally), logged so it isn't retried.
-- **V, new**: a receiver sweep extended to decimal-TTII type values beyond the known
-  `DeviceType` table (camera 1, app 2, flightController 3, gimbal 4, centerBoard 5,
-  remoteController 6, pc 10, osd 14) turned up **wire address `0x14` (type 20, index 0,
-  not in any catalog here)** also answering `GetDeviceState` (`00/0c`) with
-  `e30000000000` - same payload style the RC gave on its very first reply after a fresh
-  port open (`docs/p3-usb-observations-2026-10-23.md`). `GetVersion` (`00/01`) at `0x14`
-  replied but with an unpopulated-looking record (`00100000...` then a run of
-  `fe ff ff ff fe ff ff ff 01 00 00 00 00`, no readable hardware-name string like
-  `GL300C`) - **I**: looks like a default/placeholder responder for an unclaimed
-  dispatch slot rather than a genuinely distinct identified chip, not a confirmed real
-  device. `GetDeviceInfo` (`00/ff`) at `0x14` got no reply. **U, not resolved:** whether
-  `0x14` is a real third component or an artifact of how the dispatcher answers
-  addresses nobody explicitly claimed; worth one more pass with a wider
-  `GetDeviceState` payload decode and a couple of neighbouring type values (19, 21) to
-  see if the pattern is "every unclaimed slot answers identically" or specific to 20.
-  Every type value actually tried this session is in
-  `captures/sessions/2026-10-24/duml_watch.log` and the shell history above - re-run
-  rather than re-guess.
+- **V, new**: a receiver sweep extended to decimal-TTII type values beyond the known `DeviceType` table (camera 1, app 2, flightController 3, gimbal 4, centerBoard 5, remoteController 6, pc 10, osd 14) turned up **wire address `0x14` (type 20, index 0, not in any catalog here)**.
+  - It answers `GetDeviceState` (`00/0c`) with `e30000000000`: same payload style the RC gave on its very first reply after a fresh port open (`docs/p3-usb-observations-2026-10-23.md`).
+  - `GetVersion` (`00/01`) at `0x14` replied with an unpopulated-looking record (`00100000...` then a run of `fe ff ff ff fe ff ff ff 01 00 00 00 00`, no readable hardware-name string like `GL300C`).
+  - **I**: looks like a default/placeholder responder for an unclaimed dispatch slot, not a confirmed real distinct device.
+  - `GetDeviceInfo` (`00/ff`) at `0x14` got no reply.
+  - **U, not resolved:** whether `0x14` is a real third component or an artifact of how the dispatcher answers addresses nobody explicitly claimed. Worth one more pass with a wider `GetDeviceState` payload decode and a couple of neighbouring type values (19, 21), to see if "every unclaimed slot answers identically" or specific to 20.
+  - Every type value actually tried this session is in `captures/sessions/2026-10-24/duml_watch.log` and the shell history above. Re-run rather than re-guess.
 - Everything above ran on a single sustained connection (no further disconnects),
   confirmed live before and after each batch.
+
+<!-- END RETRACTED SECTION -->
 
 ## Suggestion for the operator (not an instruction — their hardware, their call)
 
@@ -309,19 +383,11 @@ Extended the simulated boot 5x past the original cap: `renode/scripts/m0306_prob
 (20x500ms steps to 10s, log `tmp/logs/m0306_probe_10s_stdout.log`). Result:
 - The 5 headline vectors (IRQn 42, 74, 75, 76, 77) stay unmasked=false through the full 10s —
   that specific claim holds up to 10s (5x the original window), not just 2s.
-- But ISER2 changes between t=5500ms and t=6000ms: `0x000803F3` -> `0x000803FB` — IRQn67 goes
-  from disabled to enabled. **IRQn67 is OTG_FS** (the FS core's combined global interrupt) per
-  the standard STM32F427/437 reference manual's interrupt vector table (public ST
-  documentation, not checked against anything in this repo). **Correction (lead session,
-  2026-10-23):** this was originally claimed as "confirmed against the stock
-  `stm32f429.repl`/`stm32f4.repl` IRQ map" - checked independently, and **neither stock
-  Renode platform file names or models USB-OTG at all** (consistent with the earlier,
-  separately-confirmed finding that Renode has no STM32 OTG peripheral model). The IRQn67=
-  OTG_FS identification itself is still very likely correct (it matches well-known public ST
-  silicon numbering), but it rests on that external reference, not on anything verifiable in
-  this repo's Renode files - tag it **I**, not **V**, on that specific point. There are **six**
-  OTG-related IRQn on this chip family (42, 67, 74, 75, 76, 77), not five, and the 6th is the
-  one most USB device stacks actually use for day-to-day RX/TX servicing.
+- But ISER2 changes between t=5500ms and t=6000ms: `0x000803F3` -> `0x000803FB`. IRQn67 goes from disabled to enabled.
+  - **IRQn67 is OTG_FS** (the FS core's combined global interrupt) per the standard STM32F427/437 reference manual's interrupt vector table (public ST documentation, not checked against anything in this repo).
+  - **Correction (lead session, 2026-10-23):** this was originally claimed as "confirmed against the stock `stm32f429.repl`/`stm32f4.repl` IRQ map". Checked independently: **neither stock Renode platform file names or models USB-OTG at all** (consistent with the earlier, separately-confirmed finding that Renode has no STM32 OTG peripheral model).
+  - The IRQn67=OTG_FS identification itself is still very likely correct (matches well-known public ST silicon numbering), but it rests on that external reference, not on anything verifiable in this repo's Renode files. Tag it **I**, not **V**, on that specific point.
+  - There are **six** OTG-related IRQn on this chip family (42, 67, 74, 75, 76, 77), not five. The 6th is the one most USB device stacks actually use for day-to-day RX/TX servicing.
 - That vector's handler (`0x08087c3a`, independently disassembled) is real code, not
   Default_Handler (see #2).
 - The doc's SD-card stall side-note ("not chased further") is not a permanent hang: PC moves
@@ -371,51 +437,24 @@ against byte-for-byte (see below) — fell back to structural/control-flow compa
 ST's public `stm32f4xx_hal_pcd.c` (fetched to `tmp/stm32_hal_ref/`, gitignored, not committed
 — DJI/ST copyrighted source, kept local only per this repo's no-binaries-committed rule).
 
-- **V, reference-binary search was exhaustive and came back empty.** Swept every `.elf` under
-  `/mnt/2tb/git` (~150 repos) for `HAL_PCD`/`USB_OTG`/`PCD_IRQHandler` symbols. All hits are
-  Zephyr/ESP-IDF builds (`awto-zephyr-wt-*`, `awto-l8-wt-*`) — unrelated architecture, not
-  STM32F4, not ST's HAL. No STM32F4 reference binary with debug symbols exists in any local
-  repo. Confirms there's no shortcut here; matching has to be done by reading the code.
-- **V, disassembled `0x8029f26` directly** (`firmware/unpacked/P3X_FW_V01.11.0020_m0306.bin`,
-  base `0x08020000`). Shape: `push {r4-r8,sb,sl,lr}`; read a status word via a call
-  (`0x803c298`/`0x803c2b8`); then a long run of independent bit tests, each
-  `lsls r0, r5, #<shift>` / `bpl` (i.e. "if bit N of the status word is set"), each guarding a
-  call to a distinct sub-handler (`0x802a256`, `0x8029e60`, `0x802a168`, `0x802a0ec`,
-  `0x802a06c`, `0x803c474`, `0x803c44e`) whose results get OR-accumulated into `r4`; ends
-  `pop {...,pc}` returning `r4`. This is the canonical shape of a GINTSTS-style "test every
-  pending-interrupt bit, dispatch per bit, return which ones were handled" USB-OTG
-  device-mode ISR — the same shape `HAL_PCD_IRQHandler` has in every ST HAL version checked
-  (confirmed against the fetched `stm32f4xx_hal_pcd.c`: `if (__HAL_PCD_GET_FLAG(...))` per
-  flag, each guarding a handler, same independent-bit-test structure). Upgrades the earlier
-  "looks like PCD_IRQHandler" from a bare guess to a structurally-grounded claim with cited
-  addresses — but it is **not** a byte-exact or version-exact match (see next point).
-- **I, not literally ST's current `HAL_PCD_IRQHandler`.** One dispatch arm (the last couple of
-  bits tested) calls indirectly through a pointer loaded from RAM: literal pool at
-  `0x802a2a4` holds `0x2001cd98` (an SRAM1 address), loaded into r8, then
-  `ldr r0,[r8]` / `ldr r1,[r0,#0xc]` (and `+0x18`, `+0x1c`, `+0x20`) / `blx r1` — i.e. a
-  table of function pointers sitting at small, early offsets inside some global struct
-  reached via `0x2001cd98`. ST's `PCD_HandleTypeDef` (`tmp/stm32_hal_ref/stm32f4xx_hal_pcd.h`)
-  does have a block of callback function pointers (`SOFCallback`, `SetupStageCallback`,
-  `ResetCallback`, ... `MspDeInitCallback`), but they sit well past these small offsets
-  (after `Instance`/`Init`/the USB register-state fields) in every HAL version checked — these
-  offsets (`+0xc/+0x18/+0x1c/+0x20`) land too early to be that block. More consistent with
-  either a much older/leaner `HAL_PCD_IRQHandler` (pre-`USE_HAL_PCD_REGISTER_CALLBACKS`,
-  which only exists from HAL F4 ~v1.7+) or — given the firmware's own strings use a distinct
-  in-house `hal_` naming convention for unrelated peripherals (`hal_compass_add`, seen in the
-  same image) — a DJI-internal thin wrapper struct with its own small callback vtable, not
-  ST's HAL verbatim.
-- **U, not resolved this pass:** exact HAL version/vendor, and whether `0x2001cd98` names a
-  real persistent handle (vs. a relocatable bootloader-copy artifact). Would need either (a) a
-  compiled HAL_PCD_IRQHandler at a specific version to diff bit-shift-order against (started,
-  not finished: `tmp/stm32_hal_ref/` has HAL source only, no build yet), or (b) finding the
-  constructor that populates `0x2001cd98` and checking its struct literal against a specific
-  HAL header's field layout.
-- **Compiler/toolchain fingerprint, I:** `Reset_Handler` (`0x08021964`) is two instructions —
-  indirect call via literal pool (SystemInit-equivalent) then an indirect tail-jump, with no
-  inline `.data`/`.bss` copy loop visible at the reset entry. That's a better fit for
-  ARM Compiler/Keil's `__main` scatter-loader trampoline than for a typical GCC+newlib
-  `Reset_Handler` (which usually inlines the copy/zero loops directly). Not confirmed against
-  an actual ARMCC build — no Keil-built STM32F4 reference binary found locally either.
+- **V, reference-binary search was exhaustive and came back empty.** Swept every `.elf` under `/mnt/2tb/git` (~150 repos) for `HAL_PCD`/`USB_OTG`/`PCD_IRQHandler` symbols.
+  - All hits are Zephyr/ESP-IDF builds (`awto-zephyr-wt-*`, `awto-l8-wt-*`): unrelated architecture, not STM32F4, not ST's HAL.
+  - No STM32F4 reference binary with debug symbols exists in any local repo. No shortcut; matching has to be done by reading the code.
+- **V, disassembled `0x8029f26` directly** (`firmware/unpacked/P3X_FW_V01.11.0020_m0306.bin`, base `0x08020000`).
+  - Shape: `push {r4-r8,sb,sl,lr}`; read a status word via a call (`0x803c298`/`0x803c2b8`); then a long run of independent bit tests, each `lsls r0, r5, #<shift>` / `bpl` (i.e. "if bit N of the status word is set").
+  - Each test guards a call to a distinct sub-handler (`0x802a256`, `0x8029e60`, `0x802a168`, `0x802a0ec`, `0x802a06c`, `0x803c474`, `0x803c44e`) whose results get OR-accumulated into `r4`; ends `pop {...,pc}` returning `r4`.
+  - This is the canonical shape of a GINTSTS-style "test every pending-interrupt bit, dispatch per bit, return which ones were handled" USB-OTG device-mode ISR. `HAL_PCD_IRQHandler` has the same shape in every ST HAL version checked (confirmed against the fetched `stm32f4xx_hal_pcd.c`: `if (__HAL_PCD_GET_FLAG(...))` per flag, each guarding a handler, same independent-bit-test structure).
+  - Upgrades the earlier "looks like PCD_IRQHandler" from a bare guess to a structurally-grounded claim with cited addresses. It is **not** a byte-exact or version-exact match (see next point).
+- **I, not literally ST's current `HAL_PCD_IRQHandler`.**
+  - One dispatch arm (the last couple of bits tested) calls indirectly through a pointer loaded from RAM. Literal pool at `0x802a2a4` holds `0x2001cd98` (an SRAM1 address), loaded into r8, then `ldr r0,[r8]` / `ldr r1,[r0,#0xc]` (and `+0x18`, `+0x1c`, `+0x20`) / `blx r1`. That is a table of function pointers at small, early offsets inside some global struct reached via `0x2001cd98`.
+  - ST's `PCD_HandleTypeDef` (`tmp/stm32_hal_ref/stm32f4xx_hal_pcd.h`) does have a block of callback function pointers (`SOFCallback`, `SetupStageCallback`, `ResetCallback`, ... `MspDeInitCallback`). They sit well past these small offsets (after `Instance`/`Init`/the USB register-state fields) in every HAL version checked, so `+0xc/+0x18/+0x1c/+0x20` land too early to be that block.
+  - More consistent with either (a) a much older/leaner `HAL_PCD_IRQHandler` (pre-`USE_HAL_PCD_REGISTER_CALLBACKS`, which only exists from HAL F4 ~v1.7+), or (b) a DJI-internal thin wrapper struct with its own small callback vtable, not ST's HAL verbatim. (b) is suggested by the firmware's own distinct in-house `hal_` naming convention for unrelated peripherals (`hal_compass_add`, seen in the same image).
+- **U, not resolved this pass:** exact HAL version/vendor, and whether `0x2001cd98` names a real persistent handle (vs. a relocatable bootloader-copy artifact). Would need either:
+  - (a) a compiled HAL_PCD_IRQHandler at a specific version to diff bit-shift-order against (started, not finished: `tmp/stm32_hal_ref/` has HAL source only, no build yet), or
+  - (b) finding the constructor that populates `0x2001cd98` and checking its struct literal against a specific HAL header's field layout.
+- **Compiler/toolchain fingerprint, I:** `Reset_Handler` (`0x08021964`) is two instructions: an indirect call via literal pool (SystemInit-equivalent), then an indirect tail-jump. No inline `.data`/`.bss` copy loop is visible at the reset entry.
+  - Better fit for ARM Compiler/Keil's `__main` scatter-loader trampoline than for a typical GCC+newlib `Reset_Handler` (which usually inlines the copy/zero loops).
+  - Not confirmed against an actual ARMCC build; no Keil-built STM32F4 reference binary found locally either.
 
 Reproduce: disasm via ad hoc capstone (same pattern as `scripts/re/fc_usb_xrefs.py`, not
 checked in as its own script); HAL reference source fetched from

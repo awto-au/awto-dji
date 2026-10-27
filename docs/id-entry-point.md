@@ -7,7 +7,7 @@ schematic**. Evidence is reproducible with the scripts in `scripts/fpga/`.
 ## Short answer
 
 The ID is **not computed inside the FPGA and not a hardcoded constant.** It is owned by the
-**ground MCU `m1400` (LPC1765 "GROUND LB2")**, which writes it into the Lightbridge ground
+**ground MCU `m1400` (`gnd_rc_lpc1765`, LPC1765 "GROUND LB2")**, which writes it into the Lightbridge ground
 FPGA (`m2000/m2001/m2002`, Cyclone-V) over the **MCU->FPGA GPIO control bus** — *not* over
 SPI, *not* over the AD9363 RF sample bus, *not* over the FX2LP/USB video path. Inside the
 FPGA it lands in the MAC framer / address-match logic (LAB fabric), which stamps it into the

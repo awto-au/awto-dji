@@ -2,7 +2,7 @@
 
 **Goal:** the exact DJI Phantom 3 OFDM channel parameters — centre frequency, channel
 bandwidth, sample rate, and gains — recovered from the AD9363 SPI register writes the air
-MCU `m0900` (STM32F103) computes at runtime. This closes the one open PHY-params item in
+MCU `m0900` (`air_router_stm32f103`) computes at runtime. This closes the one open PHY-params item in
 `HANDOVER.md`.
 
 Honesty markers used throughout: **verified** (reproduced here), **needs-tooling** (method
@@ -168,5 +168,4 @@ PHY-params row in `HANDOVER.md` and `docs/cpu-reversing-proof.md` from "open" to
 
 ## Scope
 
-Interoperability for an owned aircraft (`CLAUDE.md`): structural RF-parameter recovery using
-the public UG-570 register map. No key extraction, no geofence/flight-restriction work.
+Scope & safety: see `SAFETY.md`.

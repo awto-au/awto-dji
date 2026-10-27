@@ -130,30 +130,19 @@ frontend bundle (`tmp/dji_app_asar/extracted/build/index.js`, 1.2 MB, Vue 1.x + 
 router - no packing/anti-tamper on this app at all, unlike the Android APK).
 
 - **V.** Router: `o.on("/debug/:secview",function(e){1==e?(s.debug=1,a.setDebug(1)):(s.debug=0,
-  a.setDebug(0)),...})` - `main.js`'s `#/debug/1` navigation lands here, setting a Vue instance
-  property `s.debug` and persisting it to `localStorage` (`setDebug`/`getDebug`,
-  `localStorage.getItem("debug")`). A **second, separate** flag pair also exists,
-  `debug_enabled`/`getDebugEnabled`/`setDebugEnabled` (also `localStorage`-backed) - defined but
-  no call site to what it gates was found in this bundle (dead code, or gates something in a
-  different product variant - see below).
+  a.setDebug(0)),...})`. `main.js`'s `#/debug/1` navigation lands here, setting a Vue instance property `s.debug` and persisting it to `localStorage` (`setDebug`/`getDebug`, `localStorage.getItem("debug")`).
+  - A **second, separate** flag pair also exists, `debug_enabled`/`getDebugEnabled`/`setDebugEnabled` (also `localStorage`-backed).
+  - Defined, but no call site to what it gates was found in this bundle (dead code, or gates something in a different product variant - see below).
 - **V, the actual debug surface:** a compiled Vue template fragment -
   `<a class="hd-link" v-on="click:newindow('tools.html')" v-if="debug==1">{{t('g.devtools',
   locale)}}</a>` - a hidden link (label key `g.devtools`), visible only when the debug flag is
   set, that opens a **separate bundled page, `tools.html`**, in a new window.
-- **V, confirmed not present:** `tools.html` does not exist anywhere in this installed product
-  (`DJI Assistant 2 For Phantom` 2.0.10) - searched the full extracted asar and the whole Wine
-  prefix. Not a bug in the trace: this `index.js` bundle is demonstrably **shared code across
-  multiple DJI Assistant 2 product variants**, not Phantom-specific - the same file's
-  `check_bind_mobile` function references Agras product types (`Controller_ai900v2`,
-  `Controller_ai900v3`, `Controller_am603`) that have nothing to do with Phantom. `tools.html`
-  is very likely bundled in a *different* Assistant 2 variant (DJI lists several on their
-  download center: Consumer Drones, Mavic, Enterprise, MG/Agras, etc.) that ships the same
-  shared frontend but includes that page.
-- **I, worth checking if debug mode is pursued further:** the same template context shows
-  `0==r.debug?r.check_bind_mobile(...)` - i.e. the mobile-binding/login check only runs when
-  debug is **off**. Debug mode may skip that gate entirely, which is plausibly related to the
-  earlier "silent exit, never gets past login" problem documented above - not yet confirmed
-  live (handed to the parallel session along with the rest of this debug-mode finding).
+- **V, confirmed not present:** `tools.html` does not exist anywhere in this installed product (`DJI Assistant 2 For Phantom` 2.0.10); searched the full extracted asar and the whole Wine prefix.
+  - Not a bug in the trace: this `index.js` bundle is demonstrably **shared code across multiple DJI Assistant 2 product variants**, not Phantom-specific. The same file's `check_bind_mobile` function references Agras product types (`Controller_ai900v2`, `Controller_ai900v3`, `Controller_am603`) that have nothing to do with Phantom.
+  - `tools.html` is very likely bundled in a *different* Assistant 2 variant (DJI lists several on their download center: Consumer Drones, Mavic, Enterprise, MG/Agras, etc.) that ships the same shared frontend but includes that page.
+- **I, worth checking if debug mode is pursued further:** the same template context shows `0==r.debug?r.check_bind_mobile(...)`, i.e. the mobile-binding/login check only runs when debug is **off**.
+  - Debug mode may skip that gate entirely, plausibly related to the earlier "silent exit, never gets past login" problem documented above.
+  - Not yet confirmed live (handed to the parallel session along with the rest of this debug-mode finding).
 
 ## tools.html not found, but a much bigger debug-gated surface found in a newer/other variant
 

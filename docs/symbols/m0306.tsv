@@ -124,3 +124,29 @@ addr	name	note	source
 0x080a8a34	fc_MIS_critical	string-tag (batch1)	ghidra+strings
 0x080a92aa	fc_HOTPOINT_normal	string-tag (batch1)	ghidra+strings
 0x080aa398	fc_MISSION_DATA_ERROR	string-tag (batch1)	ghidra+strings
+0x0806d5f0	rcc_get_clocks_freq	SPL RCC_GetClocksFreq: fills RCC_ClocksTypeDef (SYSCLK/HCLK/PCLK1/PCLK2) via APBAHBPrescTable - StdPeriph idiom	ghidra+io
+0x0806d716	rcc_ahb1_periph_clock_cmd	SPL RCC_AHB1PeriphClockCmd(mask,NewState): RCC->AHB1ENR(+0x30) set/clr	ghidra+io
+0x0806d72a	rcc_ahb2_periph_clock_cmd	SPL RCC_AHB2PeriphClockCmd: RCC->AHB2ENR(+0x34)	ghidra+io
+0x0806d752	rcc_apb1_periph_clock_cmd	SPL RCC_APB1PeriphClockCmd: RCC->APB1ENR(+0x40)	ghidra+io
+0x0806d766	rcc_apb2_periph_clock_cmd	SPL RCC_APB2PeriphClockCmd: RCC->APB2ENR(+0x44)	ghidra+io
+0x0806d77a	rcc_ahb1_periph_reset_cmd	SPL RCC_AHB1PeriphResetCmd: RCC->AHB1RSTR(+0x10)	ghidra+io
+0x0806d78e	rcc_ahb2_periph_reset_cmd	SPL RCC_AHB2PeriphResetCmd: RCC->AHB2RSTR(+0x14)	ghidra+io
+0x0806d7b6	rcc_apb1_periph_reset_cmd	SPL RCC_APB1PeriphResetCmd: RCC->APB1RSTR(+0x20)	ghidra+io
+0x0806d7ca	rcc_apb2_periph_reset_cmd	SPL RCC_APB2PeriphResetCmd: RCC->APB2RSTR(+0x24)	ghidra+io
+0x0803ae02	can_init	SPL CAN_Init(CANx,CAN_InitTypeDef): MCR INRQ handshake, BTR=SJW<<30|BS1<<16|BS2<<20|presc-1 from struct	ghidra+io
+0x0803addc	can_deinit	SPL CAN_DeInit: RCC_APB1PeriphResetCmd(CAN1RST 0x2000000 / CAN2RST 0x4000000)	ghidra+io
+0x0803b5d8	usart_init	SPL USART_Init: calls RCC_GetClocksFreq, BRR via 25*apbclock divider + OVER8 fractional	ghidra+io
+0x0806396c	gpio_init	SPL GPIO_Init(GPIOx,GPIO_InitTypeDef): 16-pin loop over MODER/OSPEEDR/OTYPER/PUPDR	ghidra+io
+0x08063a54	gpio_pin_af_config	SPL GPIO_PinAFConfig(GPIOx,pinsrc,AF): AFR[src>>3] nibble = AF<<((src&7)*4)	ghidra+io
+0x08035100	can1_bringup	GPIOD PD0/PD1 AF9 + CAN_DeInit/CAN_Init on CAN1 (primary inter-MCU link)	ghidra+io
+0x080353b2	can2_bringup	GPIOB PB12/PB13 AF9 + CAN2EN clock + CAN_Init on CAN2	ghidra+io
+0x08039f92	sdio_bringup	PC8-12(D0-D3,CK)+PD2(CMD) AF12 = SDIO (SD/eMMC data logger)	ghidra+io
+0x080343cc	usart_open	generic UART open: USART_Init with base+baud from a per-port descriptor (param_1+4 base, +8 baud)	ghidra+io
+0x0803aac4	usb_fs_bringup	GPIOA PA11/PA12 AF10 = USB OTG_FS (DM/DP); DJI Assistant2/upgrade link to FC	ghidra+io
+0x08034bcc	uart_table_init	loops a 100B-entry UART port table (RAM 0x20020a24, <=2 active), calls uart_port_init per filled entry	ghidra+io
+0x08034c26	uart_port_init	per-UART bring-up: GPIO TX/RX pins + usart_open; descriptor {idx@0,base@4,baud@8,txpin@0xc,rxpin@0xd} is runtime-filled	ghidra+io
+0x0808527a	uid96_read	reads STM32 96-bit UID (0x1FFF7A10) into a buffer	ghidra+io
+0x080596ea	id10_build	builds FC 10-byte device identity from base + UID[0] (identity/serial, not a secret)	ghidra+io
+0x08047c2c	is_prod_activated	product activation check (app-side)	upstream-map
+0x08047d5e	check_activation_authority	activation authority check (app-side)	upstream-map
+0x0805a964	dji_sdk_set_key	Onboard-SDK activation key set (key supplied externally, not loader-derived)	upstream-map

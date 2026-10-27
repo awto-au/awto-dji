@@ -1,4 +1,4 @@
-# Camera Linux (m0100, Ambarella A9SE): console and shell access
+# Camera Linux (m0100, Ambarella A9SE, `air_cam_a9se`): console and shell access
 
 Evidence from `firmware/unpacked/P3X_FW_V01.11.0020_m0100.bin`, both the extracted `sys`
 RTOS partition (`tmp/air/amba_P3X0020/P3X_FW_V01.11.0020_m0100_part_sys.a9s`) and the
@@ -14,33 +14,23 @@ See the diagnostic logging section for the exact file, device identity and limit
 
 ## SD-card diagnostic logging marker (2026-10-24)
 
-- **V, now independently traced in firmware:** an existence check for
-  **`0x40003000.dji`** in the camera card root enables the SD logging worker.
-  The traced output path is **`C:\MISC\LOG\CameraLogCur.log`**, with rotation to
-  **`C:\MISC\LOG\CameraLogOld.log`**. This corrects the earlier operator-supplied
-  path `MISC/CameraLogCur.log`: the firmware includes an additional `LOG` directory.
-  Static behavior is verified. The later SD-card review found actual diagnostic
-  output at this path; see the validation update below.
-- **V, device identification:** USB `070a:4026`, manufacturer `AmbarellaInc`, product
-  `A9 Platform`, exposes USB mass storage. Its block device reports
-  `Ambarell A9 DSC EVK Platf`, approximately 32 GB, with a FAT partition containing
-  `DCIM/100MEDIA/DJI_*.DNG`, `DJI_*.MP4` and `MISC/LOG/P3X_FW_LOG_AB.txt`.
-  This confirms the camera media card rather than merely assuming it from the VID.
-- **Stable partition identity used for the write:**
-  `/dev/disk/by-id/usb-Ambarell_A9_DSC_EVK_Platf_0001-0:0-part1`.
-  It resolved to `/dev/sdc1`, mounted at `/run/media/dan/8765-4321`, at the time of
-  the operation. Re-resolve by-id and the mount before future writes; `/dev/sdc1`
-  and the mount path are observations, not permanent identifiers.
+- **V, now independently traced in firmware:** an existence check for **`0x40003000.dji`** in the camera card root enables the SD logging worker.
+  - The traced output path is **`C:\MISC\LOG\CameraLogCur.log`**, with rotation to **`C:\MISC\LOG\CameraLogOld.log`**.
+  - This corrects the earlier operator-supplied path `MISC/CameraLogCur.log`: the firmware includes an additional `LOG` directory.
+  - Static behavior is verified. The later SD-card review found actual diagnostic output at this path; see the validation update below.
+- **V, device identification:** USB `070a:4026`, manufacturer `AmbarellaInc`, product `A9 Platform`, exposes USB mass storage.
+  - Its block device reports `Ambarell A9 DSC EVK Platf`, approximately 32 GB, with a FAT partition containing `DCIM/100MEDIA/DJI_*.DNG`, `DJI_*.MP4` and `MISC/LOG/P3X_FW_LOG_AB.txt`.
+  - This confirms the camera media card rather than merely assuming it from the VID.
+- **Stable partition identity used for the write:** `/dev/disk/by-id/usb-Ambarell_A9_DSC_EVK_Platf_0001-0:0-part1`.
+  - It resolved to `/dev/sdc1`, mounted at `/run/media/dan/8765-4321`, at the time of the operation.
+  - Re-resolve by-id and the mount before future writes; `/dev/sdc1` and the mount path are observations, not permanent identifiers.
 - **V, action completed:** created `0x40003000.dji` in that partition's root with
   exclusive creation (no existing file overwritten), verified size **0 bytes**, and
   flushed it with `sync -f`. No firmware image or executable script was added.
-- **V, later validation:** `MISC/LOG/CameraLogCur.log` now exists (reported size
-  42,466 bytes), with Ambarella boot output and camera version 01.32.5432.
-  The first 32,768 bytes were copied before an EIO read error. This verifies the
-  output path is active with the marker present; timing and exclusive causation
-  by the marker remain unproven. See
-  [firmware-upgrade-log-review.md](firmware-upgrade-log-review.md) for provenance,
-  the preserved prefix and the separate historical upgrade-log analysis.
+- **V, later validation:** `MISC/LOG/CameraLogCur.log` now exists (reported size 42,466 bytes), with Ambarella boot output and camera version 01.32.5432.
+  - The first 32,768 bytes were copied before an EIO read error.
+  - This verifies the output path is active with the marker present; timing and exclusive causation by the marker remain unproven.
+  - See [firmware-upgrade-log-review.md](firmware-upgrade-log-review.md) for provenance, the preserved prefix and the separate historical upgrade-log analysis.
 - **Boundary:** logging is output capture. This marker does **not establish USB
   command input, a USB serial console, or access to the Linux shell**. The Ambarella
   USB interface observed during this session was mass storage, not CDC serial.
@@ -302,8 +292,8 @@ Doesn't resolve the earlier "cannot be verified or refuted" conclusion on its ow
 All addresses in this section refer to `P3X_FW_V01.11.0020_m0100_part_sys.a9s`,
 loaded at **`0x0e600000`**, ARM A32. This is the camera's **RTOS `sys` partition**,
 not its Linux kernel or root filesystem. The image's ThreadX source-path strings
-are consistent with that separation. Reproduction metadata and string references
-are retained in [data/camera-marker-audit-2026-10-24.json](data/camera-marker-audit-2026-10-24.json).
+are consistent with that separation. String references are reproducible from the image with
+`scripts/re/elfdis.py` / `strings` at the addresses cited below.
 
 ### Exact gate
 
@@ -526,25 +516,16 @@ a bare UART header:
   (sys offset `0x489b0`-`0x48db4`), log strings `"%s(): switch to CDC_ACM mode."` /
   `"%s(): switch back to UART mode."` (`0x48bcc`, `0x48c18`). A second "Multid" variant
   exists for multiple simultaneous CDC-ACM log channels.
-- **I** This bridges one of the SoC's own UARTs to a USB CDC-ACM (virtual COM port)
-  endpoint at runtime - i.e. get the UART console over USB instead of bare pads.
-  Nearby strings `"Ambarella UART0"` / `"Ambarella UART1"` (`0x48f6e9`, `0x48f6fc`) sit
-  close to this cluster; which UART (0, 1, or `ttyS2` itself) gets bridged is **U**.
-- **V** A DJI engineering shell command exists to drive a related toggle: `t dji
-  console [addr/0]`, help string `"Console [on/off] control. t dji console
-  [0x40003000/0]. eg: t dji console 0x40003000"` (sys offset `0x76d50`). `0x40003000`
-  looks like an STM32-range peripheral address, not a typical Ambarella SoC MMIO
-  address - this may toggle a *different* chip's UART (the "uart M4" string at
-  `0x554e8` suggests a Cortex-M4 companion is also in the picture). Whether `t dji
-  console` is the same mechanism as `AppCdcAcm`, or a separate one: **U**.
-- **V** The same `t dji` help table (sys offsets `0x76924`-`0x76fd4`, one continuous
-  block, reproduce with `strings -n4 -tx <sys partition> | grep 't dji'`) also has:
-  `t dji updater [0/1]` (firmware update test, camera/368), `t dji reboot [0/1]`,
-  `t dji wdg [0/1/2]` (disable/stop/start the watchdog - useful to hold a debug session
-  without auto-reset), `t dji reason` (print reset reason), and `t dji pano
-  [0..4]` whose options 3/4 are `connect usb to A9` / `connect usb to DM368` - the
-  switch between the camera's single external USB port talking to the A9 (control) or
-  the DM368 (video), already noted in `air-id-and-stream-survey.md`.
+- **I** This bridges one of the SoC's own UARTs to a USB CDC-ACM (virtual COM port) endpoint at runtime, i.e. the UART console over USB instead of bare pads.
+  - Nearby strings `"Ambarella UART0"` / `"Ambarella UART1"` (`0x48f6e9`, `0x48f6fc`) sit close to this cluster.
+  - Which UART (0, 1, or `ttyS2` itself) gets bridged is **U**.
+- **V** A DJI engineering shell command exists to drive a related toggle: `t dji console [addr/0]`, help string `"Console [on/off] control. t dji console [0x40003000/0]. eg: t dji console 0x40003000"` (sys offset `0x76d50`).
+  - `0x40003000` looks like an STM32-range peripheral address, not a typical Ambarella SoC MMIO address. This may toggle a *different* chip's UART (the "uart M4" string at `0x554e8` suggests a Cortex-M4 companion is also in the picture).
+  - Whether `t dji console` is the same mechanism as `AppCdcAcm`, or a separate one: **U**.
+- **V** The same `t dji` help table (sys offsets `0x76924`-`0x76fd4`, one continuous block, reproduce with `strings -n4 -tx <sys partition> | grep 't dji'`) also has:
+  - `t dji updater [0/1]` (firmware update test, camera/368), `t dji reboot [0/1]`.
+  - `t dji wdg [0/1/2]` (disable/stop/start the watchdog; useful to hold a debug session without auto-reset), `t dji reason` (print reset reason).
+  - `t dji pano [0..4]`, whose options 3/4 are `connect usb to A9` / `connect usb to DM368`: the switch between the camera's single external USB port talking to the A9 (control) or the DM368 (video), already noted in `air-id-and-stream-survey.md`.
 
 ## How you'd reach the `t dji` shell at all
 
@@ -564,25 +545,13 @@ access. Candidate paths, none tested yet:
   the camera board - the part behind the A9<->DM368 port switch `scripts/re/usb_switch_trace.py`
   (issue #25) traces by function name (`MCCTRL_SetUsbMode` etc.) but hadn't named yet;
   exact URL not re-confirmed this pass, follow up before citing further.
-- **W** (`o-gs/dji-firmware-tools` wiki, "CV310 Gimbal top board" page,
-  <https://github.com/o-gs/dji-firmware-tools/wiki/CV310-Gimbal-top-board>): confirms
-  this board carries m0100/m0101 ("Takes care of driving CMOS sensor and does high
-  resolution video encoding... Looks very similar to FC200 video pipeline"). Its
-  "Service interfaces" section (test pad locations) is unfilled (`TODO`) on the project
-  wiki itself - not documented there as of this check.
-- **W** (PhantomPilots forum, "Camera lost communication" thread,
-  <https://phantompilots.com/threads/camera-lost-communication.141294/page-2>): a
-  community member walked through finding the UART pads on this exact board (P3S/P3
-  gimbal top board) with a bare USB-to-TTL adapter (no level shifting beyond 3.3V,
-  avoid "smart"/auto adapters), got real Ambarella A9 boot logs at **115200 8N1** once
-  the baud rate was set correctly (the thread shows the wrong-baud garbage first, then
-  the fix). No unlock command needed - just RX/TX/GND wired correctly and powered on
-  after the terminal is already listening. Log confirms the same architecture this repo
-  found independently: `AmbaSD_InitCard`, SD-card firmware package detection/CRC check,
-  NAND programming per-partition, `Cortex Boot-Up Success` banner, `UART freq: 1846153`.
-  The thread explicitly says **"you need to connect to a different UART - not m0800, but
-  m0100"** - i.e. there's more than one UART broken out on connectors/pads on this
-  board, and only one of them is the Linux console.
+- **W** (`o-gs/dji-firmware-tools` wiki, "CV310 Gimbal top board" page, <https://github.com/o-gs/dji-firmware-tools/wiki/CV310-Gimbal-top-board>): confirms this board carries m0100/m0101 ("Takes care of driving CMOS sensor and does high resolution video encoding... Looks very similar to FC200 video pipeline").
+  - Its "Service interfaces" section (test pad locations) is unfilled (`TODO`) on the project wiki itself; not documented there as of this check.
+- **W** (PhantomPilots forum, "Camera lost communication" thread, <https://phantompilots.com/threads/camera-lost-communication.141294/page-2>): a community member found the UART pads on this exact board (P3S/P3 gimbal top board).
+  - Setup: bare USB-to-TTL adapter (no level shifting beyond 3.3V, avoid "smart"/auto adapters). Got real Ambarella A9 boot logs at **115200 8N1** once the baud rate was set correctly (the thread shows the wrong-baud garbage first, then the fix).
+  - No unlock command needed: just RX/TX/GND wired correctly and powered on after the terminal is already listening.
+  - The log confirms the same architecture this repo found independently: `AmbaSD_InitCard`, SD-card firmware package detection/CRC check, NAND programming per-partition, `Cortex Boot-Up Success` banner, `UART freq: 1846153`.
+  - The thread explicitly says **"you need to connect to a different UART - not m0800, but m0100"**. So more than one UART is broken out on connectors/pads on this board, and only one of them is the Linux console.
 - The public-source search below did not establish a USB command-input unlock -
   every confirmed command-input case it found uses a physical
   UART tap. Consistent with this doc's own firmware trace: the always-on `ttyS2` shell
