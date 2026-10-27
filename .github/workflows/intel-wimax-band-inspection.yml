@@ -1,0 +1,74 @@
+name: Intel WiMAX frequency table inspection
+on:
+  push:
+    branches:
+      - research/intel-wimax-band-inspection
+    paths:
+      - .github/workflows/intel-wimax-band-inspection.yml
+      - scripts/re/intel_wimax_band_scan.py
+      - scripts/re/intel_wimax_entropy.py
+      - scripts/re/intel_wimax_deep.py
+      - scripts/re/intel_wimax_signature.py
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download original upstream firmware
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/intel-fw
+          for NAME in i2400m-fw-usb-1.5.sbcf i6050-fw-usb-1.5.sbcf; do
+            curl -fL --retry 3 --retry-delay 2 -o "/tmp/intel-fw/$NAME" "https://raw.githubusercontent.com/cernekee/linux-firmware/master/$NAME"
+            sha256sum "/tmp/intel-fw/$NAME"
+            file "/tmp/intel-fw/$NAME"
+          done
+      - name: Scan firmware (structural only)
+        shell: bash
+        run: |
+          set -euo pipefail
+          for FW in /tmp/intel-fw/*.sbcf; do
+            NAME=$(basename "$FW" .sbcf)
+            python3 scripts/re/intel_wimax_band_scan.py --json "$FW" > "/tmp/$NAME-report.json"
+            python3 -c 'import json,sys;d=json.load(open(sys.argv[1]));print("=== ",d["file"]," ===");print(json.dumps(d,indent=2)[:15000])' "/tmp/$NAME-report.json"
+          done
+      - name: Entropy by 4 KiB window
+        shell: bash
+        run: |
+          set -euo pipefail
+          for FW in /tmp/intel-fw/*.sbcf; do
+            NAME=$(basename "$FW" .sbcf)
+            python3 scripts/re/intel_wimax_entropy.py "$FW" > "/tmp/$NAME-entropy.json"
+            python3 -c 'import json,sys; d=json.load(open(sys.argv[1])); print(d["name"],"whole entropy",d["whole_file_entropy"],"segments",[(s["target"],s["length"],s["entropy"]) for s in d["segments"]])' "/tmp/$NAME-entropy.json"
+          done
+      - name: Deep frequency and code-signature inspection
+        shell: bash
+        run: |
+          set -euo pipefail
+          for FW in /tmp/intel-fw/*.sbcf; do
+            NAME=$(basename "$FW" .sbcf)
+            python3 scripts/re/intel_wimax_deep.py "$FW" > "/tmp/$NAME-deep.json"
+            python3 -c 'import sys,json;d=json.load(open(sys.argv[1]));print(d["name"],"groups",d["frequency_groups"],"strings",d["notable_strings_count"]);print(json.dumps(d["frequency_instances"][:3])[:2500])' "/tmp/$NAME-deep.json"
+          done
+      - name: Examine secure boot signing structure
+        shell: bash
+        run: |
+          set -euo pipefail
+          for FW in /tmp/intel-fw/*.sbcf; do
+            NAME=$(basename "$FW" .sbcf)
+            python3 scripts/re/intel_wimax_signature.py "$FW" > "/tmp/$NAME-signature.json"
+            python3 -c 'import sys,json;d=json.load(open(sys.argv[1]));print(d["name"],"RSA",d["rsa_candidates"],"trailing",d["trailing_headers"][:3])' "/tmp/$NAME-signature.json"
+          done
+      - name: Upload metadata only
+        uses: actions/upload-artifact@v4
+        with:
+          name: intel-wimax-band-report
+          path: |
+            /tmp/*-report.json
+            /tmp/*-entropy.json
+            /tmp/*-deep.json
+            /tmp/*-signature.json
