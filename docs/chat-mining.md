@@ -93,9 +93,7 @@ Lessons:
 - A hypothesis a chat disproved itself must not be filed upstream.
 
 ## 6. Still to do
-- #64: correct the 2026-10-27 status comment (leak was a real bug, fixed in `7385613`).
-- #67: post the on-hold note.
-- Pixel 3 XL ground-controller plan: no home yet; propose a comment on #70 or a new issue.
+- #65: the chat says a later "physical replug vs code/kernel" conclusion was never added; the detail is not in the pasted text, so it cannot be written up from here.
 - S9 recovery: decide Smart Switch vs other; track on `awtoau/awto-samsung-s9#1`.
 - Hardware re-test of `7385613` (permission timeout, envelope trim).
 - Unmerged branches kept on purpose: `fix/video-decoder-lifecycle-67` (on hold), `claude/firmware-loading-trace-cbzvam` (8 conflicting docs).

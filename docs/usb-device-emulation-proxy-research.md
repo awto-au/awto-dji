@@ -101,6 +101,14 @@ Absence of `/proc/config.gz` is inconclusive. Confirm current SELinux, USB gadge
 
 If FunctionFS is available, prototype a single read-only endpoint/control-request service. Custom AOA-identity emulation requires reproducing the actual host-controller handshake and descriptors, not merely setting matching manufacturer/product text.
 
+### Candidate phone: Pixel 3 XL (2026-10-26, #70)
+- **V (checked on device):** bootloader shows unlocked, not rooted; reachable over USB and over WiFi adb (`adb tcpip 5555`, lost on reboot; Developer Options "Wireless debugging" persists).
+- **V:** stock kernel has `CONFIG_USB_MON` not set. usbmon needs a custom kernel, as on the Samsung S9 (tracked in `awtoau/awto-samsung-s9#1`).
+- **I:** Pixel kernel source and toolchain pins are published, so a custom kernel should be smoother than the S9's stale-toolchain build. Not tried.
+- **Plan (not started):** extract the stock boot image, patch with `magiskboot`, `fastboot boot` the patched image to test before flashing. The exact stock build is not on Google's page or common mirrors; nearest is a 4.34 GB factory zip.
+- AOA/accessory mode needs no root. USB-C phone to the RC's USB-A port needs an adapter.
+- Bluetooth: Pixel 3 XL and S9 are the same hardware generation (both Bluetooth 5.0). No BLE advantage.
+
 ## 5. Recommended research order
 
 ### A. Keep the known working Android bridge

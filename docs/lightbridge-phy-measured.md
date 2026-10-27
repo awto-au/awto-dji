@@ -158,6 +158,7 @@ One 100 MS/s `.mat` segment (200 ms, or 1 s for Mavic) per DJI model/link, no co
 ## Open
 
 - P3's own link: needs an SDR capture of the owned aircraft (2.4 GHz, >= 20 MS/s around the active channel).
+- Dead end (U, one session, not re-run): equalising from a static channel estimate built from all pilots scored a 4th-power coherence of 0.007 on the Zenodo M100 burst, worse than the nearest-pilot reference's 0.17. The script keeps the nearest-pilot version.
 - Data modulation / STC: decode the pilot sequence, test Alamouti on symbol pairs. Still unresolved on GENESYS and KU Leuven too — constellation search was unreliable (GENESYS: highly SNR-variable per-transmission distance sweep) or not attempted (KU Leuven: not yet run with `--pilots` on these captures).
 - Second link CP and carrier map: needs a narrowband-specific pass (decimate first). Now cross-validated present on two models/datasets (Zenodo M100, KU Leuven Inspire 2) but CP still weak/unresolved on both.
 - Absolute frequencies: capture centre assumed 2440 MHz from the Zenodo dataset description; KU Leuven's is confirmed 2.44 GHz from its own metadata page.

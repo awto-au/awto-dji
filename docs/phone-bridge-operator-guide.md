@@ -78,6 +78,16 @@ don't assume one `input swipe` call is sufficient - verify via a fresh `uiautoma
 dump` that the visible rows actually changed before proceeding, and be ready to fall
 back to asking the operator to swipe manually on-device.
 
+Also tried, none scrolled the list (U, from a 2026-10-26 session, not re-run): four `adb
+shell input touchscreen swipe` coordinate/duration variants, and raw `sendevent` multi-touch
+sequences against `/dev/input/event0` in four profiles (slow drag, fast fling,
+dwell-then-drag, full `BTN_TOOL_FINGER` protocol); each left the dropdown unchanged or
+dismissed it. `uiautomator` reports `scrollable="false"` on the list. A look through
+`/data/data/dji.pilot/shared_prefs/*.xml` for a stored last-selected aircraft (to skip the
+UI) found no obvious key; one ~260-line file was not in the expected `name="..."` format
+and was not explored. `scripts/re/dji_pilot_bench.py select-aircraft` falls back to a clear
+error asking for a manual swipe.
+
 Then tap the big "Camera" button (`dji.pilot:id/v2_phantom_start_connect_btn`) to actually
 start the connect attempt - it looks like a camera-roll shortcut but it's the real connect
 trigger on this screen.
