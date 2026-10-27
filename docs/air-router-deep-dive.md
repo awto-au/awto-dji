@@ -265,7 +265,7 @@ tick scheduler outward.
 
 **Headline, one sentence:** `air_router` polls the FPGA **over SPI** for data the FPGA has
 already demodulated off the live RF link from the ground, runs it through a descrambler
-(`ofdm_payload_descramble` — an XOR against a key that static analysis suggests is zero in this build, plus a real checksum; **I**, see below), and relays
+(`fpga_link_payload_descramble` — an XOR against a key that static analysis suggests is zero in this build, plus a real checksum; **I**, see below), and relays
 the result straight to the flight controller over USART1 — all without that traffic ever
 passing through `air_router`'s own DUML command table. A second, independent path does the
 same thing for data arriving on the FPGA's UART interface (USART3) instead of its SPI
@@ -326,7 +326,7 @@ interface. The two paths and the key are detailed bullet by bullet below.
   not the compressed-copy decompressor the *first* descriptor uses for `0x20000000-0x200001cf`
   (so this isn't "everything is zero," just this specific range). **Conclusion: the key is
   zero-initialized RAM that no named writer touches — the XOR step is then a no-op
-  (XOR against zero), and the real work `ofdm_payload_descramble` does is the two-stage chained
+  (XOR against zero), and the real work `fpga_link_payload_descramble` does is the two-stage chained
   checksum, not encryption.** Possibly wired up for a board variant not active in this build,
   or vestigial from an earlier revision.
   **Why this is I, not V (doubted by the operator, check partly done):** the search covers

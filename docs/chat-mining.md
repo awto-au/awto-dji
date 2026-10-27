@@ -100,9 +100,9 @@ Source: pasted transcript, truncated mid-sentence. Its work sat on the unmerged 
 | `duml_watch.log` "Breakthrough" (front port answers as `air_router`, `GL300C/WM320 A7_LPC1`) is bogus; stop citing it | V (operator decision) | Retraction `1f50e38` was not on `main` (`docs/fc-usb-duml.md:159-174` still asserted it). Now merged. #21's title still rests on it. |
 | The `A7_LPC1` string is in no firmware we hold | V | Chat grep of m0900 and m1400; the 2026-10-23 session docs that print it are separate logs and left alone. |
 | USART3 and ring-1 relays RF-link data to the FC without the command table | I (static) | `air-router-deep-dive.md` section 6a, merged. |
-| `ofdm_payload_descramble` XOR key is always zero, so no-op | I, not V | Operator doubted it; chat ended mid-check. Downgraded in place. Later in the chat the flash-page `0x7b00` reload was excluded (copies 252 B ending one byte before the struct); other bulk copies and board variants are not. |
+| `fpga_link_payload_descramble` XOR key is always zero, so no-op | I, not V | Operator doubted it; chat ended mid-check. Downgraded in place. Later in the chat the flash-page `0x7b00` reload was excluded (copies 252 B ending one byte before the struct); other bulk copies and board variants are not. |
 | cmd 0xfe is an unauthenticated live radio-state write | V (decompiled) | Writes only the first 5 bytes (mode 1) or `+0x11c` (mode 2), so it does not reach the key. |
-| Rename `ofdm_*` to `fpga_link_*` (offered) | open | Unanswered. |
+| Rename `ofdm_*` to `fpga_link_*` (offered) | done 2026-10-27 | Operator said rename (#85); see `docs/HISTORY.md`. |
 | Renode never unmasks the USB IRQ (dynamic claim) | downgraded | Sim stalls in an unmodelled SD poll; static dead vector table still stands. |
 
 Lessons:

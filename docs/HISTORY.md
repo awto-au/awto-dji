@@ -4,6 +4,10 @@ Dated changelog of fact-corrections previously narrated inline in the docs. Each
 phrased as "initial understanding -> corrected finding." The docs now state only the
 corrected/current fact; this file preserves the history for reference.
 
+## 2026-10-27 (rename)
+
+- `ofdm_link_rx_statemachine` -> `fpga_link_rx_poll` and `ofdm_payload_descramble` -> `fpga_link_payload_descramble` (#85). The OFDM maths is in the FPGA; these are the MCU-side driver for its already-demodulated link. Upstream-derived names (`ofdm_radio`, `ofdm_board_version_flags`, `ofdm_init_*`) are unchanged. Older entries below and the archived Ghidra project (#83) may still show the old names.
+
 ## 2026-10-25 (how does a ground DUML command reach camera/gimbal — investigated, left open)
 
 - **Traced the chain from app to `air_fc`, then hit a genuine dead end past that point —
@@ -83,7 +87,7 @@ corrected/current fact; this file preserves the history for reference.
 
 ## 2026-10-25 (XOR key traced — zero at boot; later writes not excluded)
 
-- **`ofdm_payload_descramble`'s 8-byte XOR key, traced to source.** Located at
+- **`fpga_link_payload_descramble`'s 8-byte XOR key, traced to source.** Located at
   `radio_state_s+0x64` (RAM `0x20001b18`-`0x20001b1f`, inside the struct's previously-opaque
   `pad_10` gap). No DUML command handler writes this offset (Set Config writes a different,
   earlier struct); a direct reference search of all 8 bytes found zero writers anywhere in the
@@ -100,8 +104,8 @@ corrected/current fact; this file preserves the history for reference.
 - **`fpga_uart_to_fc_relay`'s first ring, previously open, fully resolved.** Ruled out CAN
   entirely first (traced all 4 real `can_queue_init` call sites — `0x412`/`0x413`/`0x414`/
   `0x415` — none registers this ring's address). The actual source is `FUN_0800e008`
-  (named `ofdm_payload_descramble`): an XOR-with-repeating-key + chained-checksum validator
-  whose sole caller, `FUN_0800f978` (`ofdm_link_rx_statemachine`), is the live AD9363/OFDM
+  (named `fpga_link_payload_descramble`): an XOR-with-repeating-key + chained-checksum validator
+  whose sole caller, `FUN_0800f978` (`fpga_link_rx_poll`), is the live AD9363/OFDM
   radio link's own receive poll loop (polls an FPGA status register, checks demod-lock state,
   processes newly-arrived frames). **Both of `fpga_uart_to_fc_relay`'s rings are now confirmed
   RF-sourced** — one via the FPGA's UART framing (USART3), one via the FPGA's SPI

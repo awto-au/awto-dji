@@ -151,7 +151,7 @@ flowchart TD
   U2 --> PUMP
   CANRX --> PUMP
   U3 --> RELAY
-  OFDMRX["ofdm_link_rx_statemachine 0x0800f978: polls FPGA via SPI2 reg 0xe9, ofdm_payload_descramble"]
+  OFDMRX["fpga_link_rx_poll 0x0800f978: polls FPGA via SPI2 reg 0xe9, fpga_link_payload_descramble"]
   OFDMRX --> RELAY
   RELAY["0x080103f8 fpga_uart_to_fc_relay: parse DUML, no dispatch - blind forward"]
   RELAY -->|"every complete frame, unconditional"| O1
@@ -189,7 +189,7 @@ that's correct, not a documentation gap:
   USART3, USART1, or one of two CAN queues. This is real demultiplexing: different logical
   destinations genuinely go to different physical buses.
 - **Inbound (link → m0900), on the two paths that feed `fpga_uart_to_fc_relay`
-  (`0x080103f8` — USART3's RX ring, and `ofdm_link_rx_statemachine`'s SPI-sourced ring,
+  (`0x080103f8` — USART3's RX ring, and `fpga_link_rx_poll`'s SPI-sourced ring,
   `air-router-deep-dive.md` §6a), there is NO demultiplexing at all.** This function parses each
   byte stream for a complete DUML frame and, the instant one assembles, calls `send_usart1`
   **unconditionally** — it never inspects the frame's receiver byte, never calls `duml_dispatch`,
