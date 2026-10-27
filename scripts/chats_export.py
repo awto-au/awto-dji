@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Export Claude Code session transcripts (JSONL) to markdown in ./chats/ (gitignored).
 
-Usage: python3 -I scripts/chats_export.py [--src DIR] [--out DIR] [--tool-max N] [--thinking] [--force]
+Usage: python3 -I scripts/chats_export.py [--src DIR] [--out DIR] [--tool-max N] [--thinking] [--force] [--archive SID8...]
 Default src: ~/.claude/projects/<repo path with / -> ->. Top-level sessions only (no subagent dirs).
 Tool input/output is truncated to --tool-max chars; chats/ may hold secrets, never commit it.
 Log: tmp/logs/chats_export.log
@@ -99,19 +99,26 @@ def main():
     ap.add_argument("--tool-max", type=int, default=2000)
     ap.add_argument("--thinking", action="store_true")
     ap.add_argument("--force", action="store_true")
+    ap.add_argument("--archive", nargs="+", metavar="SID8", help="move these exports to chats/archive/ (mined, closed out)")
     a = ap.parse_args()
     out_dir = Path(a.out)
     out_dir.mkdir(parents=True, exist_ok=True)
+    arc = out_dir / "archive"
+    for sid8 in a.archive or []:
+        for f in out_dir.glob(f"*-{sid8}.md"):
+            arc.mkdir(exist_ok=True)
+            f.rename(arc / f.name)
+            log(f"archived {f.name}")
     index = []
     for src in sorted(Path(a.src).glob("*.jsonl")):
         sid = src.stem
-        existing = list(out_dir.glob(f"*-{sid[:8]}.md"))
+        existing = list(out_dir.glob(f"*-{sid[:8]}.md")) + list(arc.glob(f"*-{sid[:8]}.md"))
         if existing and not a.force and existing[0].stat().st_mtime >= src.stat().st_mtime:
             log(f"skip {sid[:8]} (up to date)")
             continue
         body, first, t0, t1, n = render(src, a.tool_max, a.thinking)
         start = (t0 or "unknown").replace("-", "").replace(":", "")[:15].replace("T", "-")
-        dest = out_dir / f"{start}-{sid[:8]}.md"
+        dest = (existing[0].parent if existing else out_dir) / f"{start}-{sid[:8]}.md"
         for old in existing:
             old.unlink()
         title = " ".join(first.split())[:100]
@@ -123,10 +130,10 @@ def main():
         index.append((dest.name, t0, t1, n, title))
         log(f"wrote {dest.name} msgs={n} bytes={dest.stat().st_size}")
     rows = []
-    for md in sorted(out_dir.glob("*-????????.md")):
+    for md in sorted(list(out_dir.glob("*-????????.md")) + list(arc.glob("*-????????.md"))):
         h = {k: v for k, v in (l[2:].split(": ", 1) for l in md.read_text().split("---")[0].splitlines()
                                if l.startswith("- ") and ": " in l)}
-        rows.append((md.name, h.get("start"), h.get("end"), h.get("messages"), h.get("first prompt")))
+        rows.append((("archive/" if md.parent == arc else "") + md.name, h.get("start"), h.get("end"), h.get("messages"), h.get("first prompt")))
     with open(out_dir / "INDEX.tsv", "w") as f:
         f.write("file\tstart\tend\tmessages\tfirst prompt\n")
         for row in rows:
