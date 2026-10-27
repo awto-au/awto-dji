@@ -17,6 +17,15 @@ gathered to actually feed `analyze_iq.py` (issue #71 / PR #62). ~54 GB total, th
 datasets. Full manifest, source URLs, checksums and a caveat on which captures are actually
 confirmed Lightbridge vs. other DJI link protocols: `lightbridge-iq/PROVENANCE.md`.
 
+## lightbridge-ig800-firmware/
+
+Firmware for the standalone retail DJI Lightbridge (hardware family `IG800`, not the
+Phantom-3-integrated module) - decrypted ground-decoder UBL/U-Boot/kernel plus an
+encrypted (password unknown) final-version update package, recovered from a 2016
+phantompilots.com forum thread (DJI itself never published firmware for this product -
+see manifest). Full provenance, SHA-256s, source URLs: `lightbridge-ig800-firmware/PROVENANCE.md`.
+Background/analysis: `../docs/standalone-lightbridge-ig800.md`.
+
 ## apk/dji.pilot-3.1.83.apk
 
 - **What**: `dji.pilot` (DJI's classic "DJI GO" app, for older aircraft incl. Phantom 3 -
