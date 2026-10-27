@@ -48,3 +48,8 @@ sources/lightbridge-iq/**/*.partial
 # Standalone Lightbridge (IG800) firmware archives - DATA NOT IN THE REPO,
 # see sources/lightbridge-ig800-firmware/PROVENANCE.md manifest
 sources/lightbridge-ig800-firmware/**/*.zip
+
+# Exported chat transcripts: local only, may contain secrets/paths (see chats/README.md)
+chats/*
+!chats/README.md
+!chats/2026-10-26-lightbridge-wimax-iq-investigation.md

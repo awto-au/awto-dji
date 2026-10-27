@@ -110,6 +110,28 @@ Lessons:
 - A merge brings private paths along. Scrub the whole tree, not just the diff: three `/mnt/...` paths were already public.
 - Check the "no writers" claim against bulk copies before calling a negative result verified.
 
+## 7. Chat register
+Export all sessions: `python3 -I scripts/chats_export.py` (to gitignored `chats/`, see `chats/README.md`). Re-run it after new sessions; it skips up-to-date files. A chat is "mined" only when section 1a's table exists for it (here or in the issue/commit that closed it out).
+
+| Session (`chats/` file) | Dates (UTC) | Msgs | Topic (first prompt) | Status |
+|---|---|---|---|---|
+| `06f84d58` | 2026-10-22..23 | 506 | "what is there ?" (first cloud/Renode handover session) | mined, example 2 (pasted copy) |
+| `b2834314` | 2026-10-22..23 | 4419 | "start the Renode task" | not mined |
+| `666d9e8a` | 2026-10-22..23 | 216 | "what type of connector ?" | not mined |
+| `31d3847f` | 2026-10-23 | 171 | "battery is on - look at the firmware" | not mined |
+| `5fda2c62` | 2026-10-23 | 52 | subagent hand-back | not mined |
+| `e5202f04` | 2026-10-23..26 | 5324 | "phone is on" (AOA/phone bridge) | not mined |
+| `f852e481` | 2026-10-25 | 83 | "compile the new Linux kernel for the s9" | not mined (S9 dropped, see `awtoau/awto-samsung-s9#1`) |
+| `532cb56b` | 2026-10-25 | 785 | continued session | not mined |
+| `e347b349` | 2026-10-25..26 | 4167 | continued session | not mined |
+| `a7290f7a` | 2026-10-26 | 367 | cross-session message | not mined |
+| `fbdd9c91` | 2026-10-27 | 636 | "check all chat and merge everything into main" (this session) | mined as it ran, examples 1, 3, 4 |
+
+Pasted transcripts already mined (examples 1 to 4) are not matched to a file here: some came from cloud sessions that are not on this disk, so their raw text exists only in the paste.
+- Mine the big ones (`e5202f04`, `e347b349`, `b2834314`) one at a time, never in one pass: each needs its own enumerate-and-verify table.
+- Read-only research over an export is a read-only agent task (`Explore`), not a general-purpose agent.
+- Never paste export text into a public issue or commit without the scrub.
+
 ## 6. Still to do
 - #65: the chat says a later "physical replug vs code/kernel" conclusion was never added; the detail is not in the pasted text, so it cannot be written up from here.
 - S9 recovery: decide Smart Switch vs other; track on `awtoau/awto-samsung-s9#1`.
