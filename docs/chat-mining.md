@@ -40,7 +40,23 @@ Source: pasted transcript, truncated mid-sentence (ends in the Zenodo M100 stati
 | Static-channel equalisation from all pilots gave coherence 0.007, worse than the 0.17 nearest-pilot reference | Dead end | **U** chat-only; the script on main still has the nearest-pilot version. Add one line to the open items in `docs/lightbridge-phy-measured.md` if retried. |
 | Other session running on `analysis/lightbridge-cp-scan` | Process lesson | Shared checkout was switched under a session. Check `git branch --show-current` before any write; use a separate worktree for parallel work. |
 
-## 5. Still to do from this example
-- Comment the replay result on #64 (draft, awaiting approval).
-- Close #31 with the `541daf5` evidence (draft, awaiting approval).
-- Delete the two redundant remote branches (awaiting approval).
+## 5. Worked example 2: first Renode / handover chat, 2026-10-22/23
+Source: pasted transcript from the first cloud + Selwyn sessions, truncated mid-step ("4. Dump the ca"). Re-checked 2026-10-27.
+
+| Item from chat | Bucket | Result |
+|---|---|---|
+| Renode m0900 scaffold; RCC_CFGR tag fix to pass the clock-switch wait | Already in repo | **V** `renode/platforms/m0900.repl:43`, `renode/README.md`. |
+| m0900 firmware from DJI's CDN, container and module SHA-256 match | Already in repo | **V** `docs/data-manifest.md`, `renode/README.md` step 1. |
+| "Zero SPI transactions in 15 s, AD9363 bring-up gated by DUML/GPIO from another module" | Superseded claim | **V** wrong: `docs/phy-params.md` "Gate" section: gated by board-code straps (PA0/PC15/PC14), stalls on FPGA reg 0x8A. #2's title and body still carry the old claim; its last comment corrects it. |
+| Another session's uncommitted `docs/rf-sdr-and-repair.md` edit | Already in repo | **V** committed (`1bcf181`). |
+| `origin/ccr-31b4a6f2-8fofnf` remote delete failed (proxy) | Redundant branch | **V** 0 commits not in `origin/main`; `origin/backup/ccr-pre-sync-a28877b` also 0. Delete on Dan's say-so. |
+| Run camera (A9SE, Linux userspace) ELFs with syscalls emulated: `qemu-arm -strace` first to list syscalls/ioctls, then Unicorn + a small Rust syscall shim; kernel boot is not feasible | Open idea, not recorded | **U** not in `docs/` (only MCU-side Unicorn/Renode appear). Needs the camera rootfs, which #35 is extracting. |
+
+Lessons from this one:
+- A chat's "blocked on X" and "finding" lines age badly. Check later docs before carrying a finding forward; here the headline finding was disproved within days.
+- An issue body written from a chat keeps the chat's claim after the docs move on. Fix the title when a comment overturns it.
+
+## 6. Still to do
+- Delete the redundant remote branches: `rescue/glassfalcon-dangling-work`, `docs/glassfalcon-p3x-evaluation-20261026`, `ccr-31b4a6f2-8fofnf`, `backup/ccr-pre-sync-a28877b` (blocked by the harness; Dan runs `git push origin --delete ...`).
+- #2: retitle to the real gate (draft, awaiting approval).
+- #35: comment the camera-ELF userspace-emulation approach (draft, awaiting approval).
