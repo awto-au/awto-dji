@@ -8,7 +8,7 @@ Status of each claim: **V** verified here, **W** from the o-gs wiki / issues (no
 - **V** Descriptor: full-speed, class 2 CDC-ACM, interface 0 comm (interrupt IN `0x82`, 8 B), interface 1 data (bulk OUT `0x01`, bulk IN `0x81`, 64 B), self-powered, 100 mA. Linux binds `cdc_acm` (`ttyACM*`).
 - **W** Socket is on the P3X ESC/center board (WM320_ESC_CENT_v4, P01012.07/.09); a ribbon carries USB D+/D- to the flight-controller daughterboard (pads 3/4 on the 20-pin side).
 - **W** Wiki describes it as USB-to-TTL to the flight controller carrying DUML, 9600 8N1.
-- **V** The USB device is implemented in the flight-controller firmware itself (`m0306` carries the `DJI CONTROLLER` / `0001A0000000` strings), not a separate bridge chip.
+- **V** `m0306` carries the `DJI CONTROLLER` / `0001A0000000` descriptor strings. **I** that the flight controller is therefore the device answering on this port: its USB interrupts are dead in the vector table, and which MCU actually answers is unresolved (#21).
 
 ## CPU behind it
 - **W** Flight controller ("MC", P01006.05), `air_fc_stm32f427`: STM32F427IIH6, Cortex-M4F, 180 MHz, 2 MB flash. Firmware modules `m0305` (loader), `m0306` (app).
