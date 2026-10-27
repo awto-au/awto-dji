@@ -265,7 +265,7 @@ tick scheduler outward.
 
 **Headline, one sentence:** `air_router` polls the FPGA **over SPI** for data the FPGA has
 already demodulated off the live RF link from the ground, runs it through a descrambler
-(`ofdm_payload_descramble` — currently a no-op XOR plus a real checksum, see below), and relays
+(`ofdm_payload_descramble` — an XOR against a key that static analysis suggests is zero in this build, plus a real checksum; **I**, see below), and relays
 the result straight to the flight controller over USART1 — all without that traffic ever
 passing through `air_router`'s own DUML command table. A second, independent path does the
 same thing for data arriving on the FPGA's UART interface (USART3) instead of its SPI
@@ -314,7 +314,7 @@ interface. The two paths and the key are detailed bullet by bullet below.
   payload/status interface — and relays both, verbatim, to the FC. This is about as complete a
   confirmation of "yes, `air_router` forwards RF-link traffic to the FC" as static analysis can
   give without a live RF capture.
-- **V, key source traced (2026-10-25, same day) — it's zero, not a secret.** The 8-byte XOR
+- **I, key source traced (2026-10-25, same day) — zero at boot; later writes not excluded.** The 8-byte XOR
   key lives at `radio_state_s+0x64` (RAM `0x20001b18`-`0x20001b1f`, inside the struct's
   previously-opaque `pad_10` gap). Checked every write path: no DUML command handler touches
   this offset (Set Config writes the *other*, earlier struct, `radio_cfg_page_s`, not this
@@ -325,10 +325,17 @@ interface. The two paths and the key are detailed bullet by bullet below.
   function is a plain zero-fill loop (`stmia` of zero registers, never reading `src` at all) —
   not the compressed-copy decompressor the *first* descriptor uses for `0x20000000-0x200001cf`
   (so this isn't "everything is zero," just this specific range). **Conclusion: the key is
-  zero-initialized RAM nothing in this build ever writes — the XOR step is effectively a no-op
+  zero-initialized RAM that no named writer touches — the XOR step is then a no-op
   (XOR against zero), and the real work `ofdm_payload_descramble` does is the two-stage chained
   checksum, not encryption.** Possibly wired up for a board variant not active in this build,
   or vestigial from an earlier revision.
+  **Why this is I, not V (doubted by the operator, check unfinished):** the search covers
+  literal-address references and per-handler writes only. Not excluded: a bulk copy through a
+  base pointer with a computed offset (the 252-byte flash-page `0x7b00` reload, `fpga_cfg_load`,
+  any memcpy-style struct fill), or a write from another build or board variant. Command `0xfe`
+  mode 1 writes only the first 5 bytes of the struct and mode 2 only `+0x11c`, so neither
+  reaches `+0x64`. Over-the-air encryption is not ruled out by this finding
+  (`what-is-actually-secret.md`, LAYER CAVEAT).
 - Reproduce: `scratchpad/ghscripts/m0900_fun80103f8.py`, `m0900_ring_writers.py`,
   `m0900_can_init_trace.py`, `m0900_can_queue_init_callers.py`, `m0900_fun0800e008_callers.py`,
   `m0900_check_usart3_ctx.py`, `m0900_all_ring_pushers.py`, `m0900_key_src1.py`-`4.py`,

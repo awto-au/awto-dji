@@ -81,7 +81,7 @@ corrected/current fact; this file preserves the history for reference.
   blob, no `FlycExportParam`-equivalent array exists. (`docs/air-router-stm32-full-pass.md`,
   `docs/symbols/m0900-structs.h`, `docs/symbols/m0900_V01.11.0020.tsv`)
 
-## 2026-10-25 (XOR key traced — it's zero)
+## 2026-10-25 (XOR key traced — zero at boot; later writes not excluded)
 
 - **`ofdm_payload_descramble`'s 8-byte XOR key, traced to source.** Located at
   `radio_state_s+0x64` (RAM `0x20001b18`-`0x20001b1f`, inside the struct's previously-opaque
@@ -91,8 +91,9 @@ corrected/current fact; this file preserves the history for reference.
   has two region descriptors, and the key's address falls inside the one whose initializer is a
   plain zero-fill loop (the *other* descriptor, covering a different RAM range, really does use
   a compressed-copy decompressor — so this is a specific finding, not "everything's zero").
-  **The key is always zero in this build; the XOR step is a no-op, and the real validation is
-  the two-stage checksum alone, not encryption.** (`docs/air-router-deep-dive.md` §6a)
+  **Inferred, not verified: the key is zero at boot and no named writer touches it, so the XOR
+  step is likely a no-op and the real validation the two-stage checksum. Bulk-copy and other
+  write paths were not excluded (see `air-router-deep-dive.md`).** (`docs/air-router-deep-dive.md` §6a)
 
 ## 2026-10-25 (second ring resolved — RF link confirmed, not a bus guess)
 

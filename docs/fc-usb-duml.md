@@ -437,7 +437,7 @@ against byte-for-byte (see below) — fell back to structural/control-flow compa
 ST's public `stm32f4xx_hal_pcd.c` (fetched to `tmp/stm32_hal_ref/`, gitignored, not committed
 — DJI/ST copyrighted source, kept local only per this repo's no-binaries-committed rule).
 
-- **V, reference-binary search was exhaustive and came back empty.** Swept every `.elf` under `/mnt/2tb/git` (~150 repos) for `HAL_PCD`/`USB_OTG`/`PCD_IRQHandler` symbols.
+- **V, reference-binary search was exhaustive and came back empty.** Swept every `.elf` under the local source tree (~150 repos) for `HAL_PCD`/`USB_OTG`/`PCD_IRQHandler` symbols.
   - All hits are Zephyr/ESP-IDF builds (`awto-zephyr-wt-*`, `awto-l8-wt-*`): unrelated architecture, not STM32F4, not ST's HAL.
   - No STM32F4 reference binary with debug symbols exists in any local repo. No shortcut; matching has to be done by reading the code.
 - **V, disassembled `0x8029f26` directly** (`firmware/unpacked/P3X_FW_V01.11.0020_m0306.bin`, base `0x08020000`).

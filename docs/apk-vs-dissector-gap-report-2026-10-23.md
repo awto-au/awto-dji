@@ -9,7 +9,7 @@ Status tags: **V** verified here, **I** inferred, **U** unknown. Scope: see `apk
 section 0 for the dynamic-unpack scope decision this builds on - numeric protocol facts only,
 never DJI's code. Sources: `docs/data/apk-dynamic-cmdset-ids.tsv` (723 rows, from the
 dynamically-unpacked `dji.midware.data.config.P3.CmdSet` enum, DJI GO 4 v4.3.64) and the public
-`o-gs/dji-firmware-tools` Wireshark dissector (GPL-3.0, `/mnt/2tb/git/dji-firmware-tools`).
+`o-gs/dji-firmware-tools` Wireshark dissector (GPL-3.0, local `dji-firmware-tools` checkout).
 Reproduce: `python3 -I scripts/re/extract_apk_cmdset.py` then
 `python3 -I scripts/re/compare_cmdset_gaps.py` (log `tmp/logs/compare_cmdset_gaps.log`, output
 `docs/data/cmdset-gap-report.tsv`).

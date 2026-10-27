@@ -58,7 +58,7 @@ contain literal debug-log strings of the form `ActionName (<cmdset>_0x<cmdid>)` 
 `DJIModuleUpgrader` / `DJIFirmUpgrader{1,2,3}` class family (firmware-upgrade state
 machine). These are **plaintext, not reconstructed from disassembly**:
 
-**Note:** the whole 0x00-0x0a range in this table is also already in the public o-gs/dji-firmware-tools dissector (`dji-dumlv1-general.lua`, `/mnt/2tb/git/dji-firmware-tools`) - Ping/Version Inquiry/.../Update Finish are all pre-existing public names. Nothing in this table is new protocol knowledge; what's new is only that DJI's own shipped binary now corroborates those names directly, rather than via third-party behavioural reverse engineering.
+**Note:** the whole 0x00-0x0a range in this table is also already in the public o-gs/dji-firmware-tools dissector (`dji-dumlv1-general.lua`, local `dji-firmware-tools` checkout) - Ping/Version Inquiry/.../Update Finish are all pre-existing public names. Nothing in this table is new protocol knowledge; what's new is only that DJI's own shipped binary now corroborates those names directly, rather than via third-party behavioural reverse engineering.
 
 | cmdset | cmdid | name (string, verbatim) | cross-check |
 |---|---|---|---|
@@ -67,7 +67,7 @@ machine). These are **plaintext, not reconstructed from disassembly**:
 | 0x00 | 0x08 | tag `(0_0x08)` beside string `upgrade_request_receive` | **confirms firmware**: matches m0900 "Update Confirm" (`docs/fpga-upgrade-path.md`) |
 | 0x00 | 0x09 | string `re-data transmission %1` beside `(0x09`, class `ActionDoDataTransmission` | **confirms firmware naming** ("Update Transmit"); m0900 itself has **no handler** for 0x09 (per `docs/fpga-upgrade-path.md`) — this DLL still names/uses the id, so the handler lives elsewhere (another firmware module, or host-side only) |
 | 0x00 | 0x0a | tag `(0_0x0a)` beside string `firmware_upgrade_finish`, class `ActionDoUpgradeVerify` | **confirms firmware**: matches m0900 "Update Finish" |
-| 0x00 | 0x0b | tag `(0_0xb)` beside string `reboot_device`, class `ActionDoReboot` | **confirms public dissector**: matches o-gs/dji-firmware-tools `dji-dumlv1-general.lua` `[0x0b] = 'Reboot Chip'` (already on disk at `/mnt/2tb/git/dji-firmware-tools`, not previously cross-checked against this DLL work) |
+| 0x00 | 0x0b | tag `(0_0xb)` beside string `reboot_device`, class `ActionDoReboot` | **confirms public dissector**: matches o-gs/dji-firmware-tools `dji-dumlv1-general.lua` `[0x0b] = 'Reboot Chip'` (already on disk at local `dji-firmware-tools` checkout, not previously cross-checked against this DLL work) |
 | 0x00 | 0x0c | `[ActionDoQueryStatus] 0_0x0c`, class `ActionDoQueryStatus` | **confirms public dissector**: matches o-gs/dji-firmware-tools `dji-dumlv1-general.lua` `[0x0c] = 'Get Device State'` |
 
 Evidence form: these are Qt debug-log literal strings (e.g. `"[ActionDoQueryStatus] "` and

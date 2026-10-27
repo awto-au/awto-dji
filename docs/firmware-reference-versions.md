@@ -84,7 +84,7 @@ ported into `scripts/re/fw_version_check.py`'s `decode_common_version`) read
 
 **V — fixed, cross-confirmed two independent ways:**
 1. `o-gs/dji-firmware-tools`'s `general_version_inquiry_dissector`
-   (`/mnt/2tb/git/dji-firmware-tools/comm_dissector/wireshark/dji-dumlv1-general.lua:120-160`,
+   (`dji-firmware-tools/comm_dissector/wireshark/dji-dumlv1-general.lua:120-160`,
    externally RE'd, unrelated to this repo's possibly-wrong-app APK decompile — awto-dji#30):
    a GetVersion *response* has **two** leading unknown bytes before `hw_version`
    (offset 0 and 1), not one — `hw_version` starts at offset 2, `loaderVersion` at

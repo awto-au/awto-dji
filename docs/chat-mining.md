@@ -92,8 +92,28 @@ Lessons:
 - A fix landing makes the docs and issue comments written before it wrong. Re-read what you posted.
 - A hypothesis a chat disproved itself must not be filed upstream.
 
+## 5b. Worked example 4: air_router / front-port retraction chat, 2026-10-25
+Source: pasted transcript, truncated mid-sentence. Its work sat on the unmerged `claude/firmware-loading-trace-cbzvam` branch (75 commits), so `main` kept asserting what the chat retracted.
+
+| Assertion in chat | Verdict | Where / result |
+|---|---|---|
+| `duml_watch.log` "Breakthrough" (front port answers as `air_router`, `GL300C/WM320 A7_LPC1`) is bogus; stop citing it | V (operator decision) | Retraction `1f50e38` was not on `main` (`docs/fc-usb-duml.md:159-174` still asserted it). Now merged. #21's title still rests on it. |
+| The `A7_LPC1` string is in no firmware we hold | V | Chat grep of m0900 and m1400; the 2026-10-23 session docs that print it are separate logs and left alone. |
+| USART3 and ring-1 relays RF-link data to the FC without the command table | I (static) | `air-router-deep-dive.md` section 6a, merged. |
+| `ofdm_payload_descramble` XOR key is always zero, so no-op | I, not V | Operator doubted it; chat ended mid-check. Downgraded in place: bulk-copy and other write paths not excluded. |
+| cmd 0xfe is an unauthenticated live radio-state write | V (decompiled) | Writes only the first 5 bytes (mode 1) or `+0x11c` (mode 2), so it does not reach the key. |
+| Rename `ofdm_*` to `fpga_link_*` (offered) | open | Unanswered. |
+| Renode never unmasks the USB IRQ (dynamic claim) | downgraded | Sim stalls in an unmodelled SD poll; static dead vector table still stands. |
+
+Lessons:
+- Work on an unmerged branch is invisible to `main`, including its retractions. Merge or port retractions first.
+- A merge brings private paths along. Scrub the whole tree, not just the diff: three `/mnt/...` paths were already public.
+- Check the "no writers" claim against bulk copies before calling a negative result verified.
+
 ## 6. Still to do
 - #65: the chat says a later "physical replug vs code/kernel" conclusion was never added; the detail is not in the pasted text, so it cannot be written up from here.
 - S9 recovery: decide Smart Switch vs other; track on `awtoau/awto-samsung-s9#1`.
 - Hardware re-test of `7385613` (permission timeout, envelope trim).
-- Unmerged branches kept on purpose: `fix/video-decoder-lifecycle-67` (on hold), `claude/firmware-loading-trace-cbzvam` (8 conflicting docs).
+- Unmerged branch kept on purpose: `fix/video-decoder-lifecycle-67` (on hold).
+- #21: retitle / comment that its premise (front port answers as `air_router`) was retracted (draft, awaiting approval).
+- Finish the XOR-key check (bulk copies into `radio_state_s+0x64`); answer the `ofdm_*` rename question.
