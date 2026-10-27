@@ -113,21 +113,21 @@ Lessons:
 ## 7. Chat register
 Export all sessions: `python3 -I scripts/chats_export.py` (to gitignored `chats/`, see `chats/README.md`). Re-run it after new sessions; it skips up-to-date files. A chat is "mined" only when section 1a's table exists for it (here or in the issue/commit that closed it out).
 
-| Session (`chats/` file) | Dates (UTC) | Msgs | Topic (first prompt) | Status |
+| Session | Dates (UTC) | Msgs | Title | Status (review 2026-10-27) |
 |---|---|---|---|---|
-| `06f84d58` | 2026-10-22..23 | 506 | "what is there ?" (first cloud/Renode handover session) | mined, example 2 (pasted copy) |
-| `b2834314` | 2026-10-22..23 | 4419 | "start the Renode task" | not mined |
-| `666d9e8a` | 2026-10-22..23 | 216 | "what type of connector ?" | not mined |
-| `31d3847f` | 2026-10-23 | 171 | "battery is on - look at the firmware" | not mined |
-| `5fda2c62` | 2026-10-23 | 52 | subagent hand-back | not mined |
-| `e5202f04` | 2026-10-23..26 | 5324 | "phone is on" (AOA/phone bridge) | not mined |
-| `f852e481` | 2026-10-25 | 83 | "compile the new Linux kernel for the s9" | not mined (S9 dropped, see `awtoau/awto-samsung-s9#1`) |
-| `532cb56b` | 2026-10-25 | 785 | continued session | not mined |
-| `e347b349` | 2026-10-25..26 | 4167 | continued session | not mined |
-| `a7290f7a` | 2026-10-26 | 367 | cross-session message | not mined |
-| `fbdd9c91` | 2026-10-27 | 636 | "check all chat and merge everything into main" (this session) | mined as it ran, examples 1, 3, 4 |
+| `06f84d58` | 2026-10-22..23 | 506 | Git remote origin meaning | mined; qemu/Unicorn idea on #35; #2 body fixed |
+| `b2834314` | 2026-10-22..23 | 4419 | awto-dji: Renode m0900 AD9363 capture | mined; sampled ~140 human turns, no gaps found |
+| `666d9e8a` | 2026-10-22..23 | 216 | Phantom Professional GPS board pinout | mined; no gaps |
+| `31d3847f` | 2026-10-23 | 171 | DJI controller USB device fff0:0008 | mined; `fc-usb-port.md` claim downgraded (#21) |
+| `5fda2c62` | 2026-10-23 | 52 | Firmware reversing rules | mined; no gaps (no human turns) |
+| `e5202f04` | 2026-10-23..26 | 5324 | Outstanding items from last chat | mined; #72, #74, #75, #76, #77, #78 |
+| `f852e481` | 2026-10-25 | 83 | Linux kernel compilation for s9 | mined; S9 dropped (`awtoau/awto-samsung-s9#1` closed) |
+| `532cb56b` | 2026-10-25 | 785 | Firmware loading process tracing | mined; #79, #80, #81, #83, #84, #85 |
+| `e347b349` | 2026-10-25..26 | 4167 | master | mined; #71 sweep comment posted, #73 |
+| `a7290f7a` | 2026-10-26 | 367 | (no title stored) | mined; #64 figures judged unreliable, not filed |
+| `fbdd9c91` | 2026-10-27 | 636+ | Git branches and stashes (this session) | mined as it ran (examples 1, 3, 4); #82 |
 
-Pasted transcripts already mined (examples 1 to 4) are not matched to a file here: some came from cloud sessions that are not on this disk, so their raw text exists only in the paste.
+Pasted transcripts (examples 1 to 4) were truncated; the full exports above supersede them. Reviews were done by read-only agents and spot-checked against the repo; a reviewer's "none found" is a sampled result, not proof.
 - Mine the big ones (`e5202f04`, `e347b349`, `b2834314`) one at a time, never in one pass: each needs its own enumerate-and-verify table.
 - Read-only research over an export is a read-only agent task (`Explore`), not a general-purpose agent.
 - Never paste export text into a public issue or commit without the scrub.
