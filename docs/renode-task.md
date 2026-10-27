@@ -1,5 +1,7 @@
 # Task: Renode emulation of `m0900` to capture the AD9363 config
 
+**Status (2026-10-27): steps 1 to 4 done, step 5 not done.** Results and open items: `docs/phy-params.md`, #2. Step 5 (Verilated FPGA co-sim) has no input: no decoded FPGA netlist exists (`fpga-images.md`).
+
 **Owner:** next agent (Selwyn or a spawned session). **Goal:** close the one open PHY-params
 proof in `HANDOVER.md` — recover the exact OFDM channel parameters (centre frequency, channel
 bandwidth, sample rate, gains) by **emulating the air MCU `m0900` (`air_router_stm32f103`) in Renode and

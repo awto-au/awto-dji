@@ -6,8 +6,8 @@ MCU `m0900` (`air_router_stm32f103`) computes at runtime. This closes the one op
 `HANDOVER.md`.
 
 Honesty markers used throughout: **verified** (reproduced here), **needs-tooling** (method
-ready, waiting on an input), **inferred** (reasoned, not yet observed). This file is the
-result slot; the numbers land here once the capture runs.
+ready, waiting on an input), **inferred** (reasoned, not yet observed). The capture has run
+(see Status); open items are tracked in #2.
 
 ## Status (2026-10-23)
 
