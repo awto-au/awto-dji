@@ -1,0 +1,46 @@
+{
+  "source_name": "aoa_relay_server.log",
+  "source_sha256": "6d8e730945a3e79820196ec272c103ca17d2040624441a8eab59eed3f3c57b92",
+  "scope": "Wire values observed; labels require classic GO interpretation. No simultaneous camera-setting screen or recorded-file check.",
+  "sessions": 1,
+  "channel_envelopes": {
+    "0x5749": 11,
+    "0x574a": 211
+  },
+  "discarded_bytes": 76095,
+  "trailing_bytes": 0,
+  "crc_valid_command_frames": 116,
+  "messages": [
+    {
+      "cmd_id": 128,
+      "count": 7,
+      "payload_length": 37,
+      "payload": "0502800000d8760000b2440000000400009a09000000000000000000000000080104000002",
+      "first_wire": "553204060102444e0309fd73648b0e05b57d64768a4f1f3c0f11273aac3566777d326615362d7d2066690621692d6422b8da",
+      "decoded_prefix": {
+        "connected": true,
+        "camera_type": 4
+      }
+    },
+    {
+      "cmd_id": 129,
+      "count": 3,
+      "payload_length": 72,
+      "payload": "1801000000001702ff040102001601000000020101000001000a000000000017020300ff0a0018010c8005900100001700288000028005000001000303010000000000000000001f",
+      "first_wire": "555504320102484e0305fc6267070e096d1066853c061d30191827363632677a7d3e67193c217d2c6665192e6e219b26387d1e3caa0df36a7c08356b02994e34b6217d0967240d796c24640938241f307c19292f8e",
+      "decoded_prefix": {
+        "resolution_code": 22,
+        "frame_rate_code": 1,
+        "container_code": 1
+      }
+    },
+    {
+      "cmd_id": 131,
+      "count": 1,
+      "payload_length": 64,
+      "payload": "000000000000000000000000000001040709080b11181d1f26252022262725252120201e1f1d1f1f1f1c1d20252a29292a3551603f463f4fa5c2edff00000000",
+      "first_wire": "554d04a801024c4e0301fe7e66030e0d6d03647e38031f340f1c23353f3c6d6e6527793b13055f0e41442b094d057a37257e002b3611434a56250b451f4c2e0d701f32a8a4cdf17e6d20647118",
+      "decoded_prefix": null
+    }
+  ]
+}

@@ -15,5 +15,6 @@ export 'src/rc_signal.dart';
 export 'src/motor_status.dart';
 export 'src/version.dart';
 export 'src/camera_exposure.dart';
+export 'src/camera_video.dart';
 export 'src/restart_device.dart';
 export 'src/gimbal_commands.dart';

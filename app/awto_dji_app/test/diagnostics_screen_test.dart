@@ -36,9 +36,11 @@ Uint8List _osdWithMotorBlock() {
 }
 
 Uint8List _versionReply() {
-  final payload = Uint8List(29);
-  payload.setRange(1, 1 + 'FC-HW'.length, 'FC-HW'.codeUnits);
-  payload[24] = 1; // firmware "01.00.00.00" (byte24 is the first printed digit pair)
+  // Match the captured-wire GetVersion correction from #32: 30-byte reply,
+  // hardware at 2 and firmware at 22..25. This fixture still used the old offsets.
+  final payload = Uint8List(30);
+  payload.setRange(2, 2 + 'FC-HW'.length, 'FC-HW'.codeUnits);
+  payload[25] = 1; // firmware "01.00.00.00" (most significant component)
   return DumlPacket(
     senderType: DeviceType.flightController,
     receiverType: DeviceType.app,
