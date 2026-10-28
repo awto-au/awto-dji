@@ -20,10 +20,10 @@ confirmed Lightbridge vs. other DJI link protocols: `lightbridge-iq/PROVENANCE.m
 ## lightbridge-ig800-firmware/
 
 Firmware for the standalone retail DJI Lightbridge (hardware family `IG800`, not the
-Phantom-3-integrated module) - decrypted ground-decoder UBL/U-Boot/kernel plus an
-encrypted (password unknown) final-version update package, recovered from a 2016
-phantompilots.com forum thread (DJI itself never published firmware for this product -
-see manifest). Full provenance, SHA-256s, source URLs: `lightbridge-ig800-firmware/PROVENANCE.md`.
+Phantom-3-integrated module) - decrypted ground-decoder UBL/U-Boot/kernel plus the final-version update package
+(`update.tar.gz`, password `Dji123456`, cipher `openssl enc -des3 -md md5`), recovered
+from a 2016 phantompilots.com forum thread (DJI itself never published firmware for this
+product - see manifest). Full provenance, SHA-256s, source URLs: `lightbridge-ig800-firmware/PROVENANCE.md`.
 Background/analysis: `../docs/standalone-lightbridge-ig800.md`.
 
 ## apk/dji.pilot-3.1.83.apk
