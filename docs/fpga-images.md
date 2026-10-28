@@ -10,7 +10,10 @@ Family evidence: pluribus `docs/cyclonev-compressed-rbf.md`, `scripts/fpga_famil
 | LB2 `m2000` | ground FPGA rev 00 (`gnd_fpga_cyclonev_r0`) | 8 MiB | 4.65 MB | 01.00.2107 | 7.99 | `39a74d8d4a69ebaf` | Cyclone V (0x80 preamble, nibble-shifted sync); encrypted |
 | LB2 `m2001` | ground FPGA rev 01 (`gnd_fpga_cyc4gx_r1`) | 8 MiB | 2.12 MB | 01.01.2107 | 5.84 | `b6cc5e96f12446b1` | Cyclone III/IV-format; best match EP4CGX150 |
 | LB2 `m2002` | ground FPGA rev 02 (`gnd_fpga_cyclonev_r2`) | 8 MiB | 4.80 MB | 01.02.2109 | 7.99 | `30aa24c31e5180a7` | Cyclone V; encrypted |
-| P3S `m1900` | air FPGA (TX) | 4 MiB | 2.01 MB | — | — | (independent sample) | not re-classified |
+| P3S/launch `m1900` (0ecafe1a) | air FPGA (TX), launch-era 01.01.x | 4 MiB | 2.01 MB | 01.01.x | — | `0ecafe1ab6583407` | Cyclone V e50f (die byte 0x05, PRAM 64×524 — same as later m1900; lift-realism section below) |
+| LB2 `m2000` (bf1539b8) | ground FPGA rev 00, C1_FW V01.00.0004 (01.00.2321) | 8 MiB | — | 01.00.2321 | 7.99 | `bf1539b8239d31d7` | Cyclone V die 0x13 (header matches 39a74d8d exactly) |
+| LB2 `m2000` (3592a53b) | ground FPGA rev 00, C1_FW V01.00.0010 (01.00.2322) | 8 MiB | — | 01.00.2322 | 7.99 | `3592a53b40bf2f56` | Cyclone V die 0x13 |
+| LB2 `m2002` (e6ba9914) | ground FPGA rev 02, P3X_FW V01.02.0006 (01.02.2107) | 8 MiB | — | 01.02.2107 | 7.99 | `e6ba9914b74a75ae` | Cyclone V die 0x13 (header matches 30aa24c3) |
 
 ## Observations
 

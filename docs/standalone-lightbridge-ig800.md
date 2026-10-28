@@ -170,14 +170,14 @@ build from the version table above — see dating):
   were successfully decrypted by "Andrew" per the thread; the air-unit capture in the same
   thread was reported as failing to save completely (post #18: "for the other two
   firmware, I was not able to save them").
-- **The final v1.4.8 update package exists but is encrypted and unopened** — openssl
-  `Salted__`, password not published anywhere found in this thread (40 pages total, only
-  pages 1 checked in depth this session — a scan of later pages for a password/decrypt
-  breakthrough is a cheap follow-up, not yet done).
-- **"Andrew"'s decryption method is not documented in this thread** — post #1 speculates
-  he used `o-gs/dji-firmware-tools`, but that's the poster's guess, not confirmed by
-  Andrew himself. If the DM36x update-package encryption scheme is ever needed (e.g. to
-  open the 1.4.8 package), check that tool's `dji_xv4_fwcon.py`/wiki first.
+- ~~**The final v1.4.8 update package exists but is encrypted and unopened**~~ — **SOLVED
+  2026-10-28**: password is `Dji123456`, cipher `openssl enc -des3 -md md5`. Full contents
+  documented in `sources/lightbridge-ig800-firmware/PROVENANCE.md`. Key finding: the
+  package contains `usbclient` (main ground app, 1.5 MB ARM ELF), `Vend_Ax.iic` (CY7C68013A
+  firmware), ADB + SSH-enable — the device boots with ADB server and SSH running.
+- The `update.tar.gz` decrypt confirms Andrew's files are byte-identical to the package
+  contents — he either also used `Dji123456 / des3` or extracted live from a device
+  already running this firmware. No separate "Andrew method" needed.
 - `KyokushinPL/phantom-firmware-tools` (GitHub, fork of `o-gs/dji-firmware-tools`) was
   checked in full (137-file tree) — contains only `lightbridge_stm32_hardcoder.py`, a
   firmware **parameter-patcher** script (no firmware binaries, no additional download
