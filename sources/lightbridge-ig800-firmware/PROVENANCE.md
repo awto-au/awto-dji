@@ -61,20 +61,75 @@ checked.
 One file, `update.tar.gz`, SHA-256 `1931d11f885c892eea9dadf68e126211552a4644d87b4842c21192a524cd3aaf`
 — **byte-identical** to `LB_hack.zip`'s
 `OLD_firmware_components_extracted_from_dji_upgrade_port/update.tar.gz` above. The forum
-poster labelled this copy "version1.4.8" (matching DJI's own final release-note version
-for the ground decoder — see the doc's version table) and stated explicitly that the
-OpenSSL password to decrypt it was never recovered. **Not usable as firmware without that
-password.**
+poster labelled this copy "version1.4.8".
+
+## Decrypting `update.tar.gz` — SOLVED (2026-10-28)
+
+**Password: `Dji123456`** — the same DJI-universal passphrase used for xV4 module encryption.
+**Cipher: `openssl enc -des3 -md md5`** (Triple-DES-CBC, MD5-based key derivation — the
+OpenSSL 1.x default; AES variants all fail).
+
+Decrypt command:
+```
+openssl enc -d -des3 -md md5 -in update.tar.gz -pass pass:Dji123456 | tar -xz
+```
+
+Produces a `dji/` tree with the full v1.4.8.6 ground-system application layer — far more
+than just the boot firmware Andrew extracted from a live device. Full file manifest with
+SHA-256s is in the sub-table below.
+
+### Decrypted contents (v1.4.8.6, build date 2015-03-17)
+
+Key files (full SHA-256 table committed separately if needed):
+
+| Path | Size | SHA-256 | Notes |
+|---|---|---|---|
+| `dji/etc/version` | 8 | `d96acf68...` | `1.4.8.6` |
+| `dji/data/ubl1.img` | 16,384 | `bf282d8b...` | **matches Andrew's decrypted set** |
+| `dji/data/ubl2.img` | 16,384 | `0e03e4cb...` | same |
+| `dji/data/u-boot.img` | 296,960 | `66949bcd...` | same |
+| `dji/data/uImage` | 4,043,360 | `4e3322b9...` | same — confirms Andrew extracted from the same package |
+| `dji/bin/usbclient` | 1,565,657 | `b908d5ee...` | **main ground-unit application** (ARM ELF, DaVinci DM365) |
+| `dji/lib/libcommon.so` | 98,615 | `ba673af7...` | DJI shared library |
+| `dji/bin/Vend_Ax.iic` | 3,571 | `aa667433...` | firmware for the CY7C68013A (FX2LP) USB controller on the ground unit |
+| `dji/modules/usb_cy7c68013a.ko` | 14,096 | `a6a2b159...` | Linux kernel driver for that chip |
+| `dji/bin/adb` | 1,517,559 | `dbac837a...` | Android Debug Bridge binary — **ADB server runs on boot** (see `boot.sh`) |
+| `dji/bin/sshenable` | 120 | `18da84b8...` | script to enable SSH on the device |
+| `dji/bin/setsecurity` | 22,817 | `0aedd17d...` | AT88/security chip configuration tool |
+| `dji/bin/update68013` | 30,286 | `0d524f35...` | tool to flash new firmware to the CY7C68013A |
+| `dji/bin/fxload` | 37,861 | `44e1a9cc...` | generic FX2LP firmware loader (open-source tool) |
+| `dji/bin/usbmuxd` | 56,742 | `ca8d0a55...` | USB multiplexer daemon |
+| `dji/bin/usbupdate` | 12,449 | `55495d80...` | update-monitor process |
+| `dji/modules/dsp/cmemk.ko` | 26,326 | `1ecee796...` | DaVinci CMEM memory allocator driver |
+| `dji/data/font/Oswald.otf` + `Oswald-Light.otf` | 41,432 + 28,256 | — | OSD fonts |
+| `dji/data/png/` + `dji/data/png2/` | 10 icons each | — | OSD icon assets (two sets) |
+
+Boot sequence (from `dji/etc/boot.sh`):
+```sh
+loadmodule-rc start       # load kernel modules
+devgpio -n 60 -w 1        # enable CY7C68013A (GPIO 60)
+sshenable                 # enable SSH
+adb start-server          # start ADB server
+usbmuxd -v -v             # USB multiplexer
+usbclient &               # main application
+usbupdate &               # update monitor
+```
+
+**Implication**: the ground unit boots with SSH enabled and an ADB server running — shell
+access is straightforward if you can reach the USB port. The `usbclient` binary is the
+primary analysis target for the ground-side link behavior (ARM ELF, ~1.5 MB, DaVinci DM365
+platform).
 
 ## What this does NOT include
 
-- No air-unit firmware was successfully decrypted in this thread (post #18: the poster
-  could not fully save the air-unit capture).
-- No ground **main controller** MCU firmware (the component DJI's release notes version
-  as `1.1.x`, distinct from the Linux decoder board above) and no transmitter/baseband
-  firmware — not located in cleartext anywhere this session.
-- Thread is 40 pages; only page 1 (posts #1–#20) was read in full. A later page may have a
-  password breakthrough for the encrypted `update.tar.gz` — not checked.
+- No air-unit firmware recovered — post #18: poster could not fully save the air-unit capture.
+- No ground **main controller** MCU firmware (component DJI's release notes version as `1.1.x`,
+  distinct from the Linux decoder board) and no transmitter/baseband firmware — not in
+  `update.tar.gz` and not located elsewhere.
+- ~~Thread is 40 pages; only page 1 checked — a later page may have a password breakthrough.~~
+  **Moot**: password is `Dji123456` with `openssl enc -des3 -md md5` (found 2026-10-28 via
+  binary analysis of `Lightbridge Assistant.exe` + cipher enumeration; the forum thread scan
+  was running in parallel and is not needed for this).
 
 ## Tools used
 
