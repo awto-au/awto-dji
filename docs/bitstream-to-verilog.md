@@ -1,8 +1,10 @@
 # Methodology: FPGA bitstream → structural netlist → (toward) Verilog
 
 How to reverse the P3's Lightbridge FPGA from its bitstream, honestly scoped. The target
-is Cyclone V for the air `m1900` (e50f-family by header/PRAM CRC) and ground `m2000`/`m2002`; ground `m2001` is Cyclone III/IV-format (best match EP4CGX150). All of these except m2001 appear ENCRYPTED, so no bitstream has been lifted (see `fpga-images.md`, `debris/m2001-decomp-findings.md`). This is
+is Cyclone V for the air `m1900` (e50f-family by header/PRAM CRC) and ground `m2000`/`m2002`; ground `m2001` is Cyclone IV GX (EP4CGX150, confirmed). The Cyclone V images (m1900/m2000/m2002/m2003) appear ENCRYPTED, so none of those has been lifted (see `fpga-images.md`, `debris/m2001-decomp-findings.md`). This is
 interoperability RE of an owned device; it is analysis only.
+
+**m2001 update:** the ground FPGA is NOT encrypted and has been lifted to a structural netlist and, further, to readable RTL, done in a separate repo (pluribus, a generic Lattice/Altera-family reverse-engineering engine). Output: `reversing/fpga-m2001/{flat.v,rtl.v}` in this repo (vendor-derived decoders only, structure-derived signal names, no bitstream bytes copied verbatim). Findings summary: `lightbridge-fpga.md` in the pluribus repo (clocks, radio-side SPI master, the MCU-facing SPI register file, fixed scrambler seeds, M9K memory contents including a dormant AF3 single-wire SHA-1 authentication engine, PLL sourcing). Open items tracked on `awtoau/pluribus` issues #165/#169/#176/#177/#178.
 
 ## The pipeline
 
