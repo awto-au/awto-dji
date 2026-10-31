@@ -36,13 +36,22 @@ exactly) — and `projects/ad9361/src/main.c`'s `default_init_param.full_port_en
 ADI's own **recommended default**, not an unusual choice by this firmware.
 
 **So the FPGA-side 21-pad grouping was conflating two different things that happen to share one
-physical differential I/O bank**: the real RX data port (P1: the 13 structurally-uniform pads — ~12
-data bits + 1 frame pin, matching the AD9361/9364 datasheet's documented port width) and TX-port
-pins that physically interleave with it pin-by-pin in the same bank (Full Port mode dedicates P0 to
-TX and P1 to RX, so the TX-direction pins correctly show zero RX-path consumers in a lift that only
+physical FPGA pin bank**: the real RX data port (P1: the 13 structurally-uniform pads — ~12 data
+bits + 1 frame pin, matching the AD9361/9364 datasheet's documented port width) and TX-port pins
+that physically interleave with it pin-by-pin in the same bank (Full Port mode dedicates P0 to TX
+and P1 to RX, so the TX-direction pins correctly show zero RX-path consumers in a lift that only
 traced the RX side). This explains the "8 pads with no consumer at all" finding without needing a
 disabled/unused second port, or a non-standard bus width — it is the TX half of a standard Full-Port
 CMOS configuration.
+
+Note on the pad naming: these are `DIFFIO_*` pads in the Cyclone IV sense (the pin TYPE supports a
+differential input buffer), which is a fact about the FPGA's own pin architecture, not a claim about
+how the board wires them. The confirmed register setting is `LVDS Mode = 0` -- single-ended CMOS --
+so each `DIFFIO_*` pin here carries one single-ended signal, not a true LVDS pair across two pins.
+Consistent with Dan's observation that the FPGA and the AD9363 sit millimetres apart on the board:
+short single-ended traces are the expected, simpler choice at that distance, and differential
+signalling (LVDS) exists specifically to survive longer runs / lower noise margins -- there would be
+little reason to pay for differential buffering between two ICs this close together.
 
 ## Open
 
