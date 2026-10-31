@@ -509,8 +509,11 @@ RX/TX ring-buffer driver as UART0/1/3 (`FUN_00020c98` byte-for-byte matches UART
 link, not dead code. **Not the FX3-DUML link**: UART2's init (`FUN_00020d02`) targets baud-rate
 constant `0x3e800` = 256000, while UART3's init (`FUN_00020fa6`) targets `0x1c200` = 115200,
 matching the FX3-side confirmed 115200 signature exactly — the two UARTs run at different, not
-matching, baud rates. Peer still open (candidate: `m1300`, the ground's own video decoder, at
-whatever protocol runs at 256000 baud — not independently confirmed this pass). CAN's actual
+matching, baud rates. Peer still open, and the `m1300` candidate is now doubtful rather than just
+unconfirmed: `m1300` (video decoder) is likely not even populated on this board (`ground-fx3-
+m1601.md` — the FX3/phone-tethered variant doesn't need a local video decoder, unlike LCD-
+equipped variants sharing the same PCB and firmware package). 256000 baud remains unexplained;
+whatever UART2 talks to is still open. CAN's actual
 payload content (DUML relay vs something else) also wasn't decoded past "it's a live, generic
 mailbox
 driver" this pass.

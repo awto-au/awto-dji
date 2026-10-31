@@ -1,11 +1,19 @@
 # Ground USB (m1601, Cypress FX3, `gnd_fx3_cyusb2014`): where DUML and video meet the phone
 
-Owner hardware is a **GL300C** RC (`fc-usb-port.md`). On GL300b/c the ground DM368 (`m1300`) is
-removed. The phone-facing USB is a **Cypress FX3 / CYUSB2014** running module `m1601` (ThreadX,
-FX3 SDK), fed directly by the ground FPGA. Sources: dji-firmware-tools wiki pages m1300/m1600/
-m1601; I for anything not shown here. Tags: **V** = shown in code or in a capture, **I** =
-inferred, **U** = unknown. Reproduce with `python3 scripts/re/fx3_m1601.py <m1601.bin>`, which
-asserts every V code claim, and `python3 scripts/re/aoa_chunk_decode.py <relay log>`.
+Owner hardware is a **GL300C** RC (`fc-usb-port.md`). On GL300b/c the ground video decoder
+(`m1300`, DM365 per `control-plane-re.md`/`ground-upgrade-path.md` — correcting an earlier
+DM368 label in this file, same module slot, wrong part number) is **not populated**: Dan's
+point (2026-10-31) is that one shared ground-RC PCB design covers both LCD-equipped and
+phone-tethered (FX3) variants, and only the LCD variant needs a local video decoder — the FX3
+variant streams raw H.264 straight to the phone instead, so `m1300`'s footprint is simply empty
+on this board. This also explains why the shared firmware *package* still contains an `m1300`
+DM365 image (`02.26.0000`, `Salted__`-encrypted, `ground-upgrade-path.md`): one firmware bundle
+ships across variants regardless of which boards populate the chip, not evidence the chip is
+present here. The phone-facing USB is a **Cypress FX3 / CYUSB2014** running module `m1601`
+(ThreadX, FX3 SDK), fed directly by the ground FPGA. Sources: dji-firmware-tools wiki pages
+m1300/m1600/m1601; I for anything not shown here. Tags: **V** = shown in code or in a capture,
+**I** = inferred, **U** = unknown. Reproduce with `python3 scripts/re/fx3_m1601.py <m1601.bin>`,
+which asserts every V code claim, and `python3 scripts/re/aoa_chunk_decode.py <relay log>`.
 
 **Input.** The RC firmware (`C1_FW_*`) is not on DJI's download page. Before RC firmware was
 split out, DJI shipped the RC modules inside the aircraft package. Source used here:
