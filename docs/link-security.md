@@ -184,10 +184,55 @@ ch:%d  mcs:%d  mode:%d  bw:%d  snr:%d  rssi:%d  harq:%d  err:%d
 Also in `m1400`: `MASTER`/`SLAVER`/`TestMaster`/`TestSlaver` (confirms the master/slave ID
 pairing), and `sha204p_send_slave_address` — an **ATSHA204 crypto-auth chip**. That is
 SHA-256 challenge-response for **component authentication (anti-counterfeit)**, not link
-encryption; it is the one real cryptographic element, and it authenticates *genuine
-hardware*, not the RF payload. (This `m1400` instance is **not** the only one, nor the primary:
-the main ATSHA204 board-auth is on the camera/A9 `m0100` — see `security-and-activation.md` §2.) (LB2 is also dual-band — a `5.8G VER ERR!` string — unlike
-the P3's 2.4 GHz-only Lightbridge.)
+encryption; it authenticates *genuine hardware*, not the RF payload — and it is not the
+only cryptographic element on this board, see the AF3 finding below. (This `m1400`
+instance is **not** the only ATSHA204, nor the primary: the main ATSHA204 board-auth is on
+the camera/A9 `m0100` — see `security-and-activation.md` §2.) (LB2 is also dual-band — a
+`5.8G VER ERR!` string — unlike the P3's 2.4 GHz-only Lightbridge.)
+
+### A second, distinct crypto-auth engine: SHA-1 inside the ground FPGA (2026-10-31)
+
+Separate from the ATSHA204 above (different chip family, different protocol), the ground
+FPGA bitstream itself (m2001, Cyclone IV GX EP4CGX150) contains a **microprogrammed SHA-1
+authentication engine** talking 1-Wire to an **external DS28E01-class chip** (Maxim/Analog
+Devices crypto-auth EEPROM family — "Read Authenticated Page" command, 64-byte scratchpad,
+MAC-protected read, same bus shape as ATSHA204's DS2432-style relatives but a distinct part
+number and command set). Recovered by a full structural lift of the m2001 bitstream
+(`awtoau/pluribus`, `docs/altera/cycloneIV/cycloneiv-clean-af3-engine.md`); summary here
+since it bears directly on this doc's "is there a real crypto element" question.
+
+- **What it does, confirmed by gate-level simulation:** resets the 1-Wire bus, writes an
+  8-byte scratchpad (words pulled from the engine's own RAM), reads back an 8-byte ROM ID,
+  issues "Read Authenticated Page" and waits ~10 ms, reads a 20-byte MAC, then runs an
+  80-round SHA-1 compression and compares the raw `a..e` state against the 5 MAC words. One
+  flip-flop (`ff_6_90_6`) is the pass/fail result; simulation confirms it goes high only on
+  an exact match (one bit flipped in the MAC, or the wrong byte order, clears it).
+- **The embedded key is a fact already in shipped, unmodified firmware — not a secret we
+  are disclosing by recovering it.** The engine's message block hard-codes two words,
+  `W0 = 0x01118789` and `W12 = 0x79465213` (combined 64-bit value `0111878979465213`),
+  confirmed byte-identical across 18+ independently-sourced m2001 firmware packages
+  (SHA-256 `b6cc5e96f12446b12d7d384a6b873cf29653fb0ac34353442124b8480f9a73ca`). It is simply
+  the value this specific captured image's key words contain — no attack, no decryption,
+  no bypass of anything was needed to see it; it sits at rest in the configuration RAM a
+  structural lift already produces. Confirmed correct: configuring a simulated DS28E01-class
+  slave with this 64-bit value as its secret makes the engine's own compare flag assert.
+- **Confirmed DEAD in this image, not an active defense:** forward netlist closure from the
+  pass/fail flip-flop reaches only the AF3 pad, two on-chip RAM tiles, and the engine's own
+  flip-flops — no radio path, no MAC, no other clock domain, no gating of anything that
+  matters for link operation. The pad's internal pull-up is off (needs an external pull-up
+  that isn't present/active in this configuration), and the engine blocks forever waiting
+  for 1-Wire bus presence if none answers. **No firmware path was found that drives new
+  program/key material into this engine at runtime** — it runs from the bitstream's own
+  configuration RAM, unmodified, every power-up. Net effect on *this* captured image: the
+  engine exists, runs, and currently authenticates nothing that affects behavior.
+- **Why this matters for this doc's claim, not as a live threat:** it shows DJI designed
+  for a *second* component-authentication path, independent of the camera/A9 ATSHA204 — and
+  then (in this image) left it unconnected to anything. It does not touch the RF link
+  encryption question above (still: no payload cipher, ID is an address, whitening is
+  unkeyed) — it is hardware anti-clone plumbing, same category as the ATSHA204 finding
+  above, just a different chip and currently inert. Open: whether a *populated* carrier
+  board (external DS28E01-class part + pull-up actually present) exists on any real unit,
+  and whether a different firmware/FPGA revision wires the result flag to anything.
 
 **And Lightbridge is "based on WiMAX" (IEEE 802.16 OFDM)** per the receiver-board docs — a
 *published standard*. So reaching symbol demod is approachable (blind OFDM param estimation

@@ -1,95 +1,68 @@
 # Where the Master-ID enters the FPGA (ground link)
 
-Question: find where the pairing/Master-ID enters the Lightbridge FPGA. Answer below,
-separating what is **verified from our firmware + bitstream** from what needs the **board
-schematic**. Evidence is reproducible with the scripts in `scripts/fpga/`.
+Question: find where the pairing/Master-ID enters the Lightbridge FPGA.
+
+**Resolved (2026-10-31).** Earlier versions of this doc guessed GPIO/UART from firmware
+disassembly alone, before any `m2001` netlist existed (the "void m2001 decode" below was
+once true and is no longer). The answer is now confirmed from both sides: `m1400`
+disassembly AND a full structural lift of the `m2001` bitstream (Cyclone IV GX EP4CGX150;
+`awtoau/pluribus`, `docs/altera/cycloneIV/`) agree on the same transport.
 
 ## Short answer
 
-The ID is **not computed inside the FPGA and not a hardcoded constant.** It is owned by the
-**ground MCU `m1400` (`gnd_rc_lpc1765`, LPC1765 "GROUND LB2")**, which writes it into the Lightbridge ground
-FPGA (`m2000/m2001/m2002`, Cyclone-V) over the **MCU->FPGA GPIO control bus** — *not* over
-SPI, *not* over the AD9363 RF sample bus, *not* over the FX2LP/USB video path. Inside the
-FPGA it lands in the MAC framer / address-match logic (LAB fabric), which stamps it into the
-transmitted preamble/header and filters it on receive.
+The ID is **not computed inside the FPGA and not a hardcoded constant.** It is owned by
+the **ground MCU `m1400` (`gnd_rc_lpc1765`, LPC1765 "GROUND LB2")**, which writes it into
+the ground FPGA over the **SPI0 register bus** — *not* GPIO, *not* UART, *not* the AD9363
+RF sample bus, *not* the FX3/USB video path.
 
-## Verified from the firmware (`m1400`)
+- **Firmware side (V, `m1400` disasm):** `fpga_set_receiver_id` at `0x16850` writes the
+  5-byte ID as five `0E reg val` SPI0 frames to FPGA registers **3..7**, bracketed by a
+  reg0 bit7 set/clear handshake (`0x15D4A`). SPI0: SCK `P0.15`, MISO `P0.17`, MOSI `P0.18`,
+  CS `P2.9`, 4 MHz — the same `[0E reg val]`/`[0F reg FF]` register protocol as the air
+  side (`docs/ground-upgrade-path.md`).
+- **FPGA side (V, netlist):** a byte deserialiser exists on pad `pad_AG12` (contradicts an
+  earlier note in `dji_pins/board/README.md` that no SPI slave FSM was found — that row
+  should be re-checked). 344 distinct enable nets load flip-flops directly from the 8-bit
+  shift chain; this is the SPI-fed register file, and registers 3..7 (the ID) are five of
+  them. The exact address decode (which enable net is "register 3" vs "register 7") and
+  the comparator that checks a received peer ID against this stored value (feeding status
+  register `0xEB` bit0) have **not** yet been located in the netlist — open item, needs a
+  full SPI frame simulation over the extracted shift chain.
+- **The three GPIO lines this doc previously called "ID strobes" are not that.** `P0.16`,
+  `P1.22`, `P3.25` are the **RC status LED outputs** — confirmed because the same pins are
+  driven by the LED colour-code routine (`0xB226`, colour byte 1/2/3) and the link-mode
+  blink/beep pattern (`0xC1F8`). `P1.23` is a real FPGA control line, but it is the
+  **FPGA reset pulse** (`0xBB86` / update-finish paths), not part of the ID write.
 
-`c1_m1400.ini` identifies the module: `LPC1765 GROUND LB2` (Cortex-M3, image loads at
-0x0; initial SP `0x10007f60` = top of the LPC1765 32 KB SRAM, reset vector in range — a
-valid bare image).
+## What else is now known about the pairing path (from the same analysis)
 
-- **The MCU owns the FPGA comms and the master-ID code.** ASCII strings present in the
-  image: `FpgaErr`, `MASTER`, `TestMaster`. So FPGA-interface handling and master-ID logic
-  are in this MCU, consistent with the DUML "RC Connected Master Id Set/Get" field.
-- **The MCU<->FPGA link IS SPI (corrected).** The earlier scan only looked for SSP0/SSP1; the
-  image uses the legacy SPI0 block at `0x40020000` (CS on P2.9, 4 MHz requested), carrying the
-  same `[0E reg val]` / `[0F reg FF]` register protocol as the air side (`docs/ground-upgrade-path.md`,
-  bit-record table byte-identical to m0900). Fast GPIO `0x2009c000` (x25), SYSCON (x17), PINCON (x14)
-  and UART1 (x2) are also used: GPIO for control strobes (e.g. P1.23), UART elsewhere.
-- Therefore the ID reaches the FPGA as **register/control traffic on the SPI0 register bus** (or
-  GPIO strobes), or as MCU-assembled MAC-frame header bytes over the same path (inferred, not seen).
+- **Linking changes the ID, it isn't fixed at manufacture.** On entering link mode the
+  ground MCU increments ID byte 0 and reloads the FPGA; on success it persists the new
+  ID[0] to internal flash (sector 8 + offset `0x90`); on cancel/failure it restores the old
+  one. ID bytes [1..4] are derived from the LPC1765's own unique ID (CRC/XOR over the IAP
+  "read UID" result) and do not change. (V code, I "derived from UID" — the CRC steps were
+  located but not value-checked.)
+- **No key or nonce anywhere in the ID/pairing path.** Absence confirmed by reading every
+  handler that touches the ID or the DUML pairing commands (`6/0x06`..`6/0x3C`). This is
+  consistent with `link-security.md`'s existing claim that binding is by identifier, not a
+  crypto key pair — this is now confirmed from the ground MCU side specifically, not only
+  inferred from the app/DUML layer.
+- **A genuinely cryptographic engine does exist elsewhere on this board** (inside the
+  ground FPGA itself, not in the pairing path) — see `link-security.md`'s AF3 finding. It
+  plays no role in ID/pairing; it is listed here only so the two don't get conflated.
 
-Reproduce: `scripts/fpga/*` for the FPGA side; the MCU scan is a literal-pool search for the
-peripheral bases above over `c1_m1400.bin`.
+## What still needs the board schematic
 
-## Transport refined by disassembly (GPIO = control, data = UART)
+- **Exact MCU-pin -> FPGA-ball mapping.** The netlist gives FPGA ball locations but not
+  which board net each ball joins; confirming "this ball is SPI0 MOSI" by schematic rather
+  than by protocol-shape inference needs the GL300/C1 ground-unit schematic (not held).
+- **The address-match comparator's exact location in the fabric** (above) — tractable from
+  the netlist alone with more simulation work, not blocked on the schematic.
 
-Disassembling the GPIO routine at `0x1234` (radare2, `-a arm -b 16 -m 0`) settles what the
-GPIO bus is actually *for*. It loads GPIO base `0x2009c000` and, on a 0-3 state selector,
-does read-modify-write **bit set/clear** on the LPC176x fast-GPIO `FIOSET`/`FIOCLR`
-registers:
+## Why this was never the blocker for the link goal
 
-```
-case 1: [r1,0x3c] |= 0x400000   ; GPIO1.FIOCLR  bit22
-        [r1,0x18] |= 0x010000   ; GPIO0.FIOSET  bit16
-case 2: [r1,0x38] |= 0x400000   ; GPIO1.FIOSET  bit22
-        [r1,0x18] |= 0x010000   ; GPIO0.FIOSET  bit16
-        [r1,0x7c] |= 0x2000000  ; GPIO3.FIOCLR  bit25
-case 3: [r1,0x38] |= 0x400000   ; GPIO1.FIOSET  bit22
-        [r1,0x1c] |= 0x010000   ; GPIO0.FIOCLR  bit16
-        [r1,0x78] |= 0x2000000  ; GPIO3.FIOSET  bit25
-```
-
-(LPC176x fast-GPIO: port *n* at `0x2009c000 + 0x20*n`; `FIOSET=+0x18`, `FIOCLR=+0x1C`.)
-These are **discrete control lines** toggled by state — reset / mode / enable / config
-strobes to the FPGA (port0 bit16, port1 bit22, port3 bit25). There is **no byte-streaming
-loop and no `FIOPIN` data write**, so the GPIO is *not* a parallel data bus for the ID.
-
-The MCU's data transport is **UART, interrupt-driven**: the handler at `0x16f3c` reads a
-UART's IIR (`[base,8] & 0xf`, interrupt-ID decode) off base `0x4009c000` (UART3), and the
-image sets up UART0-3. DJI's standard inter-module transport is **DUML over UART**, and the
-Master-ID is a DUML field ("RC Connected Master Id"). So:
-
-> **The Master-ID enters the FPGA as a DUML frame over a MCU<->FPGA UART; the GPIO lines are
-> the control/handshake (reset/mode/enable) beside it, not the data path.** SPI is unused.
-
-Still not determinable from firmware alone: **which** UART (0/1/2/3) is the FPGA link vs the
-RC-host / stick links — that needs the PINCON pin-mux trace plus the board schematic.
-
-## Bitstream evidence: none (earlier `m2001` claims void)
-
-The earlier "~195 input / ~55 output pins" count came from the void `m2001` decode (pluribus #114: `m2001` is not Cyclone V) and is withdrawn. No FPGA pin count exists. The ID path MCU -> GPIO control bus -> framer is from firmware only.
-
-## What needs the board schematic (honest limit)
-
-- **Exact MCU-pin -> FPGA-ball mapping.** The netlist gives FPGA ball locations (A7, AA2, …)
-  but not which board net each ball joins. Saying "this FPGA ball is driven by MCU GPIO pin
-  Pn.m" requires the GL300/C1 ground-unit schematic, which we do not have. Pin *roles* can
-  be *inferred* from bus width/clocking (a ~12-bit clocked group = AD9363 I/Q; a narrow
-  group with its own clock = MCU control) but not proven from firmware+bitstream alone.
-- **Exact register location inside the fabric.** No decoded netlist exists (`fpga-images.md`).
-
-## Why this is enough for the link goal
-
-Per `minimal-recovery.md` / `alternative-approaches.md`, interop does **not** require
-pin-level tracing of the ID inside the FPGA:
-
-- **Value:** read the Master-ID straight from **cleartext DUML** (RC UART / USB `usbmon`, or
-  the device label / app) — no RE.
-- **Frame position:** falls out of a **known-plaintext capture** (constant header bytes).
-
-So the ID's path into the FPGA is now pinned down architecturally (MCU -> GPIO control bus ->
-MAC framer/address block), and the two things actually needed (value + frame position) come
-from captures, not from resolving the fabric. The internal FPGA trace stays a fallback,
-gated on a decodable FPGA stream (none today).
+Per `minimal-recovery.md` / `alternative-approaches.md`, interop never required pin-level
+tracing of the ID inside the FPGA — reading the ID value and its frame position both come
+from a cleartext DUML capture, not from resolving the fabric. That remains true. This doc's
+update is about getting the *architecture* right (SPI0, not GPIO/UART), not about reopening
+interop work that was already unblocked by capture-based methods.

@@ -49,7 +49,8 @@ FX3 (m1601) GPIF II - | 8-bit sync slave FIFO (FPGA = master, drives PCLK)      
                       |                                   ~15-16 pins             |
 m1400 SPI0 ---------- | SPI slave: SCK P0.15, MISO P0.17, MOSI P0.18, CS P2.9     |
                       | 4 MHz                                       4 pins        |
-m1400 GPIO ---------- | strobes P0.16, P1.22, P3.25; reset/reload P1.23   4 pins  |
+m1400 GPIO ---------- | FPGA reset pulse P1.23; P0.16/P1.22/P3.25 are RC          |
+                      | status-LED outputs, NOT FPGA control (corrected) 4 pins   |
 m1400 UART? --------- | downlink and uplink DUML (I/U, see below)   2 pins        |
                       | AD9363 data port + SPI master + control  (as air)         | ---- AD9363
 config flash -------- | 8 MiB image class -> 64 Mbit serial flash (I)             |
@@ -60,7 +61,7 @@ config flash -------- | 8 MiB image class -> 64 Mbit serial flash (I)           
 |---|---|---|
 | FX3 (`m1601` / `gnd_fx3_cyusb2014`) GPIF II | `GPIF_CONFIG=0x80000380`: sync, SDR, **clock input on the CLK pin** (FPGA-driven). `GPIF_BUS_CONFIG=0x1003`: 31-pin allocation, **8-bit DQ**, OE present. `CTRL_BUS_DIRECTION=0x500`: CTL4/5 outputs, rest inputs. `CTRL_BUS_SELECT[4]=24` (current-thread empty/full), `[5]=25` (partial). `POLARITY=0xbf` (CTL0-5 and 7 active low). `AD_CONFIG=0x44`: address lines are inputs, data thread selected by A1:A0. 4 threads → PIB sockets 0-3 | V (`m1601` table at `0x400300d8`; decoded with FX3 SDK 1.3.1 `gpif_regs.h`, checked against bladeRF and Ettus B200 configs) |
 | FX3 stream use | FPGA → socket 2 = video only (2 KB buffers). Socket 0 (FX3 → FPGA) is created but unused in phone mode; it is EP2 → FPGA raw in GPIO41-high (HDMI-board) mode | V (`ground-fx3-m1601.md`) |
-| m1400 (`gnd_rc_lpc1765`) SPI0 and GPIO | listed pins, 4 MHz, same `0E`/`0F` register protocol and bit records as air; FPGA id word in regs 0x8B-0x8E | V (`ground-upgrade-path.md`) |
+| m1400 (`gnd_rc_lpc1765`) SPI0 and GPIO | listed pins, 4 MHz, same `0E`/`0F` register protocol and bit records as air; FPGA id word in regs 0x8B-0x8E. **The Master-ID is written over this SPI0 bus** (`fpga_set_receiver_id` 0x16850: `0E reg val` to regs 3..7, bracketed by reg0 bit7), not over GPIO strobes as earlier versions of this doc and `id-entry-point.md` claimed — the 3 GPIO pins once read as "ID strobes" are the RC status LED outputs (see corrected row above) | V (`cycloneiv_clean_pairing` analysis via `awtoau/pluribus`; `m1400` disasm `FUN_00016850`/`FUN_00015d4a`) |
 | AD9363 SPI | relayed through FPGA reg 1 (`0xbec8`/`0xbf16` in m1400) | V (m1400), pins I |
 | DUML path to and from m1400 | All phone-side DUML, air senders included, reaches the FX3 over its UART from (I) m1400, so m1400 must exchange DUML with the FPGA. A UART is the likely carrier (wiki-era docs say so). Reading it through SPI0 registers is not excluded | I/U |
 | Config | 8 MiB images; three board revisions with different families (rev 01 is Cyclone IV GX-format, best match EP4CGX150) | V (sizes, headers), I (flash part) |
