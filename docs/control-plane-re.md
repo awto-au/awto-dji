@@ -503,10 +503,16 @@ Receiver types `0x0A`->port0, `0x02/0x0D/0x10/0x16`->port2, `0x18`->port4, `0x19
 entries) defaults to port 1** — consistent with a ground remote whose main job is "relay to
 the aircraft."
 
-**`UART2` is configured but never appears in this port table** — it's genuinely clocked at
-boot but its role is a separate, unresolved open item (candidate: a dedicated link to
-`m1300`, the ground's own video decoder, not DUML frame relay). CAN's actual payload content
-(DUML relay vs something else) also wasn't decoded past "it's a live, generic mailbox
+**`UART2` is configured but never appears in this port table.** It uses the exact same generic
+RX/TX ring-buffer driver as UART0/1/3 (`FUN_00020c98` byte-for-byte matches UART3's
+`FUN_00020f3c`, only the per-instance buffer-descriptor base differs) — a real, active serial
+link, not dead code. **Not the FX3-DUML link**: UART2's init (`FUN_00020d02`) targets baud-rate
+constant `0x3e800` = 256000, while UART3's init (`FUN_00020fa6`) targets `0x1c200` = 115200,
+matching the FX3-side confirmed 115200 signature exactly — the two UARTs run at different, not
+matching, baud rates. Peer still open (candidate: `m1300`, the ground's own video decoder, at
+whatever protocol runs at 256000 baud — not independently confirmed this pass). CAN's actual
+payload content (DUML relay vs something else) also wasn't decoded past "it's a live, generic
+mailbox
 driver" this pass.
 
 **Bonus — resolves an existing "Open" item:** the `frame[9]==6, cmd 0x40` special case at

@@ -181,7 +181,12 @@ phone port is either the FX3's own (GL300b/c) or the DaVinci's (GL300a/HDMI). No
 ## 8. Open
 
 - The UART peer is **I** (m1400, by sender type 14 and the existing docs); a board trace or a
-  logic probe on the FX3 UART pins would make it V.
+  logic probe on the FX3 UART pins would make it V. Narrowed which m1400 UART instance it's
+  most likely to be: m1400 has 4 UARTs, and UART3's own init code targets baud-rate constant
+  `0x1c200` = 115200 — matching this link's known signature exactly — while UART2 (the other
+  candidate considered, see `control-plane-re.md`) targets `0x3e800` = 256000, ruling it out.
+  Still I, not V: no pin-level/board confirmation that UART3's physical TX/RX pins are the ones
+  wired to FX3, only that it's the one m1400 UART whose configured baud rate matches.
 - Re-check `m1601` 02.00.0006 (operator's C1 V01.06.0000).
 - Not analysed (CLAUDE.md, no keys): a 68-byte record, obfuscated with +0x55 per byte and
   CRC16-protected, read and written via `0x4000e1dc`/`0x4000e298` (`0x40003ec8`). I: MFi
