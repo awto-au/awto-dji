@@ -4,6 +4,21 @@ Dated changelog of fact-corrections previously narrated inline in the docs. Each
 phrased as "initial understanding -> corrected finding." The docs now state only the
 corrected/current fact; this file preserves the history for reference.
 
+## 2026-10-31 (m1400 GPIO0 P0.7/P0.9 interface — capstone trace corrected by Ghidra xrefs)
+
+- **"A separate half-duplex bit-bang pin PAIR, driven only by `port_send` port 1" -> "a 3-pin
+  interface (2 data + 1 framing/CS-equivalent), with 6 call sites, 2 of which are DUML command
+  handlers (cmd 0x22/0x23) calling the shared enqueue function DIRECTLY, bypassing `port_send`
+  entirely."** The earlier same-day characterization was built from a `mcu_trace.py` (capstone,
+  linear-sweep) trace of a handful of known call sites; `lpc-reversing-process.md`'s own
+  documented gotcha (literal-pool misalignment on blind sweeps) meant it was never used for an
+  exhaustive xref search. A proper Ghidra headless pass (`scripts/re/m1400_ghidra_disasm.py`,
+  already built, re-run this session) gives reference-tracked xrefs: the enqueue function
+  (`p07_p09_ringbuf_enqueue` @0x12560) has 6 callers, not 1, and the byte-transaction wrapper
+  (`p07_p09_byte_txn` @0x12612) toggles a third GPIO0 bit around each 2-pin shift pair, not
+  previously noticed. `docs/control-plane-re.md`'s port-1 table and `docs/symbols/c1_m1400.tsv`
+  updated with the corrected shape and new symbol names.
+
 ## 2026-10-27 (rename)
 
 - `ofdm_link_rx_statemachine` -> `fpga_link_rx_poll` and `ofdm_payload_descramble` -> `fpga_link_payload_descramble` (#85). The OFDM maths is in the FPGA; these are the MCU-side driver for its already-demodulated link. Upstream-derived names (`ofdm_radio`, `ofdm_board_version_flags`, `ofdm_init_*`) are unchanged. Older entries below and the archived Ghidra project (#83) may still show the old names.

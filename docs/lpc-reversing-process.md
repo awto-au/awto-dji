@@ -53,11 +53,19 @@ from" is answered and was already documented; it isn't a fresh finding, just a c
   exist and roughly how big it can be.
 - No Cortex-A analogue needed on this side (no LPC module here runs Linux).
 
-## 3. Load into Ghidra — not yet done for any LPC module
+## 3. Load into Ghidra — done for m1400, not yet for m1401
 
-- **Gap, not yet closed:** no Ghidra project exists for m1400 (or m1401). All LPC work so far
-  (`ground-upgrade-path.md`) used `scripts/re/mcu_trace.py`, a capstone-based disassembler —
-  lighter than Ghidra, no decompiler, no persistent project.
+- **Closed for m1400** (this session, re-confirmed): `scripts/re/m1400_ghidra_disasm.py` runs a
+  full headless pass with real LPC176x SVD register labelling already applied (511 labels,
+  `docs/data/lpc176x5x-register-map.tsv`) and a custom `DumpLPC17xx.java` postScript (named
+  peripheral xrefs, full disassembly, full decompilation, 789 functions / 38,426 instructions).
+  Output: `tmp/m1400_ghidra/m1400_dump.txt` (2 MB, regenerate by re-running the script — it's
+  derived/regenerable, not hand-curated, so it isn't itself committed). The archived project
+  (`re/ghidra-projects/m1400_radio.tar.gz`) has a 0-byte `.gpr` marker file (likely an
+  archive-timing artifact of `ghidra_archive.py` vs. a live Ghidra lock) but its `.rep` database
+  (`idata/00/~00000000.db/db.1.gbf`, 4.2 MB) is intact; the dump text is the reliable artifact to
+  use, not the archived project file, until/unless the `.gpr` issue is tracked down.
+- Still a gap for m1401 (LPC1549 variant) — this process applies, not yet run.
 - Language for when this is built: `ARM:LE:32:Cortex`, raw binary, base = flash offset
   `0xA000` (step 2) for the app; a separate load would be needed for the bootloader region once
   obtained via SWD.
