@@ -62,19 +62,19 @@ flowchart LR
 
   FC -->|"V m0900 side: USART1 256228 baud, RX ring 0x2000002b"| M0900
   M0900 -->|"V: USART3 8N1 257143 baud, DMA"| AFPGA
-  GFPGA -->|"I: UART DUML"| M1400
+  GFPGA -->|"V: SPI0 status regs 0xC0-0xEF only, no DUML; downlink DUML into m1400 U (UART0/1/2?)"| M1400
   M1400 -->|"V: 115200 UART (peer m1400 I)"| FX3
   FX3 -->|"V: USB chunk 55 CC 5749 DUML"| APP
 
   APP -.->|"V: USB bare DUML"| FX3
   FX3 -.->|"V: 115200 UART (peer m1400 I)"| M1400
-  M1400 -.->|"I: UART DUML"| GFPGA
+  M1400 -.->|"V: SPI0 regs 0x44-0x7B, 56-B uplink record (23-B DUML chunk + sticks + ID) per frame sync P2.3"| GFPGA
   AFPGA -.->|"V: USART3 8N1 257143 baud, IDLE-framed DMA RX"| M0900
   M0900 -.->|"V: USART1 uart_send port 1, types 3 5 10 11 12, every board"| FC
 
   M0900 ---|"V: SPI2 4.5 MHz mode 1, 3-byte frames, plus config GPIO U"| AFPGA
   AFPGA ---|"V: AD9363 SPI relayed by FPGA, rate U"| AAD
-  M1400 ---|"V: GPIO strobes, no SSP"| GFPGA
+  M1400 ---|"V: SPI0 4 MHz 3-byte frames + AD9363 bridge; P2.3 frame-sync IRQ; reset/config GPIO"| GFPGA
 
   linkStyle 0,1,2,7,8 stroke:#1f77b4,stroke-width:3px
   linkStyle 3,4,5,6 stroke:#444444,stroke-width:3px
@@ -85,6 +85,7 @@ flowchart LR
 
 - Air video (edges 0-2): DM368 sends raw H.264 over USB bulk EP2 into the air FX2 (`m1500`), which bridges an 8-bit slave FIFO to the air FPGA — V for the USB and FIFO config, I that the FIFO peer is the FPGA (`m0800-dm368-provenance.md` §5/§7).
 - Ground video/DUML split (edges 7-8, 12-15): the ground FPGA feeds the FX3 video on an 8-bit GPIF port and DUML on a 115200 UART (peer m1400, I); the FX3 interleaves both to the phone as `55 CC`-tagged USB chunks (`ground-fx3-m1601.md`). V in FX3 code and a capture.
+- Edge 10/16 (m1400 ↔ ground FPGA, **corrected 2026-11-01**, `control-plane-re.md` "SPI0 ↔ FPGA"): ground→air DUML leaves m1400 as 23-byte chunks inside a 56-byte uplink record written to FPGA regs `0x44..0x7B` over SPI0 every frame (sync = P2.3 IRQ, TIMER1 one-shot). m1400 reads **no** DUML from the FPGA: SPI0 reads are single status bytes, burst read has no callers, SPI IRQ unused. If downlink DUML reaches m1400 at all it is on UART0/1 (ring `0x10006740`) or UART2 (256000) — peers unidentified. The earlier "UART DUML" edge in both directions was wrong.
 - Edge 10/17: that USART3 faces the air FPGA/link is **I**. `packet_send` sends receiver types 2, 6, 13, 14, 16, 20, 22 out USART3 on every board code (section 3). The USART3-to-FPGA wiring needs a schematic.
 - Edge 9/18 (`m0900-can-channels.md`): `packet_send` routes types 3, 5, 10, 11, 12, 18, 21, 23 to `uart_send(1)` = **USART1 on every board** (V); the far end being the FC is **I** (receiver type 3). CAN 0x412/0x413 carries camera/gimbal (types 1, 4, 8, 15); CAN 0x414/0x415 carries only type 30.
 - The docs' "CENTER UART 256000 8N1 to FC" **is** reproduced: CENTER = USART1 (section 5, item 1).
@@ -95,7 +96,8 @@ Same edges as the section 2 mermaid, as a words-only walkthrough. Canonical name
 `naming-map.md`. V/I/U per-hop as in the diagram; nothing here claims more than the diagram does.
 
 **Control (phone → FC).** Phone → (V) `gnd_fx3_cyusb2014` USB, bare DUML → (V, FX3 end; peer
-`gnd_rc_lpc1765` I) `uart_gnd_rc_fx3` 115200 UART → `gnd_rc_lpc1765` → (I) ground FPGA, UART DUML
+`gnd_rc_lpc1765` I) `uart_gnd_rc_fx3` 115200 UART → `gnd_rc_lpc1765` → (V) ground FPGA, `spi_gnd_rc_fpga`
+regs `0x44..0x7B`, one 23-byte DUML chunk per frame in the 56-byte uplink record
 → (I) `rf_air_gnd` 2.4 GHz OFDM → (I) ground FPGA's air counterpart, `air_fpga_cyclonev` → (V)
 `uart_air_router_fpga` USART3 257143 baud, DMA → `air_router_stm32f103` (m0900) → (V route; FC
 end I) `uart_air_router_fc` USART1, `uart_send` port 1, types 3/5/10/11/12 → `air_fc_stm32f427`.
@@ -104,7 +106,7 @@ end I) `uart_air_router_fc` USART1, `uart_send` port 1, types 3/5/10/11/12 → `
 `air_fc_stm32f427` → (V m0900 side; FC source I) `uart_air_router_fc` USART1 256228 baud →
 `air_router_stm32f103`, which **re-addresses and forwards twice** (both V, decompiled):
 - byte5 → type 2 (app), CRC16 recomputed → (V) `uart_air_router_fpga` USART3 257143 baud →
-  `air_fpga_cyclonev` → (I) `rf_air_gnd` → (I) ground FPGA → (I) `uart_gnd_rc_fpga` DUML-over-UART
+  `air_fpga_cyclonev` → (I) `rf_air_gnd` → (I) ground FPGA → (**U**: not SPI0 (V); UART0/1/2 candidates)
   → `gnd_rc_lpc1765` → (V FX3 end; peer I) `uart_gnd_rc_fx3` 115200 UART → `gnd_fx3_cyusb2014` →
   (V) `usb_gnd_fx3_phone`, chunk `55 CC 5749` → phone.
 - byte5 → type 1 (camera), CRC16 recomputed → (V) `can_air_primary` std ID `0x412` →
@@ -291,7 +293,7 @@ sequenceDiagram
 4. **Board role.** `rf-sdr-and-repair.md` calls P01007.06 the "OFDM Receiver board" (RC side) yet wires CENTER to the ESC center board (aircraft). Air vs RC role: U.
 5. Ground FPGA to DM365 to FX2LP versus FPGA directly to FX2LP: docs disagree.
 6. **How DUML bytes are multiplexed with video** inside OFDM frames: U for the radio layer itself, but **narrowed at both ends (2026-10-24).** Air: the DM368 sends raw H.264 and the FX2 is AUTO (`m0800-dm368-provenance.md` §7). Ground: video reaches the FX3 on the FPGA parallel port and **all** DUML on a 115200 UART (V code, V capture), and the FX3 tags USB chunks `55 CC <type> <len>` (`ground-fx3-m1601.md`). I: the air and ground FPGAs are the mux and demux.
-7. **Ground path to the phone (GL300C):** **resolved 2026-10-24** (`ground-fx3-m1601.md`). The phone talks only to the FX3 (`m1601`: iAP2 for iPhone, AOA host for Android). DUML runs FX3 ⇄ UART 115200 ⇄ (I: m1400); video runs ground FPGA → FX3 GPIF. **Ground AD9363 config path**: still U.
+7. **Ground path to the phone (GL300C):** **resolved 2026-10-24** (`ground-fx3-m1601.md`). The phone talks only to the FX3 (`m1601`: iAP2 for iPhone, AOA host for Android). DUML runs FX3 ⇄ UART 115200 ⇄ (I: m1400); video runs ground FPGA → FX3 GPIF. **Ground AD9363 config path: resolved 2026-11-01** — m1400 SPI0 through the FPGA bridge (reg `0x01`=01), boot script of 2,607 writes over the same 261 registers as the air capture, then handed to the FPGA's own SPI engine (`0x01`=02) for per-frame hopping (`control-plane-re.md`, "SPI0 bridge traffic"). **Still U: how downlink DUML gets from the ground FPGA into m1400** — not SPI0 (V).
 8. **Air over-the-air encryption** is not ruled out (`what-is-actually-secret.md` LAYER CAVEAT). MCU-layer DUML cleartext is shown; the link layer is not.
 9. FPGA-to-AD9363 SPI rate, data-port mode (LVDS vs CMOS), width: U. Fref 40 MHz: I.
 10. ~~Second CAN TX queue `0x20002538` ID word~~ **resolved**: StdId 0x414 (TX), paired with RX 0x415 (obj `0x20002554`, ring `0x200024b8+0xa0`, pump `0x08011882`, same parser callback and dispatch). Only receiver type 30 is routed to it, and whether it is live on a real bus is U (`m0900-can-channels.md`). ~~Still open: how table `0x0801a0d8` (id16 dispatch) is reached.~~ **Resolved 2026-10-25** (see item 2 above, `air-router-deep-dive.md` §2).

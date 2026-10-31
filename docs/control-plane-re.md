@@ -490,8 +490,8 @@ receiver-type entries map to a `port_send(port, frame)` switch (`0x25D8`):
 | port | peripheral | evidence |
 |---|---|---|
 | 0 | host/ACK ring buffer, OS-critical-section wrapped (`0x1F5E0`) | likely the primary app/host DUML link |
-| 1, mode 0 (default) | 23/40-byte records, SAME enqueue function as mode 1 (`p07_p09_ringbuf_enqueue` @0x12560 — see correction below) | not a separate ring buffer from mode 1's; both modes feed the one 10-slot circular buffer that drains onto GPIO0 P0.7/P0.9 |
-| 1, mode 1 | 21-byte records via `p07_p09_ringbuf_enqueue`→`p07_p09_bitbang_shift`/`p07_p09_byte_txn`, bit-banged on GPIO0 (not SPI0 hardware) | **confirmed NOT SPI0's SCK/MISO/MOSI/CS pins** (`DAT_000129a0` = GPIO0 base `0x2009c000`, P0.7/P0.9 via FIOSET/FIOCLR/FIOPIN, not P0.15/17/18). **Ghidra reference-tracked pass (this session, correcting the earlier capstone-only trace):** `p07_p09_ringbuf_enqueue` (@0x12560) has **6 xref call sites**, not one — `port_send` port 1 is only ONE caller. Two DUML command handlers (`duml_cmd_0x22_handler` @0xde2a, `duml_cmd_0x23_handler` @0xddb8, cmd IDs 0x22/0x23 in the dispatch at `0xf47e`, not yet named against the APK's `CmdIdType` enum) call it **directly, bypassing `port_send` entirely** — so this interface is NOT exclusively DUML-relay traffic; it's also driven by specific command handlers with their own payload shape. Three further call sites (`DAT_0000df44`×2, `DAT_0000e7a8`×2, `DAT_00010288`×1) not yet attributed to a named caller. **Also corrects the pin-pair count**: `p07_p09_byte_txn` (@0x12612) wraps the 2-pin shift with a THIRD pin (GPIO0 bit `0x40`) set before and cleared after each transaction — a framing/CS-equivalent signal, making this a 3-pin interface, not the 2-pin "half-duplex pair" earlier characterized today. `p07_p09_mode_cmd_e1`/`_e2` (@0x126d8/@0x1269a) send actual byte values (`0xe1`/`0xe2`) OVER this interface before touching P0.19/GPIO3 direction bits — these are in-band mode-select commands, not separate control-only logic. Full xref/call-graph detail: `tmp/m1400_ghidra/m1400_dump.txt` (Ghidra headless pass, `scripts/re/m1400_ghidra_disasm.py`, re-run this session; see `docs/lpc-reversing-process.md` step 3 for the now-confirmed-working project status). **Bit rate, computed from the real per-bit loop (`p07_p09_bitbang_shift`@0x125c4-0x1260c, re/ghidra-projects/m1400_radio/m1400_dump.txt lines 13409-13442)**: software bit-bang, no hardware baud generator. The loop calls the delay primitive at `0x13d60` 3x per bit with argument 1, each call costing 11 cycles (counted instruction-by-instruction, standard Cortex-M3 Thumb-2 timings: 1 cycle for mov/adds/cmp/orr/lsls, 2 for taken branches/ldr/str from SRAM, 2 for bx lr). Full per-bit body (GPIO read-modify-write around each delay call, loop-counter increment) totals ~68 cycles/bit at 72 MHz core clock = 0.94 us/bit ≈ **1.06 MHz best-case**. **Caveat, not resolved**: this assumes zero flash wait-state execution; the LPC1765's actual `FLASHCFG` register value (which sets wait states for code fetched from flash at 72 MHz, typically several cycles per fetch on this family) was not read from this firmware, so real elapsed time is very plausibly 2-3x longer — a realistic range is **~350 kHz-1.06 MHz**, not a single confident number, until `FLASHCFG`'s programmed value is found.|
+| 1, mode 0 (default, `rc_state+0xf == 0`) | DUML frame split into 23-byte chunks (40-byte when transport byte `0x10004442+0x21 == 0x0b`) into a 20-slot x 0x29 queue at `0x100033d0` (`port_send` @0xc5d8 case 1) | **Lightbridge uplink via the FPGA, over SPI0** — drained by the radio task (undefined-by-Ghidra code 0x11d00-0x1214c): one chunk per frame into the 56-byte uplink record at `0x10003af0`, which TIMER1-MR2 (`FUN_000171a6`) writes to FPGA regs `0x44..0x7B`. 40-byte variant goes out UART2 TX (`FUN_00020e72`) instead. See "SPI0 ↔ FPGA: what crosses it" below. **Corrects the earlier claim that mode 0 also drained onto P0.7/P0.9.** |
+| 1, mode 1 (`rc_state+0xf == 1`, RC-to-RC slave) | 21-byte records (tag 3) via `p07_p09_ringbuf_enqueue` @0x12560 (10-slot x 0x19 queue at `0x10003c06`) → `p07_p09_byte_txn` @0x12612 | **Bit-banged 4-wire SPI master on GPIO0 to a second RF module ("RFM")**, not SPI0: P0.6 = CS (bit 0x40, low per transaction), P0.7 = SCK (0x80), P0.9 = MOSI (0x200), **P0.8 = MISO** (`FIOPIN` bit 8 sampled in `p07_p09_bitbang_shift` @0x125bc) — the shift is full-duplex, so this is 4 pins, not the 3 claimed earlier. Primitives: `FUN_00012612(a,b)` write 2 bytes, `FUN_00012640(reg)` read, `FUN_00012660(reg,buf,n)` burst write; `0xe1`/`0xe2` mode commands @0x126d8/@0x1269a. 6 enqueue call sites (also `duml_cmd_0x22/0x23_handler` @0xde2a/@0xddb8 direct; `DAT_0000df44`x2, `DAT_0000e7a8`x2, `DAT_00010288`x1 unattributed). RX side: `rfm_frame_parse` @0x139dc on ring `0x10003e23` — `55 len ~len ... CRC-8(0xAA)` frames, error strings `5.8G_VER_ERR`, `RFM_CRC_ERR` → `rfm_frame_handle` @0x138f4. Bit rate ~350 kHz-1.06 MHz (per-bit loop @0x125c4-0x1260c, 3 x `delay(1)` @0x13d60 ≈ 68 cycles/bit at 72 MHz; `FLASHCFG` wait states unknown, hence the range). |
 | 2 | UART3 (`0x21126`) | |
 | 3 | UART0 (`0x2091C`) | |
 | 4 | UART1 (`0x20BEC`) | |
@@ -504,20 +504,52 @@ Receiver types `0x0A`->port0, `0x02/0x0D/0x10/0x16`->port2, `0x18`->port4, `0x19
 entries) defaults to port 1** — consistent with a ground remote whose main job is "relay to
 the aircraft."
 
-**`UART2` is configured but never appears in this port table.** It uses the exact same generic
-RX/TX ring-buffer driver as UART0/1/3 (`FUN_00020c98` byte-for-byte matches UART3's
-`FUN_00020f3c`, only the per-instance buffer-descriptor base differs) — a real, active serial
-link, not dead code. **Not the FX3-DUML link**: UART2's init (`FUN_00020d02`) targets baud-rate
-constant `0x3e800` = 256000, while UART3's init (`FUN_00020fa6`) targets `0x1c200` = 115200,
-matching the FX3-side confirmed 115200 signature exactly — the two UARTs run at different, not
-matching, baud rates. Peer still open, and the `m1300` candidate is now doubtful rather than just
-unconfirmed: `m1300` (video decoder) is likely not even populated on this board (`ground-fx3-
-m1601.md` — the FX3/phone-tethered variant doesn't need a local video decoder, unlike LCD-
-equipped variants sharing the same PCB and firmware package). 256000 baud remains unexplained;
-whatever UART2 talks to is still open. CAN's actual
-payload content (DUML relay vs something else) also wasn't decoded past "it's a live, generic
-mailbox
-driver" this pass.
+**`UART2` (256000, init `FUN_00020d02`) is not a `port_send` target but is live both ways:**
+DUML RX source (poller `FUN_000104ca` scans UART2's ring `0x10006850`), and the port-1 uplink
+transport when transport byte `0x10004442+0x21 == 0x0b` (40-byte chunks out `FUN_00020e72`).
+UART3 (115200, `FUN_00020fa6`) matches the FX3's confirmed baud; UART2 does not. UART2's peer
+is still open (`m1300` doubtful: likely unpopulated on this variant, `ground-fx3-m1601.md`).
+CAN payload content not decoded past "live generic mailbox driver".
+
+### DUML input sources (every caller of the ring scanner `FUN_00018b32` → `duml_route` @0xfbb0)
+
+| poller | source | peer |
+|---|---|---|
+| `FUN_00010452` | OS message queue (`FUN_0001f69c`/`f68a`) | internal |
+| `FUN_000104ca` | UART2 ring `0x10006850` | U (256000) |
+| `FUN_00010560` | UART3 ring `0x10006a70` | FX3 (I by baud) |
+| `FUN_000105ee` | ring `0x10003f23` = RFM-derived (`rfm_frame_handle` records at `0x10003d23`+) | second RF module (I) |
+| `FUN_0001068c` | ring `0x100067f0` | U (UART1 probable) |
+| `FUN_000109a8` | ring desc `0x10006740` (buf `0x10006760`, written by the UART0 and UART1 ISRs) | U; same ring also parsed by the non-DUML `55 BB` xor-checksum parser `FUN_00010754` |
+| `FUN_00010a38` | CAN (`FUN_0001bb20`/`bb6c`) | CAN1/2 |
+
+**SPI0 is not in this list: nothing reads DUML from the FPGA over SPI0** (next section).
+
+### SPI0 ↔ FPGA: what crosses it (Ghidra, C1_FW_V01.06.0000, 2026-11-01)
+
+Drivers: `spi0_xfer_byte` @0x17ddc (S0SPDR write, poll SPIF, return S0SPDR), `fpga_reg_write`
+@0x15df6 `[0E reg val]`, `fpga_reg_read` @0x15e24 `[0F reg FF]` → 1 byte, `fpga_burst_read`
+@0x15e8a **no callers**, `fpga_burst_write` @0x15e50 **no callers**. SPI IRQ 13 never registered
+(IRQ dispatch table @0x10004618, installer `FUN_0001bcc2`): SPI0 is polled, 3-byte frames only.
+
+| direction | what | mechanism | evidence |
+|---|---|---|---|
+| MCU → FPGA → air (ground→air DUML) | 56-byte uplink record per frame: `[0..0xE]` header (builder references the 4-byte ID at `0x10000244`, I), `[0xF..0x10]` CRC-16 seed 0x55AA, `[0x11..0x1A]` stick/control words, `[0x1B]` chunk len, `[0x1C..0x36]` one 23-byte DUML chunk from queue `0x100033d0`, `[0x37]` CRC-8 0xAA; bytes 1..0x37 XOR-scrambled with 8-byte key `rc_state+0x64` | `FUN_0001698a`: 56 x `fpga_reg_write(0x44+i)` plus `0x40..0x43`, `0x7C..0x7F`, from TIMER1-MR2 in `FUN_000171a6` | V (code) |
+| FPGA → MCU (air→ground DUML) | **none.** Reads are single status bytes only: `0x00` (handshake), `0x08/0x09`, `0x0C`, `0x10`, `0x8B..0x8E` (ID word), `0x8C/0x9D/0x9F`, `0xC0`, `0xC3..0xCF`, `0xD0/0xD1`, `0xD9/0xDA`, `0xE0..0xEB`, `0xEE/0xEF` — link status, peer ID (`0xE3..0xE6` compared to stored ID, mismatch → `FUN_00015cfa` reg0 bit1 toggle), RSSI-class readback `0xC3/0xC4/0xC7` | `FUN_000171a6` MR0/MR2 branches, `FUN_00016ad8` | V (code); 0 DUML consumers of any SPI0 read |
+| FPGA → MCU sync | **P2.3 falling edge** (`IO2IntEnF` bit 3, armed by `FUN_000176f8`, cleared by `radio_quiesce` @0x1771e) → EINT3/GPIO IRQ 21 handler `FUN_0001750a` → restarts TIMER1 one-shot (`TCR=2`, `MCR=0x149`) | TIMER1 `PR=0x18`, PCLK/8 → 360 kHz tick at 72 MHz CCLK: MR0=500 (1.4 ms) status read, MR1=3000 (8.3 ms) config sync, MR2=4500 (12.5 ms) uplink record + status block + next hop; free-run fallback `MCR=0x449` MR3=7000 (19.4 ms) when unsynced | V (code); absolute times assume 72 MHz |
+
+So Dan's reading is right: the ground MCU **sends** air-bound DUML through SPI0 (as part of the
+uplink record) and **receives nothing DUML-shaped** on it. The docs' `(I)` "UART DUML to ground
+FPGA" edge is **contradicted** — the only MCU-side candidates for downlink DUML are UART0/UART1
+(ring `0x10006740`) and UART2 (ring `0x10006850`), peers unidentified.
+
+### SPI0 bridge traffic to the AD9363 (FPGA reg `0x01` bits 1:0)
+
+- `ad936x_reg_write` @0x15ec8 `(addr, val, engine)`: `[0E 01 01]` (bridge), CS low, `[0x80|addr>>8, addr, val]`, CS high, then `[0E 01 02]` if `engine` else `[0E 01 00]`. `ad936x_reg_read` @0x15f16: same with `[addr>>8 & 0x7F, addr, FF]`. Same CS (P2.9); the FPGA regfile ignores the frame because only cmd `0x0E` loads it (pluribus `lightbridge-fpga.md` §6). Discrimination is purely the mode write bracketing each radio frame.
+- **Boot** (`fpga_post_boot_config` @0x15b86 → `fpga_script_exec_record` @0x15a6c over table `0x271d4`, mode 3 / `0x2ac2c` mode 1 / `0x2a310` mode 0; decoder `scripts/re/m1400_fpga_script_decode.py`): 2 x 256 FPGA register writes (full regfile `0x00..0xFF` twice, each after `[0E 01 02]` — matches the FPGA's two register copies selected by reg0 bit 7), then `[0E 01 01]` and **2,607 AD9363 writes over 261 registers** (`0x002..0x3DF`), 12 polls (`0x05E` BBPLL lock, `0x244/0x284` RF PLL, `0x247/0x287`, `0x016` cal done), 10 reads. The 261-register set is **identical** to the air m0900 capture (`docs/data/ad9363-boot-config-decoded.txt`); 45 values differ (e.g. `0x002`=0x8E vs 0xCE, `0x014`=0x0D vs 0x29, `0x016`=0x40, TX atten `0x073/0x075`=0x18 vs 0xFF, gain tables `0x1DB..0x220`). Mode-0 table: 65 writes, regs `0x000..0x07E` even only. After the script: PLL-lock check (`0x017==0x1A`, `0x05E` bit7, `0x247/0x287` bits) then `[0E 01 02]` + reg0 bit0 pulse — **the radio is handed to the FPGA engine at the end of boot**.
+- **Run time, from TIMER1-MR1/MR2** (every synced frame, all `engine=1` so the FPGA returns to engine mode after each): `FUN_00016d54` — TX attenuation `0x073/0x075` (mode 1/3) or `0x054/0x05C` (mode 0) written only on change, plus FPGA `0xCE`; `FUN_00016ef6` — band switch on `rc_state+0xAC`: 0 → `0x004=0x03, 0x005=0x11` + FPGA `0xB0..0xB4`/`0xBA..0xBE` = synth words int 122 (2.4 GHz, VCO/2), 1 → `0x004=0x4C, 0x005=0x00` + int 143 words (5.8 GHz, VCO/1); `FUN_00016414`/`FUN_0001625e` — per-hop 5-byte RX/TX synth words (`0xB0..0xB4`, `0xB5..0xB9`, `0xBA..0xBE`) from 32-entry x 9-byte channel tables at `0x2e403` (int 114..145, 2.4 GHz band) / `0x2e643` (int 139..145, 5.8 GHz) / `0x2e763`, chosen by channel index `(rc_state+0xC & 0xFFF) >> 7` + offset, plus FPGA `0x09`, `0x23`, `0x94`; `FUN_00016166` — FPGA `0x9D/0x8C` rate/mode bits. **No run-time AD9363 register reads except `0x073/0x075/0x054/0x05C` read-before-write.** Boot script also contains 10 `AD_RD` of `0x1EB/0x1EC/0x1E6` (RSSI/gain) and `0x0A3`.
+- **Engine programming (c):** yes — the MCU never hops the radio itself; it loads the next channel's synth words into FPGA `0xB0..0xBE` (= AD9363 `RX/TX_SYNTH_INTEGER/FRAC` byte groups, 3 x 5) each frame and the FPGA engine (mode 2) writes them to the radio and reads back RSSI-class values that the MCU collects at `0xC3/0xC4/0xC7` (`FUN_00016ad8`, 5-sample average per channel, min-of-8 channel pick in `FUN_00017084`). Which AD9363 addresses the engine targets is FPGA-side (the engine's `0x12/0x13/0x1B/0xA0/0xA1` control regs, pluribus #177).
+- Traffic volume per frame: ~100 FPGA register frames (64 record writes, ~30 status reads, hop words; 3 bytes each at 4 MHz ≈ 6 µs) + 0-2 radio frames ≈ 0.6 ms of SPI0 per ~19 ms frame.
 
 **Bonus — resolves an existing "Open" item:** the `frame[9]==6, cmd 0x40` special case at
 `duml_route` offset `0x5C76` (flagged open in `ground-upgrade-path.md`, "Re-check... the 'set
