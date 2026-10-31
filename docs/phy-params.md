@@ -11,6 +11,13 @@ ready, waiting on an input), **inferred** (reasoned, not yet observed). The capt
 
 ## Status (2026-10-23)
 
+Ground/air follow-up (31 October 2026, #87): see
+[lightbridge-radio-configuration.md](lightbridge-radio-configuration.md) for the
+hash-pinned long ground profiles, complete register comparison and exact ADI gain-table
+match. It distinguishes table-end from post-table/runtime values and documents the
+late ground ADC divider change. The existing capture here is emulated, not measured
+from a physical radio.
+
 Tags: **verified** = read from firmware/registers or checked against no-OS source; **inferred** = reasoned; **unknown**.
 
 | Piece | State |
