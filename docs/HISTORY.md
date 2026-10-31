@@ -4,6 +4,22 @@ Dated changelog of fact-corrections previously narrated inline in the docs. Each
 phrased as "initial understanding -> corrected finding." The docs now state only the
 corrected/current fact; this file preserves the history for reference.
 
+## 2026-10-31 (ground/air radio configuration, #87)
+
+- Ground scripts previously described but not tabulated -> hash-pinned mode-1/mode-3
+  inventories, each 3151 records and 261 radio register addresses, now compared with
+  the 2639-record air profile. Table-end values are not treated as live state;
+  read-dependent register 0x0A3 is symbolic.
+- No exact external gain-table provenance -> air and ground mode 3 match all 77
+  entries of the first public ADI no-OS full-gain-table band at the pinned reference
+  revision. This identifies table content, not operating RF band or the complete modem.
+- Ground direction clarified: receives video, transmits control/DUML. Its late shared
+  ADC/DAC clock change remains unresolved for wide receive operation; a TX-only
+  bandwidth explanation does not resolve the receive-clock question.
+- Earlier Pluribus RTL-readback discrepancy -> updated upstream notes report matching
+  tested outputs/FF snapshots and attribute the old discrepancy to testbench stimulus.
+  DJI system co-simulation remains a design only; implementation is deferred.
+
 ## 2026-10-27 (rename)
 
 - `ofdm_link_rx_statemachine` -> `fpga_link_rx_poll` and `ofdm_payload_descramble` -> `fpga_link_payload_descramble` (#85). The OFDM maths is in the FPGA; these are the MCU-side driver for its already-demodulated link. Upstream-derived names (`ofdm_radio`, `ofdm_board_version_flags`, `ofdm_init_*`) are unchanged. Older entries below and the archived Ghidra project (#83) may still show the old names.

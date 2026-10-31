@@ -1,0 +1,174 @@
+{
+  "firmware_sha256": {
+    "air": "72156b4b18e8db4c35c74cf2e8ae90d216fd260cdb5b508087840a8d7313fe6d",
+    "ground": "43bc7d6cb9f9c916dcfee0146378a3a6c823d0c65ac9613ca5adecae25f9d93f"
+  },
+  "evidence": "static script values, not hardware capture",
+  "profiles": {
+    "air_ad_boards_2_4_5": {
+      "record_count": 2639,
+      "op_counts": {
+        "6": 2614,
+        "8": 7,
+        "10": 12,
+        "11": 4,
+        "12": 1,
+        "13": 1
+      },
+      "distinct_radio_registers": 261,
+      "gain_entries": 91,
+      "gain_index_range": [
+        0,
+        90
+      ],
+      "gain_fingerprint_json_sha256": "9c4616b94b3d7db0561d40beb6fcd603f9e8460bcecc09bc1237e564dccecd7b",
+      "fir": {
+        "tx": {
+          "loaded_index_range": [
+            0,
+            127
+          ],
+          "coefficient_count": 128,
+          "loaded_symmetric": false,
+          "configured_taps": 64,
+          "active_symmetric": true,
+          "fingerprint_json_sha256": "ba092462162413221c7fb372d76baf5eff48e84ba241f14fce47c49cb7637df7"
+        },
+        "rx": {
+          "loaded_index_range": [
+            0,
+            127
+          ],
+          "coefficient_count": 128,
+          "loaded_symmetric": false,
+          "configured_taps": 64,
+          "active_symmetric": true,
+          "fingerprint_json_sha256": "ba092462162413221c7fb372d76baf5eff48e84ba241f14fce47c49cb7637df7"
+        }
+      },
+      "tx_rx_fir_equal": true,
+      "file_offset": "0xe660",
+      "byte_length": 10556,
+      "adi_full_gain_table_aligned_matches": {
+        "0": 77,
+        "1": 52,
+        "2": 25
+      }
+    },
+    "ground_mode3": {
+      "record_count": 3151,
+      "op_counts": {
+        "5": 512,
+        "6": 2607,
+        "8": 10,
+        "10": 12,
+        "11": 4,
+        "12": 3,
+        "13": 3
+      },
+      "distinct_radio_registers": 261,
+      "gain_entries": 91,
+      "gain_index_range": [
+        0,
+        90
+      ],
+      "gain_fingerprint_json_sha256": "9c4616b94b3d7db0561d40beb6fcd603f9e8460bcecc09bc1237e564dccecd7b",
+      "fir": {
+        "tx": {
+          "loaded_index_range": [
+            0,
+            127
+          ],
+          "coefficient_count": 128,
+          "loaded_symmetric": false,
+          "configured_taps": 64,
+          "active_symmetric": true,
+          "fingerprint_json_sha256": "ba092462162413221c7fb372d76baf5eff48e84ba241f14fce47c49cb7637df7"
+        },
+        "rx": {
+          "loaded_index_range": [
+            0,
+            127
+          ],
+          "coefficient_count": 128,
+          "loaded_symmetric": false,
+          "configured_taps": 64,
+          "active_symmetric": true,
+          "fingerprint_json_sha256": "ba092462162413221c7fb372d76baf5eff48e84ba241f14fce47c49cb7637df7"
+        }
+      },
+      "tx_rx_fir_equal": true,
+      "file_offset": "0x1d1d4",
+      "byte_length": 12604,
+      "adi_full_gain_table_aligned_matches": {
+        "0": 77,
+        "1": 52,
+        "2": 25
+      }
+    },
+    "ground_mode1": {
+      "record_count": 3151,
+      "op_counts": {
+        "5": 512,
+        "6": 2607,
+        "8": 10,
+        "10": 12,
+        "11": 4,
+        "12": 3,
+        "13": 3
+      },
+      "distinct_radio_registers": 261,
+      "gain_entries": 91,
+      "gain_index_range": [
+        0,
+        90
+      ],
+      "gain_fingerprint_json_sha256": "d6aec912990f73ec00994f179d3924359adf8de3cd0c6f38ab1d70c3d97bda68",
+      "fir": {
+        "tx": {
+          "loaded_index_range": [
+            0,
+            127
+          ],
+          "coefficient_count": 128,
+          "loaded_symmetric": false,
+          "configured_taps": 64,
+          "active_symmetric": true,
+          "fingerprint_json_sha256": "ba092462162413221c7fb372d76baf5eff48e84ba241f14fce47c49cb7637df7"
+        },
+        "rx": {
+          "loaded_index_range": [
+            0,
+            127
+          ],
+          "coefficient_count": 128,
+          "loaded_symmetric": false,
+          "configured_taps": 64,
+          "active_symmetric": true,
+          "fingerprint_json_sha256": "ba092462162413221c7fb372d76baf5eff48e84ba241f14fce47c49cb7637df7"
+        }
+      },
+      "tx_rx_fir_equal": true,
+      "file_offset": "0x20c2c",
+      "byte_length": 12604,
+      "adi_full_gain_table_aligned_matches": {
+        "0": 30,
+        "1": 16,
+        "2": 14
+      }
+    }
+  },
+  "adi_source_sha256": "9d4e6e460f9a6a03cfaad360155e96f6d7ecf5f0ce5332a702a7f3f12f7192bc",
+  "other_ground_profiles": [
+    {
+      "label": "mode0_unidentified_map",
+      "file_offset": "0x20310",
+      "record_count": 583
+    },
+    {
+      "label": "mode3_conditional_fpga_overlay",
+      "file_offset": "0x23d68",
+      "record_count": 25
+    }
+  ]
+}

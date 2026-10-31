@@ -32,6 +32,9 @@ m0900-capture.log
 *-raw.txt
 firmware/
 
+# Public upstream source inputs used by the radio inventory, not vendored here.
+sources/ad9361-reference/
+
 # Downloaded APKs - DATA NOT IN THE REPO, see sources/README.md manifest
 sources/**/*.apk
 
