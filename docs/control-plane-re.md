@@ -490,7 +490,8 @@ receiver-type entries map to a `port_send(port, frame)` switch (`0x25D8`):
 | port | peripheral | evidence |
 |---|---|---|
 | 0 | host/ACK ring buffer, OS-critical-section wrapped (`0x1F5E0`) | likely the primary app/host DUML link |
-| 1 | chunked queue (23/40/21-byte records into a ring buffer) | almost certainly the Lightbridge radio TX path, not a UART |
+| 1, mode 0 (default) | 23/40-byte records into a ring buffer (`FUN_000218d4`, `DAT_0000c9d8`) | drain/reader not yet located; almost certainly the Lightbridge radio TX path, not a UART |
+| 1, mode 1 | 21-byte records via `FUN_00012560`→`FUN_000125bc`/`FUN_00012612`, bit-banged on GPIO0 (not SPI0 hardware) | **confirmed NOT SPI0's SCK/MISO/MOSI/CS pins**: `DAT_000129a0` resolves to `0x2009c000` (FIO0 base, verified from the raw image at file offset `0x89a0`) — same PORT as SPI0 (P0.15/17/18), but `FUN_000125bc`'s shift loop toggles P0.7/P0.9 (FIOSET/FIOCLR `0x80`/`0x200`) and reads back P0.7:0..8 via FIOPIN (`+0x14`, mask `0x1ff`) — a distinct half-duplex bit-bang pin pair, not a reuse of MOSI/SCK/MISO. A second pin group in `FUN_0001269a`/`FUN_000126d8` toggles P0.19 (`0x80000`, direction only) plus GPIO3 bits 18/29 (`+0x78`/`+0x7c`/`+0x38`/`+0x3c` = FIO3 offsets relative to the FIO0 base) — also not P0.18 (MOSI) despite the coincidental bit-18 value landing on a different port. This rules out the specific "same pins, software-driven" hypothesis for mode 1: it's a genuinely separate physical serial interface on GPIO0 bits 7/9 (plus a GPIO3 pin pair whose role is unresolved) |
 | 2 | UART3 (`0x21126`) | |
 | 3 | UART0 (`0x2091C`) | |
 | 4 | UART1 (`0x20BEC`) | |
