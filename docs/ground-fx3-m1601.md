@@ -31,6 +31,18 @@ phone --bare DUML bytes--> FX3 CPU --(not for FX3, receiver != type 13)--> UART 
 - **I, by elimination:** the ground FPGA is where the radio stream is split back into video
   (to the FX3) and DUML (to the UART peer). On the air side, `m0800-dm368-provenance.md` §7
   shows the reverse.
+- **Structural check against this (pluribus `m2001` lift, 2026-10-31): no UART-shaped logic
+  found near the two candidate MCU-facing pads other than the confirmed SPI slave interface.**
+  Pads AD5/AD13 (the only other `chip_ref=MCU` candidates besides the 4 already-confirmed SPI
+  pads) each fan out to 9 FFs with no counter/divider stage gating them (no `ena` on any of the
+  18 FFs; all sample at the full main-clock rate) and no FF-to-adjacent-FF shift-register
+  chaining (each FF's D-LUT reads the pad directly plus its own Q — a `register_feedback`
+  latch group, not a shift register). A UART RX needs both a baud-derived sampling enable and a
+  shift chain; neither exists here. This doesn't prove the FPGA is absent from the DUML path (a
+  structure elsewhere in the lift, or one this search didn't reach, could still exist), but it
+  rules out AD5/AD13 specifically as a UART, and strengthens — without fully confirming — the
+  existing "bypasses the FPGA" picture over the alternative (FPGA relays DUML both ways) that was
+  raised and checked for directly.
 
 ## 1. USB identity: one chip, both phone types (V)
 
