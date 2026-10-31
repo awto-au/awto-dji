@@ -64,9 +64,9 @@ Two-ended buses: `<medium>_<side>_<roleA>_<roleB>` (role tokens, not chips). Rat
 ### RC-internal (GL300C)
 | Proposed | Endpoints | Medium / detail | Tag |
 |---|---|---|---|
-| `uart_gnd_rc_fx3` | `gnd_rc_lpc1765` ↔ `gnd_fx3_cyusb2014` | UART, 115200 8N1 DUML (`ground-fx3-m1601.md`) | V FX3 end; peer m1400 I |
-| `uart_gnd_rc_fpga` | `gnd_rc_lpc1765` ↔ gnd FPGA | DUML-over-UART; carries the Master-ID (`id-entry-point.md`) | V strings; I |
-| `spi_gnd_rc_fpga` | `gnd_rc_lpc1765` ↔ gnd FPGA | SPI0 @0x40020000, CS P2.9, ~4 MHz — register/control | V |
+| `uart_gnd_rc_fx3` | `gnd_rc_lpc1765` ↔ `gnd_fx3_cyusb2014` | UART, 115200 8N1 DUML (`ground-fx3-m1601.md`); m1400 end is UART3 by baud match (`control-plane-re.md`) — UART2 ruled out (256000, wrong baud), not yet pin-level confirmed | V FX3 end; m1400-side UART3 I by baud, pins U |
+| `spi_gnd_rc_fpga` | `gnd_rc_lpc1765` ↔ gnd FPGA | SPI0 @0x40020000, CS P2.9, ~4 MHz — register/control; carries the Master-ID write (`fpga_set_receiver_id` 0x16850, regs 3-7, `id-entry-point.md`) — correcting this table's own earlier, now-superseded claim that the Master-ID rode a separate DUML-over-UART link | V |
+| `uart_gnd_rc_unknown2` | `gnd_rc_lpc1765` ↔ ? | UART2, 256000 8N1 — role genuinely open; candidate `m1300` ruled doubtful (likely not populated on this phone-tethered board variant, `ground-fx3-m1601.md`); no documented GL300C connector matches an external-accessory UART the way air's `CENTER` pads do | V config; peer U |
 | `gpio_gnd_rc_fpga` | `gnd_rc_lpc1765` ↔ gnd FPGA | config/reset/handshake strobes | V |
 | `gpif_gnd_fpga_fx3` | gnd FPGA ↔ `gnd_fx3_cyusb2014` | 8-bit GPIF, PIB socket 2 — video | V |
 | `usb_gnd_fx3_phone` | `gnd_fx3_cyusb2014` ↔ phone | USB; `55 CC` chunks (0x5749 DUML, 0x574A video) | V |
