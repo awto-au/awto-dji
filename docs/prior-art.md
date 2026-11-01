@@ -59,6 +59,27 @@ Pulled upstream's `P3X_FW_V01.07.0060_m0306.map` (vendored at
   `get_gohome_stage`/`get_go_home_state`. Locate each in our V01.11.0020 image by its string refs
   (addresses differ by revision), then add to `m0306.tsv` with `source=upstream-map`.
 
+## DJI to MAVLink bridges (issue #75; searched 2026-11-02)
+
+- **[RosettaDrone](https://github.com/RosettaDrone/rosettadrone)** (BSD-3, active). MAVLink wrapper over DJI's **Mobile SDK**; needs a DJI developer app key. Lists Mini/Mini SE/Mini 2/Air/Air 2S/Mavic 2/Mavic Pro/M210; Phantom 3 not listed. Works with QGroundControl, Mission Planner, ArduCopter SITL, DroneKit, MAVProxy, MAVSDK. **V** (README read).
+- **[py-mavlink-dji](https://pypi.org/project/py-mavlink-dji/)** (PyPI 0.0.9, prototype). MAVLink to DJI translator; optional Onboard SDK binding, mock backend by default. **V** (PyPI page read); code not read.
+- **[MAVProxy](https://ardupilot.org/mavproxy/)** (ArduPilot). Generic MAVLink router; no DJI support of its own, DJI use is via RosettaDrone. **V**.
+- **All of the above go through DJI's SDK**, so DUML framing and SIMPLE protection are handled inside it (**I**, consistent with the GO 4 analysis). Cost: app key, DJI servers, SDK-supported models only.
+- **No raw-DUML to MAVLink bridge for a Phantom 3 found** (GitHub repo and code search plus web, **U**: absence of results). Our `ground/` clients are parked (HANDOVER.md).
+
+## Open raw-DUML implementations (searched 2026-11-02)
+
+| Project | Licence | Encryption handling |
+|---|---|---|
+| [Kolya080808/DJI-Link](https://github.com/Kolya080808/DJI-Link) | Apache-2.0 | Implements SIMPLE (`duml.py`, `DUML_ENCRYPTION.md`). Same key, recurrence, region and eligibility as `app/packages/duml/lib/src/simple.dart`; its worked example reproduces byte for byte (**V**, run 2026-11-02). Target: WM160 with the DJI Fly app |
+| [lmdegreeds/dji_fcc_gpsoff](https://github.com/lmdegreeds/dji_fcc_gpsoff) | AGPL-3.0 | Deliberately none; sends cleartext through the RC 2's loopback proxy ports. Why that is accepted is not stated (**U**) |
+| [o-gs dissectors](https://github.com/o-gs/dji-firmware-tools) | GPL-3.0 | 8-value header table, no transform code |
+| [strazzere/duml-packet](https://github.com/strazzere/duml-packet) | ISC | Parses and prints the field only |
+| hdnes/pyduml, deviverr/DJI-RC-Emulator, gregszero/dji-rc-joystick, romulo-maciel/dji-phantom3-joystick | various | No encryption handling found by keyword search (**I**) |
+| sworrl/GlassFalcon | GPL-3.0 | Cleartext only; Mavic 2 tested. Does not decode a Phantom 3 link |
+
+Types and mechanics: [duml-encryption-types.md](duml-encryption-types.md).
+
 ## Recommended course (avoid duplicating; spend effort on the new layers)
 
 1. **Cross-check our function names against upstream's `P3X_FW_V01.07.0060_m0306.map`** rather than

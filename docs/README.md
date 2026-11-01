@@ -10,6 +10,7 @@ of fact-changes (docs state current facts only).
 
 ## Protocol & control plane (the practical path)
 - [duml-protection.md](duml-protection.md) — separates APK SIMPLE XOR, ATSHA204 component authentication, RC master/slave connection and unresolved aircraft-radio protection; traces the XOR inputs.
+- [duml-encryption-types.md](duml-encryption-types.md) — the frame-header encrypt_type values (0-7), what SIMPLE does and where it is proven, vs the firmware-container field of the same name.
 - `protocol-verification.md` — DUML wire format verified byte-exact against a real packet.
 - `control-plane-re.md` — reverse the MCU control plane, not the FPGA; external corroboration.
 - `cpu-reversing-proof.md` — **the proofs in MCU code** (binding-ID handler, role machine,
