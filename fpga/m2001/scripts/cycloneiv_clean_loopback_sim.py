@@ -46,7 +46,10 @@ PROBE_FFS = {   # name -> flat FF list (RTL names via ffmap.json); vectors are c
     "demux": ["ff_11_45_3", "ff_11_45_6", "ff_12_47_4"],
     "gate": ["ff_40_88_10", "ff_40_88_11"],
 }
-FORCE_TARGETS = ["sr_19[0]", "sr_13[2]"]      # ff_35_67_0, ff_38_79_4: RX-side frame-detect leaves feeding the frame FSM (38,86)/(39,86)
+FORCE_TARGETS = ["sr_19[0]", "sr_13[2]"]      # ff_35_67_0, ff_38_79_4: leaves feeding the frame FSM (38,86)/(39,86)
+# +force=N selects a set; 2 = both above + the other FSM leaves that reach the RX pads (#91, fsm_rxdetect_trace.py)
+FSM_LEAVES = ["r_526[2]", "r_216[14]", "r_526[18]", "r_222[19]"]      # ff_30_89_4, ff_41_86_2, ff_37_87_0, ff_54_69_14
+FORCE_SETS = [[t] for t in FORCE_TARGETS] + [FORCE_TARGETS + FSM_LEAVES] + [["sr_13[2]", t] for t in FSM_LEAVES]   # 3..6 = ff_38_79_4 + one leaf
 PROBE_REGS = ["cnt_82", "cnt_65", "cnt_220", "cnt_147", "cnt_193", "r_401", "r_594"]   # RTL vectors: ID-match counter, frame counter, DUML FIFO w/r ptr, FX3 FIFO wptr, AC11 bit ctr, field reg
 
 
@@ -155,11 +158,13 @@ def gen_tb(nl, work, ffmap):
     # bypass experiment (+force=N): pulse an RX-sync FF high for 2000 clk_main cycles, once per 14 ms frame, from link start on
     L.append("integer fsel; initial begin if (!$value$plusargs(\"force=%d\", fsel)) fsel = -1;")
     L.append(f"  if (fsel >= 0) begin #(64'd1000000 * 10000); forever begin")
-    for i, tgt in enumerate(FORCE_TARGETS):
-        L.append(f"    if (fsel == {i}) force dut.{tgt} = 1'b1;")
+    for i, ts in enumerate(FORCE_SETS):
+        for tgt in ts:
+            L.append(f"    if (fsel == {i}) force dut.{tgt} = 1'b1;")
     L.append("    $fwrite(fr, \"%0d FORCE on %0d\\n\", hc, fsel); #(64'd2000 * 10000);")
-    for i, tgt in enumerate(FORCE_TARGETS):
-        L.append(f"    if (fsel == {i}) release dut.{tgt};")
+    for i, ts in enumerate(FORCE_SETS):
+        for tgt in ts:
+            L.append(f"    if (fsel == {i}) release dut.{tgt};")
     L.append("    #(64'd1398000 * 10000); end end end")
     L.append("longint ncyc; initial begin ncyc = 1000000; void'($value$plusargs(\"cyc=%d\", ncyc)); #(ncyc * 64'd10000);")
     L.append("  $fwrite(fr, \"%0d SIMDONE rxwords=%0d\\n\", hc, rxw); $display(\"SIMDONE hc=%0d rxwords=%0d\", hc, rxw); $fclose(fo); $fclose(fp); $fclose(fr); $finish; end")
@@ -511,7 +516,7 @@ def main():
     ap.add_argument("--cyc", type=int, default=2000000)
     ap.add_argument("--pllc-half", type=int, default=0)
     ap.add_argument("--sync", default="")
-    ap.add_argument("--force", type=int, help="index into FORCE_TARGETS: per-frame bypass pulse")
+    ap.add_argument("--force", type=int, help="index into FORCE_SETS: per-frame bypass pulse")
     ap.add_argument("--run-limit", type=int, default=3600)
     ap.add_argument("--frames", type=int, default=3)
     ap.add_argument("--mode", default="mode3")
