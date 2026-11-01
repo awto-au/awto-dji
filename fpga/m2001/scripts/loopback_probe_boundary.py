@@ -1,7 +1,7 @@
 #!/usr/bin/env python3.15t
 """Per-bit liveness of the probes_ram.json groups from a loopback sim probe trace; lists dead FFs that have live inputs (gating boundary) (#91).
 
-  python3.15t fpga/m2001/scripts/loopback_probe_boundary.py      (reads tmp/loopback/probe_pl.txt in the pluribus checkout)
+  python3.15t fpga/m2001/scripts/loopback_probe_boundary.py      [TAG]  (reads tmp/loopback/probe_TAG.txt in the pluribus checkout, default pl)
 """
 import json, re, sys, os, pickle, collections
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -18,7 +18,7 @@ for line in open(os.path.join(str(PLURIBUS), "tmp/image_sim_dji_push/rtl_s.v")):
 widths = [(n, w if w else decl[n]) for n, w in meta["probes"]]
 pos = sum(w for _, w in widths); fields = {}
 for n, w in widths: pos -= w; fields[n] = (pos, w)
-rows = [(int(t), int(v, 16)) for t, v in (l.split() for l in open(L + "probe_pl.txt"))]
+rows = [(int(t), int(v, 16)) for t, v in (l.split() for l in open(L + "probe_" + (sys.argv[1] if len(sys.argv) > 1 else "pl") + ".txt"))]
 tog = {}
 for g, names in pr.items():
     p, w = fields[g]; t = [0] * w; prev = None

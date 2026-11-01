@@ -66,5 +66,13 @@ def add_levels(P, ffmap, groups, seed_key, levels=3, budget=560):
 if __name__ == "__main__":
     allg = add_levels(P, ffmap, dict(ded, pb_all=sum(ded.values(), [])), "pb_all")
     allg.pop("pb_all")
+    import cycloneiv_clean_image_sim as IS      # regfile copies: one probe group per (addr, enable), bit order = register bit 7..0
+    spi = json.load(open(os.path.join(str(PLURIBUS), "tmp/dji_spi/image.json")))
+    for a_, ents in IS.spi_regs(nl, spi, [0x00, 0x02, 0x08, 0x09]).items():
+        for en, mem in ents:
+            by = {b: f for f, b, _inv in mem if f in ffmap}
+            if len(by) == 8:
+                allg[f"rg{a_:02x}_{en}"] = [by[b] for b in range(7, -1, -1)]
+    allg["rg_37_79"] = sorted(F["name"] for F in nl.ffs if F.get("ena") == "lc_37_82_1" and F["name"] in ffmap)
     json.dump(allg, open(os.path.join(str(PLURIBUS), "tmp/loopback/probes_ram.json"), "w"), indent=1)
     print({k: len(v) for k, v in allg.items()}, "total bits", sum(len(v) for v in allg.values()))
