@@ -109,9 +109,9 @@ def gen_tb(nl, work, ffmap):
     # probes
     pv, widths = [], []
     probes = dict(PROBE_FFS)
-    extra = os.path.join(OUT, "probes_extra.json")      # regfile bits / FSM / TX-RAM enables, from the SPI trace register map
-    if os.path.exists(extra):
-        probes.update(json.load(open(extra)))
+    for extra in ("probes_extra.json", "probes_ram.json"):   # regfile bits / FSM / TX-RAM enables (SPI trace map); playback-RAM write cones (#91)
+        if os.path.exists(os.path.join(OUT, extra)):
+            probes.update(json.load(open(os.path.join(OUT, extra))))
     for name, ffs in probes.items():
         bits = ["dut." + ffmap[f] for f in ffs]
         pv.append("{" + ", ".join(bits) + "}")
