@@ -48,6 +48,7 @@ PROBE_FFS = {   # name -> flat FF list (RTL names via ffmap.json); vectors are c
 }
 FORCE_TARGETS = ["sr_19[0]", "sr_13[2]"]      # ff_35_67_0, ff_38_79_4: leaves feeding the frame FSM (38,86)/(39,86)
 # +force=N selects a set; 2 = both above + the other FSM leaves that reach the RX pads (#91, fsm_rxdetect_trace.py)
+FSM_STATE = ["r_526[19]", "r_526[20]", "r_526[21]", "r_526[22]"]   # ff_38_86_4, ff_38_86_5, ff_39_86_0, ff_39_86_15 (+fsm=N holds bit i of N)
 FSM_LEAVES = ["r_526[2]", "r_216[14]", "r_526[18]", "r_222[19]"]      # ff_30_89_4, ff_41_86_2, ff_37_87_0, ff_54_69_14
 FORCE_SETS = [[t] for t in FORCE_TARGETS] + [FORCE_TARGETS + FSM_LEAVES] + [["sr_13[2]", t] for t in FSM_LEAVES]   # 3..6 = ff_38_79_4 + one leaf
 PROBE_REGS = ["cnt_82", "cnt_65", "cnt_220", "cnt_147", "cnt_193", "r_401", "r_594"]   # RTL vectors: ID-match counter, frame counter, DUML FIFO w/r ptr, FX3 FIFO wptr, AC11 bit ctr, field reg
@@ -156,16 +157,20 @@ def gen_tb(nl, work, ffmap):
     L.append("    else if ($sscanf(line, \"S %d\", n) == 1) wait_sync(n);")
     L.append("  end $fwrite(fr, \"%0d STIMDONE ops=%0d\\n\", hc, ops); $display(\"STIMDONE ops=%0d hc=%0d\", ops, hc); end end")
     # bypass experiment (+force=N): pulse an RX-sync FF high for 2000 clk_main cycles, once per 14 ms frame, from link start on
-    L.append("integer fsel; initial begin if (!$value$plusargs(\"force=%d\", fsel)) fsel = -1;")
+    L.append("integer fsel, fval; initial begin if (!$value$plusargs(\"force=%d\", fsel)) fsel = -1; if (!$value$plusargs(\"fval=%d\", fval)) fval = 1;")
     L.append(f"  if (fsel >= 0) begin #(64'd1000000 * 10000); forever begin")
     for i, ts in enumerate(FORCE_SETS):
         for tgt in ts:
-            L.append(f"    if (fsel == {i}) force dut.{tgt} = 1'b1;")
+            L.append(f"    if (fsel == {i}) force dut.{tgt} = {chr(49) + chr(39) + 'b1' if tgt == 'sr_13[2]' else 'fval[0]'};")
     L.append("    $fwrite(fr, \"%0d FORCE on %0d\\n\", hc, fsel); #(64'd2000 * 10000);")
     for i, ts in enumerate(FORCE_SETS):
         for tgt in ts:
             L.append(f"    if (fsel == {i}) release dut.{tgt};")
     L.append("    #(64'd1398000 * 10000); end end end")
+    L.append("integer fsmv; initial if ($value$plusargs(\"fsm=%d\", fsmv)) begin #(64'd1000000 * 10000);")
+    for i, tgt in enumerate(FSM_STATE):
+        L.append(f"  force dut.{tgt} = fsmv[{i}];")
+    L.append("  $fwrite(fr, \"%0d FSMFORCE %0d\\n\", hc, fsmv); end")
     L.append("longint ncyc; initial begin ncyc = 1000000; void'($value$plusargs(\"cyc=%d\", ncyc)); #(ncyc * 64'd10000);")
     L.append("  $fwrite(fr, \"%0d SIMDONE rxwords=%0d\\n\", hc, rxw); $display(\"SIMDONE hc=%0d rxwords=%0d\", hc, rxw); $fclose(fo); $fclose(fp); $fclose(fr); $finish; end")
     L.append("endmodule")
@@ -300,6 +305,10 @@ def cmd_run(a):
         args.append(f"+sync={a.sync}")
     if a.force is not None:
         args.append(f"+force={a.force}")
+    if a.fval is not None:
+        args.append(f"+fval={a.fval}")
+    if a.fsm is not None:
+        args.append(f"+fsm={a.fsm}")
     log.info("RUN %s: %s", a.tag, " ".join(args[1:]))
     rc, s, rss, last, out = IS.sh(args, "run_" + a.tag, a.run_limit)
     log.info("SIM %s: rc=%s %.1fs wall, peak RSS %.0f MB, last=%r cycles/s=%.0f", a.tag, rc, s, rss, last[-120:], a.cyc / s if s else 0)
@@ -517,6 +526,8 @@ def main():
     ap.add_argument("--pllc-half", type=int, default=0)
     ap.add_argument("--sync", default="")
     ap.add_argument("--force", type=int, help="index into FORCE_SETS: per-frame bypass pulse")
+    ap.add_argument("--fval", type=int, choices=[0, 1], help="value forced on the leaves in --force sets (ff_38_79_4 always 1)")
+    ap.add_argument("--fsm", type=int, help="hold FSM state FFs (38,86)/(39,86) at this 4-bit value from link start")
     ap.add_argument("--run-limit", type=int, default=3600)
     ap.add_argument("--frames", type=int, default=3)
     ap.add_argument("--mode", default="mode3")
