@@ -38,9 +38,51 @@ The phone has no fixed address - wireless-debugging picks a new port on every re
 4. If a reboot happens mid-session, you're back to step 2 - the IP can also change
    (house DHCP), so re-ask rather than retrying the last known address blindly.
 
-At the time of writing the phone is a Samsung S9 (LineageOS), package
-`au.awto.dji.awto_dji_app`, with DJI Pilot (`dji.pilot`) also installed as a reference - the
+At the time of writing two phones have been used: a Samsung S9 (LineageOS, 1440x2960,
+`device:starlte`), package `au.awto.dji.awto_dji_app`, and a Samsung S20+ (1440x3200,
+`device:y2s`), both with DJI Pilot (`dji.pilot`) also installed as a reference - the
 app that actually connects to the Phantom 3X.
+
+**Screen resolution is per-phone - never hardcode a pixel coordinate across devices**
+(2026-11-01, hit live: the S9-derived dropdown tap in `select-aircraft` landed wrong
+on the S20 until re-measured). `scripts/re/dji_pilot_bench.py` resolves every tap it
+can from a fresh `uiautomator dump`'s `bounds=` for the target `resource-id`, not a
+literal pixel pair; `DROPDOWN_TAP` is the one remaining hardcoded exception (S9-only,
+no stable resource-id found yet for that dropdown trigger). If driving a third phone,
+re-measure `DROPDOWN_TAP` or scale it by `target_width/1440, target_height/2960` as a
+starting guess, then verify against a dump rather than trusting the scaled number.
+
+**A single `adb shell input tap`/`input text` is not reliable even at the right
+coordinates** - observed on the S20 login form: a tap can land before the
+keyboard/IME has focus-settled on the intended field, so a `KEYCODE_DEL` flood or
+`input text` meant for one `EditText` partially lands in another, silently
+truncating or corrupting both. Verify `focused="true"` on the target node before
+editing (retry the tap if not focused yet), and after typing, re-dump and compare
+text until it reads identical twice in a row before trusting it - one dump
+immediately after the edit can catch mid-IME-commit state. `ensure_focus`/
+`stable_field_text`/`set_field` in `dji_pilot_bench.py` are this pattern,
+factored out for reuse; don't re-invent a single blind tap+type.
+
+### DJI account login
+
+DJI Pilot requires a DJI account sign-in (no guest/skip option found on this build,
+3.1.83) before it will show the aircraft picker. Credentials are
+`~/.config/awto/secrets.yaml` `dji:` (url/purpose/username/password) - stated purpose
+is exactly this sign-in; never print/log the values, only lengths or match booleans.
+Run `./dev.py dji-pilot login` (wraps `cmd_login` in `dji_pilot_bench.py`, uses the
+focus/poll pattern above) rather than typing it by hand.
+
+**If login fails with `EHOSTUNREACH` in `dji.pilot`'s logcat** (`adb logcat -d
+--pid=$(adb shell pidof dji.pilot)`), that is very likely **not** a bad credential or
+a dead DJI server - check for a stale global HTTP proxy on the phone first:
+`adb shell settings get global http_proxy`. Hit live 2026-11-01: a leftover
+`<host>:8080` global proxy (unrelated to this project, already present before this
+session touched the phone) pointed at a host nothing answered on, breaking every
+app's connectivity including Pilot's login *and* the phone's own "connected to
+Wi-Fi, no internet" state - Wi-Fi association was fine throughout. Clear it with
+`adb shell settings put global http_proxy :0` (Android's documented way to unset a
+global proxy) and re-check `ping www.google.com` from the phone before retrying
+login.
 
 ### Driving DJI Pilot as a reference app
 
@@ -170,6 +212,10 @@ python3 -I scripts/re/aoa_relay_server.py --port 9900
 
 ## Gotchas already paid for
 
+- **DJI Pilot login `EHOSTUNREACH` -> check the phone's global HTTP proxy, not
+  creds/DJI servers first.** See "DJI account login" above.
+- **Never hardcode a UI tap coordinate across phones** - resolve from a fresh
+  `uiautomator dump`'s `bounds=`. See "Screen resolution is per-phone" above.
 - **Gimbal sends need the APP device-type sender** (`DeviceType.app`, not PC) and a
   permission request first (RC cmdset `0x06`/`0x22`, receiver OSD `0x0e`) or the
   gimbal silently ignores the angle command - both are handled automatically by
