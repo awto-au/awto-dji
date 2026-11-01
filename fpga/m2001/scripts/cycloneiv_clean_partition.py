@@ -638,7 +638,12 @@ def main():
     board_dir = os.path.dirname(os.path.abspath(a.blocks))
     if a.build_seeds:
         blocks = build_seeds(nl, D, board_dir)
-        json.dump(dict(netlist=os.path.relpath(a.nl, REPO), blocks=blocks), open(a.blocks, "w"), indent=1)
+        old = json.load(open(a.blocks)) if os.path.exists(a.blocks) else {}
+        gen = {b["name"] for b in blocks}
+        keep = [b for b in old.get("blocks", []) if b["name"] not in gen]       # hand-added / region-verified blocks survive
+        out = {k: v for k, v in old.items() if k not in ("netlist", "blocks")}  # rename, proposed, ...
+        json.dump(dict(netlist=os.path.relpath(a.nl, REPO), blocks=blocks + keep, **out), open(a.blocks, "w"), indent=1)
+        log.info("build-seeds: %d generated blocks, %d existing kept, extra keys kept: %s", len(blocks), len(keep), sorted(out))
         log.info("wrote %d seed blocks -> %s", len(blocks), a.blocks)
     blocks = json.load(open(a.blocks))["blocks"]
     for b in blocks:

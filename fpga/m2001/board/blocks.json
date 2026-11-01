@@ -6552,6 +6552,94 @@
     "mac": [],
     "pads": []
    }
+  },
+  {
+   "name": "tx_playback_ctl",
+   "confidence": "V",
+   "evidence": "sim probe, live RX, 12M half-cycles: write-enable group 1.34M changes, write addr ~84k changes (#91, dji-m2001-loopback.md 'TX data path')",
+   "note": "write side of M9K (23,62)/(23,63): we + write address; read address stays in tx_playback",
+   "seeds": {
+    "ffs": [
+     "ff_15_62_1",
+     "ff_15_62_2",
+     "ff_15_62_5",
+     "ff_26_72_2",
+     "ff_34_61_0",
+     "ff_34_61_13",
+     "ff_34_61_8",
+     "ff_34_61_9"
+    ],
+    "luts": [
+     "lc_15_62_13"
+    ],
+    "labs": [],
+    "m9k": [],
+    "mac": [],
+    "pads": []
+   }
+  },
+  {
+   "name": "tx_playback_data_pipe",
+   "confidence": "I",
+   "evidence": "sim probe, live RX: 24 data-leaf FFs + 24 chain FFs never change in any of 30 force/hold runs; muxed by ff_26_78_15 (reg 0x09 bit2 copy0), both sources 0 (#91)",
+   "note": "TX sample data into the playback RAM. I: role by structure + dead-chain probes, not by observed samples. Mux select ff_26_78_15 left in spi_regfile (overlap).",
+   "seeds": {
+    "ffs": [
+     "ff_18_61_12",
+     "ff_18_61_9",
+     "ff_18_62_0",
+     "ff_18_64_0",
+     "ff_18_64_12",
+     "ff_18_64_13",
+     "ff_18_64_14",
+     "ff_19_62_12",
+     "ff_19_62_13",
+     "ff_19_62_14",
+     "ff_19_62_15",
+     "ff_19_64_0",
+     "ff_19_64_1",
+     "ff_19_64_10",
+     "ff_19_64_11",
+     "ff_19_64_14",
+     "ff_19_64_3",
+     "ff_19_64_5",
+     "ff_19_64_8",
+     "ff_19_64_9",
+     "ff_20_62_1",
+     "ff_20_62_10",
+     "ff_20_62_12",
+     "ff_20_62_15",
+     "ff_20_64_0",
+     "ff_20_64_12",
+     "ff_20_64_13",
+     "ff_20_64_3",
+     "ff_20_64_9",
+     "ff_21_62_2",
+     "ff_21_62_3",
+     "ff_21_62_8",
+     "ff_21_63_0",
+     "ff_21_63_15",
+     "ff_22_62_1",
+     "ff_22_62_14",
+     "ff_22_62_15",
+     "ff_22_62_4",
+     "ff_25_63_0",
+     "ff_25_63_1",
+     "ff_25_63_14",
+     "ff_25_63_5",
+     "ff_25_63_6",
+     "ff_25_63_9",
+     "ff_26_62_1",
+     "ff_26_62_13",
+     "ff_26_62_14",
+     "ff_26_62_4"
+    ],
+    "luts": [],
+    "labs": [],
+    "m9k": [],
+    "mac": [],
+    "pads": []
+   }
   }
  ],
  "proposed": [
