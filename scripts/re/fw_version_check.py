@@ -64,6 +64,11 @@ REFERENCE_VERSIONS = {
 DEFAULT_WAIT_S = 2.0
 
 
+def _fields(dotted):
+    """'01.48.00.00' and '1.48.0.0' are the same version: compare as ints."""
+    return tuple(int(p) for p in dotted.split("."))
+
+
 def query_device(log_path, offset, device_type, seq, wait_s):
     """Send GetVersion to device_type, wait up to wait_s for its reply. ->
     decoded dict (duml_generated.common_version.decode's keys, snake_case) or None
@@ -116,7 +121,7 @@ def main():
         current = decoded["firmware_version"]
         if ref_version is None:
             status = "unknown (no reference version)"
-        elif current == ref_version:
+        elif _fields(current) == _fields(ref_version):
             status = "match" if ref_conf == "V" else f"match ({ref_conf}, translation unconfirmed)"
         else:
             status = "mismatch" if ref_conf == "V" else f"mismatch ({ref_conf}, translation unconfirmed)"
