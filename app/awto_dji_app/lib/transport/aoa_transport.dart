@@ -33,9 +33,10 @@ class AoaTransport extends BaseTransport {
     this.videoDecoder,
     this.relayVideo = true,
     DumlProtectionMode protectionMode = DumlProtectionMode.auto,
+    DumlProfile profile = DumlProfile.unknown,
   }) : _method = method ?? const MethodChannel(methodChannelName),
        _events = events ?? const EventChannel(eventChannelName),
-       _protection = DumlProtection(mode: protectionMode) {
+       _protection = DumlProtection(mode: protectionMode, profile: profile) {
     _mux.onPacket = _onPacket;
     _mux.onDiscard = (bytes) =>
         _relay?.sendRecord(RelayRecord.discarded, 0, bytes);

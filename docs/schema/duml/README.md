@@ -30,6 +30,10 @@ stay partly hand-written; see `commands.yaml`'s `0x00/0x01` entry).
 - Regenerate: `python3 -I scripts/re/gen_duml_schema.py`. **Never hand-edit any
   generated file** - edit `commands.yaml` and regenerate.
 
+- `docs/schema/duml/protection-profiles.yaml` - draft, not yet generated or wired in:
+  which frames are sent SIMPLE vs clear (override > observe peer > profile default >
+  fallback), the always-clear commands, and the `00/cc` CmdNeedEncrypt hint.
+
 ## Two directions
 
 - `direction: push` - decode-only (an incoming telemetry push or a Get-reply we

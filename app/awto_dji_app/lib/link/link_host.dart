@@ -242,11 +242,18 @@ class LinkHost extends ChangeNotifier {
           'simple' => DumlProtectionMode.simple,
           final value => throw ArgumentError('Unknown protection mode: $value'),
         };
+        final profile = switch (extras['profile'] ?? 'unknown') {
+          'unknown' => DumlProfile.unknown,
+          'p3' => DumlProfile.p3Lightbridge,
+          'wm240' => DumlProfile.wm240,
+          final value => throw ArgumentError('Unknown profile: $value'),
+        };
         return AoaTransport(
           relayHost: host,
           relayPort: port,
           videoDecoder: _videoDecoder,
           protectionMode: protection,
+          profile: profile,
           relayVideo: switch (extras['relayVideo'] ?? 'true') {
             'true' => true,
             'false' => false,

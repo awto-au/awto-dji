@@ -1,0 +1,42 @@
+# DUML protection profiles: which frames go out as SIMPLE (header encrypt_type 3) vs clear.
+# Draft, not yet wired into code. Sibling of commands.yaml; same V/I/U confidence tags.
+# Contains no table bytes: the SIMPLE transform itself is in app/packages/duml/lib/src/simple.dart.
+schema_version: 1
+
+# Order a sender applies to decide the mode for each outgoing frame. First rule that yields a mode wins.
+resolution:
+  - override   # operator-forced: none | simple (CONNECT intent `protection=`)
+  - observe    # what the peer's own CRC-valid frames use (below)
+  - profile    # static default of the matched profile (below)
+  - fallback   # none
+
+observe:
+  # V: GO's own mode selection (docs/duml-protection.md, DataBase/P3/i.java); our app does this in duml_protection.dart.
+  follow_simple: true     # peer sent encrypt_type 3 on an eligible frame -> send SIMPLE
+  revert_on_clear: true   # peer sent encrypt_type 0 on an eligible frame -> send clear
+
+# Never transformed, whatever the mode. V: APK exclusions, duml_protection.dart `eligible()`.
+clear_always:
+  - {set: 0x00, id: any}                    # COMMON: GetVersion 00/01, GetDeviceInfo 00/ff answered clear on P3
+  - {set: 0x02, id: [0x10, 0x11, 0x70, 0x71]}   # camera; 0x70/0x71 replies were clear in a GlassFalcon P3 run
+
+# Runtime hint. A clear request to a protected endpoint can draw COMMON 00/cc (CmdNeedEncrypt).
+# I: seen on 1 of 2 clear FC queries; the other got silence. Treat as a hint, never the only signal.
+on_reply:
+  - match: {set: 0x00, id: 0xcc, empty_payload: true}
+    do: escalate_to_simple_for_link
+
+fallback: none
+
+profiles:
+  - name: p3_lightbridge
+    default: simple
+    confidence: V     # 36068 of 40111 frames protection=3 on a Phantom 3 Pro link, 2026-11-02
+    detect:           # a hint for choosing the default before any frame is observed
+      confidence: U   # hw strings below are not yet tied to a product
+      device_info_ascii_prefix: ["WM320 A7_LPC1"]   # RC GetDeviceInfo, GL300C
+  - name: wm240
+    default: none
+    confidence: I     # sworrl/GlassFalcon README says wm240 works in clear; no wm240 capture of our own
+    detect:
+      confidence: U

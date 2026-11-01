@@ -58,6 +58,43 @@ void main() {
     expect(policy.prepare(wire), wire);
   });
 
+  test('profile sets the auto starting mode and reset restores it', () {
+    final wire = sample().encode();
+    expect(DumlProtection().prepare(wire), wire);
+    expect(
+      DumlProtection(profile: DumlProfile.wm240).prepare(wire),
+      wire,
+    );
+    final p3 = DumlProtection(profile: DumlProfile.p3Lightbridge);
+    expect(p3.prepare(wire)[8] & 7, 3);
+    p3.observe(sample(protection: 0).encode());
+    expect(p3.prepare(wire), wire);
+    p3.reset();
+    expect(p3.prepare(wire)[8] & 7, 3);
+  });
+
+  test('CmdNeedEncrypt (00/cc, empty payload) escalates auto to SIMPLE', () {
+    final wire = sample().encode();
+    DumlPacket needEncrypt(Uint8List payload) => DumlPacket(
+      senderType: DeviceType.flightController,
+      receiverType: DeviceType.app,
+      sequence: 1,
+      ackType: AckType.none,
+      encryptType: 0,
+      cmdSet: CmdSet.general,
+      cmdId: 0xcc,
+      payload: payload,
+    );
+    final policy = DumlProtection();
+    policy.observe(needEncrypt(Uint8List.fromList([1])).encode());
+    expect(policy.prepare(wire), wire, reason: 'non-empty payload is not the hint');
+    policy.observe(needEncrypt(Uint8List(0)).encode());
+    expect(policy.prepare(wire)[8] & 7, 3);
+    final forcedNone = DumlProtection(mode: DumlProtectionMode.none);
+    forcedNone.observe(needEncrypt(Uint8List(0)).encode());
+    expect(forcedNone.prepare(wire), wire);
+  });
+
   test('AOA mode detection ignores even valid DUML hidden in video', () {
     final protected = sample(protection: 3).encode();
     final clear = sample().encode();

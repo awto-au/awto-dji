@@ -4,21 +4,38 @@ import 'package:duml/duml.dart';
 
 enum DumlProtectionMode { auto, none, simple }
 
+/// Static starting mode for `auto`, before any peer frame is seen.
+/// Mirrors docs/schema/duml/protection-profiles.yaml.
+enum DumlProfile {
+  unknown(startsSimple: false),
+  p3Lightbridge(startsSimple: true),
+  wm240(startsSimple: false);
+
+  const DumlProfile({required this.startsSimple});
+  final bool startsSimple;
+}
+
 /// App-side SIMPLE mode selection, separate from the packet transform itself.
 /// Auto follows CRC-valid incoming packets and the APK's COMMON/camera exclusions.
 class DumlProtection {
-  DumlProtection({this.mode = DumlProtectionMode.auto});
+  DumlProtection({
+    this.mode = DumlProtectionMode.auto,
+    this.profile = DumlProfile.unknown,
+  }) : _peerUsesSimple = profile.startsSimple;
 
   final DumlProtectionMode mode;
+  final DumlProfile profile;
   final _received = DumlFramer();
   final _proxy = DumlFramer();
-  bool _peerUsesSimple = false;
+  bool _peerUsesSimple;
 
   void reset() {
-    _peerUsesSimple = false;
+    _peerUsesSimple = profile.startsSimple;
     _received.reset();
     _proxy.reset();
   }
+
+  static const _cmdNeedEncrypt = 0xcc;
 
   static bool eligible(DumlPacket packet) =>
       packet.cmdSet != CmdSet.general &&
@@ -27,7 +44,13 @@ class DumlProtection {
 
   void observe(Uint8List bytes) {
     for (final packet in _received.add(bytes)) {
-      if (packet.encryptType == EncryptType.simple) {
+      // COMMON 00/cc CmdNeedEncrypt: a peer refusing a clear request. A hint only
+      // (I: seen on 1 of 2 clear FC queries), so it escalates and never reverts.
+      if (packet.cmdSet == CmdSet.general &&
+          packet.cmdId == _cmdNeedEncrypt &&
+          packet.payload.isEmpty) {
+        _peerUsesSimple = true;
+      } else if (packet.encryptType == EncryptType.simple) {
         _peerUsesSimple = true;
       } else if (eligible(packet)) {
         _peerUsesSimple = false;
