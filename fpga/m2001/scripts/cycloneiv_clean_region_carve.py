@@ -176,15 +176,16 @@ class Carver:
     def __init__(self, P, D, pat, owner, blob, cells):
         self.P, self.D, self.pat, self.owner, self.blob = P, D, pat, owner, blob
         self.cells = set(cells)
+        self.order = sorted(self.cells, key=repr)   # fixed iteration order: set order varies with str hash seed (#96)
         self.nin, self.nout = {}, {}
-        for c in self.cells:
+        for c in self.order:
             self.nin[c] = P.inputs(c)
             self.nout[c] = P.consumers(c)
         self.reg = {}            # cell -> anchor index
         self.anchors = []        # dict(kind, cells:set, info)
 
     def blob_nb(self, c):
-        return [n for n in (self.nin[c] | self.nout[c]) if n in self.cells]
+        return sorted((n for n in (self.nin[c] | self.nout[c]) if n in self.cells), key=repr)
 
     def add_anchor(self, kind, cells, info=None):
         cells = {c for c in cells if c in self.cells and c not in self.reg}
@@ -201,14 +202,14 @@ class Carver:
             for g in self.pat.get(key, []):
                 self.add_anchor(key, set(g["members"]), dict(n=g["n"], poly=g["poly"], match=g["match"], autonomous=g["autonomous"],
                                                              whiten_consumers=g.get("whiten_consumers"), conf=g["conf"]))
-        m9 = [c for c in self.cells if isinstance(c, tuple) and c[0] == "m9k"]
+        m9 = [c for c in self.order if isinstance(c, tuple) and c[0] == "m9k"]
         by_addr = collections.defaultdict(list)
         for c in m9:
             m = P.m9k[(c[1], c[2])]
             by_addr[tuple(m.get("addr") or ())].append(c)
         for addr, grp in by_addr.items():
             self.add_anchor("m9k", set(grp), dict(n=len(grp)))
-        macs = [c for c in self.cells if isinstance(c, tuple) and c[0] == "mac"]
+        macs = [c for c in self.order if isinstance(c, tuple) and c[0] == "mac"]
         par = {c: c for c in macs}
 
         def find(c):
@@ -227,7 +228,7 @@ class Carver:
             self.add_anchor("mac", g, dict(n=len(g)))
         chains = collections.defaultdict(set)
         cpar = {}
-        for c in self.cells:
+        for c in self.order:
             if isinstance(c, str) and c.startswith("lc_") and P.lut[c]["mode"] == "cin":
                 cpar[c] = c
         for c in cpar:
@@ -251,7 +252,7 @@ class Carver:
                     and P.ff[o].get("d") in ch}
             self.add_anchor("carry", ch | regs, dict(chain=len(ch), regs=len(regs)))
         en = collections.defaultdict(set)
-        for c in self.cells:
+        for c in self.order:
             if isinstance(c, str) and c.startswith("ff_") and c not in self.reg:
                 F = P.ff[c]
                 e = F.get("ena")
@@ -266,7 +267,7 @@ class Carver:
         for _ in range(2):
             n = 0
             for i, a in enumerate(self.anchors):
-                for c in list(a["cells"]):
+                for c in sorted(a["cells"], key=repr):
                     for x in self.blob_nb(c):
                         if x in self.reg:
                             continue
@@ -281,7 +282,7 @@ class Carver:
     def grow(self):
         for r in range(GROW_ROUNDS):
             claims = {}
-            for c in self.cells:
+            for c in self.order:
                 if c in self.reg:
                     continue
                 cnt = collections.Counter(self.reg[n] for n in self.blob_nb(c) if n in self.reg)
@@ -294,7 +295,7 @@ class Carver:
                 self.reg[c] = i
                 self.anchors[i]["cells"].add(c)
             log.info("%s grow round %d: +%d, unclaimed %d", self.blob, r + 1, len(claims), sum(1 for c in self.cells if c not in self.reg))
-        rest = [c for c in self.cells if c not in self.reg]
+        rest = [c for c in self.order if c not in self.reg]
         seen = set()
         for c in rest:
             if c in seen:
@@ -323,8 +324,8 @@ class Carver:
                 a = self.anchors[i]
                 if not a["cells"] or a["kind"] in keep or nl_.get(i, 0) >= MIN_LUT:
                     continue
-                cnt = collections.Counter(self.reg[n] for c in a["cells"] for n in self.blob_nb(c) if self.reg.get(n, i) != i)
-                for j, _w in cnt.most_common():
+                cnt = collections.Counter(self.reg[n] for c in sorted(a["cells"], key=repr) for n in self.blob_nb(c) if self.reg.get(n, i) != i)
+                for j, _w in sorted(cnt.items(), key=lambda kv: (-kv[1], kv[0])):
                     if self.anchors[j]["cells"] and nl_.get(j, 0) + nl_[i] <= MAX_LUT:
                         for c in a["cells"]:
                             self.reg[c] = j
@@ -439,9 +440,9 @@ def fact_sheet(cv, a, pat_idx):
               counts=dict(lut=len(luts), ff=len(ffs), m9k=len(m9), mac=len(mac), carry_lut=sum(1 for c in luts if P.lut[c]["mode"] == "cin")),
               bbox=[min(x for x, _ in xs), min(y for _, y in xs), max(x for x, _ in xs), max(y for _, y in xs)])
     dn = P.domain_name
-    fs["clocks"] = {dn.get(k, k): v for k, v in collections.Counter(P.ff[f].get("clk") for f in ffs).most_common()}
-    fs["enables"] = collections.Counter(P.ff[f].get("ena") for f in ffs if P.ff[f].get("ena") not in (None, "1'b1")).most_common(4)
-    fs["sclrs"] = collections.Counter(P.ff[f].get("sclr") for f in ffs if P.ff[f].get("sclr") not in (None, "1'b0")).most_common(3)
+    fs["clocks"] = {dn.get(k, k): v for k, v in sorted(collections.Counter(P.ff[f].get("clk") for f in ffs).items(), key=lambda kv: (-kv[1], str(kv[0])))}
+    fs["enables"] = sorted(collections.Counter(P.ff[f].get("ena") for f in ffs if P.ff[f].get("ena") not in (None, "1'b1")).items(), key=lambda kv: (-kv[1], str(kv[0])))[:4]
+    fs["sclrs"] = sorted(collections.Counter(P.ff[f].get("sclr") for f in ffs if P.ff[f].get("sclr") not in (None, "1'b0")).items(), key=lambda kv: (-kv[1], str(kv[0])))[:3]
     cin, cout = collections.defaultdict(lambda: collections.defaultdict(set)), collections.defaultdict(lambda: collections.defaultdict(set))
     for c in cells:
         for i in cv.nin.get(c, ()):
@@ -455,8 +456,8 @@ def fact_sheet(cv, a, pat_idx):
         rows = []
         for o, labs in d.items():
             w = sum(len(v) for v in labs.values())
-            rows.append(dict(peer=o, bits=w, groups=sorted(((str(k), len(v)) for k, v in labs.items()), key=lambda t: -t[1])[:6]))
-        return sorted(rows, key=lambda r: -r["bits"])
+            rows.append(dict(peer=o, bits=w, groups=sorted(((str(k), len(v)) for k, v in labs.items()), key=lambda t: (-t[1], t[0]))[:6]))
+        return sorted(rows, key=lambda r: (-r["bits"], str(r["peer"])))
     fs["cut_in"], fs["cut_out"] = bus(cin), bus(cout)
     fh = collections.Counter()
     for c in luts:
@@ -465,7 +466,7 @@ def fact_sheet(cv, a, pat_idx):
         cb = D.comb(c)
         if cb is not None:
             fh[classify_tt(cb[3], len(cb[2]))] += 1
-    fs["lut_functions"] = dict(fh.most_common())
+    fs["lut_functions"] = dict(sorted(fh.items(), key=lambda kv: (-kv[1], str(kv[0]))))
     outs = [c for c in luts if any(o not in cells for o in cv.nout.get(c, ()))]
     oh, examples = collections.Counter(), []
     for c in outs[:400]:
@@ -481,7 +482,7 @@ def fact_sheet(cv, a, pat_idx):
             oh[f] += 1
             if len(examples) < 6 and f not in ("buf/inv",):
                 examples.append(f"{c} = {f}({', '.join(lv)})")
-    fs["output_cones"] = dict(n_outputs=len(outs), small_cone_functions=dict(oh.most_common()), examples=examples)
+    fs["output_cones"] = dict(n_outputs=len(outs), small_cone_functions=dict(sorted(oh.items(), key=lambda kv: (-kv[1], str(kv[0])))), examples=examples)
     fs["xor_ffs"] = sum(1 for f in ffs if f in D.faff and D.faff[f][0].bit_count() >= 2)
     fs["copy_ffs"] = sum(1 for f in ffs if f in D.faff and D.faff[f][0].bit_count() == 1)
     fs["m9k"] = []
@@ -509,7 +510,7 @@ def fact_sheet(cv, a, pat_idx):
                 if cc is None:
                     continue
                 k[(cc[0] if isinstance(cc, tuple) else cc[:2]) + ":" + own(cv, cc)] += 1
-            src[op] = dict(k.most_common(4))
+            src[op] = dict(sorted(k.items(), key=lambda kv: (-kv[1], str(kv[0])))[:4])
         fs["mac"].append(dict(tile=[c[1], c[2]], units=[dict(n=u["n"], w=u["w"], ireg=u.get("ireg"), oreg=u.get("oreg")) for u in m.get("units", [])],
                               sign=m.get("sign"), oreg=m.get("oreg"), operand_src=src, rom=pat_idx["mac"].get((c[1], c[2]))))
     fs["carry_chains"] = []
@@ -619,6 +620,7 @@ def main():
     ap.add_argument("--blob", action="append", required=True)
     ap.add_argument("--partition", default=os.path.join(REPO, "tmp", "cycloneiv_clean", "partition.json"))
     ap.add_argument("--board", default=BOARD)
+    ap.add_argument("--out", default=OUT, help="region output dir (patterns cache is always read from the default)")
     a = ap.parse_args()
     os.makedirs(os.path.join(DJI, "tmp", "logs"), exist_ok=True)
     os.makedirs(OUT, exist_ok=True)
@@ -662,7 +664,7 @@ def main():
         cv.merge_small()
         cv.split_big()
         regs = cv.regions()
-        od = os.path.join(OUT, blob)
+        od = os.path.join(a.out, blob)
         os.makedirs(od, exist_ok=True)
         index = []
         adj = collections.defaultdict(collections.Counter)
@@ -679,9 +681,9 @@ def main():
         stat = dict(regions=len(index), lut_min=min(sizes), lut_median=sorted(sizes)[len(sizes) // 2], lut_max=max(sizes),
                     over_max=sum(1 for s in sizes if s > MAX_LUT), under_50=sum(1 for s in sizes if s < 50),
                     anchors=dict(collections.Counter(r["anchor"] for r in index)))
-        json.dump(dict(blob=blob, stats=stat, regions=index, adjacency={k: dict(v.most_common()) for k, v in adj.items()}),
+        json.dump(dict(blob=blob, stats=stat, regions=index, adjacency={k: dict(sorted(v.items(), key=lambda kv: (-kv[1], kv[0]))) for k, v in sorted(adj.items())}),
                   open(os.path.join(od, "index.json"), "w"), indent=1)
-        json.dump({cid(c): r for c, r in cv.cell_region.items()}, open(os.path.join(od, "cell_region.json"), "w"))
+        json.dump(dict(sorted((cid(c), r) for c, r in cv.cell_region.items())), open(os.path.join(od, "cell_region.json"), "w"))
         log.info("%s: %s", blob, json.dumps(stat))
         for r in index[:12]:
             log.info("  %s %d LUT %d FF: %s", r["id"], r["lut"], r["ff"], r["headline"])
