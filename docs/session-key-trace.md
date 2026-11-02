@@ -90,3 +90,23 @@ Literal-pool scan of the whole image (words in 0x20001ab4..0x20001ad0 and 0x2000
 - m1400 (`docs/symbols/c1_m1400.tsv`): 11 rows: funcs `duml_set9_cmd00_session_key_rx` 0xce94, `duml_dispatch` 0xf3c8, `des3_key_schedule` 0x1a8b8, `des3_crypt_block` 0x1a908, `memcmp` 0x217a8, `memcpy` 0x218d4; tables `link_key_plaintext_const` 0xd254, `des_sbox` 0x2ead4; ram `radio_link_state` 0x100041d8, `session_key_last` 0x10002838, `session_key_msg_buf` 0x10004442. New driver `scripts/re/m1400_ghidra_names.py` (base gate + `M1400Names.java` + `DumpLPC17xx.java`); project and dump regenerated. The Ghidra project has no SRAM block, so the 3 ram rows (and other 0x1000xxxx rows) are labelled in the TSV only (U: add an SRAM block to the driver).
 - m0306 (`docs/symbols/m0306.tsv`): 1 row `duml_dispatch_tbl` 0x080ab440. No m0306 driver exists yet; not re-applied.
 - No struct header added for m1400 `radio_link_state` (layout known only for +0..4, +0x4c, +0x64, +0x70).
+
+## Recovery tool (2026-11-02, scope revised by Dan: key analysis/recovery in scope)
+
+`scripts/re/session_key_recover.py`: brute-forces the <=72000-seed space against one captured
+scrambled frame, using the firmware's own CRC16 check (seed 0x55aa, inner stage only - the symbol
+note records a two-stage CRC16, outer stage not modelled here) as a known-plaintext oracle. No
+real capture exists (checked `captures/`: USB-wired DUML only, cmdset 0/3 traffic, no radio-link
+data) - this is a ready tool, not a result.
+
+**Self-test (synthetic data, not real traffic):** injected seed 12345 into a synthetic 55-byte
+frame, ran the brute force blind. Result: 3 CRC16 matches out of 72000 seeds, one of them the
+injected seed (0x3039) with the correct `link_xor_key`. The other 2 are false positives from the
+16-bit CRC (expected rate ~72000/65536 ~= 1.1 per run) - the tool's own ambiguity warning caught
+this, which is why a single capture may need the outer CRC stage modelled too before trusting a
+unique answer.
+
+**To use for real:** a captured scrambled frame from the radio link (bytes 1..0x37 + trailing
+CRC16) - needs an SDR capture or a hardware tap, open per #84/#91. If instead the cleartext cmd-0
+key push (cmdset 9, cmd 0, receiver type 0xE) is captured, the key is already in the payload and no
+brute force is needed.
