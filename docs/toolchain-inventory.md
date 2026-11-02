@@ -242,9 +242,9 @@ m0900's soft-float family demonstrably matches ARM Compiler 5's own compiled lib
 
 ## Next steps
 
-1. Run the CMSIS-DSP radix4 FFT family (`cfft_radix4_f32` etc, still U against 4 GCC releases per the
-   m0400 pass) through `--toolchain armclang` - ARM's own toolchain is a more likely original compiler
-   for ARM-authored CMSIS-DSP source than GCC.
+1. ~~Run the CMSIS-DSP radix4 FFT family through `--toolchain armclang`~~ - done (#41 pt4,
+   2026-11-03, "CMSIS-DSP radix4 FFT family vs armclang" above): still U for all three functions
+   tried. ARM Compiler 5 (armcc) against this CMSIS-DSP source is the one combination left untried.
 2. Try `arm-linux-gnu-gcc`/armclang Cortex-A9 output against m0101's IAR-compiled soft-float/libm
    routines for instruction-shape (not byte-exact) clues, given no IAR install exists to try directly.
 3. If a newer GCC/armclang version is ever needed, the STM32CubeCLT installer
@@ -370,6 +370,32 @@ clock-source selection and BRR computation are structurally different from this 
 flagging as a real divergence (possibly a different SPL point release, or DJI customisation) rather
 than an unexplored opt level, if anyone revisits it.
 
+## CMSIS-DSP radix4 FFT family vs armclang (#41 pt4, 2026-11-03)
+
+Retested m0400's CMSIS-DSP radix-4 FFT family (`docs/m0400-naming-pass.md` section on
+`cmplx_mag_f32`/`radix4_butterfly_f32`/`arm_bitreversal_f32`, previously U against 4 GCC releases
+only) against ST armclang (ARM Compiler 6) - the "Next steps" item above. Same source (CMSIS-DSP
+V1.4.5, commit `147cb4e3`, `zephyrproject-rtos/cmsis-dsp` mirror) and CMSIS Core headers
+(`~/STM32Cube/Repository/STM32Cube_FW_F4_V1.28.3/Drivers/CMSIS/Include` - the same local package
+the GCC pass used; the newer CMSIS-DSP source needs `__STATIC_INLINE`, absent from the older core
+headers bundled with the STM32F4_Stdlib SPL mirror used elsewhere in this doc), `-mcpu=cortex-m4
+-mfpu=fpv4-sp-d16 -mfloat-abi=hard`, `-O0` through `-O3`/`-Os`, both `--mode exact` and `--mode
+fuzzy`:
+
+| Function (fw size) | Best exact match | Best fuzzy composite | Verdict |
+|---|---|---|---|
+| `radix4_butterfly_f32` (836B) | `-O1`, same size (836B), 3.0%/29.1% insn/mnemonic | 52.4% (`-Os`) | **U** |
+| `cmplx_mag_f32` (236B) | `-Os` (272B), 17.8%/26.0% | 37.4% (`-Os`) | **U** |
+| `arm_bitreversal_f32` (176B) | `-O1`/`-O2`/`-O3`/`-Os` (~162-166B), 0.0%/22-25% | 41.3% (`-O1`) | **U** |
+
+All three stay well under both the exact-mode V floor and the fuzzy 70% ranking floor at every
+opt level - no closer than the GCC pass's own results (`docs/toolchain-inventory.md` "Fuzzy-match
+mode" table below, which didn't cover this family). **Conclusion (V, by exclusion): the firmware's
+CMSIS-DSP radix-4 FFT code matches neither GCC nor ARM Compiler 6/LLVM's compiled output of CMSIS-
+DSP V1.4.5** - same negative as the GCC-only pass, now confirmed against a second major toolchain
+family. ARM Compiler 5 (armcc) against this same CMSIS-DSP source is the one combination still
+untried for this family (armcc was only retested against SPL/soft-float runtime code above, not
+CMSIS-DSP) - open for a future pass if anyone wants full toolchain coverage per re-rules.md pt 10.
 
 ## Fuzzy-match mode (`--mode fuzzy`, #41 pt 2 follow-up)
 

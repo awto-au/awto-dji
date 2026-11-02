@@ -116,9 +116,13 @@ byte-exact / instruction-sequence-ratio / mnemonic-only-ratio). Logs `./tmp/logs
   (<30%) at every opt level - register allocation and instruction scheduling diverge almost
   immediately after the shared `push {..,lr}` prologue. **Still U/[I]-shape-only, not upgraded** -
   close byte count alone is not evidence per the task's bar (shared opcodes/operands/constant pools
-  in the same order). Not reached: trying other CMSIS-DSP point releases between V1.4.0-V1.5.x, or
-  ARM Compiler (armcc/armclang) output, which ST and DJI-era toolchains sometimes used instead of
-  GCC for CMSIS libraries.
+  in the same order). Not reached: trying other CMSIS-DSP point releases between V1.4.0-V1.5.x.
+  **Retested against armclang (ARM Compiler 6, #41 pt4, 2026-11-03)**, same CMSIS-DSP V1.4.5
+  source, `-O0..-O3,-Os`, both exact and fuzzy mode (`docs/toolchain-inventory.md` "CMSIS-DSP
+  radix4 FFT family vs armclang"): still U for `radix4_butterfly_f32`, `cmplx_mag_f32`, and
+  `arm_bitreversal_f32` - best fuzzy composite 52.4%, well under the 70% ranking floor. ARM
+  Compiler 5 (armcc) against this source is the one toolchain combination left untried for this
+  function family.
 - **New finding from tracing cfft_radix4_f32's calls:** `cfft_radix4_f32` (0x08008a08) tail-jumps
   (`b`) to 0x080082b0, a 176 B bit-reversal permutation that Ghidra's auto-analysis folded into
   cfft_radix4_f32's *disassembly* but never gave its own FUNCTION entry (non-contiguous function,
