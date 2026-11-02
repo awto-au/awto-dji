@@ -17,6 +17,14 @@ android {
     defaultConfig {
         // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
         applicationId = "au.awto.dji.awto_dji_app"
+        // AOA bench build: AWTO_BENCH=1 gives it its own package id and launcher label, so it
+        // installs NEXT TO the DJI app and does not replace it. Classes keep the namespace above.
+        if (System.getenv("AWTO_BENCH") == "1") {
+            applicationIdSuffix = ".aoabench"
+            manifestPlaceholders["appLabel"] = "AOA Bench"
+        } else {
+            manifestPlaceholders["appLabel"] = "AWTO DJI"
+        }
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion
