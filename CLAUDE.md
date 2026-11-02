@@ -25,6 +25,7 @@ core and (parked) MAVLink ground clients.
 
 ## Firmware RE rules
 
+- Every RE pass (agent or human) follows `docs/re-rules.md` Process 1-6: rename-first, committed TSV + headless driver, regenerated Ghidra dumps committed, base-address gate. Agent briefs must cite it.
 - `docs/re-rules.md` (applied here) → canonical `awto-dan/docs/embedded/embedded-rules.md`. Read before Ghidra work.
 
 ## Repo layout

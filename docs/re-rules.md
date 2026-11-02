@@ -7,6 +7,8 @@ Canonical rules: `awto-dan/docs/embedded/embedded-rules.md` section "Firmware re
 2. Per-chip checklist: `stm32-reversing-process.md` (STM32), `lpc-reversing-process.md` (LPC); module names `naming-map.md`.
 3. Full depth in one pass: every GPIO/peripheral, bus chips, every table entry.
 4. Record: symbol TSV + struct header (`docs/symbols/`), doc with offsets and repro command, fact changes in `HISTORY.md`.
+5. Compound (every pass, every agent): base-address gate script first; names live in the committed TSV, applied by a committed headless driver (models: `scripts/re/m0900_ghidra_names.py`, `scripts/re/intel_wimax_ghidra.py`); regenerate and commit `re/ghidra-projects/<module>/` dumps; rename each `FUN_*` you touch; nothing left in `./tmp`. The next pass starts from named code.
+6. Agent briefs must cite this page and require the commit hashes + names/structs added per module in the report.
 
 ## Rules
 - Subsystem prefixes (`gfx_`, `io_`, `usb_`, `fpga_`, `adc_`, `key_`); name by function, not counter. Prefix only after call-graph isolation check; mixed callers are handlers, no prefix. Precedent: `fpga_link_*` rename (#85).
