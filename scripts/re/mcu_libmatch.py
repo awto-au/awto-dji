@@ -20,6 +20,24 @@ bytes at the real address. This script does that diff, generically:
                           of the clang-produced .o still goes through the GNU --toolchain-prefix
                           tools (readelf/objcopy/objdump) - verified compatible, see
                           docs/toolchain-inventory.md.
+      armcc            : ARM Compiler 5 / Keil flag syntax (--cpu=/--apcs=/-O0.. /-Ospace/-Otime),
+                          needs --armcc-bin (path to armcc.exe) and --wineprefix (the WINEPREFIX
+                          armcc.exe was installed into, e.g. ~/.wine-keil) - invoked as
+                          `wine <armcc-bin> ...`. UNLIKE armclang, the compiled .o does NOT go
+                          through the GNU --toolchain-prefix tools: ARM Compiler 5's eval/Lite
+                          license tags its default object output with a non-standard magic
+                          ("\\xf7ORC" in place of "\\x7fELF" - otherwise byte-identical ELF32
+                          layout) that GNU readelf/objdump refuse to parse, and the license-gated
+                          `fromelf --elf` conversion that would produce a conforming ELF is NOT
+                          available on the eval/Lite tier ("Option '--elf' not available with your
+                          license"). Extraction instead parses `fromelf --text -c -s` output
+                          directly (also via wine) - see docs/toolchain-inventory.md "ARM Compiler
+                          5 object format" for the byte-reconstruction rule. --ref-archive against
+                          ARM Compiler 5's OWN prebuilt runtime library (ARMCC/lib/armlib/*.l) does
+                          NOT need any of this: confirmed those .l archives and the standard-ELF
+                          .o members inside them (unlike a locally-compiled .o) are byte-identical
+                          and directly readable by the existing GNU ar/readelf/objcopy tools - no
+                          --toolchain armcc needed there, just point --ref-archive at the .l file.
 
 Always logs to ./tmp/logs/mcu_libmatch.log. Never executes the firmware or the compiled reference -
 static byte/instruction comparison only.
@@ -304,6 +322,107 @@ def compile_source_armclang(clang_bin: str, target: str, source: Path, opt: str,
     return out
 
 
+def _wine_path(p: Path) -> str:
+    """Host path -> wine path, via wine's default Z: = / mapping (no custom drive config needed)."""
+    return "Z:" + str(p.resolve())
+
+
+def compile_source_armcc(armcc_bin: str, wineprefix: str, source: Path, opt: str, cpu: str,
+                          float_abi: str, defines: list[str], includes: list[str],
+                          extra: list[str]) -> Path:
+    """ARM Compiler 5 (Keil armcc) flag dialect: --cpu=/--apcs=/-O0../-Ospace/-Otime, -D/-I (gcc-
+    compatible, no space needed). `--apcs=/hardfp` or `/softfp` for float_abi in (hard, softfp);
+    soft (no FPU, e.g. Cortex-M3) omits --apcs entirely - armcc's default for an FPU-less --cpu is
+    already soft. Runs via `wine <armcc_bin> ...` with WINEPREFIX set to `wineprefix` (see
+    docs/toolchain-inventory.md for the install path, e.g. ~/.wine-keil).
+
+    Output is ARM Compiler 5's own object format: ELF-shaped (same Elf32_Ehdr field layout and
+    offsets) but with the magic bytes swapped from "\\x7fELF" to "\\xf7ORC" on the eval/Lite license
+    tier - GNU readelf/objdump refuse it. extract_symbol_bytes_fromelf_text() reads it back via
+    `fromelf --text -c -s` instead (also through wine), not the GNU --toolchain-prefix tools.
+    """
+    out = Path(tempfile.mkstemp(suffix=f"_{opt}.o")[1])
+    cmd = ["wine", armcc_bin, f"--cpu={cpu}"]
+    if float_abi in ("hard", "hardfp"):
+        cmd.append("--apcs=/hardfp")
+    elif float_abi == "softfp":
+        cmd.append("--apcs=/softfp")
+    cmd += [f"-{opt}", "-c", _wine_path(source), "-o", _wine_path(out)]
+    for d in defines:
+        cmd.append(f"-D{d}")
+    for i in includes:
+        cmd += ["-I", _wine_path(Path(i))]
+    cmd += extra
+    env = {**__import__("os").environ, "WINEPREFIX": wineprefix, "WINEDEBUG": "-all"}
+    cp = run(cmd, env=env)
+    if cp.returncode != 0 or not out.exists():
+        out.unlink(missing_ok=True)
+        raise SystemExit(f"armcc compile failed ({' '.join(cmd)}):\n{cp.stdout}\n{cp.stderr}")
+    return out
+
+
+# fromelf --text -c -s instruction line, e.g.:
+#   "        0x00000000:    eef01a40    ..@.    VMOV.F32 s3,s0"
+#   "        0x0000000c:    4770        pG      BX       lr"
+# The hex field is one or more 4-hex-digit halfwords with NO separating space (unlike objdump's
+# space-separated halfwords); each halfword's two bytes are swapped relative to its own display
+# order to get real memory bytes (confirmed against the same source compiled with GCC: fromelf
+# "eef01a40" == objdump "f0ee 401a", little-endian halfwords - see docs/toolchain-inventory.md).
+_FROMELF_INSN_LINE = __import__("re").compile(
+    r"^\s*0x([0-9a-fA-F]{8}):\s+([0-9a-fA-F]+)\s+.*?\s{2,}(\S.*)$"
+)
+_FROMELF_SECTION_LINE = __import__("re").compile(r"^\*\* Section #\d+ '([^']*)'")
+
+
+def _fromelf_halfwords_to_bytes(hexstr: str) -> bytes:
+    out = bytearray()
+    for i in range(0, len(hexstr), 4):
+        chunk = hexstr[i:i + 4]
+        if len(chunk) < 4:
+            break
+        out += bytes.fromhex(chunk[2:4] + chunk[0:2])
+    return bytes(out)
+
+
+def extract_symbol_bytes_fromelf_text(fromelf_bin: str, wineprefix: str, obj: Path,
+                                       symbol: str) -> tuple[bytes, int]:
+    """Parse `fromelf --text -c -s <obj>` (via wine) to reconstruct a symbol's raw bytes + insn
+    list, for ARM Compiler 5 objects GNU readelf/objdump can't read (see compile_source_armcc).
+    Assumes one target function per compiled source file (same convention as --source for the
+    other backends): takes the whole section containing the `symbol` label line.
+    """
+    env = {**__import__("os").environ, "WINEPREFIX": wineprefix, "WINEDEBUG": "-all"}
+    cp = run(["wine", fromelf_bin, "--text", "-c", "-s", _wine_path(obj)], env=env)
+    lines = cp.stdout.splitlines()
+    in_target_section = False
+    found_symbol = False
+    raw = bytearray()
+    insns: list[str] = []
+    for line in lines:
+        sec_m = _FROMELF_SECTION_LINE.match(line.strip())
+        if sec_m:
+            if found_symbol:
+                break  # next section after the one with our symbol: done
+            in_target_section = False
+            continue
+        stripped = line.strip()
+        if stripped == symbol:
+            found_symbol = True
+            in_target_section = True
+            continue
+        if not in_target_section:
+            continue
+        m = _FROMELF_INSN_LINE.match(line)
+        if m:
+            _addr, hexstr, rest = m.groups()
+            raw += _fromelf_halfwords_to_bytes(hexstr)
+            insns.append(rest.strip())
+    if not found_symbol:
+        raise SystemExit(f"symbol {symbol!r} not found in fromelf --text output of {obj}\n"
+                          f"(stdout follows)\n{cp.stdout}")
+    return bytes(raw), len(raw)
+
+
 def mnemonics(insns: list[str]) -> list[str]:
     """First whitespace-separated token of each instruction (opcode only, no operands/registers)."""
     return [i.split()[0] if i.split() else i for i in insns]
@@ -361,15 +480,20 @@ def main() -> int:
     ap.add_argument("--define", action="append", default=[], dest="defines")
     ap.add_argument("--include", action="append", default=[], dest="includes")
     ap.add_argument("--cc-arg", action="append", default=[], dest="extra", help="extra compiler argument")
-    ap.add_argument("--toolchain", choices=["gcc", "armclang"], default="gcc",
+    ap.add_argument("--toolchain", choices=["gcc", "armclang", "armcc"], default="gcc",
                      help="compile-path backend flag dialect (--source only; --ref-archive is toolchain-"
                           "agnostic). gcc = arm-none-eabi-gcc syntax (default). armclang = ARM Compiler 6"
-                          "/clang syntax, needs --armclang-bin. See docs/toolchain-inventory.md (#41 pt 10).")
+                          "/clang syntax, needs --armclang-bin. armcc = ARM Compiler 5/Keil syntax, needs "
+                          "--armcc-bin and --wineprefix. See docs/toolchain-inventory.md (#41 pt 10).")
     ap.add_argument("--armclang-bin", help="path to the armclang/clang binary (--toolchain armclang only), "
                                             "e.g. ST's repackaged ~/.local/share/stm32cube/bundles/"
                                             "st-arm-clang/<ver>/bin/starm-clang")
     ap.add_argument("--clang-target", default="arm-none-eabi",
                      help="--target= value for --toolchain armclang (default arm-none-eabi)")
+    ap.add_argument("--armcc-bin", help="path to armcc.exe (--toolchain armcc only), e.g. "
+                                         "~/.wine-keil/drive_c/Keil_v5/ARM/ARMCC/bin/armcc.exe")
+    ap.add_argument("--wineprefix", help="WINEPREFIX armcc.exe was installed into (--toolchain armcc "
+                                          "only), e.g. ~/.wine-keil")
     ap.add_argument("--mode", choices=["exact", "fuzzy"], default="exact",
                      help="exact (default, unchanged): byte-diff + ordered insn/mnemonic ratio, V only on an "
                           "exact or instruction-identical match. fuzzy: additionally compute the FLIRT-style "
@@ -379,6 +503,8 @@ def main() -> int:
     args = ap.parse_args()
     if args.toolchain == "armclang" and not args.armclang_bin:
         raise SystemExit("--toolchain armclang requires --armclang-bin <path to clang binary>")
+    if args.toolchain == "armcc" and not (args.armcc_bin and args.wineprefix):
+        raise SystemExit("--toolchain armcc requires --armcc-bin <path to armcc.exe> and --wineprefix <prefix>")
 
     if not args.ref_symbol:
         raise SystemExit("--ref-symbol is required")
@@ -408,13 +534,25 @@ def main() -> int:
                 obj = compile_source_armclang(args.armclang_bin, args.clang_target, args.source, opt,
                                                args.cpu, args.fpu, args.float_abi, args.defines,
                                                args.includes, args.extra)
+            elif args.toolchain == "armcc":
+                obj = compile_source_armcc(args.armcc_bin, args.wineprefix, args.source, opt,
+                                            args.cpu, args.float_abi, args.defines, args.includes,
+                                            args.extra)
             else:
                 obj = compile_source(args.toolchain_prefix, args.source, opt, args.cpu, args.fpu,
                                       args.float_abi, args.defines, args.includes, args.extra)
             try:
-                # readelf/objcopy/objdump stay on --toolchain-prefix (GNU binutils): confirmed
-                # compatible with armclang-produced ELF objects, docs/toolchain-inventory.md.
-                ref, sz = extract_symbol_bytes(args.toolchain_prefix, obj, args.ref_symbol)
+                if args.toolchain == "armcc":
+                    # ARM Compiler 5's eval-license object format isn't standard ELF (non-standard
+                    # magic, --elf conversion license-gated) - parse fromelf --text output instead
+                    # of GNU readelf/objcopy. See compile_source_armcc / docs/toolchain-inventory.md.
+                    ref, sz = extract_symbol_bytes_fromelf_text(
+                        str(Path(args.armcc_bin).with_name("fromelf.exe")), args.wineprefix, obj,
+                        args.ref_symbol)
+                else:
+                    # readelf/objcopy/objdump stay on --toolchain-prefix (GNU binutils): confirmed
+                    # compatible with armclang-produced ELF objects, docs/toolchain-inventory.md.
+                    ref, sz = extract_symbol_bytes(args.toolchain_prefix, obj, args.ref_symbol)
             finally:
                 obj.unlink(missing_ok=True)
             ref_insns = objdump_raw_thumb(args.toolchain_prefix, ref, 0)
