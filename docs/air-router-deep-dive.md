@@ -314,31 +314,7 @@ interface. The two paths and the key are detailed bullet by bullet below.
   payload/status interface — and relays both, verbatim, to the FC. This is about as complete a
   confirmation of "yes, `air_router` forwards RF-link traffic to the FC" as static analysis can
   give without a live RF capture.
-- **I, key source traced (2026-10-25, same day) — zero at boot; later writes not excluded.** The 8-byte XOR
-  key lives at `radio_state_s+0x64` (RAM `0x20001b18`-`0x20001b1f`, inside the struct's
-  previously-opaque `pad_10` gap). Checked every write path: no DUML command handler touches
-  this offset (Set Config writes the *other*, earlier struct, `radio_cfg_page_s`, not this
-  one), and a direct reference search of all 8 individual bytes found zero writers anywhere in
-  the firmware. Traced the reset vector into the C-runtime's RAM-init table (two region
-  descriptors, each `{src, dst, len, init-fn}`) to see how this RAM starts out: the key's
-  address falls inside the second descriptor (`dst=0x200001d0`, `len=0x4ae8`), whose init
-  function is a plain zero-fill loop (`stmia` of zero registers, never reading `src` at all) —
-  not the compressed-copy decompressor the *first* descriptor uses for `0x20000000-0x200001cf`
-  (so this isn't "everything is zero," just this specific range). **Conclusion: the key is
-  zero-initialized RAM that no named writer touches — the XOR step is then a no-op
-  (XOR against zero), and the real work `fpga_link_payload_descramble` does is the two-stage chained
-  checksum, not encryption.** Possibly wired up for a board variant not active in this build,
-  or vestigial from an earlier revision.
-  **Why this is I, not V (doubted by the operator, check partly done):** the search covers
-  literal-address references and per-handler writes only. Excluded since: the 252-byte
-  flash-page `0x7b00` reload copies to `0x200019b8`-`0x20001ab3` (`radio_cfg_page_s`, ending one
-  byte before `radio_state_s` at `0x20001ab4`), so it cannot reach the key at `0x20001b18`
-  (`+0x64`). Not excluded: other bulk copies through a base pointer with a computed offset
-  (`fpga_cfg_load`, any memcpy-style struct fill), or a write from another build or board
-  variant. Command `0xfe`
-  mode 1 writes only the first 5 bytes of the struct and mode 2 only `+0x11c`, so neither
-  reaches `+0x64`. Over-the-air encryption is not ruled out by this finding
-  (`what-is-actually-secret.md`, LAYER CAVEAT).
+- **V, key source (2026-11-02): written at runtime.** The 8-byte XOR key is `link_xor_key` (`radio_state_s+0x64`, RAM `0x20001b18`). `radio_session_key_init` `0x0800ea34` (once, from `fpga_link_rx_poll` when FPGA reg `0xE9` bits[1:0]==3) seeds `srand` from SysTick VAL, draws 24 random bytes into `radio_session_key` (`0x20001b00`) and 3DES-encrypts the constant `78 65 54 87 62 23 36 47` into the key. DES S-box table `0x08015e5c`. `radio_status_push` `0x0801029e` copies the 24 key bytes into a 0x43-byte cs9/cmd0 message to receiver type 0xE (I). Over-the-air encryption is not ruled out (`what-is-actually-secret.md`, LAYER CAVEAT). Detail and reproduction: `m0900-naming-pass.md` §5.
 - Reproduce: `scratchpad/ghscripts/m0900_fun80103f8.py`, `m0900_ring_writers.py`,
   `m0900_can_init_trace.py`, `m0900_can_queue_init_callers.py`, `m0900_fun0800e008_callers.py`,
   `m0900_check_usart3_ctx.py`, `m0900_all_ring_pushers.py`, `m0900_key_src1.py`-`4.py`,

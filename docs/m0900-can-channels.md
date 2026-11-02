@@ -4,7 +4,7 @@ Static trace of `P3X_FW_V01.11.0020_m0900.bin` (SHA-256 `72156b4b...13fe6d`, app
 `0x08008000`). Closes `dataflow.md` §5 items 1 and 10. Tags: **V** = read from code (address
 cited), **I** = inferred, **U** = unknown.
 
-Reproduce: `python3 scripts/re/m0900_can_channels.py`. It asserts every V claim below against
+Names, SRAM object table and CAN message inventory: `m0900-naming-pass.md`. Reproduce: `python3 scripts/re/m0900_can_channels.py`. It asserts every V claim below against
 the image. Getting the image: download the official `P3P_FW_V01.11.0020.bin.zip` (URL in
 `scripts/fetch_dji_tools.ps1`), check the container hash in `data-manifest.md`, then extract
 module `m0900` with `python3 scripts/re/xv4_extract.py`. That script is a minimal xV4 reader

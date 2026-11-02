@@ -4,6 +4,12 @@ Dated changelog of fact-corrections previously narrated inline in the docs. Each
 phrased as "initial understanding -> corrected finding." The docs now state only the
 corrected/current fact; this file preserves the history for reference.
 
+## 2026-11-02 (m0900 load base and link XOR key)
+
+- **"True link base is `0x08000000`; `m0900_ghidra` (base `0x08008000`) is `+0x8000` off" -> "the image is linked at `0x08008000`; the CAN pass (`dataflow.md` §7-7.11) was `0x8000` low".** Reset vector `0x08008201`, Reset stub at file offset `0x200`; `scripts/re/m0900_base_check.py`. The CAN-pass `vec_36` ISR decompile was unrelated code. Addresses corrected in `dataflow.md`, scripts and `m0900-naming-pass.md` §1.
+- **"`link_xor_key` is zero-initialised RAM that no writer touches, so the XOR step is a no-op" -> "`radio_session_key_init` 0x0800ea34 writes it at link-up (3DES of a constant under a random 24-byte key)".** The 2026-10-25 search matched literal addresses only; the writer goes through a pointer argument (`des3_crypt_block(in, 0x20001b18, ks)`).
+- **"`exti_cb1`/`exti_cb_table` are EXTI callbacks" -> "TIM3 / TIM2 update and compare callbacks"** (`tim3_irq` vector 45, `tim2_irq` vector 44; only `exti1_cb_ptr` is EXTI).
+
 ## 2026-10-31 (m1400 GPIO0 P0.7/P0.9 interface — capstone trace corrected by Ghidra xrefs)
 
 - **"A separate half-duplex bit-bang pin PAIR, driven only by `port_send` port 1" -> "a 3-pin

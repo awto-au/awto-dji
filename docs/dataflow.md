@@ -357,74 +357,73 @@ cmdset 9 (app's internal name: `OSD`; this doc's/dissector's name: `HD Link`) co
 
 ## 7. CAN1 bus (m0900) - message inventory and driver layer (issue #36)
 
-Source: `firmware/P3X_FW_V01.11.0020_m0900.bin` (sha256 `72156b4b...`), Ghidra 12.2 headless, ARM:LE:32:Cortex, raw load `0x08000000`. Rerun: `python3 scripts/re/m0900_can_ghidra.py` (post-script `scripts/re/ghidra/M0900Dump.java`). Output `tmp/m0900_can_ghidra/m0900_dump.txt`, literal scan `tmp/m0900_can_ghidra/literal_hits.txt`. Names below are ours; Ghidra project is not persisted (`-deleteProject`), so renames live here, not in a .gpr.
+Source: `firmware/P3X_FW_V01.11.0020_m0900.bin` (sha256 `72156b4b...`), Ghidra 12.2 headless, ARM:LE:32:Cortex, raw load at **`0x08008000`** (verified by `python3 scripts/re/m0900_base_check.py`). All addresses in this document use that base. Names are applied from `docs/symbols/m0900_V01.11.0020.tsv` by `scripts/re/m0900_ghidra_names.py`; project and dump are in `re/ghidra-projects/m0900_radio/`. CAN message inventory and SRAM object table: `m0900-naming-pass.md`.
 
-**Scope status:** driver layer and endpoint table resolved; frame-payload meaning of 0x412/0x413/0x414/0x415 is largely **U**. RX ISR body (`0x0800b23c`) does not decompile cleanly - see gaps.
+**Scope status:** driver layer, endpoint table, RX ISR and TX IRQ resolved (V). Payload of 0x412-0x415 is plain DUML (§7.11).
 
 ### 7.1 Peripheral and state (V unless marked)
 
-- CAN1 base `0x40006400`: literal `0x08000a1c` (used by `0x08000620`). Filter master `0x40006600`: literal `0x08000a20`.
-- Pointer literals at `0x080034f0`: `[0]=0x40006400` CAN1 base, `[4]=0x200015d0` CAN endpoint table, `[8]=0x20000090` CAN state block, `[0xc]=0x40010800` GPIOA (CAN pins, I).
-- CAN state block `0x20000090` (`DAT_080034f8`): `+0` TX-ready flag (set to 1 by `0x08003298`, cleared by `0x08003468`), `+4` TX endpoint count, `+8` RX endpoint count.
+- CAN1 base `0x40006400`: literal `0x08008a1c` (used by `0x08008620`). Filter master `0x40006600`: literal `0x08008a20`.
+- Pointer literals at `0x0800b4f0`: `[0]=0x40006400` CAN1 base, `[4]=0x200015d0` CAN endpoint table, `[8]=0x20000090` CAN state block, `[0xc]=0x40010800` GPIOA (CAN pins, I).
+- CAN state block `0x20000090` (`DAT_0800b4f8`): `+0` TX-ready flag (set to 1 by `0x0800b298`, cleared by `0x0800b468`), `+4` TX endpoint count, `+8` RX endpoint count.
 - Endpoint table `0x200015d0`: RX slots `+0..+0x30` (13 x u32), TX slots `+0x34..+0x64` (13 x u32). Max 13 each.
 
 ### 7.2 Endpoint objects (ID-keyed; V by arithmetic on the registration calls)
 
 | Std ID | Dir | Object base | Queue size | Registered by |
 |---|---|---|---|---|
-| 0x412 | TX | `0x20002330` (= `0x20001f30`+`0x400`) | 0x200 | `0x080093a8` (gated, see 7.4) |
-| 0x413 | RX | `0x2000234c` (= `0x20002130`+`0x21c`) | 0x200 | `0x080093a8` (gated) |
-| 0x414 | TX | `0x20002538` (= `0x200024b8`+`0x80`) | 0x40 | `0x08009828` (ungated in `0x08005b00`) |
-| 0x415 | RX | `0x20002554` (= `0x200024b8`+`0x9c`) | 0x40 | `0x08009828` (ungated) |
+| 0x412 | TX | `0x20002330` (= `0x20001f30`+`0x400`) | 0x200 | `0x080113a8` (gated, see 7.4) |
+| 0x413 | RX | `0x2000234c` (= `0x20002130`+`0x21c`) | 0x200 | `0x080113a8` (gated) |
+| 0x414 | TX | `0x20002538` (= `0x200024b8`+`0x80`) | 0x40 | `0x08011828` (ungated in `0x0800db00`) |
+| 0x415 | RX | `0x20002554` (= `0x200024b8`+`0x9c`) | 0x40 | `0x08011828` (ungated) |
 
 - So the doc's "CAN TX queue `0x20002538`" is the **0x414 TX endpoint**, not the 0x412 queue (V). The 0x412 TX endpoint is `0x20002330`, which the dispatch table already names as path A (types 1, 4, 8, 15, `dataflow.md` routing notes).
-- Endpoint layout (V): `+0` std ID u32, `+0x06` queue size, `+0x08` size-1 mask, `+0x0a` owner pointer, `+0x0c` direction byte (1 = TX).
-- RX endpoints also program a hardware filter: `0x0800072e` with ID `<<5` and mask `0xffff` (ST 16-bit list layout, V from code).
+- Endpoint layout = `CanQueue` (V, `m0900-structs.h`): `+0` std ID u32, `+4..+0x17` embedded `ByteRing` {head, tail, size, mask, buf}, `+0x18` direction byte (1 = TX).
+- RX endpoints also program a hardware filter: `0x0800872e` with ID `<<5` and mask `0xffff` (ST 16-bit list layout, V from code).
 
 ### 7.3 Driver functions (ST StdPeriph pattern, V unless marked)
 
 | Address | Name (ours) | Role |
 |---|---|---|
-| `0x08000620` | `can_rcc_enable` | RCC APB1 enable, bit 25 (CAN1) or 26 (CAN2) by base compare |
-| `0x08000646` | `CAN_Init` | MCR INRQ, wait INAK, MCR bits TTCM/ABOM/AWUM/NART/RFLM/TXFP, BTR = LBKM<<30, SJW<<24, BS1<<16, BS2<<20, BRP-1 |
-| `0x0800072e` | `CAN_FilterInit` | filter bank setup from ID/mask struct |
-| `0x080008a0` | `CAN_Transmit` | select empty TX mailbox from TSR (TME0 bit 26, TME1 27, TME2 28, else return 4 = no mailbox), write TIR/TDTR/TDLR/TDHR at `+0x180`, set TXRQ |
-| `0x0800331c` | `can_bus_init` | GPIO/AFIO, RCC enable, `CAN_Init` with the values below, zero endpoint table |
-| `0x080033ec` | `can_endpoint_register` | fills endpoint, appends to RX (+filter) or TX table |
-| `0x080034e6` | `can_endpoint_reset` | zeroes two counters in an endpoint |
-| `0x08003298` | `can_tx_pump` | scans TX table, first endpoint with pending bytes -> `CAN_Transmit` (ID = `*ep`, DLC = min(len,8)) |
-| `0x08003468` | `can_send_bytes` | pushes N bytes into endpoint FIFO (`0x08004274`), when TX-ready flag set and len>0 sends one frame |
-| `0x08005b00` | `app_init` (ours) | top-level bring-up; calls `0x0800331c` (board code 2/4/5/6 gate), `0x080093a8`, `0x08009828` |
+| `0x08008620` | `CAN_DeInit` | APB1 reset pulse, bit 25 (CAN1) or 26 (CAN2) by base compare |
+| `0x08008646` | `CAN_Init` | MCR INRQ, wait INAK, MCR bits TTCM/ABOM/AWUM/NART/RFLM/TXFP, BTR = LBKM<<30, SJW<<24, BS1<<16, BS2<<20, BRP-1 |
+| `0x0800872e` | `CAN_FilterInit` | filter bank setup from ID/mask struct |
+| `0x080088a0` | `CAN_Transmit` | select empty TX mailbox from TSR (TME0 bit 26, TME1 27, TME2 28, else return 4 = no mailbox), write TIR/TDTR/TDLR/TDHR at `+0x180`, set TXRQ |
+| `0x0800b31c` | `can_init` | GPIO/AFIO, RCC enable, `CAN_Init` with the values below, zero endpoint table |
+| `0x0800b3ec` | `can_queue_init` | fills endpoint, appends to RX (+filter) or TX table |
+| `0x0800b4e6` | `can_queue_reset` | zeroes ring head/tail of a queue |
+| `0x0800b298` | `can1_tx_irq` | vector 35 (TX mailbox empty): scans TX table, first queue with pending bytes -> `CAN_Transmit` (ID = `*q`, DLC = min(len,8)); none left -> TMEIE off, `tx_idle=1` |
+| `0x0800b468` | `can_enqueue_and_tx` | pushes N bytes into the queue ring (`ring_push` 0x0800c274), if `tx_idle` sends the first frame and enables TMEIE |
+| `0x0800db00` | `main` | top-level bring-up; calls `can_init` (board code 2/4/5/6 gate), `0x080113a8`, `can_aux_init` 0x08011828 |
 
-Bit timing (V from `0x0800331c` stores): prescaler field 3 (BRP=2), BS1 raw 5 (6 tq), BS2 raw 4 (5 tq), SJW raw 0 (1 tq). 36 MHz / (3 x 12 tq) = 1 Mbit/s. Matches the 1 Mbit/s already in this doc.
+Bit timing (V from `can_init` stores): prescaler field 3 (BRP=2), BS1 raw 5 (6 tq), BS2 raw 4 (5 tq), SJW raw 0 (1 tq). 36 MHz / (3 x 12 tq) = 1 Mbit/s. Matches the 1 Mbit/s already in this doc.
 
-### 7.4 Frame layout (V, from `0x080008a0` and `0x08003298`)
+### 7.4 Frame layout (V, from `0x080088a0` and `0x0800b298`)
 
 - Frame struct: `+0` std ID (u16 used; `ID<<21` into TIR), `+4` ext ID, `+8` IDE byte, `+9` RTR byte (OR'd raw into TIR, I on the bit value), `+10` DLC, `+11..+18` data D0..D7.
 - Data words are packed little-endian into TDLR (D0..D3) and TDHR (D4..D7).
-- `0x08003298` builds the frame ID from the endpoint's first word and takes payload bytes from the FIFO at endpoint `+4`, DLC capped at 8.
+- `0x0800b298` builds the frame ID from the endpoint's first word and takes payload bytes from the FIFO at endpoint `+4`, DLC capped at 8.
 
 ### 7.5 Board-code gate (V)
 
-- `0x08004142` returns `*0x200000d8` (board code). Boards 2, 4, 5, 6 (values checked in that order) run `0x0800331c` and register 0x412/0x413 (`0x080093a8`). Board 7 does not use CAN here.
-- `0x08009828` (0x414/0x415) is called unconditionally from `0x08005b00`. Whether it is needed on board 7 is **U**.
+- `0x0800c142` returns `*0x200000d8` (board code). Boards 2, 4, 5, 6 (values checked in that order) run `0x0800b31c` and register 0x412/0x413 (`0x080113a8`). Board 7 does not use CAN here.
+- `0x08011828` (0x414/0x415) is called unconditionally from `0x0800db00`. Whether it is needed on board 7 is **U**.
 
 ### 7.6 IDs in use (inventory so far)
 
 - **0x412 TX, 0x413 RX**: board 2/4/5/6 (V). Relay path already in this doc (section 4 / push set 0x03 id 0x43).
 - **0x414 TX, 0x415 RX**: registered on all boards (V registration; I that it is always used). **Corrected in §7.11**: its TX endpoint is reached by exactly one receiver-type value (30), not the {3,5,10,11,12,18,21,23} set stated here previously - that set was an unverified inference (see §7.11 for the full byte-level trace that replaces it).
-- **Payload meaning of 0x412-0x415: resolved in §7.11.** Both carry ordinary DUML, same framing/dispatch as every other transport - CAN is purely a carrier here, not a second protocol.
+- **Payload meaning of 0x412-0x415: resolved in §7.11; per-message inventory in `m0900-naming-pass.md` §4.** Both carry ordinary DUML, same framing/dispatch as every other transport - CAN is purely a carrier here, not a second protocol.
 
-### 7.7 RX path (partial)
+### 7.7 RX path (V)
 
-- Vector 36 (IRQ 20, `USB_LP_CAN1_RX0`) is `0x0800b23c` (the `0x0800b23d` in the spec is the Thumb address). The decompile of that handler is not reliable (register-pair confusion), so the RX read sequence (FIFO0 read, release, endpoint match by ID) is **U**.
-- RX byte FIFO `0x200024b8+0xa0` is drained by `0x08009882`, which calls the framer `0x08009a8e` and dispatch `0x0800998a` on completion (V). Which code writes that FIFO from the ISR is **U**.
+- Vector 36 (IRQ 20, `USB_LP_CAN1_RX0`) = `can_rx0_handler` `0x0800b23c` (Thumb 0x0800b23d). `CAN_Receive` (FIFO0), then walks `can_tables.rx[13]`: if `IDE==0` and `StdId == queue.std_id`, pushes DLC bytes into that queue's ring (`ring_push`, no overflow check). No branch on a specific ID.
+- Queue rings are drained by `can413_pump` 0x0801148c / `can415_pump` 0x08011882 (main loop), which feed `duml_parser_feed` 0x08011a8e and `duml_dispatch` 0x0801198a on a complete frame.
 
 ### 7.8 Gaps and next steps
 
-1. Decode the RX ISR at `0x0800b23c` by hand from disassembly (decompiler output unusable here). Target: FIFO0 read and ID match.
-2. Enumerate every caller of `0x08003468` (`0x08009460`, `0x0800987e`, both unnamed in Ghidra) to get the full TX ID/payload inventory.
-3. Persist Ghidra renames in a project (the current pipeline discards it).
+1. Passive CAN capture on the aircraft to confirm which StdIds are live (`m0900-can-channels.md` §6).
+2. Callers of `can_enqueue_and_tx`: exactly two, `route_path_a` 0x0801141c (0x412 queue) and `can414_send` 0x08011876 (0x414 queue); full TX inventory in `m0900-naming-pass.md` §4.
 
 ### 7.9 External corroboration - is CAN1 the motor/ESC bus? (2026-10-24)
 
@@ -435,7 +434,7 @@ Public RE community sources, not this repo's own analysis - see issue #36 for th
 - **Generational precedent only** (Phantom 4, WM330 FC Core board wiki page): same pattern - `CAN1_T`/`CAN1_R` pads present, separate from the FC Damping board's `PWM1`-`PWM4` ESC lines.
 - **DroneCAN/UAVCAN**: no evidence DJI's aircraft stack uses or was influenced by it. DJI's RoboMaster line (ground robots, unrelated product) does use CAN for its C610/C620 ESCs with its own open protocol, but that's a different product family, not the Phantom aircraft.
 - Net: nothing public contradicts the static finding that CAN1 on `m0900` carries relayed DUML rather than ESC/motor commands.
-4. `0x0800c808` has 94 callers and looks like a generic helper, not CAN-specific. Not named yet.
+4. `0x08014808` (94 callers) is `__aeabi_dmul`, not CAN-specific.
 
 ### 7.10 `m0306`'s own CAN1 *and* CAN2 — FC side, separate chip from `m0900` (issue #40, 2026-10-24)
 
@@ -451,7 +450,7 @@ motor/ESC bus" (§7.9: no, ESC is UART3+PWM1-4).
   `GPIO_PinAFConfig`-pattern call (AF9, the standard CANx alternate function on this family)
   at `0x080353e6`-`0x080353fe` region, its own RCC clock-enable dispatch through
   `0x0803addc` (shared selector: compares the base against CAN1/CAN2 and picks RCC bit 25
-  or 26, same StdPeriph shape as `m0900`'s `can_rcc_enable` at `0x08000620`), and its own
+  or 26, same StdPeriph shape as `m0900`'s `CAN_DeInit` at `0x08008620`), and its own
   bit-timing (BTR-pattern) register write — CAN1 at `FUN_080351d0`, CAN2 at
   `FUN_08035484`/`FUN_080353b2` (tail-jump chained, `b 0x08035484` at `0x080355c6`).
 - **I:** CAN1 here is plausibly the FC-side end of the *same* DUML-relay CAN bus `m0900`
@@ -478,46 +477,38 @@ Pulls together §7.1-7.9 (`m0900`, air radio), §7.10 (`m0306`, FC), and `contro
 "Full GPIO/bus survey" + `ground-upgrade-path.md` (`m1400`, ground radio) - no new scatter,
 corrections land here with pointers back. Reproduce the `m0900` table dump:
 `python3 scripts/re/m0900_can_routing_decode.py` (output `tmp/m0900_can_ghidra/routing_table.txt`,
-log `tmp/logs/m0900_can_routing_decode.log`). Ghidra dumps used: `tmp/m0900_can_ghidra/m0900_dump.txt`
-(issue #36 pass, not yet archived - still `-deleteProject`, same gap as §7.8 item 3),
-`tmp/m0306_ghidra/m0306_dump.txt` (archived `re/ghidra-projects/m0306_flight_controller.tar.gz`),
-`tmp/m1400_ghidra/m1400_dump.txt` (archived `re/ghidra-projects/m1400_radio.tar.gz`).
+log `tmp/logs/m0900_can_routing_decode.log`). Ghidra dump: `re/ghidra-projects/m0900_radio/m0900_dump.txt`
+(`scripts/re/m0900_ghidra_names.py`), `tmp/m0306_ghidra/m0306_dump.txt` (archived
+`re/ghidra-projects/m0306_flight_controller.tar.gz`), `tmp/m1400_ghidra/m1400_dump.txt` (archived
+`re/ghidra-projects/m1400_radio.tar.gz`).
 
-**Address-base note (V, resolve before cross-reading §1-6 vs §7):** §1-6's routing addresses
-(`packet_send` 0x080118d0, dispatch 0x0801198a, framer 0x08011a8e, filter table 0x0801a120)
-and §7's CAN-driver addresses (0x08009xxx, 0x08003xxx) are the **same functions**, found at
-addresses exactly `0x8000` apart (confirmed by matching call-graph shape, not just address
-arithmetic: `FUN_0800998a`'s dispatch-table-walk and fallback-to-`FUN_080098d0` structure is
-byte-identical to §1-6's described `0x0801198a`/`0x080118d0` behaviour). Two different Ghidra
-loads of the same `P3X_FW_V01.11.0020_m0900.bin` used base addresses `0x8000` apart; which one
-is "correct" (matches the real flash address) isn't re-derived here - use the `+0x8000`
-translation when matching an address from §1-6 against one from §7 or this section.
+**Address base (V):** every `m0900` address in §1-7 is at link base `0x08008000` (`scripts/re/m0900_base_check.py`).
 
 ### Q1: what do 0x414/0x415 actually carry? (V, full trace this pass)
 
-`packet_send` (`FUN_080098d0`, ≡ §1-6's `0x080118d0`) is `m0900`'s single outbound-DUML
+`packet_send` (`packet_send`, ≡ §1-6's `0x080118d0`) is `m0900`'s single outbound-DUML
 router: it dispatches purely on `byte5 & 0x1f` (the DUML receiver-type byte) through a
-**31-entry Thumb `tbb` table at flash `0x080098e4`**, read directly out of the firmware image
+**31-entry Thumb `tbb` table at flash `0x080118e4`**, read directly out of the firmware image
 byte-for-byte (`scripts/re/m0900_can_routing_decode.py` - no decompiler needed, the table is
 flash data). Full mapping (device-type names from `docs/data/apk-cmdset-devicetype.tsv`):
 
 | Receiver type(s) | Device name(s) | Destination |
 |---|---|---|
-| 1, 4, 8, 15 | CAMERA, GIMBAL, DM368, TRANSFORM | `0x0800941c`: board-gated (2/4/5/6) `can_send_bytes` to **CAN std ID 0x412** - plus an extra check (upper 3 bits of byte5 must be 1 or 7) before actually sending; board 7 or failed check falls back to USART1/2 via `FUN_080030a4` |
-| 2, 6, 13, 14, 16, 20, 22 | APP, RC, DM368_G, OSD, TRANSFORM_G, FPGA_G, 22 (unlabeled) | unconditional **USART3** (`FUN_080030a4` reason 3) - matches the pre-existing `m0900-buses.tsv` USART3 row exactly |
-| 3, 5, 10, 11, 12, 18, 21, 23 | FLYC, CENTER, PC, BATTERY, DIGITAL, DOUBLE, 21/23 (unlabeled) | **CORRECTS the prior inference** (old §7.6, `m0900-buses.tsv` CAN1 row "bus peers... INFERRED"): unconditional **USART1** (`FUN_080030a4` reason 1, via thunk `0x0800a61c`), on every board code, **not CAN at all**. The CAN-0x414 destination for this group, as previously written in §7.6/issue #36's own comment, was never actually traced ("Second CAN TX queue... ID word: not decoded") - it was a plausible guess that this trace refutes. |
-| 30 (unlabeled) | - | the **only** receiver-type value that reaches **CAN std ID 0x414**: board-gated (2/4/5/6) via thunk `0x08009876` -> `can_send_bytes`; board 7 falls back to USART1 (reason 1) |
-| 17 (SINGLE) | - | "mixed" (confirms the old §7.6/§227 note, now with mechanism): board 2/4/5/6 -> USART1 (reason 1); board 7 -> attempts the CAN-0x412 path (`0x0800941c`), which then fails its own internal board-code check (7 isn't in {2,4,5,6}) and falls through to its own USART1/2 fallback - so type 17 never actually reaches CAN on any board |
-| 0, 7, 9, 19, 24-29 | WHO, WIFI, OFDM(self), FPGA, unlabeled | **dropped silently** - no transport reached at all (type 9 = `m0900` itself; anything addressed to `m0900` that reaches this far means no registered callback matched it in `FUN_0800998a`'s dispatch table first) |
+| 1, 4, 8, 15 | CAMERA, GIMBAL, DM368, TRANSFORM | `0x0801141c`: board-gated (2/4/5/6) `can_enqueue_and_tx` to **CAN std ID 0x412** - plus an extra check (upper 3 bits of byte5 must be 1 or 7) before actually sending; board 7 or failed check falls back to USART1/2 via `uart_send` |
+| 2, 6, 13, 14, 16, 20, 22 | APP, RC, DM368_G, OSD, TRANSFORM_G, FPGA_G, 22 (unlabeled) | unconditional **USART3** (`uart_send` reason 3) - matches the pre-existing `m0900-buses.tsv` USART3 row exactly |
+| 3, 5, 10, 11, 12, 18, 21, 23 | FLYC, CENTER, PC, BATTERY, DIGITAL, DOUBLE, 21/23 (unlabeled) | **CORRECTS the prior inference** (old §7.6, `m0900-buses.tsv` CAN1 row "bus peers... INFERRED"): unconditional **USART1** (`uart_send` reason 1, via thunk `0x0801261c`), on every board code, **not CAN at all**. The CAN-0x414 destination for this group, as previously written in §7.6/issue #36's own comment, was never actually traced ("Second CAN TX queue... ID word: not decoded") - it was a plausible guess that this trace refutes. |
+| 30 (unlabeled) | - | the **only** receiver-type value that reaches **CAN std ID 0x414**: board-gated (2/4/5/6) via thunk `0x08011876` -> `can_enqueue_and_tx`; board 7 falls back to USART1 (reason 1) |
+| 17 (SINGLE) | - | "mixed" (confirms the old §7.6/§227 note, now with mechanism): board 2/4/5/6 -> USART1 (reason 1); board 7 -> attempts the CAN-0x412 path (`0x0801141c`), which then fails its own internal board-code check (7 isn't in {2,4,5,6}) and falls through to its own USART1/2 fallback - so type 17 never actually reaches CAN on any board |
+| 0, 7, 9, 19, 24-29 | WHO, WIFI, OFDM(self), FPGA, unlabeled | **dropped silently** - no transport reached at all (type 9 = `m0900` itself; anything addressed to `m0900` that reaches this far means no registered callback matched it in `duml_dispatch`'s dispatch table first) |
 
-Cross-check (same script): `FUN_080030a4`'s reason-code literals resolve to the exact DMA
+Cross-check (same script): `uart_send`'s reason-code literals resolve to the exact DMA
 buffer addresses `m0900-buses.tsv` already documents per-USART (`reason 1` -> `0x200001d0`
 USART1, `reason 2` -> `0x200004d0` USART2, `reason 3` -> `0x200007d0` USART3) - confirms the
 reason-code-to-USART mapping independently of the table-walk above.
 
 **Net answer:** 0x412/0x413 and 0x414/0x415 are structurally identical - same
-`can_endpoint_register`/`can_send_bytes`/`CAN_Transmit` plumbing on the TX side, same incoming
-framer+dispatch (`FUN_08009a8e`, `FUN_0800998a`) on the RX side as every other transport
+`can_queue_init`/`can_enqueue_and_tx`/`CAN_Transmit` plumbing on the TX side, same incoming
+framer+dispatch (`duml_parser_feed`, `duml_dispatch`) on the RX side as every other transport
 (USART1/2/3). **CAN carries plain DUML; it is not a second protocol.** What's narrow is the
 *gate*: only receiver-type 30 (unlabeled in the public `DeviceType` enum extract so far) reaches
 0x414/0x415 at all, and only on board codes 2/4/5/6.
@@ -545,7 +536,7 @@ new open question, not previously tracked anywhere in this repo.
 
 - **`m0900`: CLOSED - but the prior justification here was flawed, now redone (2026-10-24,
   issue #36).** The earlier text in this bullet argued closure from "the only function that
-  creates a CAN endpoint object is `can_endpoint_register`, 4 call sites, `CAN_Transmit` has
+  creates a CAN endpoint object is `can_queue_init`, 4 call sites, `CAN_Transmit` has
   exactly 2 callers" - i.e. it enumerated every call site of ONE software helper. That's
   circular: it proves exhaustiveness only for sends that go through that helper, and says
   nothing about a direct/inline write to a bxCAN mailbox register placed anywhere else in the
@@ -554,10 +545,10 @@ new open question, not previously tracked anywhere in this repo.
   below with two methods that don't share that assumption
   (`scripts/re/m0900_can_closure_check.py`, output `tmp/m0900_can_ghidra/can_closure_check.txt`,
   log `tmp/logs/m0900_can_closure_check.log`, against the same archived project/dump,
-  `re/ghidra-projects/m0900_can.tar.gz` / `tmp/m0900_can_ghidra/m0900_dump.txt`):
+  `re/ghidra-projects/m0900_radio/m0900_dump.txt`):
   - **RX filter-bank check (requested as the more reliable method): turned out NOT
-    independent.** `CAN_FilterInit` (`0x0800072e`) has **exactly one call site anywhere in the
-    image** (`0x08003456`, inside `can_endpoint_register`) - so walking the filter banks finds
+    independent.** `CAN_FilterInit` (`0x0800872e`) has **exactly one call site anywhere in the
+    image** (`0x0800b456`, inside `can_queue_init`) - so walking the filter banks finds
     nothing the call-site search didn't already know. The two filters programmed are for
     0x413 and 0x415 (the two RX endpoints; TX endpoints never touch `CAN_FilterInit`),
     matching the existing set. This check doesn't add evidence, it restates the same one.
@@ -569,14 +560,14 @@ new open question, not previously tracked anywhere in this repo.
     status, filter-bank and mailbox registers alike) or CAN2's (`0x40006800`-`0x40006bff`).
     Result: **CAN2's block has zero literal occurrences anywhere in the image** - `m0900`
     never touches CAN2 at all. **CAN1's block has exactly 3 literal occurrences in the entire
-    image**, used by exactly 4 functions: `can_rcc_enable` (clock gating only), `CAN_FilterInit`
-    (filter banks, covered above), and the driver trio `can_bus_init`/`can_tx_pump`/
-    `can_send_bytes` - all already-named, all already accounted for in §7.3. Separately
-    scanned the full disassembly for `movw`/`movt`: **54 `movw` instructions exist in the whole
-    322-function image, but zero `movt`** - and `movt` is required to build the upper half
+    image**, used by exactly 4 functions: `CAN_DeInit` (clock gating only), `CAN_FilterInit`
+    (filter banks, covered above), and the driver trio `can_init`/`can1_tx_irq`/
+    `can_enqueue_and_tx` - all already-named, all already accounted for in §7.3. Separately
+    scanned the full disassembly for `movw`/`movt`: **64 `movw` instructions exist in the whole
+    377-function image, but zero `movt`** - and `movt` is required to build the upper half
     (`0x4000`) of any address into either CAN block, so that construction path is unused
     anywhere in this firmware, full stop. Between the two scans, every possible origin of a
-    pointer into the CAN1 or CAN2 register space - not just calls to `can_endpoint_register` -
+    pointer into the CAN1 or CAN2 register space - not just calls to `can_queue_init` -
     is accounted for.
   - **Net: {0x412, 0x413, 0x414, 0x415} is still `m0900`'s complete CAN-ID set, no more, no
     hidden fifth ID - but now for a reason that survives the "what if something bypasses the
@@ -627,52 +618,38 @@ Operator-specified addresses, traced directly rather than inferred from the exis
 Same script as Q2, extended: `scripts/re/m0900_can_closure_check.py`, output
 `tmp/m0900_can_ghidra/can_closure_check.txt`.
 
-**A genuinely new finding first, because it's needed to even interpret the operator's addresses
-correctly (V):** `0x0800b31c`/`0x0800b3ec`/`0x0800b468` (`m0900-buses.tsv`'s CAN1 row: "can_init",
-"ring init", "can_enqueue_and_tx") are **not addresses in this section's project** - they're from
-`tmp/m0900_ghidra` (`scripts/re/m0900_ghidra_disasm.py`, `BASE_ADDR = "0x08008000"`), a *different,
-earlier* Ghidra load of the same binary. Checked which project's base is the real one: file offset
-`0x0` decodes as a textbook Cortex-M vector table (SP `0x20004cb8`, Reset `0x08008201`, four more
-odd/Thumb exception handlers); file offset `0x8000` (where `m0900_ghidra_disasm.py` tells Ghidra
-code begins) is mid-instruction garbage. **True link base is `0x08000000`.** This project
-(`m0900_can_ghidra`, all of §7-7.11) used it correctly throughout. `m0900_ghidra` is off by
-**+0x8000 on every function address it reports** - `0x0800b31c`/`0x0800b3ec`/`0x0800b468` minus
-`0x8000` land exactly on this project's `can_bus_init` (`0x0800331c`)/`can_endpoint_register`
-(`0x080033ec`)/`can_send_bytes` (`0x08003468`), confirming the translation. **`m0900-buses.tsv`'s
-CAN1 row addresses (and almost certainly its other rows, same project) are all +0x8000 off true -
-not corrected here (out of this pass's scope), flagging for whoever next touches that file.**
+**Base (V):** the vector table at file offset 0 holds Reset `0x08008201` and the Reset stub at file offset
+0x200 is `ldr r0,[pc]; blx r0`, so the image is linked at `0x08008000` (`m0900_base_check.py`). Function addresses
+in this section are at that base; `m0900-buses.tsv` rows are correct as written.
 
 - **"Queue init: is 0x414 written into the object at 0x20002538?" - V, yes, directly.**
-  `FUN_080033ec(DAT_080098c4 + 0x80, 0x414, 1, 0x40, DAT_080098c4)` - `DAT_080098c4` =
+  `can_queue_init(DAT_080118c4 + 0x80, 0x414, 1, 0x40, DAT_080118c4)` - `DAT_080118c4` =
   `0x200024b8`, so the object address is `0x200024b8+0x80` = `0x20002538` exactly. Inside
-  `can_endpoint_register`: `*(undefined4 *)param_1 = param_2;` - the first 4 bytes of that
+  `can_queue_init`: `*(undefined4 *)param_1 = param_2;` - the first 4 bytes of that
   object are set to `param_2` = `0x414`. Confirmed, no inference needed.
 - **Qualification ("registration doesn't prove active") - already answered, V:** the `1` in that
   same call is the direction field (`param_3`); `1` = TX. §7.5/Q1 already established TX actually
   firing is board-gated (2/4/5/6) at the point of use in `packet_send`, separately from this
   unconditional registration - consistent with the operator's caveat, nothing new needed.
 - **Receive dispatch: does 0x414/0x415 share 0x413's processing? - split answer (V where traceable,
-  honestly U where not).** `0x414`'s direction field is `1` (TX): `can_endpoint_register`'s
+  honestly U where not).** `0x414`'s direction field is `1` (TX): `can_queue_init`'s
   `if (param_3 == 0) {...}` branch (the only branch that calls `CAN_FilterInit` and inserts into the
-  RX-match table `DAT_080034f4`) is **not taken** for it - structurally, `0x414` can never be
+  RX-match table `DAT_0800b4f4`) is **not taken** for it - structurally, `0x414` can never be
   matched by an inbound frame, regardless of how the RX ISR itself works. `0x415`'s direction is
   `0`: it takes the **exact same branch** as `0x413`, with **zero ID-specific code anywhere in the
   function** - both land in the identical 13-slot RX table via the identical `CAN_FilterInit` call.
-  This is a structural guarantee from `can_endpoint_register`'s own (cleanly-decompiled) logic, not
-  dependent on resolving the ISR. The RX ISR itself: IRQ20's vector-table entry (`0x0800b23d`, read
-  directly from the file, base-independent) matches this project's own `vec_36 @ 0800b23c` exactly
-  - so this project's ISR address is correct - but **its decompilation is still unreliable**
-  (register-pair confusion, §7.7's existing finding stands, not re-resolved this pass).
+  This is a structural guarantee from `can_queue_init`'s own (cleanly-decompiled) logic, not
+  independent of the RX ISR. The RX ISR `can_rx0_handler` 0x0800b23c (vector 36, V) decompiles cleanly: `CAN_Receive`, then match on `StdId` against `can_tables.rx[]`; no ID-specific branch.
 - **Routing: already fully answered in Q1, no new work needed.** Receiver types {1,4,8,15} ->
   `0x412`; type {30} -> `0x414`; types `{3,5,10,11,12,18,21,23}` (FLYC included) -> USART1, never
   CAN.
 - **Packet handling: same 0x55 framing/CRC? - already answered in Q1, no new work needed.** CAN
-  and USART1/2/3 share the identical framer (`FUN_08009a8e`)/dispatch (`FUN_0800998a`) - one DUML
+  and USART1/2/3 share the identical framer (`duml_parser_feed`)/dispatch (`duml_dispatch`) - one DUML
   codec, not two.
-- **`can_endpoint_register`'s callers - already exhaustive from Q2 (4 call sites), re-confirmed
+- **`can_queue_init`'s callers - already exhaustive from Q2 (4 call sites), re-confirmed
   here under the correct addressing.**
 - **TX pump traced cleanly as a bonus (V, no ambiguity at all - clean decompilation):**
-  `can_tx_pump` (`FUN_08003298`) scans all 13 TX slots generically; for whichever slot has pending
+  `can1_tx_irq` (`can1_tx_irq`) scans all 13 TX slots generically; for whichever slot has pending
   bytes it reads the CAN ID straight back out of that endpoint's own first word (`local_30 =
   **(ptr)` - literally the value written at registration) and calls `CAN_Transmit` with it. Zero
   ID-specific branching - `0x412` and `0x414` go through byte-identical code.
