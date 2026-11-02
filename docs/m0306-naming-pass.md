@@ -57,3 +57,9 @@ Names are applied from `docs/symbols/m0306*.tsv` + the C block of `docs/symbols/
 - ~2500 `FUN_*` remain (flight control, nav, FDI, mission code); the 29-entry `fc_Motor_fail` check table and CAN/UART message routing are not named per entry.
 - IMU/baro/GPS drivers other than IST8303 not identified; UART/ESC state objects only partly (`g_uart_port_table`).
 - Dispatch handlers' payload layouts not decoded; 6 handler ids have no known command name.
+
+
+## External corroboration (2026-11-02)
+
+- Public o-gs/dji-firmware-tools wiki (community RE, independent of this repo, page edited 2017-05-03): m0306 "is loaded into memory at address 0x8020000" - matches our own base-address finding (0x08020000) exactly, independent cross-check.
+- Same page: "No signatures of common libraries were found in the code" - matches this pass's own negative result on library matching (ffc91d6). Supports the owner's point that DJI likely didn't write this library code themselves; it probably came from whatever vendor SDK/BSP the firmware was built against, not a commonly-fingerprinted open-source build. Candidate vendor SDK/BSP identity is U - not pursued this pass.
