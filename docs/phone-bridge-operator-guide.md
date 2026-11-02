@@ -280,6 +280,13 @@ two unrelated findings in `video_decoder.dart` and `video_screen.dart`.
 Android MediaCodec input-buffer scheduling remains a separate known limitation;
 see [PC video notes](pc-video-preview.md).
 
+## Answering the USB accessory dialog without touching the phone
+
+- **V.** The dialog ("Allow AWTO DJI to access ...?") blocks a non-interactive CONNECT; the shim now fails in 3 s and a repeat CONNECT after the grant connects at once (`docs/aoa-live-test-2026-10-26.md`).
+- **I.** `scripts/re/phone_usb_dialog.py --adb-serial <serial>` dumps the UI, ticks "Use by default for this USB accessory", taps OK from `bounds=`; exit 0 granted, 1 no dialog, 2 controls not found. Parser tested on canned XML only.
+- **I.** The "default" tick makes Android launch the app on `USB_ACCESSORY_ATTACHED` with the grant; it survives reboot, not uninstall or clear-data.
+- **U.** Persists per manufacturer+model on Android 12 (Pixel 3 XL): confirm with `adb -s <serial> shell dumpsys usb` after the first grant. Control ids (`android:id/alwaysUse`, `button1`) are unverified on a phone.
+
 ## What this doesn't cover
 
 - The aircraft's **front micro-USB port** (`/dev/ttyACM11` on the PC, not through the
