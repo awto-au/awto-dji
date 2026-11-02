@@ -338,7 +338,7 @@ Bounds: host TCP connect 3 s (LAN <= 1 s, 3x); host reconnect backoff 1,2,4,8 s 
 | `duml` | `act` (`answer` default\|`emit`), `sender`,`receiver`,`cmd_set`,`cmd_id`,`seq0`,`payload_len`,`seed`,`count`,`rate`,`bad` (none\|hdr\|crc\|mix) | answer valid DUML requests with swapped addresses, or emit enveloped DUML test frames with a fake address-pattern payload and chosen addresses / bad CRC |
 
 ### AOAT test frame (shared: `scripts/re/aoa_testkit.py`, `lib/bench/aoat.dart`, vectors `scripts/re/aoat_vectors.json`)
-- Little endian: `'AOAT'`, test_id u16, pattern u8, flags u8, run_seed u32, seq u32, total_len u32, payload, crc32 (zlib) over all before it. Min 24 B; accepted max 8 MiB.
+- Little endian: `'AOAT'`, test_id u16, pattern u8, flags u8 (bit0 last, bit1 no CRC: crc field zero, not checked), run_seed u32, seq u32, total_len u32, payload, crc32 (zlib) over all before it. Min 24 B; accepted max 8 MiB.
 - Patterns: `addr` (every 32-bit word = byte offset XOR mix(seed,seq,test): a wrong word names the offset it was generated for), `counter`, `random` (xorshift32), `zeros`/`ones`/`alt` (0xAA,0x55; bit-stuffing/NRZI stress), `prbs` (PRBS15, MSB-first, state from mix(seed,seq,test)), `fixed` (byte = seed low 8 bits), `ramp` (byte i = seed + i, same every frame). Ids 0-8 in that order.
 - A corrupt frame still localises: payload is compared to the regenerated one, first differing offset + hint reported even when the CRC also fails.
 - **V.** Python and Dart produce byte-identical frames for the golden vectors (both test suites).

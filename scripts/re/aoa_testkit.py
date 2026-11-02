@@ -5,7 +5,7 @@ t600_rc_emulator.py, and later a Cynthion RISC-V port. Dart mirror:
 app/awto_dji_app/lib/bench/aoat.dart (golden vectors: aoat_vectors.json, keep in sync).
 
 AOAT frame (little endian), min 24 bytes:
-  0  magic 'AOAT'   4  test_id u16   6  pattern u8   7  flags u8 (bit0 = last of run)
+  0  magic 'AOAT'   4  test_id u16   6  pattern u8   7  flags u8 (bit0 = last of run, bit1 = no CRC)
   8  run_seed u32  12  seq u32       16 total_len u32 (header+payload+crc)
   20 payload (total_len-24 bytes)    -4 crc32 over all preceding bytes (zlib crc32)
 Transfers shorter than 24 bytes cannot hold a header: `short_transfer()` gives raw
@@ -21,6 +21,7 @@ HDR = 20
 MIN_FRAME = 24
 MASK = 0xFFFFFFFF
 FLAG_LAST = 1
+FLAG_NOCRC = 2  # crc field present (zero) but not checked: a sender with no CRC code (Cynthion RISC-V)
 
 P_ADDR, P_COUNTER, P_RANDOM, P_ZEROS, P_ONES, P_ALT, P_PRBS, P_FIXED, P_RAMP = range(9)
 PATTERN_NAMES = {"addr": P_ADDR, "counter": P_COUNTER, "random": P_RANDOM,
@@ -242,7 +243,8 @@ class Checker:
         r.bytes += total
         got = frame[HDR:-4]
         exp = make_payload(pattern, total - MIN_FRAME, seed, seq, test_id)
-        crc_ok = zlib.crc32(frame[:-4]) & MASK == struct.unpack_from("<I", frame, total - 4)[0]
+        crc_ok = bool(frame[7] & FLAG_NOCRC) or \
+            zlib.crc32(frame[:-4]) & MASK == struct.unpack_from("<I", frame, total - 4)[0]
         mm = first_mismatch(got, exp, pattern, seed, seq, test_id)
         if not crc_ok:
             r.crc_bad += 1

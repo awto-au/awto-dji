@@ -261,7 +261,8 @@ class AoatChecker {
     report.bytes += total;
     final got = Uint8List.sublistView(f, aoatHeader, total - 4);
     final exp = makePayload(pattern, total - aoatMinFrame, seed, seq, tid);
-    final crcOk = crc32(f, total - 4) == ByteData.sublistView(f).getUint32(total - 4, Endian.little);
+    final crcOk = (f[7] & 2) != 0 || // flag bit1: sender has no CRC
+        crc32(f, total - 4) == ByteData.sublistView(f).getUint32(total - 4, Endian.little);
     final mm = firstMismatch(got, exp, pattern, seed, seq, tid);
     if (!crcOk) report.crcBad++;
     if (!crcOk || mm != null) {
