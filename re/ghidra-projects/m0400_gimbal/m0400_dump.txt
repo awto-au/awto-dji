@@ -267,7 +267,7 @@ FUNCTION duml_h_gimbal_10_get_params @ 080163c4 size=262 callsites=0
 FUNCTION duml_h_gimbal_01_control @ 08016564 size=200 callsites=0
 FUNCTION duml_h_flyc_42_attitude_quat @ 08016634 size=264 callsites=0
 FUNCTION duml_h_gimbal_06 @ 0801675c size=124 callsites=1
-FUNCTION duml_h_gimbal_0e @ 080167e0 size=90 callsites=0
+FUNCTION duml_h_gimbal_0e_can_relay @ 080167e0 size=90 callsites=0
 FUNCTION duml_h_general_0b_trim_adjust @ 08016840 size=108 callsites=0
 FUNCTION duml_h_gimbal_07_trim_adjust @ 080168ac size=116 callsites=0
 FUNCTION duml_h_gimbal_11_commit_config @ 08016930 size=88 callsites=0
@@ -281,7 +281,7 @@ FUNCTION duml_send_frame @ 08016d94 size=126 callsites=38
 FUNCTION duml_h_gimbal_20 @ 08016e14 size=24 callsites=0
 FUNCTION duml_h_gimbal_21 @ 08016e30 size=118 callsites=0
 FUNCTION duml_h_gimbal_0d_enable_latch @ 08016eac size=62 callsites=0
-FUNCTION FUN_08016ef0 @ 08016ef0 size=184 callsites=2
+FUNCTION duml_send_status_frame @ 08016ef0 size=184 callsites=2
 FUNCTION duml_dispatch_short @ 08016fac size=68 callsites=3
 FUNCTION duml_dispatch @ 08016ff4 size=178 callsites=3
 FUNCTION FUN_080170ac @ 080170ac size=176 callsites=1
@@ -293,7 +293,7 @@ FUNCTION duml_frame_version @ 08018c54 size=12 callsites=3
 FUNCTION FUN_08018c60 @ 08018c60 size=12 callsites=1
 FUNCTION board_rev_read @ 08018c70 size=140 callsites=1
 FUNCTION FUN_08018d04 @ 08018d04 size=60 callsites=1
-FUNCTION FUN_08018d40 @ 08018d40 size=646 callsites=3
+FUNCTION fft_spectrum_analyze @ 08018d40 size=646 callsites=3
 FUNCTION FUN_08019008 @ 08019008 size=8 callsites=3
 FUNCTION adc1_read_mv_avg32 @ 08019014 size=80 callsites=1
 FUNCTION adc1_ch10_init @ 08019068 size=196 callsites=1
@@ -306,7 +306,7 @@ FUNCTION FUN_08019ce8 @ 08019ce8 size=392 callsites=1
 FUNCTION flash_param_find_free @ 08019eb0 size=32 callsites=2
 FUNCTION flash_param_find_latest @ 08019ed4 size=44 callsites=2
 FUNCTION main @ 08019f04 size=116 callsites=1
-FUNCTION FUN_08019f7c @ 08019f7c size=66 callsites=1
+FUNCTION att_quat_reinit @ 08019f7c size=66 callsites=1
 FUNCTION FUN_08019fd0 @ 08019fd0 size=200 callsites=1
 FUNCTION sbox_add @ 0801a09c size=14 callsites=6
 FUNCTION sbox_sub @ 0801a0b0 size=12 callsites=2
@@ -328,7 +328,7 @@ FUNCTION FUN_0801ade0 @ 0801ade0 size=346 callsites=1
 FUNCTION duml_assemble_uart4 @ 0801af44 size=324 callsites=1
 FUNCTION usart2_rx_flush @ 0801b0a0 size=30 callsites=1
 FUNCTION FUN_0801b0c4 @ 0801b0c4 size=98 callsites=1
-FUNCTION FUN_0801b128 @ 0801b128 size=80 callsites=1
+FUNCTION param_autosave_tick @ 0801b128 size=80 callsites=1
 FUNCTION FUN_0801b188 @ 0801b188 size=38 callsites=1
 FUNCTION FUN_0801b1ae @ 0801b1ae size=202 callsites=1
 FUNCTION FUN_0801b278 @ 0801b278 size=34 callsites=1
@@ -339,21 +339,21 @@ FUNCTION FUN_0801b62c @ 0801b62c size=158 callsites=1
 
 === CALLSITES ===
 8008190 <- 080090cc<FUN_080090b4@080090b4
-80081c0 <- 08018e12<FUN_08018d40@08018d40 08018e68<FUN_08018d40@08018d40
+80081c0 <- 08018e12<fft_spectrum_analyze@08018d40 08018e68<fft_spectrum_analyze@08018d40
 8008360 <- 08008a1c<cfft_radix4_f32@08008a08
 80086a4 <- 08008a3c<cfft_radix4_f32@08008a08
-8008a08 <- 08018df8<FUN_08018d40@08018d40 08018e4e<FUN_08018d40@08018d40
-8008a44 <- 08018dde<FUN_08018d40@08018d40 08018e34<FUN_08018d40@08018d40
+8008a08 <- 08018df8<fft_spectrum_analyze@08018d40 08018e4e<fft_spectrum_analyze@08018d40
+8008a44 <- 08018dde<fft_spectrum_analyze@08018d40 08018e34<fft_spectrum_analyze@08018d40
 8008adc <- 080098a4<can_send_urgent@0800987c 080098f2<can_send_urgent@0800987c 08009940<can_send@08009918 080099aa<can_send@08009918 0800e0a2<flash_param_load@0800e07c 0800efc8<FUN_0800ef80@0800ef80 0800efe2<FUN_0800ef80@0800ef80 0800f00e<FUN_0800ef80@0800ef80 08013d2c<FUN_08013cec@08013cec 08013d36<FUN_08013cec@08013cec 08013e18<FUN_08013cec@08013cec 08013e26<FUN_08013cec@08013cec 08016206<duml_h_gimbal_13_reload_block@080161e8 08016b18<duml_h_gimbal_0f_get_params_by_index@08016a98 08016b60<duml_h_gimbal_0f_get_params_by_index@08016a98 0801b524<FUN_0801b4fc@0801b4fc 0801b56a<FUN_0801b4fc@0801b4fc
 8008b0e <- 080148ca<app_init@080148b4 080148d2<app_init@080148b4 080148da<app_init@080148b4 08019cf0<FUN_08019ce8@08019ce8 0801b1e4<FUN_0801b1ae@0801b1ae
 8008b24 <- 08019b48<? 08019b64<? 08019b82<? 08019bac<? 08019bd0<?
 8008b40 <- 08008c86<__aeabi_dadd_alias@08008c82 08008c8c<__aeabi_drsub@08008c88 08010f2c<FUN_08010e44@08010e44 08011e3c<FUN_08011d90@08011d90 08011e78<FUN_08011d90@08011d90 08011ebe<FUN_08011d90@08011d90 08011f6e<FUN_08011d90@08011d90 08011f8c<FUN_08011d90@08011d90 08013454<FUN_08013412@08013412 08013488<FUN_08013412@08013412 0801349c<FUN_08013412@08013412 080134b8<FUN_08013412@08013412 080134cc<FUN_08013412@08013412 080134e8<FUN_08013412@08013412 080134fc<FUN_08013412@08013412 0801354a<FUN_08011d90@08011d90 0801355e<FUN_08012068@08012068
-8008c82 <- 08011e58<FUN_08011d90@08011d90 08011e8c<FUN_08011d90@08011d90 08011ed2<FUN_08011d90@08011d90 08011fb4<FUN_08011d90@08011d90 08011fc0<FUN_08011d90@08011d90 080121ee<FUN_08012068@08012068 080121f6<FUN_08012068@08012068 0801220a<FUN_08012068@08012068 08018f62<FUN_08018d40@08018d40
+8008c82 <- 08011e58<FUN_08011d90@08011d90 08011e8c<FUN_08011d90@08011d90 08011ed2<FUN_08011d90@08011d90 08011fb4<FUN_08011d90@08011d90 08011fc0<FUN_08011d90@08011d90 080121ee<FUN_08012068@08012068 080121f6<FUN_08012068@08012068 0801220a<FUN_08012068@08012068 08018f62<fft_spectrum_analyze@08018d40
 8008c88 <- 08011f86<FUN_08011d90@08011d90 08011fdc<FUN_08011d90@08011d90 08012212<FUN_08012068@08012068
 8008c8e <- 0800c908<FUN_0800c830@0800c830 0800c988<FUN_0800c830@0800c830 08011e50<FUN_08011d90@08011d90 08011eb6<FUN_08011d90@08011d90 08011f0a<FUN_08011d90@08011d90 08011f16<FUN_08011d90@08011d90 08011f38<FUN_08011d90@08011d90 08011f5a<FUN_08011d90@08011d90 08011f7a<FUN_08011d90@08011d90 08011f98<FUN_08011d90@08011d90 0801343a<FUN_08013412@08013412 0801347c<FUN_08013412@08013412 08013490<FUN_08013412@08013412 080134ac<FUN_08013412@08013412 080134c0<FUN_08013412@08013412 080134dc<FUN_08013412@08013412 080134f0<FUN_08013412@08013412 080135b6<FUN_080135a8@080135a8 08019484<FUN_080192f0@080192f0
-8008d8c <- 0800ad3e<FUN_0800aa00@0800aa00 0800adca<FUN_0800aa00@0800aa00 0800c87e<FUN_0800c830@0800c830 0800c8f8<FUN_0800c830@0800c830 0800c940<FUN_0800c830@0800c830 0800c978<FUN_0800c830@0800c830 08010ef8<FUN_08010e44@08010e44 08010f20<FUN_08010e44@08010e44 0801439a<FUN_08014214@08014214 080143d4<FUN_08014214@08014214 0801440e<FUN_08014214@08014214 080144b4<FUN_08014214@08014214 0801455c<FUN_08014214@08014214 080147a4<FUN_08014214@08014214 08018ecc<FUN_08018d40@08018d40 08018ee4<FUN_08018d40@08018d40 08018f1e<FUN_08018d40@08018d40 08018f36<FUN_08018d40@08018d40 08019474<FUN_080192f0@080192f0
+8008d8c <- 0800ad3e<FUN_0800aa00@0800aa00 0800adca<FUN_0800aa00@0800aa00 0800c87e<FUN_0800c830@0800c830 0800c8f8<FUN_0800c830@0800c830 0800c940<FUN_0800c830@0800c830 0800c978<FUN_0800c830@0800c830 08010ef8<FUN_08010e44@08010e44 08010f20<FUN_08010e44@08010e44 0801439a<FUN_08014214@08014214 080143d4<FUN_08014214@08014214 0801440e<FUN_08014214@08014214 080144b4<FUN_08014214@08014214 0801455c<FUN_08014214@08014214 080147a4<FUN_08014214@08014214 08018ecc<fft_spectrum_analyze@08018d40 08018ee4<fft_spectrum_analyze@08018d40 08018f1e<fft_spectrum_analyze@08018d40 08018f36<fft_spectrum_analyze@08018d40 08019474<FUN_080192f0@080192f0
 8008db4 <- 080143c2<FUN_08014214@08014214 080143fc<FUN_08014214@08014214 0801443e<FUN_08014214@08014214 080144dc<FUN_08014214@08014214 08014584<FUN_08014214@08014214 080147cc<FUN_08014214@08014214
-8008de4 <- 0800ad5e<FUN_0800aa00@0800aa00 0800adea<FUN_0800aa00@0800aa00 0800c89e<FUN_0800c830@0800c830 0800c910<FUN_0800c830@0800c830 0800c960<FUN_0800c830@0800c830 0800c990<FUN_0800c830@0800c830 08010f34<FUN_08010e44@08010e44 08018f6a<FUN_08018d40@08018d40 0801948c<FUN_080192f0@080192f0
+8008de4 <- 0800ad5e<FUN_0800aa00@0800aa00 0800adea<FUN_0800aa00@0800aa00 0800c89e<FUN_0800c830@0800c830 0800c910<FUN_0800c830@0800c830 0800c960<FUN_0800c830@0800c830 0800c990<FUN_0800c830@0800c830 08010f34<FUN_08010e44@08010e44 08018f6a<fft_spectrum_analyze@08018d40 0801948c<FUN_080192f0@080192f0
 8008e1c <- 08008baa<__aeabi_dadd@08008b40 08008f02<FUN_08008eea@08008eea 08008f36<FUN_08008eea@08008eea
 8008e3a <- 08008bb8<__aeabi_dadd@08008b40
 8008eea <- 08008bfa<__aeabi_dadd@08008b40 08008d62<__aeabi_dmul@08008c8e
@@ -389,7 +389,7 @@ FUNCTION FUN_0801b62c @ 0801b62c size=158 callsites=1
 8009dd4 <- 0801a7cc<duml_assemble_usart2@0801a7bc 0801b0ac<usart2_rx_flush@0801b0a0
 8009e0c <- 08019f34<main@08019f04
 8009ee8 <- 08016de6<duml_send_frame@08016d94 0801702c<duml_dispatch@08016ff4
-8009f60 <- 0801639e<duml_h_general_07_get_params@08016338 08016834<duml_h_gimbal_0e@080167e0 0801928c<FUN_08019170@08019170 080192c8<FUN_08019170@08019170
+8009f60 <- 0801639e<duml_h_general_07_get_params@08016338 08016834<duml_h_gimbal_0e_can_relay@080167e0 0801928c<FUN_08019170@08019170 080192c8<FUN_08019170@08019170
 8009fd2 <- 0801993c<can_rx_dispatch@080195b8 08019970<can_rx_dispatch@080195b8 0801998c<can_rx_dispatch@080195b8
 800a050 <- 08009f52<CAN1_RX0_IRQHandler@08009f3c 0800a030<CAN1_TX_IRQHandler@08009fe8
 800a0f8 <- 08009606<can1_init@080095b8
@@ -450,7 +450,7 @@ FUNCTION FUN_0801b62c @ 0801b62c size=158 callsites=1
 800de9c <- 0800da6e<flash_erase_program_verify@0800da58 0800da7c<flash_erase_program_verify@0800da58
 800df80 <- 080093fc<duml_crc16_append@080093e4 08011aa6<duml_crc16_check@08011a8c
 800dfb4 <- 08009426<duml_crc8_append@08009410 08011ae0<duml_crc8_check@08011ac8
-800dfd8 <- 080149a2<app_init@080148b4 08016942<duml_h_gimbal_11_commit_config@08016930 0801b136<FUN_0801b128@0801b128
+800dfd8 <- 080149a2<app_init@080148b4 08016942<duml_h_gimbal_11_commit_config@08016930 0801b136<param_autosave_tick@0801b128
 800e07c <- 0801494a<app_init@080148b4
 800e0b0 <- 08009440<FUN_08009434@08009434
 800e0e4 <- 08019f4c<main@08019f04
@@ -537,7 +537,7 @@ FUNCTION FUN_0801b62c @ 0801b62c size=158 callsites=1
 8011b4c <- 08010a04<quat_pack_aux@08010984
 8011c64 <- 08010858<quat_to_euler@08010816 08010968<quat_rot_angle@08010930
 8011d90 <- 080157fa<FUN_080157f4@080157f4
-8012068 <- 08018efc<FUN_08018d40@08018d40 08018f4e<FUN_08018d40@08018d40
+8012068 <- 08018efc<fft_spectrum_analyze@08018d40 08018f4e<fft_spectrum_analyze@08018d40
 8012258 <- 080108b0<quat_to_euler@08010816 080108c0<quat_to_euler@08010816 08010926<FUN_080108ce@080108ce
 80124a8 <- 0800a8a8<FUN_0800a894@0800a894 0800a8f0<FUN_0800a894@0800a894 0800a938<FUN_0800a894@0800a894 0800b758<FUN_0800b70c@0800b70c 0800b798<FUN_0800b70c@0800b70c 0800b7d8<FUN_0800b70c@0800b70c 0800bbac<FUN_0800b994@0800b994 0800bbf4<FUN_0800b994@0800b994 0800bc3c<FUN_0800b994@0800b994 0800bc7e<FUN_0800b994@0800b994 0800c74c<FUN_0800c70c@0800c70c 0800c78c<FUN_0800c70c@0800c70c 0800c7cc<FUN_0800c70c@0800c70c 08014602<FUN_08014214@08014214 08018bca<FUN_08018a94@08018a94 08019fea<FUN_08019fd0@08019fd0 0801a012<FUN_08019fd0@08019fd0 0801a046<FUN_08019fd0@08019fd0 0801a398<FUN_0801a37c@0801a37c
 80125f8 <- 0800ad4e<FUN_0800aa00@0800aa00 0800adda<FUN_0800aa00@0800aa00 0800c88e<FUN_0800c830@0800c830 0800c950<FUN_0800c830@0800c830 08010f08<FUN_08010e44@08010e44 080143aa<FUN_08014214@08014214 080143e4<FUN_08014214@08014214 08014426<FUN_08014214@08014214 080144c4<FUN_08014214@08014214 0801456c<FUN_08014214@08014214 080147b4<FUN_08014214@08014214
@@ -576,7 +576,7 @@ FUNCTION FUN_0801b62c @ 0801b62c size=158 callsites=1
 8015a44 <- 0800e240<sw2w_read_bytes@0800e1d8 0800e24a<sw2w_read_bytes@0800e1d8 0800e3ec<sw2w_read_reg@0800e358 0800e3f6<sw2w_read_reg@0800e358 0800e420<sw2w_read_reg@0800e358 0800e42a<sw2w_read_reg@0800e358
 8016518 <- 080161b0<duml_h_general_09_ack@08016188 08016226<duml_h_gimbal_13_reload_block@080161e8 080162b8<duml_h_general_01_get_version@08016254 08016308<duml_h_general_0a_ack@080162e4 08016368<duml_h_general_07_get_params@08016338 080164e8<duml_h_gimbal_10_get_params@080163c4 08016860<duml_h_general_0b_trim_adjust@08016840 080168f8<duml_h_gimbal_07_trim_adjust@080168ac 08016974<duml_h_gimbal_11_commit_config@08016930 08016bc2<duml_h_gimbal_0f_get_params_by_index@08016a98 08016c36<duml_h_general_0d_block_write@08016bf8 08016cfe<duml_h_general_08_ack@08016cdc 08016d4e<duml_h_general_0c_ack_word@08016d30
 801675c <- 08017094<duml_dispatch@08016ff4
-8016d94 <- 08013832<duml_h_general_30_sub1@08013774 08013846<duml_h_general_30_sub1@08013774 0801385c<duml_h_general_30_sub1@08013774 08013972<FUN_08013864@08013864 08013986<FUN_08013864@08013864 0801399c<FUN_08013864@08013864 08013b0a<duml_h_general_30_sub3@08013a18 08013b1e<duml_h_general_30_sub3@08013a18 08013b34<duml_h_general_30_sub3@08013a18 08013c1c<FUN_08013b40@08013b40 08013c30<FUN_08013b40@08013b40 08013c46<FUN_08013b40@08013b40 08015c58<duml_h_gimbal_0a_angle_control@08015a50 08015e98<duml_h_gimbal_0c_speed_control@08015c88 08015fca<duml_h_gimbal_0b_status_readback@08015eb4 080161de<duml_h_general_09_ack@08016188 0801623e<duml_h_gimbal_13_reload_block@080161e8 080162d8<duml_h_general_01_get_version@08016254 0801632a<duml_h_general_0a_ack@080162e4 08016386<duml_h_general_07_get_params@08016338 08016506<duml_h_gimbal_10_get_params@080163c4 08016880<duml_h_general_0b_trim_adjust@08016840 08016918<duml_h_gimbal_07_trim_adjust@080168ac 08016980<duml_h_gimbal_11_commit_config@08016930 08016a70<duml_h_gimbal_08_auto_calibration@08016990 08016bd8<duml_h_gimbal_0f_get_params_by_index@08016a98 08016c6e<duml_h_general_0d_block_write@08016bf8 08016d26<duml_h_general_08_ack@08016cdc 08016d86<duml_h_general_0c_ack_word@08016d30 08016fa2<FUN_08016ef0@08016ef0 0801ab4e<gimbal_push_params_send@0801a918 0801ab5e<gimbal_push_params_send@0801a918 0801ab74<gimbal_push_params_send@0801a918 0801ad9a<gimbal_push_15_send@0801aba0 0801adaa<gimbal_push_15_send@0801aba0 0801adc0<gimbal_push_15_send@0801aba0 0801af22<FUN_0801ade0@0801ade0 0801af34<FUN_0801ade0@0801ade0
+8016d94 <- 08013832<duml_h_general_30_sub1@08013774 08013846<duml_h_general_30_sub1@08013774 0801385c<duml_h_general_30_sub1@08013774 08013972<FUN_08013864@08013864 08013986<FUN_08013864@08013864 0801399c<FUN_08013864@08013864 08013b0a<duml_h_general_30_sub3@08013a18 08013b1e<duml_h_general_30_sub3@08013a18 08013b34<duml_h_general_30_sub3@08013a18 08013c1c<FUN_08013b40@08013b40 08013c30<FUN_08013b40@08013b40 08013c46<FUN_08013b40@08013b40 08015c58<duml_h_gimbal_0a_angle_control@08015a50 08015e98<duml_h_gimbal_0c_speed_control@08015c88 08015fca<duml_h_gimbal_0b_status_readback@08015eb4 080161de<duml_h_general_09_ack@08016188 0801623e<duml_h_gimbal_13_reload_block@080161e8 080162d8<duml_h_general_01_get_version@08016254 0801632a<duml_h_general_0a_ack@080162e4 08016386<duml_h_general_07_get_params@08016338 08016506<duml_h_gimbal_10_get_params@080163c4 08016880<duml_h_general_0b_trim_adjust@08016840 08016918<duml_h_gimbal_07_trim_adjust@080168ac 08016980<duml_h_gimbal_11_commit_config@08016930 08016a70<duml_h_gimbal_08_auto_calibration@08016990 08016bd8<duml_h_gimbal_0f_get_params_by_index@08016a98 08016c6e<duml_h_general_0d_block_write@08016bf8 08016d26<duml_h_general_08_ack@08016cdc 08016d86<duml_h_general_0c_ack_word@08016d30 08016fa2<duml_send_status_frame@08016ef0 0801ab4e<gimbal_push_params_send@0801a918 0801ab5e<gimbal_push_params_send@0801a918 0801ab74<gimbal_push_params_send@0801a918 0801ad9a<gimbal_push_15_send@0801aba0 0801adaa<gimbal_push_15_send@0801aba0 0801adc0<gimbal_push_15_send@0801aba0 0801af22<FUN_0801ade0@0801ade0 0801af34<FUN_0801ade0@0801ade0
 8016ef0 <- 0801a6da<FUN_0801a59c@0801a59c 0801a6fc<FUN_0801a59c@0801a59c
 8016fac <- 0801593e<duml_assemble_can@08015824 0801a8da<duml_assemble_usart2@0801a7bc 0801b062<duml_assemble_uart4@0801af44
 8016ff4 <- 08015952<duml_assemble_can@08015824 0801a8ee<duml_assemble_usart2@0801a7bc 0801b076<duml_assemble_uart4@0801af44
@@ -588,7 +588,7 @@ FUNCTION FUN_0801b62c @ 0801b62c size=158 callsites=1
 8018c54 <- 08015930<duml_assemble_can@08015824 0801a8cc<duml_assemble_usart2@0801a7bc 0801b054<duml_assemble_uart4@0801af44
 8018c60 <- 08018226<FUN_080172b0@080172b0
 8018c70 <- 08014926<app_init@080148b4
-8018d04 <- 08018e80<FUN_08018d40@08018d40
+8018d04 <- 08018e80<fft_spectrum_analyze@08018d40
 8018d40 <- 080182fc<FUN_080172b0@080172b0 08018468<FUN_080172b0@080172b0 0801879a<FUN_080172b0@080172b0
 8019008 <- 080182c2<FUN_080172b0@080172b0 0801842e<FUN_080172b0@080172b0 08018762<FUN_080172b0@080172b0
 8019014 <- 08018c96<board_rev_read@08018c70
@@ -17846,34 +17846,34 @@ FUNCTION FUN_0801b62c @ 0801b62c size=158 callsites=1
 080167d0 [duml_h_gimbal_06]: ldr r1,[0x080167dc] ; ref->080167dc(READ)
 080167d2 [duml_h_gimbal_06]: str r0,[r1,#0x0] ; ref->200001d4(WRITE)
 080167d4 [duml_h_gimbal_06]: pop.w {r4,r5,r6,r7,r8,r9,r10,pc}
-080167e0 [duml_h_gimbal_0e]: push {r3,r4,r5,r6,r7,lr}
-080167e2 [duml_h_gimbal_0e]: mov r4,r0
-080167e4 [duml_h_gimbal_0e]: mov r6,r1
-080167e6 [duml_h_gimbal_0e]: mov r7,r2
-080167e8 [duml_h_gimbal_0e]: mov r5,r4
-080167ea [duml_h_gimbal_0e]: ldrsh.w r0,[r5,#0xb]!
-080167ee [duml_h_gimbal_0e]: vmov s0,r0
-080167f2 [duml_h_gimbal_0e]: vcvt.f32.s32 s0,s0
-080167f6 [duml_h_gimbal_0e]: ldr r0,[0x0801683c] ; ref->0801683c(READ)
-080167f8 [duml_h_gimbal_0e]: vstr.32 s0,[r0]
-080167fc [duml_h_gimbal_0e]: ldrsh.w r0,[r5,#0x0]
-08016800 [duml_h_gimbal_0e]: vmov s0,r0
-08016804 [duml_h_gimbal_0e]: vcvt.f32.s32 s0,s0
-08016808 [duml_h_gimbal_0e]: ldr r0,[0x0801683c] ; ref->0801683c(READ)
-0801680a [duml_h_gimbal_0e]: vstr.32 s0,[r0]
-0801680e [duml_h_gimbal_0e]: ldrsh.w r0,[r5,#0x0]
-08016812 [duml_h_gimbal_0e]: vmov s0,r0
-08016816 [duml_h_gimbal_0e]: vcvt.f32.s32 s0,s0
-0801681a [duml_h_gimbal_0e]: ldr r0,[0x0801683c] ; ref->0801683c(READ)
-0801681c [duml_h_gimbal_0e]: vstr.32 s0,[r0]
-08016820 [duml_h_gimbal_0e]: movs r0,#0x0
-08016822 [duml_h_gimbal_0e]: str r0,[sp,#0x0]
-08016824 [duml_h_gimbal_0e]: ldrsh.w r3,[r5,#0x4]
-08016828 [duml_h_gimbal_0e]: ldrsh.w r2,[r5,#0x2]
-0801682c [duml_h_gimbal_0e]: ldrsh.w r1,[r5],#-0xb
-08016830 [duml_h_gimbal_0e]: movw r0,#0x20b
-08016834 [duml_h_gimbal_0e]: bl 0x08009f60 ; ref->08009f60(UNCONDITIONAL_CALL)
-08016838 [duml_h_gimbal_0e]: pop {r3,r4,r5,r6,r7,pc}
+080167e0 [duml_h_gimbal_0e_can_relay]: push {r3,r4,r5,r6,r7,lr}
+080167e2 [duml_h_gimbal_0e_can_relay]: mov r4,r0
+080167e4 [duml_h_gimbal_0e_can_relay]: mov r6,r1
+080167e6 [duml_h_gimbal_0e_can_relay]: mov r7,r2
+080167e8 [duml_h_gimbal_0e_can_relay]: mov r5,r4
+080167ea [duml_h_gimbal_0e_can_relay]: ldrsh.w r0,[r5,#0xb]!
+080167ee [duml_h_gimbal_0e_can_relay]: vmov s0,r0
+080167f2 [duml_h_gimbal_0e_can_relay]: vcvt.f32.s32 s0,s0
+080167f6 [duml_h_gimbal_0e_can_relay]: ldr r0,[0x0801683c] ; ref->0801683c(READ)
+080167f8 [duml_h_gimbal_0e_can_relay]: vstr.32 s0,[r0]
+080167fc [duml_h_gimbal_0e_can_relay]: ldrsh.w r0,[r5,#0x0]
+08016800 [duml_h_gimbal_0e_can_relay]: vmov s0,r0
+08016804 [duml_h_gimbal_0e_can_relay]: vcvt.f32.s32 s0,s0
+08016808 [duml_h_gimbal_0e_can_relay]: ldr r0,[0x0801683c] ; ref->0801683c(READ)
+0801680a [duml_h_gimbal_0e_can_relay]: vstr.32 s0,[r0]
+0801680e [duml_h_gimbal_0e_can_relay]: ldrsh.w r0,[r5,#0x0]
+08016812 [duml_h_gimbal_0e_can_relay]: vmov s0,r0
+08016816 [duml_h_gimbal_0e_can_relay]: vcvt.f32.s32 s0,s0
+0801681a [duml_h_gimbal_0e_can_relay]: ldr r0,[0x0801683c] ; ref->0801683c(READ)
+0801681c [duml_h_gimbal_0e_can_relay]: vstr.32 s0,[r0]
+08016820 [duml_h_gimbal_0e_can_relay]: movs r0,#0x0
+08016822 [duml_h_gimbal_0e_can_relay]: str r0,[sp,#0x0]
+08016824 [duml_h_gimbal_0e_can_relay]: ldrsh.w r3,[r5,#0x4]
+08016828 [duml_h_gimbal_0e_can_relay]: ldrsh.w r2,[r5,#0x2]
+0801682c [duml_h_gimbal_0e_can_relay]: ldrsh.w r1,[r5],#-0xb
+08016830 [duml_h_gimbal_0e_can_relay]: movw r0,#0x20b
+08016834 [duml_h_gimbal_0e_can_relay]: bl 0x08009f60 ; ref->08009f60(UNCONDITIONAL_CALL)
+08016838 [duml_h_gimbal_0e_can_relay]: pop {r3,r4,r5,r6,r7,pc}
 08016840 [duml_h_general_0b_trim_adjust]: mov r5,r0
 08016842 [duml_h_general_0b_trim_adjust]: mov r7,r1
 08016844 [duml_h_general_0b_trim_adjust]: mov r8,r2
@@ -18470,60 +18470,60 @@ FUNCTION FUN_0801b62c @ 0801b62c size=158 callsites=1
 08016ee4 [duml_h_gimbal_0d_enable_latch]: ldr r5,[0x08016eec] ; ref->08016eec(READ)
 08016ee6 [duml_h_gimbal_0d_enable_latch]: str r4,[r5,#0x0]
 08016ee8 [duml_h_gimbal_0d_enable_latch]: pop {r4,r5,pc}
-08016ef0 [FUN_08016ef0]: push {r0,r1,r2,r3,r4,r5,r6,lr}
-08016ef2 [FUN_08016ef0]: mov r4,r0
-08016ef4 [FUN_08016ef0]: mov r5,r1
-08016ef6 [FUN_08016ef0]: mov r6,r2
-08016ef8 [FUN_08016ef0]: movs r0,#0x5
-08016efa [FUN_08016ef0]: strb.w r0,[sp,#0xb] ; ref->Stack[-0x15](WRITE)
-08016efe [FUN_08016ef0]: movs r0,#0x55
-08016f00 [FUN_08016ef0]: strb.w r0,[sp,#0x0] ; ref->Stack[-0x20](WRITE)
-08016f04 [FUN_08016ef0]: ldrb.w r0,[sp,#0x2] ; ref->Stack[-0x1e](READ)
-08016f08 [FUN_08016ef0]: bic r0,r0,#0xfc
-08016f0c [FUN_08016ef0]: adds r0,r0,#0x4
-08016f0e [FUN_08016ef0]: strb.w r0,[sp,#0x2] ; ref->Stack[-0x1e](WRITE)
-08016f12 [FUN_08016ef0]: ldrh.w r0,[sp,#0x1] ; ref->Stack[-0x1f](READ)
-08016f16 [FUN_08016ef0]: bfc r0,#0x0,#0xa
-08016f1a [FUN_08016ef0]: adds r0,#0xe
-08016f1c [FUN_08016ef0]: strh.w r0,[sp,#0x1] ; ref->Stack[-0x1f](WRITE)
-08016f20 [FUN_08016ef0]: ldrb.w r0,[sp,#0x4] ; ref->Stack[-0x1c](READ)
-08016f24 [FUN_08016ef0]: bic r0,r0,#0x1f
-08016f28 [FUN_08016ef0]: adds r0,r0,#0x4
-08016f2a [FUN_08016ef0]: strb.w r0,[sp,#0x4] ; ref->Stack[-0x1c](WRITE)
-08016f2e [FUN_08016ef0]: ldrb.w r0,[sp,#0x4] ; ref->Stack[-0x1c](READ)
-08016f32 [FUN_08016ef0]: bic r0,r0,#0xe0
-08016f36 [FUN_08016ef0]: strb.w r0,[sp,#0x4] ; ref->Stack[-0x1c](WRITE)
-08016f3a [FUN_08016ef0]: ldrb.w r0,[sp,#0x5] ; ref->Stack[-0x1b](READ)
-08016f3e [FUN_08016ef0]: bfi r0,r4,#0x0,#0x5
-08016f42 [FUN_08016ef0]: strb.w r0,[sp,#0x5] ; ref->Stack[-0x1b](WRITE)
-08016f46 [FUN_08016ef0]: ldrb.w r0,[sp,#0x5] ; ref->Stack[-0x1b](READ)
-08016f4a [FUN_08016ef0]: bfi r0,r5,#0x5,#0x3
-08016f4e [FUN_08016ef0]: strb.w r0,[sp,#0x5] ; ref->Stack[-0x1b](WRITE)
-08016f52 [FUN_08016ef0]: ldr r0,[0x08016fa8] ; ref->08016fa8(READ)
-08016f54 [FUN_08016ef0]: ldrb r0,[r0,#0x0] ; ref->200001b8(READ)
-08016f56 [FUN_08016ef0]: strh.w r0,[sp,#0x6] ; ref->Stack[-0x1a](WRITE)
-08016f5a [FUN_08016ef0]: ldrb.w r0,[sp,#0x8] ; ref->Stack[-0x18](READ)
-08016f5e [FUN_08016ef0]: bic r0,r0,#0x80
-08016f62 [FUN_08016ef0]: strb.w r0,[sp,#0x8] ; ref->Stack[-0x18](WRITE)
-08016f66 [FUN_08016ef0]: ldrb.w r0,[sp,#0x8] ; ref->Stack[-0x18](READ)
-08016f6a [FUN_08016ef0]: bic r0,r0,#0x60
-08016f6e [FUN_08016ef0]: strb.w r0,[sp,#0x8] ; ref->Stack[-0x18](WRITE)
-08016f72 [FUN_08016ef0]: ldrb.w r0,[sp,#0x8] ; ref->Stack[-0x18](READ)
-08016f76 [FUN_08016ef0]: bic r0,r0,#0x10
-08016f7a [FUN_08016ef0]: strb.w r0,[sp,#0x8] ; ref->Stack[-0x18](WRITE)
-08016f7e [FUN_08016ef0]: ldrb.w r0,[sp,#0x8] ; ref->Stack[-0x18](READ)
-08016f82 [FUN_08016ef0]: bic r0,r0,#0xf
-08016f86 [FUN_08016ef0]: strb.w r0,[sp,#0x8] ; ref->Stack[-0x18](WRITE)
-08016f8a [FUN_08016ef0]: movs r0,#0x4
-08016f8c [FUN_08016ef0]: strb.w r0,[sp,#0x9] ; ref->Stack[-0x17](WRITE)
-08016f90 [FUN_08016ef0]: movs r0,#0x47
-08016f92 [FUN_08016ef0]: strb.w r0,[sp,#0xa] ; ref->Stack[-0x16](WRITE)
-08016f96 [FUN_08016ef0]: ldrh.w r0,[sp,#0x1] ; ref->Stack[-0x1f](READ)
-08016f9a [FUN_08016ef0]: ubfx r1,r0,#0x0,#0xa
-08016f9e [FUN_08016ef0]: mov r2,r6
-08016fa0 [FUN_08016ef0]: mov r0,sp
-08016fa2 [FUN_08016ef0]: bl 0x08016d94 ; ref->08016d94(UNCONDITIONAL_CALL)
-08016fa6 [FUN_08016ef0]: pop {r0,r1,r2,r3,r4,r5,r6,pc}
+08016ef0 [duml_send_status_frame]: push {r0,r1,r2,r3,r4,r5,r6,lr}
+08016ef2 [duml_send_status_frame]: mov r4,r0
+08016ef4 [duml_send_status_frame]: mov r5,r1
+08016ef6 [duml_send_status_frame]: mov r6,r2
+08016ef8 [duml_send_status_frame]: movs r0,#0x5
+08016efa [duml_send_status_frame]: strb.w r0,[sp,#0xb] ; ref->Stack[-0x15](WRITE)
+08016efe [duml_send_status_frame]: movs r0,#0x55
+08016f00 [duml_send_status_frame]: strb.w r0,[sp,#0x0] ; ref->Stack[-0x20](WRITE)
+08016f04 [duml_send_status_frame]: ldrb.w r0,[sp,#0x2] ; ref->Stack[-0x1e](READ)
+08016f08 [duml_send_status_frame]: bic r0,r0,#0xfc
+08016f0c [duml_send_status_frame]: adds r0,r0,#0x4
+08016f0e [duml_send_status_frame]: strb.w r0,[sp,#0x2] ; ref->Stack[-0x1e](WRITE)
+08016f12 [duml_send_status_frame]: ldrh.w r0,[sp,#0x1] ; ref->Stack[-0x1f](READ)
+08016f16 [duml_send_status_frame]: bfc r0,#0x0,#0xa
+08016f1a [duml_send_status_frame]: adds r0,#0xe
+08016f1c [duml_send_status_frame]: strh.w r0,[sp,#0x1] ; ref->Stack[-0x1f](WRITE)
+08016f20 [duml_send_status_frame]: ldrb.w r0,[sp,#0x4] ; ref->Stack[-0x1c](READ)
+08016f24 [duml_send_status_frame]: bic r0,r0,#0x1f
+08016f28 [duml_send_status_frame]: adds r0,r0,#0x4
+08016f2a [duml_send_status_frame]: strb.w r0,[sp,#0x4] ; ref->Stack[-0x1c](WRITE)
+08016f2e [duml_send_status_frame]: ldrb.w r0,[sp,#0x4] ; ref->Stack[-0x1c](READ)
+08016f32 [duml_send_status_frame]: bic r0,r0,#0xe0
+08016f36 [duml_send_status_frame]: strb.w r0,[sp,#0x4] ; ref->Stack[-0x1c](WRITE)
+08016f3a [duml_send_status_frame]: ldrb.w r0,[sp,#0x5] ; ref->Stack[-0x1b](READ)
+08016f3e [duml_send_status_frame]: bfi r0,r4,#0x0,#0x5
+08016f42 [duml_send_status_frame]: strb.w r0,[sp,#0x5] ; ref->Stack[-0x1b](WRITE)
+08016f46 [duml_send_status_frame]: ldrb.w r0,[sp,#0x5] ; ref->Stack[-0x1b](READ)
+08016f4a [duml_send_status_frame]: bfi r0,r5,#0x5,#0x3
+08016f4e [duml_send_status_frame]: strb.w r0,[sp,#0x5] ; ref->Stack[-0x1b](WRITE)
+08016f52 [duml_send_status_frame]: ldr r0,[0x08016fa8] ; ref->08016fa8(READ)
+08016f54 [duml_send_status_frame]: ldrb r0,[r0,#0x0] ; ref->200001b8(READ)
+08016f56 [duml_send_status_frame]: strh.w r0,[sp,#0x6] ; ref->Stack[-0x1a](WRITE)
+08016f5a [duml_send_status_frame]: ldrb.w r0,[sp,#0x8] ; ref->Stack[-0x18](READ)
+08016f5e [duml_send_status_frame]: bic r0,r0,#0x80
+08016f62 [duml_send_status_frame]: strb.w r0,[sp,#0x8] ; ref->Stack[-0x18](WRITE)
+08016f66 [duml_send_status_frame]: ldrb.w r0,[sp,#0x8] ; ref->Stack[-0x18](READ)
+08016f6a [duml_send_status_frame]: bic r0,r0,#0x60
+08016f6e [duml_send_status_frame]: strb.w r0,[sp,#0x8] ; ref->Stack[-0x18](WRITE)
+08016f72 [duml_send_status_frame]: ldrb.w r0,[sp,#0x8] ; ref->Stack[-0x18](READ)
+08016f76 [duml_send_status_frame]: bic r0,r0,#0x10
+08016f7a [duml_send_status_frame]: strb.w r0,[sp,#0x8] ; ref->Stack[-0x18](WRITE)
+08016f7e [duml_send_status_frame]: ldrb.w r0,[sp,#0x8] ; ref->Stack[-0x18](READ)
+08016f82 [duml_send_status_frame]: bic r0,r0,#0xf
+08016f86 [duml_send_status_frame]: strb.w r0,[sp,#0x8] ; ref->Stack[-0x18](WRITE)
+08016f8a [duml_send_status_frame]: movs r0,#0x4
+08016f8c [duml_send_status_frame]: strb.w r0,[sp,#0x9] ; ref->Stack[-0x17](WRITE)
+08016f90 [duml_send_status_frame]: movs r0,#0x47
+08016f92 [duml_send_status_frame]: strb.w r0,[sp,#0xa] ; ref->Stack[-0x16](WRITE)
+08016f96 [duml_send_status_frame]: ldrh.w r0,[sp,#0x1] ; ref->Stack[-0x1f](READ)
+08016f9a [duml_send_status_frame]: ubfx r1,r0,#0x0,#0xa
+08016f9e [duml_send_status_frame]: mov r2,r6
+08016fa0 [duml_send_status_frame]: mov r0,sp
+08016fa2 [duml_send_status_frame]: bl 0x08016d94 ; ref->08016d94(UNCONDITIONAL_CALL)
+08016fa6 [duml_send_status_frame]: pop {r0,r1,r2,r3,r4,r5,r6,pc}
 08016fac [duml_dispatch_short]: push {r4,r5,r6,r7,r8,lr}
 08016fb0 [duml_dispatch_short]: mov r5,r0
 08016fb2 [duml_dispatch_short]: mov r6,r1
@@ -20661,230 +20661,230 @@ FUNCTION FUN_0801b62c @ 0801b62c size=158 callsites=1
 08018d3a [FUN_08018d04]: cmp r3,r1
 08018d3c [FUN_08018d04]: ble 0x08018d18 ; ref->08018d18(CONDITIONAL_JUMP)
 08018d3e [FUN_08018d04]: pop {r4,pc}
-08018d40 [FUN_08018d40]: push {r4,r5,r6,r7,r8,r9,r10,lr}
-08018d44 [FUN_08018d40]: vpush {d8,d9,d10,d11,d12,d13}
-08018d48 [FUN_08018d40]: vmov.f32 s16,s0
-08018d4c [FUN_08018d40]: vmov.f32 s17,s1
-08018d50 [FUN_08018d40]: mov r7,r0
-08018d52 [FUN_08018d40]: mov r9,r1
-08018d54 [FUN_08018d40]: mov r6,r2
-08018d56 [FUN_08018d40]: mov r5,r3
-08018d58 [FUN_08018d40]: ldr.w r8,[sp,#0x50] ; ref->Stack[0x0](READ)
-08018d5c [FUN_08018d40]: ldr r0,[0x08018fc8] ; ref->08018fc8(READ)
-08018d5e [FUN_08018d40]: ldr r0,[r0,#0x0] ; ref->20000674(READ)
-08018d60 [FUN_08018d40]: cbnz r0,0x08018d6a ; ref->08018d6a(CONDITIONAL_JUMP)
-08018d62 [FUN_08018d40]: vpop {d8,d9,d10,d11,d12,d13}
-08018d66 [FUN_08018d40]: pop.w {r4,r5,r6,r7,r8,r9,r10,pc}
-08018d6a [FUN_08018d40]: ldr r0,[0x08018fcc] ; ref->08018fcc(READ)
-08018d6c [FUN_08018d40]: ldr r0,[r0,#0x0] ; ref->20000678(READ)
-08018d6e [FUN_08018d40]: cmp.w r0,#0x400
-08018d72 [FUN_08018d40]: bge 0x08018dc2 ; ref->08018dc2(CONDITIONAL_JUMP)
-08018d74 [FUN_08018d40]: ldr r0,[0x08018fcc] ; ref->08018fcc(READ)
-08018d76 [FUN_08018d40]: ldr r0,[r0,#0x0] ; ref->20000678(READ)
-08018d78 [FUN_08018d40]: ldr r1,[0x08018fd0] ; ref->08018fd0(READ)
-08018d7a [FUN_08018d40]: add.w r0,r1,r0, lsl #0x3
-08018d7e [FUN_08018d40]: vstr.32 s16,[r0] ; ref->200054a0(DATA)
-08018d82 [FUN_08018d40]: vldr.32 s0,[pc,#0x250] ; ref->08018fd4(READ)
-08018d86 [FUN_08018d40]: ldr r0,[0x08018fcc] ; ref->08018fcc(READ)
-08018d88 [FUN_08018d40]: ldr r0,[r0,#0x0] ; ref->20000678(READ)
-08018d8a [FUN_08018d40]: movs r1,#0x1
-08018d8c [FUN_08018d40]: add.w r0,r1,r0, lsl #0x1
-08018d90 [FUN_08018d40]: ldr r1,[0x08018fd0] ; ref->08018fd0(READ)
-08018d92 [FUN_08018d40]: add.w r0,r1,r0, lsl #0x2
-08018d96 [FUN_08018d40]: vstr.32 s0,[r0] ; ref->200054a0(DATA)
-08018d9a [FUN_08018d40]: ldr r0,[0x08018fcc] ; ref->08018fcc(READ)
-08018d9c [FUN_08018d40]: ldr r0,[r0,#0x0] ; ref->20000678(READ)
-08018d9e [FUN_08018d40]: ldr r1,[0x08018fd8] ; ref->08018fd8(READ)
-08018da0 [FUN_08018d40]: add.w r0,r1,r0, lsl #0x3
-08018da4 [FUN_08018d40]: vstr.32 s17,[r0] ; ref->200074a0(DATA)
-08018da8 [FUN_08018d40]: vldr.32 s0,[pc,#0x228] ; ref->08018fd4(READ)
-08018dac [FUN_08018d40]: ldr r0,[0x08018fcc] ; ref->08018fcc(READ)
-08018dae [FUN_08018d40]: ldr r0,[r0,#0x0] ; ref->20000678(READ)
-08018db0 [FUN_08018d40]: movs r1,#0x1
-08018db2 [FUN_08018d40]: add.w r0,r1,r0, lsl #0x1
-08018db6 [FUN_08018d40]: ldr r1,[0x08018fd8] ; ref->08018fd8(READ)
-08018db8 [FUN_08018d40]: add.w r0,r1,r0, lsl #0x2
-08018dbc [FUN_08018d40]: vstr.32 s0,[r0] ; ref->200074a0(DATA)
-08018dc0 [FUN_08018d40]: b 0x08018fa6 ; ref->08018fa6(UNCONDITIONAL_JUMP)
-08018dc2 [FUN_08018d40]: ldr r0,[0x08018fcc] ; ref->08018fcc(READ)
-08018dc4 [FUN_08018d40]: ldr r0,[r0,#0x0] ; ref->20000678(READ)
-08018dc6 [FUN_08018d40]: movw r1,#0x401
-08018dca [FUN_08018d40]: cmp r0,r1
-08018dcc [FUN_08018d40]: bne 0x08018de8 ; ref->08018de8(CONDITIONAL_JUMP)
-08018dce [FUN_08018d40]: ldr r0,[0x08018fdc] ; ref->08018fdc(READ)
-08018dd0 [FUN_08018d40]: ldrb r3,[r0,#0x0] ; ref->20000664(READ)
-08018dd2 [FUN_08018d40]: ldr r0,[0x08018fe0] ; ref->08018fe0(READ)
-08018dd4 [FUN_08018d40]: ldrb r2,[r0,#0x0] ; ref->20000660(READ)
-08018dd6 [FUN_08018d40]: ldr r0,[0x08018fe4] ; ref->08018fe4(READ)
-08018dd8 [FUN_08018d40]: ldrh r0,[r0,#0x0] ; ref->2000065c(READ)
-08018dda [FUN_08018d40]: uxth r1,r0
-08018ddc [FUN_08018d40]: ldr r0,[0x08018fe8] ; ref->08018fe8(READ) ; ref->2000b4a0(PARAM)
-08018dde [FUN_08018d40]: bl 0x08008a44 ; ref->08008a44(UNCONDITIONAL_CALL)
-08018de2 [FUN_08018d40]: ldr r1,[0x08018fec] ; ref->08018fec(READ)
-08018de4 [FUN_08018d40]: strb r0,[r1,#0x0] ; ref->20000670(WRITE)
-08018de6 [FUN_08018d40]: b 0x08018fa6 ; ref->08018fa6(UNCONDITIONAL_JUMP)
-08018de8 [FUN_08018d40]: ldr r0,[0x08018fcc] ; ref->08018fcc(READ)
-08018dea [FUN_08018d40]: ldr r0,[r0,#0x0] ; ref->20000678(READ)
-08018dec [FUN_08018d40]: movw r1,#0x402
-08018df0 [FUN_08018d40]: cmp r0,r1
-08018df2 [FUN_08018d40]: bne 0x08018dfe ; ref->08018dfe(CONDITIONAL_JUMP)
-08018df4 [FUN_08018d40]: ldr r1,[0x08018fd0] ; ref->08018fd0(READ) ; ref->200054a0(PARAM)
-08018df6 [FUN_08018d40]: ldr r0,[0x08018fe8] ; ref->08018fe8(READ) ; ref->2000b4a0(PARAM)
-08018df8 [FUN_08018d40]: bl 0x08008a08 ; ref->08008a08(UNCONDITIONAL_CALL)
-08018dfc [FUN_08018d40]: b 0x08018fa6 ; ref->08018fa6(UNCONDITIONAL_JUMP)
-08018dfe [FUN_08018d40]: ldr r0,[0x08018fcc] ; ref->08018fcc(READ)
-08018e00 [FUN_08018d40]: ldr r0,[r0,#0x0] ; ref->20000678(READ)
-08018e02 [FUN_08018d40]: movw r1,#0x403
-08018e06 [FUN_08018d40]: cmp r0,r1
-08018e08 [FUN_08018d40]: bne 0x08018e18 ; ref->08018e18(CONDITIONAL_JUMP)
-08018e0a [FUN_08018d40]: ldr r0,[0x08018fe4] ; ref->08018fe4(READ)
-08018e0c [FUN_08018d40]: ldr r1,[0x08018ff0] ; ref->08018ff0(READ) ; ref->200094a0(PARAM)
-08018e0e [FUN_08018d40]: ldr r2,[r0,#0x0] ; ref->2000065c(READ)
-08018e10 [FUN_08018d40]: ldr r0,[0x08018fd0] ; ref->08018fd0(READ) ; ref->200054a0(PARAM)
-08018e12 [FUN_08018d40]: bl 0x080081c0 ; ref->080081c0(UNCONDITIONAL_CALL)
-08018e16 [FUN_08018d40]: b 0x08018fa6 ; ref->08018fa6(UNCONDITIONAL_JUMP)
-08018e18 [FUN_08018d40]: ldr r0,[0x08018fcc] ; ref->08018fcc(READ)
-08018e1a [FUN_08018d40]: ldr r0,[r0,#0x0] ; ref->20000678(READ)
-08018e1c [FUN_08018d40]: movw r1,#0x404
-08018e20 [FUN_08018d40]: cmp r0,r1
-08018e22 [FUN_08018d40]: bne 0x08018e3e ; ref->08018e3e(CONDITIONAL_JUMP)
-08018e24 [FUN_08018d40]: ldr r0,[0x08018fdc] ; ref->08018fdc(READ)
-08018e26 [FUN_08018d40]: ldrb r3,[r0,#0x0] ; ref->20000664(READ)
-08018e28 [FUN_08018d40]: ldr r0,[0x08018fe0] ; ref->08018fe0(READ)
-08018e2a [FUN_08018d40]: ldrb r2,[r0,#0x0] ; ref->20000660(READ)
-08018e2c [FUN_08018d40]: ldr r0,[0x08018fe4] ; ref->08018fe4(READ)
-08018e2e [FUN_08018d40]: ldrh r0,[r0,#0x0] ; ref->2000065c(READ)
-08018e30 [FUN_08018d40]: uxth r1,r0
-08018e32 [FUN_08018d40]: ldr r0,[0x08018fe8] ; ref->08018fe8(READ) ; ref->2000b4a0(PARAM)
-08018e34 [FUN_08018d40]: bl 0x08008a44 ; ref->08008a44(UNCONDITIONAL_CALL)
-08018e38 [FUN_08018d40]: ldr r1,[0x08018fec] ; ref->08018fec(READ)
-08018e3a [FUN_08018d40]: strb r0,[r1,#0x0] ; ref->20000670(WRITE)
-08018e3c [FUN_08018d40]: b 0x08018fa6 ; ref->08018fa6(UNCONDITIONAL_JUMP)
-08018e3e [FUN_08018d40]: ldr r0,[0x08018fcc] ; ref->08018fcc(READ)
-08018e40 [FUN_08018d40]: ldr r0,[r0,#0x0] ; ref->20000678(READ)
-08018e42 [FUN_08018d40]: movw r1,#0x405
-08018e46 [FUN_08018d40]: cmp r0,r1
-08018e48 [FUN_08018d40]: bne 0x08018e54 ; ref->08018e54(CONDITIONAL_JUMP)
-08018e4a [FUN_08018d40]: ldr r1,[0x08018fd8] ; ref->08018fd8(READ) ; ref->200074a0(PARAM)
-08018e4c [FUN_08018d40]: ldr r0,[0x08018fe8] ; ref->08018fe8(READ) ; ref->2000b4a0(PARAM)
-08018e4e [FUN_08018d40]: bl 0x08008a08 ; ref->08008a08(UNCONDITIONAL_CALL)
-08018e52 [FUN_08018d40]: b 0x08018fa6 ; ref->08018fa6(UNCONDITIONAL_JUMP)
-08018e54 [FUN_08018d40]: ldr r0,[0x08018fcc] ; ref->08018fcc(READ)
-08018e56 [FUN_08018d40]: ldr r0,[r0,#0x0] ; ref->20000678(READ)
-08018e58 [FUN_08018d40]: movw r1,#0x406
-08018e5c [FUN_08018d40]: cmp r0,r1
-08018e5e [FUN_08018d40]: bne 0x08018e6e ; ref->08018e6e(CONDITIONAL_JUMP)
-08018e60 [FUN_08018d40]: ldr r0,[0x08018fe4] ; ref->08018fe4(READ)
-08018e62 [FUN_08018d40]: ldr r1,[0x08018ff4] ; ref->08018ff4(READ) ; ref->2000a4a0(PARAM)
-08018e64 [FUN_08018d40]: ldr r2,[r0,#0x0] ; ref->2000065c(READ)
-08018e66 [FUN_08018d40]: ldr r0,[0x08018fd8] ; ref->08018fd8(READ) ; ref->200074a0(PARAM)
-08018e68 [FUN_08018d40]: bl 0x080081c0 ; ref->080081c0(UNCONDITIONAL_CALL)
-08018e6c [FUN_08018d40]: b 0x08018fa6 ; ref->08018fa6(UNCONDITIONAL_JUMP)
-08018e6e [FUN_08018d40]: ldr r0,[0x08018fcc] ; ref->08018fcc(READ)
-08018e70 [FUN_08018d40]: ldr r0,[r0,#0x0] ; ref->20000678(READ)
-08018e72 [FUN_08018d40]: movw r1,#0x407
-08018e76 [FUN_08018d40]: cmp r0,r1
-08018e78 [FUN_08018d40]: bne 0x08018f76 ; ref->08018f76(CONDITIONAL_JUMP)
-08018e7a [FUN_08018d40]: ldr r2,[0x08018ff0] ; ref->08018ff0(READ) ; ref->200094a0(PARAM)
-08018e7c [FUN_08018d40]: mov r1,r9
-08018e7e [FUN_08018d40]: mov r0,r7
-08018e80 [FUN_08018d40]: bl 0x08018d04 ; ref->08018d04(UNCONDITIONAL_CALL)
-08018e84 [FUN_08018d40]: mov r4,r0
-08018e86 [FUN_08018d40]: vmov s0,r4
-08018e8a [FUN_08018d40]: vcvt.f32.s32 s0,s0
-08018e8e [FUN_08018d40]: vldr.32 s1,[pc,#0x168] ; ref->08018ff8(READ)
-08018e92 [FUN_08018d40]: vmul.f32 s0,s0,s1
-08018e96 [FUN_08018d40]: vstr.32 s0,[r8]
-08018e9a [FUN_08018d40]: ldr r0,[0x08018ff0] ; ref->08018ff0(READ)
-08018e9c [FUN_08018d40]: add.w r0,r0,r4, lsl #0x2
-08018ea0 [FUN_08018d40]: vldr.32 s0,[r0] ; ref->200094a0(DATA)
-08018ea4 [FUN_08018d40]: ldr r0,[0x08018ff4] ; ref->08018ff4(READ)
-08018ea6 [FUN_08018d40]: add.w r0,r0,r4, lsl #0x2
-08018eaa [FUN_08018d40]: vldr.32 s1,[r0] ; ref->2000a4a0(DATA)
-08018eae [FUN_08018d40]: vdiv.f32 s2,s0,s1
-08018eb2 [FUN_08018d40]: vstr.32 s2,[r6]
-08018eb6 [FUN_08018d40]: movs r0,#0x1
-08018eb8 [FUN_08018d40]: add.w r0,r0,r4, lsl #0x1
-08018ebc [FUN_08018d40]: ldr r2,[0x08018fd8] ; ref->08018fd8(READ) ; ref->200074a0(PARAM)
-08018ebe [FUN_08018d40]: add.w r0,r2,r0, lsl #0x2
-08018ec2 [FUN_08018d40]: vldr.32 s0,[r0] ; ref->200074a0(DATA)
-08018ec6 [FUN_08018d40]: vmov r1,s0
-08018eca [FUN_08018d40]: mov r0,r1
-08018ecc [FUN_08018d40]: bl 0x08008d8c ; ref->08008d8c(UNCONDITIONAL_CALL)
-08018ed0 [FUN_08018d40]: vmov d12,r0,r1
-08018ed4 [FUN_08018d40]: ldr r2,[0x08018fd8] ; ref->08018fd8(READ) ; ref->200074a0(PARAM)
-08018ed6 [FUN_08018d40]: add.w r0,r2,r4, lsl #0x3
-08018eda [FUN_08018d40]: vldr.32 s0,[r0] ; ref->200074a0(DATA)
-08018ede [FUN_08018d40]: vmov r1,s0
-08018ee2 [FUN_08018d40]: mov r0,r1
-08018ee4 [FUN_08018d40]: bl 0x08008d8c ; ref->08008d8c(UNCONDITIONAL_CALL)
-08018ee8 [FUN_08018d40]: vmov d13,r0,r1
-08018eec [FUN_08018d40]: vmov.f32 s2,s24
-08018ef0 [FUN_08018d40]: vmov.f32 s3,s25
-08018ef4 [FUN_08018d40]: vmov.f32 s0,s26
-08018ef8 [FUN_08018d40]: vmov.f32 s1,s27
-08018efc [FUN_08018d40]: bl 0x08012068 ; ref->08012068(UNCONDITIONAL_CALL)
-08018f00 [FUN_08018d40]: vmov.f32 s20,s0
-08018f04 [FUN_08018d40]: vmov.f32 s21,s1
-08018f08 [FUN_08018d40]: movs r0,#0x1
-08018f0a [FUN_08018d40]: add.w r0,r0,r4, lsl #0x1
-08018f0e [FUN_08018d40]: ldr r2,[0x08018fd0] ; ref->08018fd0(READ) ; ref->200054a0(PARAM)
-08018f10 [FUN_08018d40]: add.w r0,r2,r0, lsl #0x2
-08018f14 [FUN_08018d40]: vldr.32 s0,[r0] ; ref->200054a0(DATA)
-08018f18 [FUN_08018d40]: vmov r1,s0
-08018f1c [FUN_08018d40]: mov r0,r1
-08018f1e [FUN_08018d40]: bl 0x08008d8c ; ref->08008d8c(UNCONDITIONAL_CALL)
-08018f22 [FUN_08018d40]: vmov d12,r0,r1
-08018f26 [FUN_08018d40]: ldr r2,[0x08018fd0] ; ref->08018fd0(READ) ; ref->200054a0(PARAM)
-08018f28 [FUN_08018d40]: add.w r0,r2,r4, lsl #0x3
-08018f2c [FUN_08018d40]: vldr.32 s0,[r0] ; ref->200054a0(DATA)
-08018f30 [FUN_08018d40]: vmov r1,s0
-08018f34 [FUN_08018d40]: mov r0,r1
-08018f36 [FUN_08018d40]: bl 0x08008d8c ; ref->08008d8c(UNCONDITIONAL_CALL)
-08018f3a [FUN_08018d40]: vmov d13,r0,r1
-08018f3e [FUN_08018d40]: vmov.f32 s2,s24
-08018f42 [FUN_08018d40]: vmov.f32 s3,s25
-08018f46 [FUN_08018d40]: vmov.f32 s0,s26
-08018f4a [FUN_08018d40]: vmov.f32 s1,s27
-08018f4e [FUN_08018d40]: bl 0x08012068 ; ref->08012068(UNCONDITIONAL_CALL)
-08018f52 [FUN_08018d40]: vmov.f32 s22,s0
-08018f56 [FUN_08018d40]: vmov.f32 s23,s1
-08018f5a [FUN_08018d40]: vmov r2,r3,d10
-08018f5e [FUN_08018d40]: vmov r0,r1,d11
-08018f62 [FUN_08018d40]: bl 0x08008c82 ; ref->08008c82(UNCONDITIONAL_CALL)
-08018f66 [FUN_08018d40]: vmov d9,r0,r1
-08018f6a [FUN_08018d40]: bl 0x08008de4 ; ref->08008de4(UNCONDITIONAL_CALL)
-08018f6e [FUN_08018d40]: str r0,[r5,#0x0]
-08018f70 [FUN_08018d40]: vldr.32 s0,[r5]
-08018f74 [FUN_08018d40]: b 0x08018f78 ; ref->08018f78(UNCONDITIONAL_JUMP)
-08018f76 [FUN_08018d40]: b 0x08018fa6 ; ref->08018fa6(UNCONDITIONAL_JUMP)
-08018f78 [FUN_08018d40]: vldr.32 s1,[pc,#0x80] ; ref->08018ffc(READ)
-08018f7c [FUN_08018d40]: vcmpe.f32 s0,s1
-08018f80 [FUN_08018d40]: vmrs apsr,fpscr
-08018f84 [FUN_08018d40]: ble 0x08018f96 ; ref->08018f96(CONDITIONAL_JUMP)
-08018f86 [FUN_08018d40]: vldr.32 s0,[r5]
-08018f8a [FUN_08018d40]: vldr.32 s1,[pc,#0x74] ; ref->08019000(READ)
-08018f8e [FUN_08018d40]: vsub.f32 s0,s0,s1
-08018f92 [FUN_08018d40]: vstr.32 s0,[r5]
-08018f96 [FUN_08018d40]: vldr.32 s0,[r5]
-08018f9a [FUN_08018d40]: vldr.32 s1,[pc,#0x68] ; ref->08019004(READ)
-08018f9e [FUN_08018d40]: vmul.f32 s0,s0,s1
-08018fa2 [FUN_08018d40]: vstr.32 s0,[r5]
-08018fa6 [FUN_08018d40]: ldr r0,[0x08018fcc] ; ref->08018fcc(READ)
-08018fa8 [FUN_08018d40]: ldr r0,[r0,#0x0] ; ref->20000678(READ)
-08018faa [FUN_08018d40]: adds r0,r0,#0x1
-08018fac [FUN_08018d40]: ldr r1,[0x08018fcc] ; ref->08018fcc(READ)
-08018fae [FUN_08018d40]: str r0,[r1,#0x0] ; ref->20000678(WRITE)
-08018fb0 [FUN_08018d40]: mov r0,r1
-08018fb2 [FUN_08018d40]: ldr r0,[r0,#0x0] ; ref->20000678(READ)
-08018fb4 [FUN_08018d40]: movw r1,#0x464
-08018fb8 [FUN_08018d40]: cmp r0,r1
-08018fba [FUN_08018d40]: ble 0x08018fc2 ; ref->08018fc2(CONDITIONAL_JUMP)
-08018fbc [FUN_08018d40]: movs r0,#0x0
-08018fbe [FUN_08018d40]: ldr r1,[0x08018fcc] ; ref->08018fcc(READ)
-08018fc0 [FUN_08018d40]: str r0,[r1,#0x0] ; ref->20000678(WRITE)
-08018fc2 [FUN_08018d40]: nop
-08018fc4 [FUN_08018d40]: b 0x08018d62 ; ref->08018d62(UNCONDITIONAL_JUMP)
+08018d40 [fft_spectrum_analyze]: push {r4,r5,r6,r7,r8,r9,r10,lr}
+08018d44 [fft_spectrum_analyze]: vpush {d8,d9,d10,d11,d12,d13}
+08018d48 [fft_spectrum_analyze]: vmov.f32 s16,s0
+08018d4c [fft_spectrum_analyze]: vmov.f32 s17,s1
+08018d50 [fft_spectrum_analyze]: mov r7,r0
+08018d52 [fft_spectrum_analyze]: mov r9,r1
+08018d54 [fft_spectrum_analyze]: mov r6,r2
+08018d56 [fft_spectrum_analyze]: mov r5,r3
+08018d58 [fft_spectrum_analyze]: ldr.w r8,[sp,#0x50] ; ref->Stack[0x0](READ)
+08018d5c [fft_spectrum_analyze]: ldr r0,[0x08018fc8] ; ref->08018fc8(READ)
+08018d5e [fft_spectrum_analyze]: ldr r0,[r0,#0x0] ; ref->20000674(READ)
+08018d60 [fft_spectrum_analyze]: cbnz r0,0x08018d6a ; ref->08018d6a(CONDITIONAL_JUMP)
+08018d62 [fft_spectrum_analyze]: vpop {d8,d9,d10,d11,d12,d13}
+08018d66 [fft_spectrum_analyze]: pop.w {r4,r5,r6,r7,r8,r9,r10,pc}
+08018d6a [fft_spectrum_analyze]: ldr r0,[0x08018fcc] ; ref->08018fcc(READ)
+08018d6c [fft_spectrum_analyze]: ldr r0,[r0,#0x0] ; ref->20000678(READ)
+08018d6e [fft_spectrum_analyze]: cmp.w r0,#0x400
+08018d72 [fft_spectrum_analyze]: bge 0x08018dc2 ; ref->08018dc2(CONDITIONAL_JUMP)
+08018d74 [fft_spectrum_analyze]: ldr r0,[0x08018fcc] ; ref->08018fcc(READ)
+08018d76 [fft_spectrum_analyze]: ldr r0,[r0,#0x0] ; ref->20000678(READ)
+08018d78 [fft_spectrum_analyze]: ldr r1,[0x08018fd0] ; ref->08018fd0(READ)
+08018d7a [fft_spectrum_analyze]: add.w r0,r1,r0, lsl #0x3
+08018d7e [fft_spectrum_analyze]: vstr.32 s16,[r0] ; ref->200054a0(DATA)
+08018d82 [fft_spectrum_analyze]: vldr.32 s0,[pc,#0x250] ; ref->08018fd4(READ)
+08018d86 [fft_spectrum_analyze]: ldr r0,[0x08018fcc] ; ref->08018fcc(READ)
+08018d88 [fft_spectrum_analyze]: ldr r0,[r0,#0x0] ; ref->20000678(READ)
+08018d8a [fft_spectrum_analyze]: movs r1,#0x1
+08018d8c [fft_spectrum_analyze]: add.w r0,r1,r0, lsl #0x1
+08018d90 [fft_spectrum_analyze]: ldr r1,[0x08018fd0] ; ref->08018fd0(READ)
+08018d92 [fft_spectrum_analyze]: add.w r0,r1,r0, lsl #0x2
+08018d96 [fft_spectrum_analyze]: vstr.32 s0,[r0] ; ref->200054a0(DATA)
+08018d9a [fft_spectrum_analyze]: ldr r0,[0x08018fcc] ; ref->08018fcc(READ)
+08018d9c [fft_spectrum_analyze]: ldr r0,[r0,#0x0] ; ref->20000678(READ)
+08018d9e [fft_spectrum_analyze]: ldr r1,[0x08018fd8] ; ref->08018fd8(READ)
+08018da0 [fft_spectrum_analyze]: add.w r0,r1,r0, lsl #0x3
+08018da4 [fft_spectrum_analyze]: vstr.32 s17,[r0] ; ref->200074a0(DATA)
+08018da8 [fft_spectrum_analyze]: vldr.32 s0,[pc,#0x228] ; ref->08018fd4(READ)
+08018dac [fft_spectrum_analyze]: ldr r0,[0x08018fcc] ; ref->08018fcc(READ)
+08018dae [fft_spectrum_analyze]: ldr r0,[r0,#0x0] ; ref->20000678(READ)
+08018db0 [fft_spectrum_analyze]: movs r1,#0x1
+08018db2 [fft_spectrum_analyze]: add.w r0,r1,r0, lsl #0x1
+08018db6 [fft_spectrum_analyze]: ldr r1,[0x08018fd8] ; ref->08018fd8(READ)
+08018db8 [fft_spectrum_analyze]: add.w r0,r1,r0, lsl #0x2
+08018dbc [fft_spectrum_analyze]: vstr.32 s0,[r0] ; ref->200074a0(DATA)
+08018dc0 [fft_spectrum_analyze]: b 0x08018fa6 ; ref->08018fa6(UNCONDITIONAL_JUMP)
+08018dc2 [fft_spectrum_analyze]: ldr r0,[0x08018fcc] ; ref->08018fcc(READ)
+08018dc4 [fft_spectrum_analyze]: ldr r0,[r0,#0x0] ; ref->20000678(READ)
+08018dc6 [fft_spectrum_analyze]: movw r1,#0x401
+08018dca [fft_spectrum_analyze]: cmp r0,r1
+08018dcc [fft_spectrum_analyze]: bne 0x08018de8 ; ref->08018de8(CONDITIONAL_JUMP)
+08018dce [fft_spectrum_analyze]: ldr r0,[0x08018fdc] ; ref->08018fdc(READ)
+08018dd0 [fft_spectrum_analyze]: ldrb r3,[r0,#0x0] ; ref->20000664(READ)
+08018dd2 [fft_spectrum_analyze]: ldr r0,[0x08018fe0] ; ref->08018fe0(READ)
+08018dd4 [fft_spectrum_analyze]: ldrb r2,[r0,#0x0] ; ref->20000660(READ)
+08018dd6 [fft_spectrum_analyze]: ldr r0,[0x08018fe4] ; ref->08018fe4(READ)
+08018dd8 [fft_spectrum_analyze]: ldrh r0,[r0,#0x0] ; ref->2000065c(READ)
+08018dda [fft_spectrum_analyze]: uxth r1,r0
+08018ddc [fft_spectrum_analyze]: ldr r0,[0x08018fe8] ; ref->08018fe8(READ) ; ref->2000b4a0(PARAM)
+08018dde [fft_spectrum_analyze]: bl 0x08008a44 ; ref->08008a44(UNCONDITIONAL_CALL)
+08018de2 [fft_spectrum_analyze]: ldr r1,[0x08018fec] ; ref->08018fec(READ)
+08018de4 [fft_spectrum_analyze]: strb r0,[r1,#0x0] ; ref->20000670(WRITE)
+08018de6 [fft_spectrum_analyze]: b 0x08018fa6 ; ref->08018fa6(UNCONDITIONAL_JUMP)
+08018de8 [fft_spectrum_analyze]: ldr r0,[0x08018fcc] ; ref->08018fcc(READ)
+08018dea [fft_spectrum_analyze]: ldr r0,[r0,#0x0] ; ref->20000678(READ)
+08018dec [fft_spectrum_analyze]: movw r1,#0x402
+08018df0 [fft_spectrum_analyze]: cmp r0,r1
+08018df2 [fft_spectrum_analyze]: bne 0x08018dfe ; ref->08018dfe(CONDITIONAL_JUMP)
+08018df4 [fft_spectrum_analyze]: ldr r1,[0x08018fd0] ; ref->08018fd0(READ) ; ref->200054a0(PARAM)
+08018df6 [fft_spectrum_analyze]: ldr r0,[0x08018fe8] ; ref->08018fe8(READ) ; ref->2000b4a0(PARAM)
+08018df8 [fft_spectrum_analyze]: bl 0x08008a08 ; ref->08008a08(UNCONDITIONAL_CALL)
+08018dfc [fft_spectrum_analyze]: b 0x08018fa6 ; ref->08018fa6(UNCONDITIONAL_JUMP)
+08018dfe [fft_spectrum_analyze]: ldr r0,[0x08018fcc] ; ref->08018fcc(READ)
+08018e00 [fft_spectrum_analyze]: ldr r0,[r0,#0x0] ; ref->20000678(READ)
+08018e02 [fft_spectrum_analyze]: movw r1,#0x403
+08018e06 [fft_spectrum_analyze]: cmp r0,r1
+08018e08 [fft_spectrum_analyze]: bne 0x08018e18 ; ref->08018e18(CONDITIONAL_JUMP)
+08018e0a [fft_spectrum_analyze]: ldr r0,[0x08018fe4] ; ref->08018fe4(READ)
+08018e0c [fft_spectrum_analyze]: ldr r1,[0x08018ff0] ; ref->08018ff0(READ) ; ref->200094a0(PARAM)
+08018e0e [fft_spectrum_analyze]: ldr r2,[r0,#0x0] ; ref->2000065c(READ)
+08018e10 [fft_spectrum_analyze]: ldr r0,[0x08018fd0] ; ref->08018fd0(READ) ; ref->200054a0(PARAM)
+08018e12 [fft_spectrum_analyze]: bl 0x080081c0 ; ref->080081c0(UNCONDITIONAL_CALL)
+08018e16 [fft_spectrum_analyze]: b 0x08018fa6 ; ref->08018fa6(UNCONDITIONAL_JUMP)
+08018e18 [fft_spectrum_analyze]: ldr r0,[0x08018fcc] ; ref->08018fcc(READ)
+08018e1a [fft_spectrum_analyze]: ldr r0,[r0,#0x0] ; ref->20000678(READ)
+08018e1c [fft_spectrum_analyze]: movw r1,#0x404
+08018e20 [fft_spectrum_analyze]: cmp r0,r1
+08018e22 [fft_spectrum_analyze]: bne 0x08018e3e ; ref->08018e3e(CONDITIONAL_JUMP)
+08018e24 [fft_spectrum_analyze]: ldr r0,[0x08018fdc] ; ref->08018fdc(READ)
+08018e26 [fft_spectrum_analyze]: ldrb r3,[r0,#0x0] ; ref->20000664(READ)
+08018e28 [fft_spectrum_analyze]: ldr r0,[0x08018fe0] ; ref->08018fe0(READ)
+08018e2a [fft_spectrum_analyze]: ldrb r2,[r0,#0x0] ; ref->20000660(READ)
+08018e2c [fft_spectrum_analyze]: ldr r0,[0x08018fe4] ; ref->08018fe4(READ)
+08018e2e [fft_spectrum_analyze]: ldrh r0,[r0,#0x0] ; ref->2000065c(READ)
+08018e30 [fft_spectrum_analyze]: uxth r1,r0
+08018e32 [fft_spectrum_analyze]: ldr r0,[0x08018fe8] ; ref->08018fe8(READ) ; ref->2000b4a0(PARAM)
+08018e34 [fft_spectrum_analyze]: bl 0x08008a44 ; ref->08008a44(UNCONDITIONAL_CALL)
+08018e38 [fft_spectrum_analyze]: ldr r1,[0x08018fec] ; ref->08018fec(READ)
+08018e3a [fft_spectrum_analyze]: strb r0,[r1,#0x0] ; ref->20000670(WRITE)
+08018e3c [fft_spectrum_analyze]: b 0x08018fa6 ; ref->08018fa6(UNCONDITIONAL_JUMP)
+08018e3e [fft_spectrum_analyze]: ldr r0,[0x08018fcc] ; ref->08018fcc(READ)
+08018e40 [fft_spectrum_analyze]: ldr r0,[r0,#0x0] ; ref->20000678(READ)
+08018e42 [fft_spectrum_analyze]: movw r1,#0x405
+08018e46 [fft_spectrum_analyze]: cmp r0,r1
+08018e48 [fft_spectrum_analyze]: bne 0x08018e54 ; ref->08018e54(CONDITIONAL_JUMP)
+08018e4a [fft_spectrum_analyze]: ldr r1,[0x08018fd8] ; ref->08018fd8(READ) ; ref->200074a0(PARAM)
+08018e4c [fft_spectrum_analyze]: ldr r0,[0x08018fe8] ; ref->08018fe8(READ) ; ref->2000b4a0(PARAM)
+08018e4e [fft_spectrum_analyze]: bl 0x08008a08 ; ref->08008a08(UNCONDITIONAL_CALL)
+08018e52 [fft_spectrum_analyze]: b 0x08018fa6 ; ref->08018fa6(UNCONDITIONAL_JUMP)
+08018e54 [fft_spectrum_analyze]: ldr r0,[0x08018fcc] ; ref->08018fcc(READ)
+08018e56 [fft_spectrum_analyze]: ldr r0,[r0,#0x0] ; ref->20000678(READ)
+08018e58 [fft_spectrum_analyze]: movw r1,#0x406
+08018e5c [fft_spectrum_analyze]: cmp r0,r1
+08018e5e [fft_spectrum_analyze]: bne 0x08018e6e ; ref->08018e6e(CONDITIONAL_JUMP)
+08018e60 [fft_spectrum_analyze]: ldr r0,[0x08018fe4] ; ref->08018fe4(READ)
+08018e62 [fft_spectrum_analyze]: ldr r1,[0x08018ff4] ; ref->08018ff4(READ) ; ref->2000a4a0(PARAM)
+08018e64 [fft_spectrum_analyze]: ldr r2,[r0,#0x0] ; ref->2000065c(READ)
+08018e66 [fft_spectrum_analyze]: ldr r0,[0x08018fd8] ; ref->08018fd8(READ) ; ref->200074a0(PARAM)
+08018e68 [fft_spectrum_analyze]: bl 0x080081c0 ; ref->080081c0(UNCONDITIONAL_CALL)
+08018e6c [fft_spectrum_analyze]: b 0x08018fa6 ; ref->08018fa6(UNCONDITIONAL_JUMP)
+08018e6e [fft_spectrum_analyze]: ldr r0,[0x08018fcc] ; ref->08018fcc(READ)
+08018e70 [fft_spectrum_analyze]: ldr r0,[r0,#0x0] ; ref->20000678(READ)
+08018e72 [fft_spectrum_analyze]: movw r1,#0x407
+08018e76 [fft_spectrum_analyze]: cmp r0,r1
+08018e78 [fft_spectrum_analyze]: bne 0x08018f76 ; ref->08018f76(CONDITIONAL_JUMP)
+08018e7a [fft_spectrum_analyze]: ldr r2,[0x08018ff0] ; ref->08018ff0(READ) ; ref->200094a0(PARAM)
+08018e7c [fft_spectrum_analyze]: mov r1,r9
+08018e7e [fft_spectrum_analyze]: mov r0,r7
+08018e80 [fft_spectrum_analyze]: bl 0x08018d04 ; ref->08018d04(UNCONDITIONAL_CALL)
+08018e84 [fft_spectrum_analyze]: mov r4,r0
+08018e86 [fft_spectrum_analyze]: vmov s0,r4
+08018e8a [fft_spectrum_analyze]: vcvt.f32.s32 s0,s0
+08018e8e [fft_spectrum_analyze]: vldr.32 s1,[pc,#0x168] ; ref->08018ff8(READ)
+08018e92 [fft_spectrum_analyze]: vmul.f32 s0,s0,s1
+08018e96 [fft_spectrum_analyze]: vstr.32 s0,[r8]
+08018e9a [fft_spectrum_analyze]: ldr r0,[0x08018ff0] ; ref->08018ff0(READ)
+08018e9c [fft_spectrum_analyze]: add.w r0,r0,r4, lsl #0x2
+08018ea0 [fft_spectrum_analyze]: vldr.32 s0,[r0] ; ref->200094a0(DATA)
+08018ea4 [fft_spectrum_analyze]: ldr r0,[0x08018ff4] ; ref->08018ff4(READ)
+08018ea6 [fft_spectrum_analyze]: add.w r0,r0,r4, lsl #0x2
+08018eaa [fft_spectrum_analyze]: vldr.32 s1,[r0] ; ref->2000a4a0(DATA)
+08018eae [fft_spectrum_analyze]: vdiv.f32 s2,s0,s1
+08018eb2 [fft_spectrum_analyze]: vstr.32 s2,[r6]
+08018eb6 [fft_spectrum_analyze]: movs r0,#0x1
+08018eb8 [fft_spectrum_analyze]: add.w r0,r0,r4, lsl #0x1
+08018ebc [fft_spectrum_analyze]: ldr r2,[0x08018fd8] ; ref->08018fd8(READ) ; ref->200074a0(PARAM)
+08018ebe [fft_spectrum_analyze]: add.w r0,r2,r0, lsl #0x2
+08018ec2 [fft_spectrum_analyze]: vldr.32 s0,[r0] ; ref->200074a0(DATA)
+08018ec6 [fft_spectrum_analyze]: vmov r1,s0
+08018eca [fft_spectrum_analyze]: mov r0,r1
+08018ecc [fft_spectrum_analyze]: bl 0x08008d8c ; ref->08008d8c(UNCONDITIONAL_CALL)
+08018ed0 [fft_spectrum_analyze]: vmov d12,r0,r1
+08018ed4 [fft_spectrum_analyze]: ldr r2,[0x08018fd8] ; ref->08018fd8(READ) ; ref->200074a0(PARAM)
+08018ed6 [fft_spectrum_analyze]: add.w r0,r2,r4, lsl #0x3
+08018eda [fft_spectrum_analyze]: vldr.32 s0,[r0] ; ref->200074a0(DATA)
+08018ede [fft_spectrum_analyze]: vmov r1,s0
+08018ee2 [fft_spectrum_analyze]: mov r0,r1
+08018ee4 [fft_spectrum_analyze]: bl 0x08008d8c ; ref->08008d8c(UNCONDITIONAL_CALL)
+08018ee8 [fft_spectrum_analyze]: vmov d13,r0,r1
+08018eec [fft_spectrum_analyze]: vmov.f32 s2,s24
+08018ef0 [fft_spectrum_analyze]: vmov.f32 s3,s25
+08018ef4 [fft_spectrum_analyze]: vmov.f32 s0,s26
+08018ef8 [fft_spectrum_analyze]: vmov.f32 s1,s27
+08018efc [fft_spectrum_analyze]: bl 0x08012068 ; ref->08012068(UNCONDITIONAL_CALL)
+08018f00 [fft_spectrum_analyze]: vmov.f32 s20,s0
+08018f04 [fft_spectrum_analyze]: vmov.f32 s21,s1
+08018f08 [fft_spectrum_analyze]: movs r0,#0x1
+08018f0a [fft_spectrum_analyze]: add.w r0,r0,r4, lsl #0x1
+08018f0e [fft_spectrum_analyze]: ldr r2,[0x08018fd0] ; ref->08018fd0(READ) ; ref->200054a0(PARAM)
+08018f10 [fft_spectrum_analyze]: add.w r0,r2,r0, lsl #0x2
+08018f14 [fft_spectrum_analyze]: vldr.32 s0,[r0] ; ref->200054a0(DATA)
+08018f18 [fft_spectrum_analyze]: vmov r1,s0
+08018f1c [fft_spectrum_analyze]: mov r0,r1
+08018f1e [fft_spectrum_analyze]: bl 0x08008d8c ; ref->08008d8c(UNCONDITIONAL_CALL)
+08018f22 [fft_spectrum_analyze]: vmov d12,r0,r1
+08018f26 [fft_spectrum_analyze]: ldr r2,[0x08018fd0] ; ref->08018fd0(READ) ; ref->200054a0(PARAM)
+08018f28 [fft_spectrum_analyze]: add.w r0,r2,r4, lsl #0x3
+08018f2c [fft_spectrum_analyze]: vldr.32 s0,[r0] ; ref->200054a0(DATA)
+08018f30 [fft_spectrum_analyze]: vmov r1,s0
+08018f34 [fft_spectrum_analyze]: mov r0,r1
+08018f36 [fft_spectrum_analyze]: bl 0x08008d8c ; ref->08008d8c(UNCONDITIONAL_CALL)
+08018f3a [fft_spectrum_analyze]: vmov d13,r0,r1
+08018f3e [fft_spectrum_analyze]: vmov.f32 s2,s24
+08018f42 [fft_spectrum_analyze]: vmov.f32 s3,s25
+08018f46 [fft_spectrum_analyze]: vmov.f32 s0,s26
+08018f4a [fft_spectrum_analyze]: vmov.f32 s1,s27
+08018f4e [fft_spectrum_analyze]: bl 0x08012068 ; ref->08012068(UNCONDITIONAL_CALL)
+08018f52 [fft_spectrum_analyze]: vmov.f32 s22,s0
+08018f56 [fft_spectrum_analyze]: vmov.f32 s23,s1
+08018f5a [fft_spectrum_analyze]: vmov r2,r3,d10
+08018f5e [fft_spectrum_analyze]: vmov r0,r1,d11
+08018f62 [fft_spectrum_analyze]: bl 0x08008c82 ; ref->08008c82(UNCONDITIONAL_CALL)
+08018f66 [fft_spectrum_analyze]: vmov d9,r0,r1
+08018f6a [fft_spectrum_analyze]: bl 0x08008de4 ; ref->08008de4(UNCONDITIONAL_CALL)
+08018f6e [fft_spectrum_analyze]: str r0,[r5,#0x0]
+08018f70 [fft_spectrum_analyze]: vldr.32 s0,[r5]
+08018f74 [fft_spectrum_analyze]: b 0x08018f78 ; ref->08018f78(UNCONDITIONAL_JUMP)
+08018f76 [fft_spectrum_analyze]: b 0x08018fa6 ; ref->08018fa6(UNCONDITIONAL_JUMP)
+08018f78 [fft_spectrum_analyze]: vldr.32 s1,[pc,#0x80] ; ref->08018ffc(READ)
+08018f7c [fft_spectrum_analyze]: vcmpe.f32 s0,s1
+08018f80 [fft_spectrum_analyze]: vmrs apsr,fpscr
+08018f84 [fft_spectrum_analyze]: ble 0x08018f96 ; ref->08018f96(CONDITIONAL_JUMP)
+08018f86 [fft_spectrum_analyze]: vldr.32 s0,[r5]
+08018f8a [fft_spectrum_analyze]: vldr.32 s1,[pc,#0x74] ; ref->08019000(READ)
+08018f8e [fft_spectrum_analyze]: vsub.f32 s0,s0,s1
+08018f92 [fft_spectrum_analyze]: vstr.32 s0,[r5]
+08018f96 [fft_spectrum_analyze]: vldr.32 s0,[r5]
+08018f9a [fft_spectrum_analyze]: vldr.32 s1,[pc,#0x68] ; ref->08019004(READ)
+08018f9e [fft_spectrum_analyze]: vmul.f32 s0,s0,s1
+08018fa2 [fft_spectrum_analyze]: vstr.32 s0,[r5]
+08018fa6 [fft_spectrum_analyze]: ldr r0,[0x08018fcc] ; ref->08018fcc(READ)
+08018fa8 [fft_spectrum_analyze]: ldr r0,[r0,#0x0] ; ref->20000678(READ)
+08018faa [fft_spectrum_analyze]: adds r0,r0,#0x1
+08018fac [fft_spectrum_analyze]: ldr r1,[0x08018fcc] ; ref->08018fcc(READ)
+08018fae [fft_spectrum_analyze]: str r0,[r1,#0x0] ; ref->20000678(WRITE)
+08018fb0 [fft_spectrum_analyze]: mov r0,r1
+08018fb2 [fft_spectrum_analyze]: ldr r0,[r0,#0x0] ; ref->20000678(READ)
+08018fb4 [fft_spectrum_analyze]: movw r1,#0x464
+08018fb8 [fft_spectrum_analyze]: cmp r0,r1
+08018fba [fft_spectrum_analyze]: ble 0x08018fc2 ; ref->08018fc2(CONDITIONAL_JUMP)
+08018fbc [fft_spectrum_analyze]: movs r0,#0x0
+08018fbe [fft_spectrum_analyze]: ldr r1,[0x08018fcc] ; ref->08018fcc(READ)
+08018fc0 [fft_spectrum_analyze]: str r0,[r1,#0x0] ; ref->20000678(WRITE)
+08018fc2 [fft_spectrum_analyze]: nop
+08018fc4 [fft_spectrum_analyze]: b 0x08018d62 ; ref->08018d62(UNCONDITIONAL_JUMP)
 08019008 [FUN_08019008]: movs r0,#0x1
 0801900a [FUN_08019008]: ldr r1,[0x08019010] ; ref->08019010(READ)
 0801900c [FUN_08019008]: str r0,[r1,#0x0] ; ref->20000674(WRITE)
@@ -22232,31 +22232,31 @@ FUNCTION FUN_0801b62c @ 0801b62c size=158 callsites=1
 08019f70 [main]: bl 0x08014c10 ; ref->08014c10(UNCONDITIONAL_CALL)
 08019f74 [main]: movs r0,#0x0
 08019f76 [main]: pop {r4,pc}
-08019f7c [FUN_08019f7c]: ldr r0,[0x08019fc0] ; ref->08019fc0(READ)
-08019f7e [FUN_08019f7c]: ldr r0,[r0,#0x0] ; ref->200003a0(READ)
-08019f80 [FUN_08019f7c]: adds r0,r0,#0x1
-08019f82 [FUN_08019f7c]: ldr r1,[0x08019fc0] ; ref->08019fc0(READ)
-08019f84 [FUN_08019f7c]: str r0,[r1,#0x0] ; ref->200003a0(WRITE)
-08019f86 [FUN_08019f7c]: mov r0,r1
-08019f88 [FUN_08019f7c]: ldr r0,[r0,#0x0] ; ref->200003a0(READ)
-08019f8a [FUN_08019f7c]: cmp r0,#0x14
-08019f8c [FUN_08019f7c]: bls 0x08019fbc ; ref->08019fbc(CONDITIONAL_JUMP)
-08019f8e [FUN_08019f7c]: vmov.f32 s0,0x3f800000
-08019f92 [FUN_08019f7c]: ldr r0,[0x08019fc4] ; ref->08019fc4(READ)
-08019f94 [FUN_08019f7c]: vstr.32 s0,[r0] ; ref->20000258(WRITE)
-08019f98 [FUN_08019f7c]: vldr.32 s0,[pc,#0x2c] ; ref->08019fc8(READ)
-08019f9c [FUN_08019f7c]: vstr.32 s0,[r0,#0x4] ; ref->2000025c(WRITE)
-08019fa0 [FUN_08019f7c]: vldr.32 s0,[pc,#0x24] ; ref->08019fc8(READ)
-08019fa4 [FUN_08019f7c]: vstr.32 s0,[r0,#0x8] ; ref->20000260(WRITE)
-08019fa8 [FUN_08019f7c]: vldr.32 s0,[pc,#0x1c] ; ref->08019fc8(READ)
-08019fac [FUN_08019f7c]: vstr.32 s0,[r0,#0xc] ; ref->20000264(WRITE)
-08019fb0 [FUN_08019f7c]: movs r0,#0x11
-08019fb2 [FUN_08019f7c]: ldr r1,[0x08019fcc] ; ref->08019fcc(READ)
-08019fb4 [FUN_08019f7c]: strb r0,[r1,#0x0] ; ref->20000310(WRITE)
-08019fb6 [FUN_08019f7c]: movs r0,#0x0
-08019fb8 [FUN_08019f7c]: ldr r1,[0x08019fc0] ; ref->08019fc0(READ)
-08019fba [FUN_08019f7c]: str r0,[r1,#0x0] ; ref->200003a0(WRITE)
-08019fbc [FUN_08019f7c]: bx lr
+08019f7c [att_quat_reinit]: ldr r0,[0x08019fc0] ; ref->08019fc0(READ)
+08019f7e [att_quat_reinit]: ldr r0,[r0,#0x0] ; ref->200003a0(READ)
+08019f80 [att_quat_reinit]: adds r0,r0,#0x1
+08019f82 [att_quat_reinit]: ldr r1,[0x08019fc0] ; ref->08019fc0(READ)
+08019f84 [att_quat_reinit]: str r0,[r1,#0x0] ; ref->200003a0(WRITE)
+08019f86 [att_quat_reinit]: mov r0,r1
+08019f88 [att_quat_reinit]: ldr r0,[r0,#0x0] ; ref->200003a0(READ)
+08019f8a [att_quat_reinit]: cmp r0,#0x14
+08019f8c [att_quat_reinit]: bls 0x08019fbc ; ref->08019fbc(CONDITIONAL_JUMP)
+08019f8e [att_quat_reinit]: vmov.f32 s0,0x3f800000
+08019f92 [att_quat_reinit]: ldr r0,[0x08019fc4] ; ref->08019fc4(READ)
+08019f94 [att_quat_reinit]: vstr.32 s0,[r0] ; ref->20000258(WRITE)
+08019f98 [att_quat_reinit]: vldr.32 s0,[pc,#0x2c] ; ref->08019fc8(READ)
+08019f9c [att_quat_reinit]: vstr.32 s0,[r0,#0x4] ; ref->2000025c(WRITE)
+08019fa0 [att_quat_reinit]: vldr.32 s0,[pc,#0x24] ; ref->08019fc8(READ)
+08019fa4 [att_quat_reinit]: vstr.32 s0,[r0,#0x8] ; ref->20000260(WRITE)
+08019fa8 [att_quat_reinit]: vldr.32 s0,[pc,#0x1c] ; ref->08019fc8(READ)
+08019fac [att_quat_reinit]: vstr.32 s0,[r0,#0xc] ; ref->20000264(WRITE)
+08019fb0 [att_quat_reinit]: movs r0,#0x11
+08019fb2 [att_quat_reinit]: ldr r1,[0x08019fcc] ; ref->08019fcc(READ)
+08019fb4 [att_quat_reinit]: strb r0,[r1,#0x0] ; ref->20000310(WRITE)
+08019fb6 [att_quat_reinit]: movs r0,#0x0
+08019fb8 [att_quat_reinit]: ldr r1,[0x08019fc0] ; ref->08019fc0(READ)
+08019fba [att_quat_reinit]: str r0,[r1,#0x0] ; ref->200003a0(WRITE)
+08019fbc [att_quat_reinit]: bx lr
 08019fd0 [FUN_08019fd0]: push {r4,r5,lr}
 08019fd2 [FUN_08019fd0]: vpush {d8}
 08019fd6 [FUN_08019fd0]: sub sp,#0x44
@@ -23695,44 +23695,44 @@ FUNCTION FUN_0801b62c @ 0801b62c size=158 callsites=1
 0801b120 [FUN_0801b0c4]: nop
 0801b122 [FUN_0801b0c4]: nop
 0801b124 [FUN_0801b0c4]: b 0x0801b0d0 ; ref->0801b0d0(UNCONDITIONAL_JUMP)
-0801b128 [FUN_0801b128]: push {r4,lr}
-0801b12a [FUN_0801b128]: ldr r0,[0x0801b178] ; ref->0801b178(READ)
-0801b12c [FUN_0801b128]: ldr r0,[r0,#0x0] ; ref->2000039c(READ)
-0801b12e [FUN_0801b128]: cmp.w r0,#0x1f40
-0801b132 [FUN_0801b128]: bne 0x0801b15c ; ref->0801b15c(CONDITIONAL_JUMP)
-0801b134 [FUN_0801b128]: ldr r0,[0x0801b17c] ; ref->0801b17c(READ) ; ref->20005040(PARAM)
-0801b136 [FUN_0801b128]: bl 0x0800dfd8 ; ref->0800dfd8(UNCONDITIONAL_CALL)
-0801b13a [FUN_0801b128]: cmp r0,#0x9
-0801b13c [FUN_0801b128]: beq 0x0801b14e ; ref->0801b14e(CONDITIONAL_JUMP)
-0801b13e [FUN_0801b128]: movs r0,#0xfe
-0801b140 [FUN_0801b128]: ldr r1,[0x0801b180] ; ref->0801b180(READ)
-0801b142 [FUN_0801b128]: str r0,[r1,#0x0] ; ref->20000334(WRITE)
-0801b144 [FUN_0801b128]: movs r0,#0x8
-0801b146 [FUN_0801b128]: strb r0,[r1,#0x4] ; ref->20000338(WRITE)
-0801b148 [FUN_0801b128]: movs r0,#0x1
-0801b14a [FUN_0801b128]: strb r0,[r1,#0x5] ; ref->20000339(WRITE)
-0801b14c [FUN_0801b128]: b 0x0801b15c ; ref->0801b15c(UNCONDITIONAL_JUMP)
-0801b14e [FUN_0801b128]: movs r0,#0x5
-0801b150 [FUN_0801b128]: ldr r1,[0x0801b180] ; ref->0801b180(READ)
-0801b152 [FUN_0801b128]: str r0,[r1,#0x0] ; ref->20000334(WRITE)
-0801b154 [FUN_0801b128]: movs r0,#0x4
-0801b156 [FUN_0801b128]: strb r0,[r1,#0x4] ; ref->20000338(WRITE)
-0801b158 [FUN_0801b128]: movs r0,#0x1
-0801b15a [FUN_0801b128]: strb r0,[r1,#0x5] ; ref->20000339(WRITE)
-0801b15c [FUN_0801b128]: ldr r0,[0x0801b178] ; ref->0801b178(READ)
-0801b15e [FUN_0801b128]: ldr r0,[r0,#0x0] ; ref->2000039c(READ)
-0801b160 [FUN_0801b128]: adds r0,r0,#0x1
-0801b162 [FUN_0801b128]: ldr r1,[0x0801b178] ; ref->0801b178(READ)
-0801b164 [FUN_0801b128]: str r0,[r1,#0x0] ; ref->2000039c(WRITE)
-0801b166 [FUN_0801b128]: ldr r0,[0x0801b184] ; ref->0801b184(READ)
-0801b168 [FUN_0801b128]: ldrb r0,[r0,#0x0] ; ref->20000218(READ)
-0801b16a [FUN_0801b128]: cmp r0,#0x1
-0801b16c [FUN_0801b128]: bne 0x0801b176 ; ref->0801b176(CONDITIONAL_JUMP)
-0801b16e [FUN_0801b128]: movs r0,#0x0
-0801b170 [FUN_0801b128]: str r0,[r1,#0x0] ; ref->2000039c(WRITE)
-0801b172 [FUN_0801b128]: ldr r1,[0x0801b184] ; ref->0801b184(READ)
-0801b174 [FUN_0801b128]: strb r0,[r1,#0x0] ; ref->20000218(WRITE)
-0801b176 [FUN_0801b128]: pop {r4,pc}
+0801b128 [param_autosave_tick]: push {r4,lr}
+0801b12a [param_autosave_tick]: ldr r0,[0x0801b178] ; ref->0801b178(READ)
+0801b12c [param_autosave_tick]: ldr r0,[r0,#0x0] ; ref->2000039c(READ)
+0801b12e [param_autosave_tick]: cmp.w r0,#0x1f40
+0801b132 [param_autosave_tick]: bne 0x0801b15c ; ref->0801b15c(CONDITIONAL_JUMP)
+0801b134 [param_autosave_tick]: ldr r0,[0x0801b17c] ; ref->0801b17c(READ) ; ref->20005040(PARAM)
+0801b136 [param_autosave_tick]: bl 0x0800dfd8 ; ref->0800dfd8(UNCONDITIONAL_CALL)
+0801b13a [param_autosave_tick]: cmp r0,#0x9
+0801b13c [param_autosave_tick]: beq 0x0801b14e ; ref->0801b14e(CONDITIONAL_JUMP)
+0801b13e [param_autosave_tick]: movs r0,#0xfe
+0801b140 [param_autosave_tick]: ldr r1,[0x0801b180] ; ref->0801b180(READ)
+0801b142 [param_autosave_tick]: str r0,[r1,#0x0] ; ref->20000334(WRITE)
+0801b144 [param_autosave_tick]: movs r0,#0x8
+0801b146 [param_autosave_tick]: strb r0,[r1,#0x4] ; ref->20000338(WRITE)
+0801b148 [param_autosave_tick]: movs r0,#0x1
+0801b14a [param_autosave_tick]: strb r0,[r1,#0x5] ; ref->20000339(WRITE)
+0801b14c [param_autosave_tick]: b 0x0801b15c ; ref->0801b15c(UNCONDITIONAL_JUMP)
+0801b14e [param_autosave_tick]: movs r0,#0x5
+0801b150 [param_autosave_tick]: ldr r1,[0x0801b180] ; ref->0801b180(READ)
+0801b152 [param_autosave_tick]: str r0,[r1,#0x0] ; ref->20000334(WRITE)
+0801b154 [param_autosave_tick]: movs r0,#0x4
+0801b156 [param_autosave_tick]: strb r0,[r1,#0x4] ; ref->20000338(WRITE)
+0801b158 [param_autosave_tick]: movs r0,#0x1
+0801b15a [param_autosave_tick]: strb r0,[r1,#0x5] ; ref->20000339(WRITE)
+0801b15c [param_autosave_tick]: ldr r0,[0x0801b178] ; ref->0801b178(READ)
+0801b15e [param_autosave_tick]: ldr r0,[r0,#0x0] ; ref->2000039c(READ)
+0801b160 [param_autosave_tick]: adds r0,r0,#0x1
+0801b162 [param_autosave_tick]: ldr r1,[0x0801b178] ; ref->0801b178(READ)
+0801b164 [param_autosave_tick]: str r0,[r1,#0x0] ; ref->2000039c(WRITE)
+0801b166 [param_autosave_tick]: ldr r0,[0x0801b184] ; ref->0801b184(READ)
+0801b168 [param_autosave_tick]: ldrb r0,[r0,#0x0] ; ref->20000218(READ)
+0801b16a [param_autosave_tick]: cmp r0,#0x1
+0801b16c [param_autosave_tick]: bne 0x0801b176 ; ref->0801b176(CONDITIONAL_JUMP)
+0801b16e [param_autosave_tick]: movs r0,#0x0
+0801b170 [param_autosave_tick]: str r0,[r1,#0x0] ; ref->2000039c(WRITE)
+0801b172 [param_autosave_tick]: ldr r1,[0x0801b184] ; ref->0801b184(READ)
+0801b174 [param_autosave_tick]: strb r0,[r1,#0x0] ; ref->20000218(WRITE)
+0801b176 [param_autosave_tick]: pop {r4,pc}
 0801b188 [FUN_0801b188]: push {r4,r5,r6,lr}
 0801b18a [FUN_0801b188]: sub sp,#0xa8
 0801b18c [FUN_0801b188]: mov r4,r0
@@ -28163,7 +28163,8 @@ void delay_loop(int param_1)
 
 ---- EXTI9_5_IRQHandler @ 0800d43c ----
 
-/* [V] vector 39 (IRQ23): line 6 (PA6, MPU INT) -> imu_dma_kick */
+/* [V] vector 39 (IRQ23): EXTI line 6 pending -> imu_dma_kick; line 6 = PA6 by SYSCFG reset default
+   (no SYSCFG access in image) */
 
 void EXTI9_5_IRQHandler(void)
 
@@ -33149,7 +33150,7 @@ void main_loop(void)
     FUN_08019170();
     FUN_0800c830();
     FUN_08010e44();
-    FUN_0801b128();
+    param_autosave_tick();
     puVar2 = DAT_08014e94;
     if (200 < *DAT_08014e8c) {
       *DAT_08014e94 = 0;
@@ -33158,7 +33159,7 @@ void main_loop(void)
     }
     DAT_08014e7c[2] = *DAT_08014e78;
     if (20000 < *DAT_08014e90) {
-      FUN_08019f7c();
+      att_quat_reinit();
     }
     if ((*DAT_08014e98 == '\x11') && (0xb < *DAT_08014e88)) {
       uVar6 = FUN_0800a644(DAT_08014e9c,*DAT_08014e74);
@@ -33424,7 +33425,8 @@ int FUN_08015804(int param_1,int param_2,int param_3)
 
 ---- duml_assemble_can @ 08015824 ----
 
-/* [V] state machine (5 states) over can_rx_ring bytes; feeds duml_dispatch with port tag 1 */
+/* [V] state machine (5 states) over can_rx_ring bytes; crc16 check, frame version 0 ->
+   duml_dispatch_short, 1 -> duml_dispatch; port tag 1 [I] */
 
 void duml_assemble_can(void)
 
@@ -34254,12 +34256,13 @@ void duml_h_gimbal_06(int param_1)
 }
 
 
----- duml_h_gimbal_0e @ 080167e0 ----
+---- duml_h_gimbal_0e_can_relay @ 080167e0 ----
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
-/* [U] see docs/m0400-naming-pass.md */
+/* [V] first int16 -> float global; int16 at +0xb/+0xd/+0xf forwarded in CAN std id 0x20b via
+   can_send_4xu16 */
 
-void duml_h_gimbal_0e(int param_1)
+void duml_h_gimbal_0e_can_relay(int param_1)
 
 {
   short *psVar1;
@@ -34728,9 +34731,12 @@ void duml_h_gimbal_0d_enable_latch(int param_1)
 }
 
 
----- FUN_08016ef0 @ 08016ef0 ----
+---- duml_send_status_frame @ 08016ef0 ----
 
-undefined8 FUN_08016ef0(undefined4 param_1,char param_2,undefined4 param_3,undefined4 param_4)
+/* [I] 0x55 frame sender 4, length 0xe, fixed payload word 0x05470400; sends via duml_send_frame */
+
+undefined8
+duml_send_status_frame(undefined4 param_1,char param_2,undefined4 param_3,undefined4 param_4)
 
 {
   undefined1 local_20;
@@ -34761,7 +34767,8 @@ undefined8 FUN_08016ef0(undefined4 param_1,char param_2,undefined4 param_3,undef
 
 ---- duml_dispatch_short @ 08016fac ----
 
-/* [V] walks duml_table_empty (0x0801d464, zero entries) matching u16 at +4; no entries, dead */
+/* [V] version-0 frames: walks duml_table_empty (0x0801d464, zero entries) matching u16 at +4; no
+   entries, dead */
 
 void duml_dispatch_short(int param_1,uint param_2)
 
@@ -34782,7 +34789,7 @@ void duml_dispatch_short(int param_1,uint param_2)
 ---- duml_dispatch @ 08016ff4 ----
 
 /* [V] frame[5]&0x1f==4 && frame[5]>>5==0: walk duml_table matching id=frame[10], set=frame[9]; else
-   forward raw frame to UART/USART2 by port tag */
+   relay raw frame: tag 0 (USART2) -> uart4_putc, tags 1 (CAN) and 2 (UART4) -> usart2_putc */
 
 void duml_dispatch(undefined1 *param_1,uint param_2,int param_3)
 
@@ -35113,10 +35120,13 @@ int FUN_08018d04(int param_1,int param_2,int param_3)
 }
 
 
----- FUN_08018d40 @ 08018d40 ----
+---- fft_spectrum_analyze @ 08018d40 ----
 
-void FUN_08018d40(undefined4 param_1,undefined4 param_2,undefined4 param_3,undefined4 param_4,
-                 float *param_5,float *param_6,float *param_7)
+/* [I] 16-point CFFT + cmplx_mag over float buffers (cfft_radix4_*); 3 callers */
+
+void fft_spectrum_analyze
+               (undefined4 param_1,undefined4 param_2,undefined4 param_3,undefined4 param_4,
+               float *param_5,float *param_6,float *param_7)
 
 {
   int *piVar1;
@@ -35914,9 +35924,11 @@ undefined4 main(void)
 }
 
 
----- FUN_08019f7c @ 08019f7c ----
+---- att_quat_reinit @ 08019f7c ----
 
-void FUN_08019f7c(void)
+/* [I] after >0x14 calls resets attitude quaternion to (1,0,0,0) and sets state 0x11 */
+
+void att_quat_reinit(void)
 
 {
   uint *puVar1;
@@ -36269,10 +36281,10 @@ void FUN_0801a59c(void)
       *(undefined1 *)(DAT_0801a708 + 0x10) = 1;
     }
     if (((char)DAT_0801a708[0x10] == '\x01') && (*DAT_0801a708 == 0x7ce)) {
-      FUN_08016ef0(3,6,2);
+      duml_send_status_frame(3,6,2);
     }
     else if (((char)DAT_0801a708[0x10] == '\x02') && (*DAT_0801a708 == 0x7ce)) {
-      FUN_08016ef0(3,6,2);
+      duml_send_status_frame(3,6,2);
     }
   }
   return;
@@ -36313,7 +36325,8 @@ float FUN_0801a72c(float param_1,float *param_2)
 
 ---- duml_assemble_usart2 @ 0801a7bc ----
 
-/* [V] state machine over usart2_getc bytes; feeds duml_dispatch */
+/* [V] state machine over usart2_getc bytes; crc16 check, version 1 -> duml_dispatch with port tag 0
+   (movs r2,#0) */
 
 void duml_assemble_usart2(void)
 
@@ -36537,7 +36550,8 @@ void FUN_0801ade0(void)
 
 ---- duml_assemble_uart4 @ 0801af44 ----
 
-/* [V] state machine over uart4_getc bytes; feeds duml_dispatch */
+/* [V] state machine over uart4_getc bytes; crc16 check, version 1 -> duml_dispatch with port tag 2
+   (movs r2,#2) */
 
 void duml_assemble_uart4(void)
 
@@ -36606,9 +36620,12 @@ void FUN_0801b0c4(int param_1,uint param_2,undefined4 param_3,undefined4 param_4
 }
 
 
----- FUN_0801b128 @ 0801b128 ----
+---- param_autosave_tick @ 0801b128 ----
 
-void FUN_0801b128(void)
+/* [V] every 8000 main_loop passes calls flash_param_save; status 5/4/1 on success, 0xfe/8/1 on
+   failure */
+
+void param_autosave_tick(void)
 
 {
   int *piVar1;

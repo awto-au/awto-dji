@@ -78,7 +78,7 @@ addr	kind	name	note	source
 0x0800d3a4	func	DMA_Init	[V] SxCR/FCR/NDTR/PAR/M0AR from struct	RM0090 regs
 0x0800d3fc	func	clamp_sym_f32	[V] clamp *p to [-limit,+limit]	decomp
 0x0800d42a	func	delay_loop	[V] spins n*42 iterations (no timer)	decomp
-0x0800d43c	func	EXTI9_5_IRQHandler	[V] vector 39 (IRQ23): line 6 (PA6, MPU INT) -> imu_dma_kick	vector table
+0x0800d43c	func	EXTI9_5_IRQHandler	[V] vector 39 (IRQ23): EXTI line 6 pending -> imu_dma_kick; line 6 = PA6 by SYSCFG reset default (no SYSCFG access in image)	vector table
 0x0800d464	func	EXTI_ClearITPendingBit	[V] EXTI_PR = mask	RM0090 regs
 0x0800d470	func	EXTI_GetITStatus	[V] EXTI_PR & mask	RM0090 regs
 0x0800d828	func	FLASH_ClearFlag	[V] FLASH_SR = mask (called with 0xf3)	RM0090 regs
@@ -192,7 +192,7 @@ addr	kind	name	note	source
 0x08013fcc	func	duml_h_general_30_subdispatch	[V] switches on frame[0xb] 1/2/3; 72-byte ack frames go to _ack72	duml_table
 0x080148b4	func	app_init	[I] clears state blocks, loads params (flash_param_load/app_param_load), board_rev_read, runs 12-entry init-callback table; called once from main	decomp
 0x08014c10	func	main_loop	[V] never returns; gated by tick_flag (TIM4 2 kHz); runs sensor read, attitude, control, comms, LED each pass	decomp
-0x08015824	func	duml_assemble_can	[V] state machine (5 states) over can_rx_ring bytes; feeds duml_dispatch with port tag 1	decomp
+0x08015824	func	duml_assemble_can	[V] state machine (5 states) over can_rx_ring bytes; crc16 check, frame version 0 -> duml_dispatch_short, 1 -> duml_dispatch; port tag 1 [I]	decomp
 0x08015a44	func	nop_delay_5_b	[V] copy of nop_delay_5; 6 callers	decomp
 0x08015a50	func	duml_h_gimbal_0a_angle_control	[V] name GIMBAL/AngleControl per commands.yaml; int16 x pi/180, extra fields	duml_table
 0x08015c88	func	duml_h_gimbal_0c_speed_control	[V] name GIMBAL/SpeedControl per commands.yaml; 3 int16 x pi/180, out-of-range -> 0	duml_table
@@ -207,7 +207,7 @@ addr	kind	name	note	source
 0x08016564	func	duml_h_gimbal_01_control	[V] name GIMBAL/Control per commands.yaml; 3 int16 centred 0x400, clamp +-0x295	duml_table
 0x08016634	func	duml_h_flyc_42_attitude_quat	[V] 4 floats at +0xb..+0x17 unit-norm checked [0.95,1.05] else identity	duml_table
 0x0801675c	func	duml_h_gimbal_06	[I] 3-4 int16 centred on 0x400, deadband +-0x295, gated by encoding byte	duml_table
-0x080167e0	func	duml_h_gimbal_0e	[U] see docs/m0400-naming-pass.md	duml_table
+0x080167e0	func	duml_h_gimbal_0e_can_relay	[V] first int16 -> float global; int16 at +0xb/+0xd/+0xf forwarded in CAN std id 0x20b via can_send_4xu16	duml_table
 0x08016840	func	duml_h_general_0b_trim_adjust	[I] same trim accumulator as duml_h_gimbal_07_trim_adjust	duml_table
 0x080168ac	func	duml_h_gimbal_07_trim_adjust	[I] signed accumulator clamp [-100,100], 0 resets	duml_table
 0x08016930	func	duml_h_gimbal_11_commit_config	[I] checks state-machine result 9, else error 0xe6	duml_table
@@ -221,11 +221,13 @@ addr	kind	name	note	source
 0x08016e14	func	duml_h_gimbal_20	[I] copies 4+1+1 bytes into a global, no reply	duml_table
 0x08016e30	func	duml_h_gimbal_21	[I] gated on frame[0xb]==0; copies 3 x (4+2 bytes) records	duml_table
 0x08016eac	func	duml_h_gimbal_0d_enable_latch	[I] 0x2ab5 sets, 0x7ef2 clears one flag bit	duml_table
-0x08016fac	func	duml_dispatch_short	[V] walks duml_table_empty (0x0801d464, zero entries) matching u16 at +4; no entries, dead	decomp
-0x08016ff4	func	duml_dispatch	[V] frame[5]&0x1f==4 && frame[5]>>5==0: walk duml_table matching id=frame[10], set=frame[9]; else forward raw frame to UART/USART2 by port tag	decomp
+0x08016ef0	func	duml_send_status_frame	[I] 0x55 frame sender 4, length 0xe, fixed payload word 0x05470400; sends via duml_send_frame	decomp
+0x08016fac	func	duml_dispatch_short	[V] version-0 frames: walks duml_table_empty (0x0801d464, zero entries) matching u16 at +4; no entries, dead	decomp
+0x08016ff4	func	duml_dispatch	[V] frame[5]&0x1f==4 && frame[5]>>5==0: walk duml_table matching id=frame[10], set=frame[9]; else relay raw frame: tag 0 (USART2) -> uart4_putc, tags 1 (CAN) and 2 (UART4) -> usart2_putc	decomp
 0x0801716c	func	led_update	[I] 3 pattern channels, 200-tick divider, drives PE0/PE1 via BSRR	decomp
 0x08018c54	func	duml_frame_version	[V] u16 at +1 >> 10 (length is the low 10 bits)	decomp
 0x08018c70	func	board_rev_read	[I] ADC mV snapped to 300/500/700/900 (+-100) or 100; PI11 high => 0xce6	decomp
+0x08018d40	func	fft_spectrum_analyze	[I] 16-point CFFT + cmplx_mag over float buffers (cfft_radix4_*); 3 callers	decomp
 0x08019014	func	adc1_read_mv_avg32	[V] 32 samples, sum/32*3300/4096; returns 100 on 0x5dc-poll timeout	decomp
 0x08019068	func	adc1_ch10_init	[V] PC0 analog, ADC1 ch10 sample time, ADC_Init, enable and calibrate	decomp
 0x08019138	func	sbox_chain_decode	[I] chained table decode with key%31 seed	decomp
@@ -234,13 +236,15 @@ addr	kind	name	note	source
 0x08019eb0	func	flash_param_find_free	[V] first slot whose seq == 0xffffffff, else -1	decomp
 0x08019ed4	func	flash_param_find_latest	[V] slot with highest u32 seq among 128 slots (stride 0x400)	decomp
 0x08019f04	func	main	[V] NVIC_SetVectorTable(0x08000000,0x8000); PRIGROUP; usart1/gpio/can1/can queues/usart2/uart4/2-wire IMU init; blinks PE3 x10; app_init; main_loop	decomp+disasm
+0x08019f7c	func	att_quat_reinit	[I] after >0x14 calls resets attitude quaternion to (1,0,0,0) and sets state 0x11	decomp
 0x0801a09c	func	sbox_add	[I] *p = T[(*p + k) & 0xff]	decomp
 0x0801a0b0	func	sbox_sub	[I] *p = T[*p] - k	decomp
-0x0801a7bc	func	duml_assemble_usart2	[V] state machine over usart2_getc bytes; feeds duml_dispatch	decomp
+0x0801a7bc	func	duml_assemble_usart2	[V] state machine over usart2_getc bytes; crc16 check, version 1 -> duml_dispatch with port tag 0 (movs r2,#0)	decomp
 0x0801a918	func	gimbal_push_params_send	[V] builds 0x55 frame sender 4 set 0x04 id 0x05 (GetPushParams; attitude x10 int16 + flags); ports by arg; called every 200/33/40 ticks	decomp
 0x0801aba0	func	gimbal_push_15_send	[V] builds 0x55 frame sender 4 set 0x04 id 0x15 (6 bytes scaled x25); called once per 200 ticks (phase 0x19)	decomp
-0x0801af44	func	duml_assemble_uart4	[V] state machine over uart4_getc bytes; feeds duml_dispatch	decomp
+0x0801af44	func	duml_assemble_uart4	[V] state machine over uart4_getc bytes; crc16 check, version 1 -> duml_dispatch with port tag 2 (movs r2,#2)	decomp
 0x0801b0a0	func	usart2_rx_flush	[V] drain usart2_getc until -1, clear state flag	decomp
+0x0801b128	func	param_autosave_tick	[V] every 8000 main_loop passes calls flash_param_save; status 5/4/1 on success, 0xfe/8/1 on failure	decomp
 0x0801b6d4	table	crc16_table	[V] reflected CRC16 table, 256 x u16 (starts 0000 8911 2312)	disasm
 0x0801b8d7	table	crc8_table	[V] DUML CRC8 table, 256 x u8 (starts 00 5e bc e2)	disasm
 0x0801b9d8	table	gpio_pin_table	[V] 3 x {GPIO base, pin mask, RCC AHB1 bit}: PG10, PG11, PI10 type=gpio_pin_ent_s[3]	disasm

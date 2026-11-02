@@ -338,14 +338,12 @@ by this one but left in place since they're already committed history.
   or `orr`/`bic #0x40000000` (clearing/setting bit 30 of an unrelated word). `0x40000000` is both
   the TIM2 base and the encoding of `2.0f`; naive scalar matching can't tell them apart. TIM2 has
   zero real register accesses anywhere in this image.
-- U: F1-layout literals (RCC `0x40021000`, FLASH `0x40022000`) do have an LDR site this time (the
-  pin-descriptor loop in `0x08009a20`, entries at `0x0801b9d8`+`0xc*i`, resolve to `0x40021800`/
-  `0x40022000`-ish values) but what reads them is still not resolved - flagged, not guessed.
+- F1-layout literals resolved: they are F4 GPIO bases in the 3-row pin table `0x0801b9d8` (PG10, PG11, PI10 outputs); see `m0400-naming-pass.md` section 3 (V).
 
 ### Part (I)
 - V: 98 vector slots; F4 has 82 IRQs, F1 high-density has 60.
 - V: SP `0x2000fc40` inside F4 SRAM1 range.
-- I: 1 MB flash (flash read at `0x080C0000`). Exact part F405/F407/F415/F417 not resolved.
+- I: 1 MB flash (flash read at `0x080C0000`); 168 MHz from HSE 12 MHz (V). Exact part F405/F407/F415/F417 not resolvable from the image; see `m0400-naming-pass.md` section 2.
 
 ### GPIOA/B/C: every pin traced to a peripheral (new, V unless noted)
 GPIOA's 80 refs are not one subsystem - they're five:
@@ -415,12 +413,12 @@ TIM8 (`0x40010400`), TIM3 (`0x40000400`), TIM4 (`0x40000800`), TIM5 (`0x40000C00
 (`0x40001000`), TIM7 (`0x40001400`). **Only two real call sites exist in the whole image:**
 - `FUN_08009b3c` -> TIM4, PSC=20, ARR=2000. Its update-event ISR (`vec_46`, IRQ30) just sets a
   flag word - no CCR/CCMR output-compare writes anywhere in its call tree. **Not a PWM generator
-  on this path** - it's a ~2 kHz tick (APB1 timer clock / 21 / 2000, consistent with the same
+  on this path** - it's a ~2 kHz tick (84 MHz APB1 timer clock / 21 / 2001 = 1999 Hz, consistent with the same
   2 kHz implied by "oversample 16 at ~32 kHz" above) driving control-loop cadence, refuting the
   PWM hypothesis for TIM4 specifically (I, confident; other channels not checked).
 - `FUN_0800f01c` (the IMU bring-up routine, see above) -> **TIM11** (`0x40014800` - the ref-count
   table misleadingly suggested this was TIM1/TIM3; it is neither, confirmed by resolving the
-  actual literal). PSC=1, ARR=0xa41 (2625): at a typical 84 MHz APB2 timer clock this is ~32 kHz -
+  actual literal). PSC=1, ARR=0xa41 (2625): APB2 timer clock is 168 MHz (PPRE2 /2 doubles it), so 168e6/2/2626 = 31.99 kHz -
   matches the 16x-oversample/2 kHz-output arithmetic above exactly (32 kHz / 16 = 2 kHz).
 - **TIM1, TIM3, TIM5, TIM6, TIM7, TIM8 appear only inside the shared helper's own comparison
   chain - never at an actual call site.** Same category as the m0900 SPI1 precedent cited in the
@@ -445,7 +443,8 @@ pin map). `FUN_08019014` oversamples 32 readings, sums them, and scales by `3300
 not three, **rules out independent per-axis motor current sensing** - this is a single shared
 rail/voltage monitor (I: which rail is U - no label on the ADC input net in this static image).
 
-### UARTs: three independent DUML ports, not one link + one spare (corrects the task's own framing)
+### UARTs: three DUML ports (USART2, UART4, CAN1); USART1 is configured but unused (corrected in `m0400-naming-pass.md` section 3)
+- Current (V, 2026-11-02): assemblers exist for USART2 (`duml_assemble_usart2`), UART4 (`duml_assemble_uart4`) and the CAN 0x412 byte ring (`duml_assemble_can`); USART1's RX ring has no reader. The text below predates this and lists USART1 as a port.
 The first pass assumed "USART1 is the DUML link, find out what USART2 is for." That framing was
 wrong - **there are three UARTs running structurally identical DUML frame-assemblers, and a third
 UART (UART4, `0x40004C00`) that the first pass's peripheral scan never even listed:**

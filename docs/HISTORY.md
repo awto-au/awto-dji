@@ -315,3 +315,7 @@ corrected/current fact; this file preserves the history for reference.
 - **Compiler/toolchain:** initial understanding recorded "compiler: U(nknown)" -> corrected to
   **IAR Embedded Workbench**, from the upstream IAR linker symbol map
   (`__iar_program_start`) for the adjacent build V01.07.0060. (`docs/fc-io-inventory.md`)
+- **m0400 gimbal ports (2026-11-02):** initial understanding "three DUML UARTs: USART1, USART2, UART4" -> corrected: ports are USART2 (tag 0), CAN1 ids 0x412 in / 0x413 out (tag 1), UART4 (tag 2); USART1 is initialised but its RX ring has no reader and nothing transmits on it. (`docs/m0400-naming-pass.md` section 3)
+- **m0400 GPIO table (2026-11-02):** "F1-layout literals (`0x40021800`, `0x40022000`), consumer U" -> corrected: F4 GPIOG/GPIOI bases in a 3-row table, PG10/PG11/PI10 outputs. (`docs/m0400-naming-pass.md` section 3)
+- **m0400 TIM11 rate (2026-11-02):** "32 kHz at 84 MHz APB2 timer clock" -> corrected: PPRE2 /2 gives a 168 MHz timer clock, PSC 1 ARR 2625 = 31.99 kHz (the 84 MHz figure would give 16 kHz). SYSCLK 168 MHz from HSE 12 MHz. (`docs/m0400-naming-pass.md` sections 2-3)
+- **m0400 base (2026-11-02):** `0x08008000` confirmed by the firmware itself (`NVIC_SetVectorTable(0x08000000, 0x8000)` in `main`), previously only the literal-pool argument. (`docs/m0400-naming-pass.md` section 1)
