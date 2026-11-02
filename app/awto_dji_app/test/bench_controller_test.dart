@@ -204,6 +204,16 @@ void main() {
       await until(() => c.bytesIn == 3, 'retry session reads');
     });
 
+    test('attach intent replaces an open session with a new generation', () async {
+      await c.start();
+      await until(() => c.snapshot.port == PortState.connected, 'open');
+      final g = c.accessoryGen;
+      c.handleIntent('android.hardware.usb.action.USB_ACCESSORY_ATTACHED', {});
+      await until(() => sinks.length == 2 && c.accessoryGen > g && c.snapshot.port == PortState.connected, 'replaced');
+      sinks.last.success(Uint8List.fromList([1, 2]));
+      await until(() => c.bytesIn == 2, 'new session reads');
+    });
+
     test('stale-generation error and end are ignored', () async {
       await c.start();
       await until(() => c.snapshot.port == PortState.connected, 'open');

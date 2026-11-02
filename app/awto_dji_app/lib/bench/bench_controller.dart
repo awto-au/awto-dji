@@ -158,6 +158,16 @@ class BenchController extends ChangeNotifier {
       case 'au.awto.dji.action.DISCONNECT':
         _autoConnect = false;
         unawaited(_closeAccessory('intent DISCONNECT'));
+      case 'android.hardware.usb.action.USB_ACCESSORY_ATTACHED':
+        // A new attach means any open session is on the old accessory: always replace it.
+        _autoConnect = true;
+        if (_open || _connecting) {
+          unawaited(_closeAccessory('re-attach intent').then((_) {
+            _retryBackoff = const Duration(seconds: 1);
+            _nextAttemptMs = 0;
+            _maybeConnect();
+          }));
+        }
       default:
         _autoConnect = true;
     }
@@ -309,7 +319,7 @@ class BenchController extends ChangeNotifier {
       if (gen != _gen) {
         // A close ran while the connect was in flight; it already disconnected natively.
         _log('W', 'accessory gen=$gen closed during connect; retrying');
-        _backoff();
+        _nextAttemptMs = 0;
         return;
       }
       _open = true;
