@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:awto_dji_app/bench/aoat.dart';
@@ -215,5 +216,20 @@ void main() {
     t.e.resetStats();
     expect(t.e.mode, BenchMode.sink);
     expect(t.e.result()['frames'], 0);
+  });
+
+  test('source whose writes never complete ends as a failure, not a hang', () async {
+    final res = <Map<String, Object?>>[];
+    final sw = Stopwatch()..start();
+    final e = ModeEngine(
+      write: (_) => Completer<void>().future,
+      onResult: res.add,
+      nowMs: () => sw.elapsedMilliseconds,
+    );
+    e.setMode(mode({'m': 'source', 'size': 64, 'write_timeout_ms': 20}));
+    await Future<void>.delayed(const Duration(milliseconds: 150));
+    expect(res.single['pass'], false);
+    expect(res.single['write_errors'], 3);
+    expect(res.single['error'], contains('TimeoutException'));
   });
 }

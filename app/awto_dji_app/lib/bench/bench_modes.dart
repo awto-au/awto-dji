@@ -194,6 +194,11 @@ class ModeEngine {
         testId: testId, flags: 0);
   }
 
+  /// A write waits for the USB peer to read: 1 s + bytes at 100 kB/s (the slowest plausible
+  /// full-speed rate), x1.25. Expiry counts as a failed write; a peer that never reads
+  /// leaves the platform write blocked until `reconnect` closes the accessory.
+  static int _writeBoundMs(int bytes) => ((1000 + bytes / 100) * 1.25).ceil();
+
   Future<void> _runSource(int gen) async {
     final size = _int('size', 64);
     final lo = _int('size_min', size), hi = _int('size_max', lo);
@@ -208,7 +213,7 @@ class ModeEngine {
     while (gen == _gen && (count == 0 || _sent < count) && nowMs() - _startMs < durMs) {
       final f = _frameFor(_sent, hi > lo ? randSize(lo, hi, _int('seed', 1), _sent, testId) : size);
       try {
-        await write(f);
+        await write(f).timeout(Duration(milliseconds: _int('write_timeout_ms', _writeBoundMs(f.length))));
         failures = 0;
         _sentBytes += f.length;
       } on Object catch (e) {

@@ -295,6 +295,15 @@ Generic AOA test rig, not DJI-specific: a Cynthion (RISC-V shell) or `t600_rc_em
 - `au.awto.dji.action.CONNECT` accepts the same `host`/`port` extras; `DISCONNECT` stops the accessory pump. Relaunch by `USB_ACCESSORY_ATTACHED` after process death has no host (not persisted): re-run `connect`. **U.**
 - Log also in the phone's external files dir: `bench.log`.
 
+### Control port (the app serves it; `./dev.py ctl`)
+- App listens on **TCP 6560** (`benchControlPort`, all interfaces, up to 4 clients) from startup. Starts in no mode (`passive`). The dial-out to the listener above is unchanged and independent.
+- Same JSON lines and commands as the host link, plus `get` and `reset`; every command gets one `{"t":"reply","cmd","ok",...}` (`ping` gets `pong`). Final `result`s are pushed to all control clients.
+- Commands: `ping`; `get` (reply: `state` = the grid, `result` = live stats of the running mode, `accessory_open`); `reset` (= `stats_reset`: zero counters, mode keeps running; a source keeps its frame index); `mode` (below; reply `m`,`test`,`switch_us`,`accessory_open`, or `ok:false`+`error` for unknown mode/pattern, state untouched); `result`; `send`; `echo`; `reconnect`/`disconnect` (close and reopen the accessory; the only way to free a write stuck on a peer that does not read).
+- Mode switch: emits the old mode's final `result`, zeroes counters, resets the mux framing; the open accessory is not touched. **V.** On the Pixel 3 XL over wifi, 40 switches (echo/sink/source/duml/passive, accessory open): in-app `switch_us` median 0.65 ms, max 8.6 ms; client round trip median 10.6 ms, max 40 ms (wifi).
+- `./dev.py ctl [--target IP | --adb [--serial S]] [--port 6560] <sub>`: `--target` = phone wifi IP, no adb; default = `adb forward tcp:0 tcp:6560` (wired or wireless adb, `$AWTO_PHONE`). Subs: `ping|get|reset|result|mode <m> k=v..|send <hex>|raw <json>|tail <s>`; prints one JSON object, exit 1 on `ok:false`. Bounds: connect 3 s, reply 2 s, then a named error. Client API: `scripts/re/bench_ctl.py` `BenchCtl` (`mode()`, `get()`, `wait_result()`).
+- Example: `./dev.py ctl --target 192.168.25.125 mode source test=4 seed=9 size_min=24 size_max=600 count=100 pattern=prbs`; the harness regenerates the stream with `aoa_testkit.expected_source(100, size_min=24, size_max=600, seed=9, pattern="prbs", test_id=4)`.
+- Source writes are bounded: `write_timeout_ms` (default (1 s + bytes / 100 kB/s) x 1.25); 3 timeouts end the run with `pass:false`. Platform writes run on a worker thread so a peer that stops reading cannot freeze the app.
+
 ### Screen
 - Top half, 2 Hz: PORT (`idle|attached|permission|connected|streaming|failed` + last error), USB (attached, permission, manufacturer/model/description/version/uri/serial), POWER (BatteryManager: plugged usb/ac/wireless/none, status, mV, uA), SPEED, MSGS (1 s and 10 s rates, totals, seconds since last, CRC-bad, discarded bytes), MODE (test verdict), HOST (TCP link + RTT).
 - Bottom half: timestamped log, newest last, auto-follow, 2000-line ring, mirrored to the file and the host.
@@ -324,13 +333,13 @@ Bounds: host TCP connect 3 s (LAN <= 1 s, 3x); host reconnect backoff 1,2,4,8 s 
 |---|---|---|
 | `passive` | none | default: decode envelopes via `AoaMux`, count, `rx` messages |
 | `echo` | none | write every raw read back unchanged (empty read -> empty write) |
-| `sink` | `test`, `expect` (auto-finish after N frames) | parse AOAT stream, verify, report first mismatch offset; counts headerless `<24 B` transfers as `short`, empty reads as `zlp` |
-| `source` | `test`,`size`,`count` (0=until `dur_ms`),`rate` (fps, 0=max),`gap_ms`,`idle_ms`,`dur_ms`,`pattern` (addr\|counter\|random\|zeros\|ones\|alt),`seed` | generate AOAT frames app>host; `size` 0 = empty write, `<24` = headerless address-pattern bytes |
+| `sink` | `test`, `expect` (auto-finish after N frames); seed/pattern/size come from each frame's header | parse AOAT stream, verify, report first mismatch offset; counts headerless `<24 B` transfers as `short`, empty reads as `zlp` |
+| `source` | `test`,`size`,`count` (0=until `dur_ms`),`rate` (fps, 0=max),`gap_ms`,`idle_ms`,`dur_ms`,`pattern` (addr\|counter\|random\|zeros\|ones\|alt\|prbs\|fixed\|ramp),`seed`,`size_min`/`size_max` (random size per frame, from seed+seq),`write_timeout_ms` | generate AOAT frames app>host; `size` 0 = empty write, `<24` = headerless address-pattern bytes |
 | `duml` | `act` (`answer` default\|`emit`), `sender`,`receiver`,`cmd_set`,`cmd_id`,`seq0`,`payload_len`,`seed`,`count`,`rate`,`bad` (none\|hdr\|crc\|mix) | answer valid DUML requests with swapped addresses, or emit enveloped DUML test frames with a fake address-pattern payload and chosen addresses / bad CRC |
 
 ### AOAT test frame (shared: `scripts/re/aoa_testkit.py`, `lib/bench/aoat.dart`, vectors `scripts/re/aoat_vectors.json`)
 - Little endian: `'AOAT'`, test_id u16, pattern u8, flags u8, run_seed u32, seq u32, total_len u32, payload, crc32 (zlib) over all before it. Min 24 B; accepted max 8 MiB.
-- Patterns: `addr` (every 32-bit word = byte offset XOR mix(seed,seq,test): a wrong word names the offset it was generated for), `counter`, `random` (xorshift32), `zeros`/`ones`/`alt` (0xAA,0x55; bit-stuffing/NRZI stress).
+- Patterns: `addr` (every 32-bit word = byte offset XOR mix(seed,seq,test): a wrong word names the offset it was generated for), `counter`, `random` (xorshift32), `zeros`/`ones`/`alt` (0xAA,0x55; bit-stuffing/NRZI stress), `prbs` (PRBS15, MSB-first, state from mix(seed,seq,test)), `fixed` (byte = seed low 8 bits), `ramp` (byte i = seed + i, same every frame). Ids 0-8 in that order.
 - A corrupt frame still localises: payload is compared to the regenerated one, first differing offset + hint reported even when the CRC also fails.
 - **V.** Python and Dart produce byte-identical frames for the golden vectors (both test suites).
 

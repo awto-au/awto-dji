@@ -77,7 +77,7 @@ class BenchCtl:
         return self.request({"cmd": "get"})[0]
 
     def reset(self):
-        return self.request({"cmd": "reset"})[0]
+        return self.request({"cmd": "stats_reset"})[0]
 
     def wait_result(self, pred, timeout):
         """Next pushed result (new or already seen) satisfying pred, within timeout."""
@@ -130,7 +130,7 @@ def main(argv=None):
                     pass  # window over: print what arrived
                 out = c.results
             else:
-                out = c.request({"cmd": a.cmd})[0]
+                out = c.request({"cmd": "stats_reset" if a.cmd == "reset" else a.cmd})[0]
         finally:
             c.close()
     except CtlError as e:

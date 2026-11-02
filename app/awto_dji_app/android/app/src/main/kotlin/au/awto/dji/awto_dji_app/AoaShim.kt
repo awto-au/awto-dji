@@ -35,6 +35,7 @@ class AoaShim(private val ctx: Context, messenger: BinaryMessenger) :
     private var output: FileOutputStream? = null
     private var reader: Thread? = null
     private var permReceiver: BroadcastReceiver? = null
+    private val writer = java.util.concurrent.Executors.newSingleThreadExecutor()
     @Volatile private var generation = 0L
 
     init {
@@ -57,11 +58,15 @@ class AoaShim(private val ctx: Context, messenger: BinaryMessenger) :
                 val out = output
                 if (data == null || out == null) {
                     result.error("not_open", "accessory not open", null)
-                } else try {
-                    out.write(data)
-                    result.success(null)
-                } catch (e: java.io.IOException) {
-                    result.error("io", e.message, null)
+                } else writer.execute {
+                    // Off the main thread: a peer that stops reading blocks write() and
+                    // would freeze the Dart side too. One thread keeps write order.
+                    try {
+                        out.write(data)
+                        main.post { result.success(null) }
+                    } catch (e: java.io.IOException) {
+                        main.post { result.error("io", e.message, null) }
+                    }
                 }
             }
             "disconnect" -> { closeAccessory(); result.success(null) }
@@ -165,6 +170,7 @@ class AoaShim(private val ctx: Context, messenger: BinaryMessenger) :
         // ParcelFileDescriptor wrapper) is what reliably interrupts a thread
         // already blocked inside its read() call on this driver.
         try { input?.close() } catch (_: java.io.IOException) {}
+        try { output?.close() } catch (_: java.io.IOException) {}
         try { pfd?.close() } catch (_: java.io.IOException) {}
         pfd = null; input = null; output = null
         reader = null
