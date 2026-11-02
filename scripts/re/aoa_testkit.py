@@ -22,9 +22,11 @@ MIN_FRAME = 24
 MASK = 0xFFFFFFFF
 FLAG_LAST = 1
 
-P_ADDR, P_COUNTER, P_RANDOM, P_ZEROS, P_ONES, P_ALT = range(6)
+P_ADDR, P_COUNTER, P_RANDOM, P_ZEROS, P_ONES, P_ALT, P_PRBS, P_FIXED, P_RAMP = range(9)
 PATTERN_NAMES = {"addr": P_ADDR, "counter": P_COUNTER, "random": P_RANDOM,
-                 "zeros": P_ZEROS, "ones": P_ONES, "alt": P_ALT}
+                 "zeros": P_ZEROS, "ones": P_ONES, "alt": P_ALT, "prbs": P_PRBS,
+                 "fixed": P_FIXED, "ramp": P_RAMP}
+P_LAST = P_RAMP
 
 # Bulk max packet sizes: 64 = full speed, 512 = high speed (1024 = super speed).
 MAX_PACKETS = (64, 512)
@@ -56,6 +58,29 @@ def _xorshift_bytes(state, n):
     return bytes(out)
 
 
+def _prbs15_bytes(state, n):
+    """PRBS15 (x^15+x^14+1), MSB-first bytes; state = seed-derived, never 0."""
+    state = (state & 0x7FFF) or 1
+    out = bytearray(n)
+    for i in range(n):
+        b = 0
+        for _ in range(8):
+            fb = ((state >> 14) ^ (state >> 13)) & 1
+            state = ((state << 1) | fb) & 0x7FFF
+            b = (b << 1) | fb
+        out[i] = b
+    return bytes(out)
+
+
+def rand_size(lo, hi, seed, seq, test_id=0):
+    """Deterministic frame size in [lo, hi] for frame `seq` (source `size_min`/`size_max`)."""
+    x = mix(seed, seq, test_id) ^ 0xA5A5A5A5
+    x ^= (x << 13) & MASK
+    x ^= x >> 17
+    x ^= (x << 5) & MASK
+    return lo + x % (hi - lo + 1)
+
+
 def make_payload(pattern, n, seed, seq, test_id=0):
     """Deterministic payload; identical in Dart (aoat.dart makePayload)."""
     if pattern == P_ADDR:
@@ -72,6 +97,12 @@ def make_payload(pattern, n, seed, seq, test_id=0):
         return b"\xff" * n
     if pattern == P_ALT:
         return bytes(0xAA if i % 2 == 0 else 0x55 for i in range(n))
+    if pattern == P_PRBS:
+        return _prbs15_bytes(mix(seed, seq, test_id), n)
+    if pattern == P_FIXED:  # byte value = seed low byte
+        return bytes([seed & 0xFF]) * n
+    if pattern == P_RAMP:  # starts at seed low byte, same every frame
+        return bytes((seed + i) & 0xFF for i in range(n))
     raise ValueError(f"unknown pattern {pattern}")
 
 
@@ -174,7 +205,7 @@ class Checker:
             if len(self.buf) < HDR:
                 return
             test_id, pattern, flags, seed, seq, total = struct.unpack_from("<HBBIII", self.buf, 4)
-            if total < MIN_FRAME or total > self.max_frame or pattern > P_ALT:
+            if total < MIN_FRAME or total > self.max_frame or pattern > P_LAST:
                 self._lose(1)
                 continue
             if len(self.buf) < total:
@@ -302,7 +333,7 @@ def fuzz_wire(step, seed, test_id):
 def golden_vectors():
     """Cross-language vectors; written to aoat_vectors.json, read by the Dart tests."""
     out = []
-    for pat in range(P_ALT + 1):
+    for pat in range(P_LAST + 1):
         for n in (24, 25, 37, 64):
             f = build_frame(n, pat, 0xC0FFEE, 7, 5)
             out.append({"pattern": pat, "total": n, "seed": 0xC0FFEE, "seq": 7, "test": 5,

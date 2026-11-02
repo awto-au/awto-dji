@@ -47,12 +47,18 @@ class ModeEngine {
   int _int(String k, int d) => (params[k] as num?)?.toInt() ?? d;
   String _str(String k, String d) => params[k] as String? ?? d;
 
-  /// Switch mode. The previous test's verdict is emitted first when it did anything.
-  void setMode(ModeCmd cmd) {
+  /// Switch mode; null = done, else the rejection (state untouched). The previous test's
+  /// verdict is emitted first when it did anything.
+  String? setMode(ModeCmd cmd) {
     final m = BenchMode.values.where((v) => v.name == cmd.m).firstOrNull;
     if (m == null) {
       log?.call('W', 'unknown mode ${cmd.m}');
-      return;
+      return 'unknown mode ${cmd.m}';
+    }
+    final pat = cmd.params['pattern'];
+    if (pat != null && !patternNames.containsKey(pat)) {
+      log?.call('W', 'unknown pattern $pat');
+      return 'unknown pattern $pat (${patternNames.keys.join('|')})';
     }
     if (_active) emitResult(final_: true);
     _gen++;
@@ -71,6 +77,18 @@ class ModeEngine {
     if (m == BenchMode.source || (m == BenchMode.duml && _str('act', 'answer') == 'emit')) {
       unawaited(_runSource(_gen));
     }
+    return null;
+  }
+
+  /// Zero the counters of the running mode without restarting it (a source keeps its
+  /// frame index so `count` and the pattern sequence stay valid).
+  void resetStats() {
+    _checker = AoatChecker(testId: params.containsKey('test') ? testId : null);
+    _shortCount = _shortBytes = _echoChunks = _echoBytes = 0;
+    _dumlOk = _dumlBad = _dumlBytes = _dumlAnswered = 0;
+    _sentBytes = _writeErrors = 0;
+    _sourceError = null;
+    _startMs = nowMs();
   }
 
   bool get _active =>
@@ -178,6 +196,7 @@ class ModeEngine {
 
   Future<void> _runSource(int gen) async {
     final size = _int('size', 64);
+    final lo = _int('size_min', size), hi = _int('size_max', lo);
     final count = _int('count', 0);
     final rate = _int('rate', 0);
     final gapMs = _int('gap_ms', 0);
@@ -187,7 +206,7 @@ class ModeEngine {
     _startMs = nowMs();
     var failures = 0;
     while (gen == _gen && (count == 0 || _sent < count) && nowMs() - _startMs < durMs) {
-      final f = _frameFor(_sent, size);
+      final f = _frameFor(_sent, hi > lo ? randSize(lo, hi, _int('seed', 1), _sent, testId) : size);
       try {
         await write(f);
         failures = 0;

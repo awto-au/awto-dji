@@ -190,5 +190,101 @@
 "seq": 7,
 "test": 5,
 "hex": "414f415405000500eeffc0000700000040000000aa55aa55aa55aa55aa55aa55aa55aa55aa55aa55aa55aa55aa55aa55aa55aa55aa55aa55aa55aa558b5ff0c4"
+},
+{
+"pattern": 6,
+"total": 24,
+"seed": 12648430,
+"seq": 7,
+"test": 5,
+"hex": "414f415405000600eeffc0000700000018000000c8cacee3"
+},
+{
+"pattern": 6,
+"total": 25,
+"seed": 12648430,
+"seq": 7,
+"test": 5,
+"hex": "414f415405000600eeffc0000700000019000000e83f28efd4"
+},
+{
+"pattern": 6,
+"total": 37,
+"seed": 12648430,
+"seq": 7,
+"test": 5,
+"hex": "414f415405000600eeffc0000700000025000000e89473792b16fa761d344eb9a778b71747"
+},
+{
+"pattern": 6,
+"total": 64,
+"seed": 12648430,
+"seq": 7,
+"test": 5,
+"hex": "414f415405000600eeffc0000700000040000000e89473792b16fa761d344eb9a795d17ce70a523dec8c6b297af71e3244ad9bed586fd160e742538d6d5ebaeb"
+},
+{
+"pattern": 7,
+"total": 24,
+"seed": 12648430,
+"seq": 7,
+"test": 5,
+"hex": "414f415405000700eeffc0000700000018000000be2bc17e"
+},
+{
+"pattern": 7,
+"total": 25,
+"seed": 12648430,
+"seq": 7,
+"test": 5,
+"hex": "414f415405000700eeffc0000700000019000000eee2567784"
+},
+{
+"pattern": 7,
+"total": 37,
+"seed": 12648430,
+"seq": 7,
+"test": 5,
+"hex": "414f415405000700eeffc0000700000025000000eeeeeeeeeeeeeeeeeeeeeeeeee0e4c72af"
+},
+{
+"pattern": 7,
+"total": 64,
+"seed": 12648430,
+"seq": 7,
+"test": 5,
+"hex": "414f415405000700eeffc0000700000040000000eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeefd001288"
+},
+{
+"pattern": 8,
+"total": 24,
+"seed": 12648430,
+"seq": 7,
+"test": 5,
+"hex": "414f415405000800eeffc0000700000018000000489f5528"
+},
+{
+"pattern": 8,
+"total": 25,
+"seed": 12648430,
+"seq": 7,
+"test": 5,
+"hex": "414f415405000800eeffc0000700000019000000ee7f95ffd0"
+},
+{
+"pattern": 8,
+"total": 37,
+"seed": 12648430,
+"seq": 7,
+"test": 5,
+"hex": "414f415405000800eeffc0000700000025000000eeeff0f1f2f3f4f5f6f7f8f9fafd4a2373"
+},
+{
+"pattern": 8,
+"total": 64,
+"seed": 12648430,
+"seq": 7,
+"test": 5,
+"hex": "414f415405000800eeffc0000700000040000000eeeff0f1f2f3f4f5f6f7f8f9fafbfcfdfeff000102030405060708090a0b0c0d0e0f101112131415e10fb3eb"
 }
 ]

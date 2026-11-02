@@ -10,6 +10,7 @@ const aoatMinFrame = 24;
 const _mask = 0xFFFFFFFF;
 
 const pAddr = 0, pCounter = 1, pRandom = 2, pZeros = 3, pOnes = 4, pAlt = 5;
+const pPrbs = 6, pFixed = 7, pRamp = 8, pLast = pRamp;
 const patternNames = {
   'addr': pAddr,
   'counter': pCounter,
@@ -17,6 +18,9 @@ const patternNames = {
   'zeros': pZeros,
   'ones': pOnes,
   'alt': pAlt,
+  'prbs': pPrbs,
+  'fixed': pFixed,
+  'ramp': pRamp,
 };
 
 final _crcTable = () {
@@ -42,6 +46,32 @@ int crc32(List<int> data, [int end = -1]) {
 
 int mix(int seed, int seq, int testId) =>
     (((seq * 0x9E3779B1) & _mask) ^ seed ^ (testId << 16)) & _mask;
+
+/// PRBS15 (x^15+x^14+1), MSB-first bytes; mirror of aoa_testkit._prbs15_bytes.
+Uint8List _prbs15(int state, int n) {
+  var s = (state & 0x7FFF);
+  if (s == 0) s = 1;
+  final out = Uint8List(n);
+  for (var i = 0; i < n; i++) {
+    var b = 0;
+    for (var k = 0; k < 8; k++) {
+      final fb = ((s >> 14) ^ (s >> 13)) & 1;
+      s = ((s << 1) | fb) & 0x7FFF;
+      b = (b << 1) | fb;
+    }
+    out[i] = b;
+  }
+  return out;
+}
+
+/// Deterministic frame size in [lo, hi] for frame [seq]; mirror of aoa_testkit.rand_size.
+int randSize(int lo, int hi, int seed, int seq, [int testId = 0]) {
+  var x = mix(seed, seq, testId) ^ 0xA5A5A5A5;
+  x ^= (x << 13) & _mask;
+  x ^= x >> 17;
+  x ^= (x << 5) & _mask;
+  return lo + x % (hi - lo + 1);
+}
 
 Uint8List makePayload(int pattern, int n, int seed, int seq, [int testId = 0]) {
   final out = Uint8List(n);
@@ -74,6 +104,14 @@ Uint8List makePayload(int pattern, int n, int seed, int seq, [int testId = 0]) {
     case pAlt:
       for (var i = 0; i < n; i++) {
         out[i] = i.isEven ? 0xAA : 0x55;
+      }
+    case pPrbs:
+      return _prbs15(mix(seed, seq, testId), n);
+    case pFixed:
+      out.fillRange(0, n, seed & 0xFF);
+    case pRamp:
+      for (var i = 0; i < n; i++) {
+        out[i] = (seed + i) & 0xFF;
       }
     default:
       throw ArgumentError.value(pattern, 'pattern');
@@ -187,7 +225,7 @@ class AoatChecker {
       final seed = bd.getUint32(8, Endian.little);
       final seq = bd.getUint32(12, Endian.little);
       final total = bd.getUint32(16, Endian.little);
-      if (total < aoatMinFrame || total > maxFrame || pattern > pAlt) {
+      if (total < aoatMinFrame || total > maxFrame || pattern > pLast) {
         _lose(1);
         continue;
       }

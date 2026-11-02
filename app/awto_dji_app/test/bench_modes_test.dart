@@ -164,4 +164,56 @@ void main() {
     t.e.setMode(mode({'m': 'bogus'}));
     expect(t.e.mode, BenchMode.passive);
   });
+
+  test('unknown mode / pattern are rejected with a reason, state untouched', () {
+    final t = make();
+    expect(t.e.setMode(mode({'m': 'bogus'})), contains('unknown mode'));
+    expect(t.e.setMode(mode({'m': 'source', 'pattern': 'nope'})), contains('unknown pattern'));
+    expect(t.e.mode, BenchMode.passive);
+    expect(t.e.setMode(mode({'m': 'echo'})), isNull);
+  });
+
+  for (final pat in ['prbs', 'fixed', 'ramp', 'counter']) {
+    test('source $pat is accepted by the sink, a flipped byte is located', () async {
+      final t = make();
+      t.e.setMode(mode({'m': 'source', 'test': 3, 'size': 90, 'count': 4, 'pattern': pat, 'seed': 0x1234}));
+      await Future<void>.delayed(const Duration(milliseconds: 40));
+      final k = make();
+      k.e.setMode(mode({'m': 'sink', 'test': 3}));
+      for (final f in t.out) {
+        k.e.onChunk(f);
+      }
+      expect(k.e.result()['pass'], true);
+      expect(k.e.result()['frames'], 4);
+      final bad = Uint8List.fromList(t.out[0])..[20 + 9] ^= 0x10;
+      final j = make();
+      j.e.setMode(mode({'m': 'sink', 'test': 3}));
+      j.e.onChunk(bad);
+      expect((j.e.result()['first_mismatch'] as Map)['offset'], 9);
+    });
+  }
+
+  test('pattern vectors match the Python testkit', () {
+    String h(Uint8List b) => b.map((v) => v.toRadixString(16).padLeft(2, '0')).join();
+    expect(h(makePayload(pPrbs, 6, 7, 2, 1)), '2b5efbc61894');
+    expect(h(makePayload(pFixed, 3, 0x1234, 0)), '343434');
+    expect(h(makePayload(pRamp, 4, 0xFE, 0)), 'feff0001');
+    expect([for (var i = 0; i < 6; i++) randSize(24, 600, 9, i, 3)], [426, 143, 55, 355, 496, 375]);
+  });
+
+  test('source size_min/size_max gives the deterministic random sizes', () async {
+    final t = make();
+    t.e.setMode(mode({'m': 'source', 'test': 3, 'size_min': 24, 'size_max': 600, 'count': 6, 'seed': 9}));
+    await Future<void>.delayed(const Duration(milliseconds: 40));
+    expect(t.out.map((b) => b.length), [426, 143, 55, 355, 496, 375]);
+  });
+
+  test('resetStats zeroes the counters and keeps the mode', () {
+    final t = make();
+    t.e.setMode(mode({'m': 'sink', 'test': 1}));
+    t.e.onChunk(buildFrame(64, pOnes, 1, 0, testId: 1));
+    t.e.resetStats();
+    expect(t.e.mode, BenchMode.sink);
+    expect(t.e.result()['frames'], 0);
+  });
 }

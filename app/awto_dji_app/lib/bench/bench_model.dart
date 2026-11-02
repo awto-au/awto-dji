@@ -294,6 +294,9 @@ sealed class AppMsg {
         );
       case 'result':
         return ResultMsg(Map.of(j)..remove('t'));
+      case 'reply':
+        return ReplyMsg(j['cmd'] as String? ?? '', Map.of(j)..removeWhere((k, _) => k == 't' || k == 'cmd' || k == 'ok'),
+            ok: j['ok'] as bool? ?? false);
       case 'pong':
         return PongMsg((j['id'] as num?)?.toInt() ?? 0);
       case 'ping':
@@ -351,6 +354,16 @@ class ResultMsg extends AppMsg {
   Map<String, Object?> toJson() => {'t': 'result', ...body};
 }
 
+/// Control-port answer to one command: `{t:reply, cmd, ok, ...}`.
+class ReplyMsg extends AppMsg {
+  const ReplyMsg(this.cmd, this.body, {this.ok = true});
+  final String cmd;
+  final bool ok;
+  final Map<String, Object?> body;
+  @override
+  Map<String, Object?> toJson() => {'t': 'reply', 'cmd': cmd, 'ok': ok, ...body};
+}
+
 /// Answer to a host `ping` command.
 class PongMsg extends AppMsg {
   const PongMsg(this.id);
@@ -399,7 +412,10 @@ sealed class HostCmd {
       case 'result':
         return const ResultCmd();
       case 'stats_reset':
+      case 'reset':
         return const StatsResetCmd();
+      case 'get':
+        return const GetCmd();
       case 'disconnect':
         return const DisconnectCmd();
       case 'reconnect':
@@ -451,6 +467,13 @@ class ResultCmd extends HostCmd {
   const ResultCmd();
   @override
   Map<String, Object?> toJson() => {'cmd': 'result'};
+}
+
+/// Control port: ask for the current state and the running test's stats in one reply.
+class GetCmd extends HostCmd {
+  const GetCmd();
+  @override
+  Map<String, Object?> toJson() => {'cmd': 'get'};
 }
 
 class StatsResetCmd extends HostCmd {

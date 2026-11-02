@@ -126,4 +126,80 @@ void main() {
     c.dispose();
     await server.close();
   });
+
+  group('control port', () {
+    late BenchController c;
+    late Socket sock;
+    final lines = <Map<String, Object?>>[];
+
+    Future<void> up() async {
+      lines.clear();
+      c = BenchController(tick: const Duration(milliseconds: 100), controlPort: 0);
+      await c.start();
+      expect(c.boundControlPort, isNotNull);
+      sock = await Socket.connect('127.0.0.1', c.boundControlPort!, timeout: const Duration(seconds: 2));
+      sock.cast<List<int>>().transform(utf8.decoder).transform(const LineSplitter()).listen(
+        (l) => lines.add(jsonDecode(l) as Map<String, Object?>),
+        onError: (Object _) {},
+      );
+    }
+
+    // 20 ms steps, bound 3 s: loopback answers in ms.
+    Future<Map<String, Object?>> reply(String cmd, Map<String, Object?> req) async {
+      final n = lines.length;
+      sock.write('${jsonEncode(req)}\n');
+      for (var i = 0; i < 150; i++) {
+        final m = lines.skip(n).where((l) => l['t'] == 'reply' && l['cmd'] == cmd).firstOrNull;
+        if (m != null) return m;
+        await Future<void>.delayed(const Duration(milliseconds: 20));
+      }
+      throw TimeoutException('no reply to $cmd');
+    }
+
+    tearDown(() async {
+      sock.destroy();
+      c.dispose();
+    });
+
+    test('starts in no mode; ping, mode, get, reset, bad input', () async {
+      await up();
+      expect((await reply('get', {'cmd': 'get'}))['result'], containsPair('mode', 'passive'));
+      sock.write('{"cmd":"ping","id":3}\n');
+      for (var i = 0; i < 150 && !lines.any((l) => l['t'] == 'pong'); i++) {
+        await Future<void>.delayed(const Duration(milliseconds: 20));
+      }
+      expect(lines.any((l) => l['t'] == 'pong' && l['id'] == 3), true);
+
+      final m = await reply('mode', {'cmd': 'mode', 'm': 'sink', 'test': 9, 'seed': 5});
+      expect(m['ok'], true);
+      expect(m['m'], 'sink');
+      expect(m['switch_us'], isA<int>());
+      final g = await reply('get', {'cmd': 'get'});
+      expect((g['state'] as Map)['mode'], containsPair('m', 'sink'));
+
+      c.ingest(buildFrame(64, pOnes, 5, 0, testId: 9));
+      expect(((await reply('get', {'cmd': 'get'}))['result'] as Map)['frames'], 1);
+      await reply('stats_reset', {'cmd': 'reset'});
+      expect(((await reply('get', {'cmd': 'get'}))['result'] as Map)['frames'], 0);
+
+      final bad = await reply('mode', {'cmd': 'mode', 'm': 'nope'});
+      expect(bad['ok'], false);
+      expect(bad['error'], contains('unknown mode'));
+      sock.write('garbage\n');
+      for (var i = 0; i < 150 && !lines.any((l) => l['cmd'] == '?'); i++) {
+        await Future<void>.delayed(const Duration(milliseconds: 20));
+      }
+      expect(lines.any((l) => l['cmd'] == '?' && l['ok'] == false), true);
+    });
+
+    test('mode switch broadcasts the previous verdict and keeps going', () async {
+      await up();
+      await reply('mode', {'cmd': 'mode', 'm': 'sink', 'test': 2});
+      c.ingest(buildFrame(64, pOnes, 1, 0, testId: 2));
+      await reply('mode', {'cmd': 'mode', 'm': 'echo'});
+      expect(lines.any((l) => l['t'] == 'result' && l['mode'] == 'sink' && l['final'] == true), true);
+      c.ingest(Uint8List.fromList([1, 2, 3]));
+      expect(c.written.last, [1, 2, 3]);
+    });
+  });
 }

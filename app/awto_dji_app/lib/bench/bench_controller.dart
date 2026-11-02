@@ -7,6 +7,7 @@ import 'package:flutter/services.dart';
 import '../transport/aoa_identity.dart';
 import '../transport/aoa_mux.dart';
 import '../transport/aoa_transport.dart';
+import 'bench_control_server.dart';
 import 'bench_host_client.dart';
 import 'bench_model.dart';
 import 'bench_modes.dart';
@@ -35,6 +36,7 @@ class BenchController extends ChangeNotifier {
     EventChannel? events,
     MethodChannel? bench,
     int Function()? nowMs,
+    this.controlPort = benchControlPort,
     this.tick = const Duration(milliseconds: 500),
   }) : _aoa = aoa ?? const MethodChannel(AoaTransport.methodChannelName),
        _events = events ?? const EventChannel(AoaTransport.eventChannelName),
@@ -49,6 +51,7 @@ class BenchController extends ChangeNotifier {
       onResult: (b) {
         _log('I', 'result ${b['mode']} test=${b['test']} pass=${b['pass']} frames=${b['frames']} bytes=${b['bytes']}');
         _hostClient?.send(ResultMsg(b));
+        _control?.broadcast(ResultMsg(b));
       },
     );
   }
@@ -59,6 +62,13 @@ class BenchController extends ChangeNotifier {
   final MethodChannel _aoa, _bench;
   final EventChannel _events;
   final Duration tick;
+
+  /// TCP control port to serve; null disables it (0 = ephemeral, tests).
+  final int? controlPort;
+  BenchControlServer? _control;
+
+  /// Port actually bound, null if not serving.
+  int? boundControlPort;
   final Stopwatch _sw;
   late final int Function() _nowMs;
   final _mux = AoaMux();
@@ -77,6 +87,7 @@ class BenchController extends ChangeNotifier {
     return '${two(d.inMinutes)}:${two(d.inSeconds % 60)}.${(d.inMilliseconds % 1000).toString().padLeft(3, '0')}';
   }
 
+  bool _disposed = false;
   Timer? _timer;
   StreamSubscription<dynamic>? _sub;
   BenchHostClient? _hostClient;
@@ -115,6 +126,10 @@ class BenchController extends ChangeNotifier {
       debugPrint('[bench] no log file: $e');
     }
     _log('I', 'bench start $benchApp $benchBuild');
+    if (controlPort != null) {
+      _control = BenchControlServer(port: controlPort!, onCmd: (c, r) => _onHostCmd(c, reply: r), log: _log);
+      boundControlPort = await _control!.start();
+    }
     _timer = Timer.periodic(tick, (_) => _onTick());
     _onTick();
   }
@@ -168,15 +183,23 @@ class BenchController extends ChangeNotifier {
 
   // ---- host commands -----------------------------------------------------------
 
-  void _onHostCmd(HostCmd c) {
+  void _onHostCmd(HostCmd c, {void Function(AppMsg)? reply}) {
+    final extra = <String, Object?>{};
+    String? err;
     switch (c) {
       case PingCmd(:final id):
-        _hostClient?.send(PongMsg(id));
+        if (reply != null) {
+          reply(PongMsg(id));
+        } else {
+          _hostClient?.send(PongMsg(id));
+        }
+        return;
       case PongCmd(:final id):
         if (id == _pendingPingId && _pingSentMs != null) {
           _rttMs = _nowMs() - _pingSentMs!;
           _pingSentMs = null;
         }
+        return;
       case SendCmd(:final bytes):
         _log('I', 'host send ${bytes.length}B');
         unawaited(_write(Uint8List.fromList(bytes)));
@@ -184,15 +207,30 @@ class BenchController extends ChangeNotifier {
         _echo = on;
         _log('I', 'echo ${on ? 'on' : 'off'}');
       case ModeCmd():
-        engine.setMode(c);
+        // The accessory stays open; only the mux framing and the engine change.
+        final sw = Stopwatch()..start();
+        err = engine.setMode(c);
+        if (err == null) _mux.reset();
+        extra
+          ..['m'] = engine.mode.name
+          ..['test'] = engine.testId
+          ..['switch_us'] = sw.elapsedMicroseconds
+          ..['accessory_open'] = _open;
       case ResultCmd():
         engine.emitResult();
+      case GetCmd():
+        _refresh();
+        extra
+          ..['state'] = snapshot.toJson()
+          ..['result'] = engine.result()
+          ..['accessory_open'] = _open;
       case StatsResetCmd():
         _rate.reset();
         _maxChunk = 0;
         _crcBad = 0;
         _mux.discarded = 0;
         _rxLogged = 0;
+        engine.resetStats();
         _log('I', 'stats reset');
       case DisconnectCmd():
         _autoConnect = false;
@@ -203,6 +241,8 @@ class BenchController extends ChangeNotifier {
         _nextAttemptMs = 0;
         unawaited(_closeAccessory('host reconnect').then((_) => _maybeConnect()));
     }
+    if (err != null) extra['error'] = err;
+    reply?.call(ReplyMsg(c.toJson()['cmd'] as String, extra, ok: err == null));
     _refresh(force: true);
   }
 
@@ -441,6 +481,7 @@ class BenchController extends ChangeNotifier {
   }
 
   void _log(String lvl, String msg) {
+    if (_disposed) return;
     final ts = isoNow();
     final line = '$ts $lvl $msg';
     lines.add(line);
@@ -462,8 +503,10 @@ class BenchController extends ChangeNotifier {
 
   @override
   void dispose() {
+    _disposed = true;
     _timer?.cancel();
     unawaited(_hostClient?.stop());
+    unawaited(_control?.stop());
     unawaited(_sub?.cancel());
     unawaited(_fileSink?.close());
     super.dispose();
