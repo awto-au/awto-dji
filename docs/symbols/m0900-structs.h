@@ -73,32 +73,22 @@ struct FlycDetectSampler {          // 0x8 bytes
    All V for "this address is dereferenced this way by this function"; I/U for the hardware
    meaning, as noted per-row. */
 
-// 0x200000ac  void* exti_cb1_ptr;
-//   setter: exti_cb1_set(cb) @ 0x0800b8a2 (*ptr = cb)
-//   dispatcher: exti_cb1_dispatch() @ 0x0800b830 -- checks an EXTI-pending-style flag via
-//     FUN_0800a6de(DAT_0800b8dc,1), clears it via FUN_0800a6f6, then calls *exti_cb1_ptr if non-null
-//   I: this is a single-slot EXTI (or similar level-interrupt) callback registration/dispatch
-//   pair, structurally confirmed; WHICH EXTI line/peripheral triggers it is U (not traced).
+// 0x200000ac  void* tim3_cb_ptr;   (was exti_cb1_ptr; corrected 2026-11-02)
+//   V: setter tim3_cb_set 0x0800b8a2; tim3_irq 0x0800b830 (vector 45 = IRQ29 TIM3) tests TIM3 UIF
+//   (TIM_GetITStatus(0x40000400,1)), clears it, calls *tim3_cb_ptr. TIM3 = PSC 71, ARR 13999 => 14 ms (0x0800b858).
 
-// 0x200000b0  void* exti_cb_table[4];
-//   setter: exti_cb_table_set(index 0..3, cb) @ 0x0800ba14
-//   dispatcher: exti_cb_table_dispatch() @ 0x0800b8f2 -- tests 4 distinct pending-flag values
-//     (FUN_0800a6de(0x40000000,{1,4,8,0x10})), clears whichever fired, calls the matching slot
-//   I: a 4-way EXTI/pending-flag callback table, same family as exti_cb1_ptr but 4 slots;
-//   U which 4 physical lines map to indices 0..3.
+// 0x200000b0  void* tim2_cb_table[4];   (was exti_cb_table; corrected 2026-11-02)
+//   V: setter tim2_cb_table_set 0x0800ba14; tim2_irq 0x0800b8f2 (vector 44 = IRQ28 TIM2) tests TIM2 flags
+//   {1,4,8,0x10}, clears the one set, calls the matching slot. TIM2 OC1..4 at 999/5999/8999/13499 us in a 14 ms period (0x0800b97a).
 
-// 0x200000c0  void* exti_cb2_ptr;
-//   setter: exti_cb2_set(cb) @ 0x0800bac8 (*ptr = cb)
-//   U: no dispatcher for this exact slot was identified this pass (the candidate caller at
-//   0x0800ba6a is not a function boundary Ghidra recognizes -- not chased further).
+// 0x200000c0  void* exti1_cb_ptr;   (was exti_cb2_ptr)
+//   V: setter exti1_cb_set 0x0800bac8; exti1_irq (vector 23 = IRQ7 EXTI1) 0x0800ba60 clears EXTI line 1 and jumps to *ptr.
 
 // 0x200000e4  byte assoc_table_init_flag;
 //   read/set inside assoc_table_lookup_or_insert() @ 0x0800c440: a generic 20-slot x 6-byte
 //   {key_byte, uint32 value, status_byte} association table, lazily zero-initialized on first
-//   call via this flag. I: a generic keyed cache/registry (DJI-style generic helper, same
-//   "index-driven generic driver layer" pattern air-router-io-and-naming.md already flagged for
-//   the GPIO-port->RCC-bit mapper). U: the table's own base address and what keys/callers use it
-//   (not traced -- callers of assoc_table_lookup_or_insert were not enumerated this pass).
+//   call via this flag. Table = assoc_table @ 0x200016c4 (AssocEntry[20]); aged and reported by status_report_tick
+//   (DUML cs0 cmd 0xf9, 5-byte records) every 25 ticks. Keys written by callers of assoc_table_lookup_or_insert: U.
 
 // 0x20000104  uint32 rcc_clock_cache_scalar;
 //   written by rcc_clock_calc_cached() @ 0x0800ddfa, which is structurally identical to
@@ -118,3 +108,42 @@ struct FlycDetectSampler {          // 0x8 bytes
 // 0x200001c0  uint32 route_counter_generic;
 //   incremented (no other logic) by FUN_080118b8 @ 0x080118b8. U: which route/stat this counts
 //   (not traced to callers).
+
+/* ---- Naming pass 2026-11-02 (issues #36, #83): SRAM objects, addresses at link base 0x08008000 ---- */
+/* Tags: V verified in decompile/disasm, I inferred, U unknown. Sizes from stride/neighbour arithmetic. */
+
+/* ByteRing (V, ring_push 0x0800c274 / ring_pop 0x0800c294 / ring_count 0x0800c24c), 0x14 B
+   head = next write idx, tail = next read idx, size, mask = size-1, buf. */
+/* CanQueue (V, can_queue_init 0x0800b3ec): std_id, embedded ByteRing at +4, is_tx at +0x18; 0x1c B.
+   Instances: 0x20002330 (0x412 TX), 0x2000234c (0x413 RX), 0x20002538 (0x414 TX), 0x20002554 (0x415 RX). */
+/* CanState (V, can1_tx_irq 0x0800b298, can_queue_init): tx_idle set when TX queues drained; counts of registered queues. */
+/* CanTables (V): rx[13] then tx[13] pointer slots; can_rx0_handler walks rx, can1_tx_irq walks tx. */
+/* UartIo @0x20000014 (V, uart_send 0x0800b0a4): busy[0]=port1 [1]=port3 [2]=port2 (guard vs re-entry), then 6 packed rings
+   (unaligned u32 fields; Cortex-M3 allows it): usart1 tx 0x17, rx 0x2b; usart2 tx 0x3f, rx 0x53; usart3 tx 0x67, rx 0x7b. */
+/* DumlParser (V, duml_parser_init 0x08011a7e / duml_parser_feed 0x08011a8e), 0x10 B:
+   +0 buf, +4 frame_cb (all channels: duml_crc16_check 0x08011be7), +8 bufsize, +0xa expected_len (10-bit),
+   +0xc cur_len, +0xe state (0..0xc). */
+/* DinDebounce @0x2000009c (V disasm; I role): level flag + sample counter of a board-dependent input pin. */
+/* TickState @0x200000dc (V, tick_scheduler 0x0800c154): 5/20/100 ms flags (SysTick 1 ms) + tick counter. */
+/* StatusState @0x200000e8 (V, status_report_tick 0x0800c34a): status bit word (set/clear by status_flags_set/clear),
+   report tick counter, last-sent word. */
+/* AssocEntry (V, assoc_table_lookup_or_insert 0x0800c440): key (0 = free), 4-byte value, age (dropped at >=7). */
+
+/* @ghidra-begin */
+#pragma pack(push, 1)
+typedef struct PA1FaultCounters { unsigned int fail_count; unsigned int call_count; } PA1FaultCounters;
+typedef struct AntennaQuadrantState { unsigned char applied_a; unsigned char requested_a; unsigned char applied_b; unsigned char requested_b; } AntennaQuadrantState;
+typedef struct FpgaSensorAvgState { unsigned char ring_index; unsigned char pad_1[3]; float cached_avg; } FpgaSensorAvgState;
+typedef struct FlycDetectSampler { unsigned char ring_index; unsigned char pad_1[3]; unsigned int sample_timer; } FlycDetectSampler;
+typedef struct ByteRing { unsigned int head; unsigned int tail; unsigned int size; unsigned int mask; unsigned char *buf; } ByteRing;
+typedef struct CanQueue { unsigned int std_id; ByteRing ring; unsigned char is_tx; unsigned char pad[3]; } CanQueue;
+typedef struct CanState { unsigned char tx_idle; unsigned char pad[3]; unsigned int tx_count; unsigned int rx_count; } CanState;
+typedef struct CanTables { CanQueue *rx[13]; CanQueue *tx[13]; } CanTables;
+typedef struct UartIo { unsigned char busy[3]; ByteRing usart1_tx; ByteRing usart1_rx; ByteRing usart2_tx; ByteRing usart2_rx; ByteRing usart3_tx; ByteRing usart3_rx; } UartIo;
+typedef struct DumlParser { unsigned char *buf; void *frame_cb; unsigned short bufsize; unsigned short expected_len; unsigned short cur_len; unsigned short state; } DumlParser;
+typedef struct DinDebounce { unsigned char level; unsigned char pad[3]; unsigned int count; } DinDebounce;
+typedef struct TickState { unsigned char flag_5ms; unsigned char flag_20ms; unsigned char flag_100ms; unsigned char pad; unsigned int count; } TickState;
+typedef struct StatusState { unsigned int flags; unsigned int tick; unsigned int flags_sent; } StatusState;
+typedef struct AssocEntry { unsigned char key; unsigned int value; unsigned char age; } AssocEntry;
+#pragma pack(pop)
+/* @ghidra-end */

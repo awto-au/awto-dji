@@ -1,140 +1,361 @@
 addr	kind	name	note	source
 0x08008000	region	app_base	bootloader below; SP 0x20004cb8, reset 0x08008201	docs/renode-task.md
+0x080081cc	func	rand	[I] additive lagged-Fibonacci (55-word ring at rand_ring), returns x & 0x7fffffff; ARM C-lib rand shape	decomp (V)
+0x08008200	func	Reset_Handler	[V] vector 1 (0x08008201); `ldr r0,[pc]; blx r0` at file offset 0x200	vector table 0x08008000
+0x0800821a	func	Default_Handler	[V] target of vectors 16..127 not otherwise used (0x0800821b)	vector table 0x08008000
+0x080082c6	func	SysTick_CLKSourceConfig	[V] StdPeriph SysTick_CLKSourceConfig: SysTick CTRL bit2 (4 = HCLK)	decomp (V)
+0x080082f0	func	ADC_DeInit	[V] StdPeriph ADC_DeInit: APB2 reset pulse per ADC base	decomp (V)
+0x08008328	func	ADC_Init	[V] StdPeriph ADC_Init: CR1/CR2/SQR1 from ADC_InitTypeDef	decomp (V)
+0x08008378	func	ADC_Cmd	[V] StdPeriph ADC_Cmd: CR2 bit0 ADON	decomp (V)
+0x080083b2	func	ADC_ResetCalibration	[V] StdPeriph ADC_ResetCalibration: CR2 bit3	decomp (V)
+0x080083bc	func	ADC_GetResetCalibrationStatus	[V] StdPeriph ADC_GetResetCalibrationStatus: CR2 bit3	decomp (V)
+0x080083ca	func	ADC_StartCalibration	[V] StdPeriph ADC_StartCalibration: CR2 bit2	decomp (V)
+0x080083d4	func	ADC_GetCalibrationStatus	[V] StdPeriph ADC_GetCalibrationStatus: CR2 bit2	decomp (V)
+0x080083e2	func	ADC_SoftwareStartConvCmd	[V] StdPeriph ADC_SoftwareStartConvCmd: CR2 0x500000 (EXTTRIG|SWSTART)	decomp (V)
+0x08008428	func	ADC_RegularChannelConfig	[V] StdPeriph ADC_RegularChannelConfig: SMPR1/SMPR2, SQR1-3	decomp (V)
+0x080085b8	func	ADC_TempSensorVrefintCmd	[V] StdPeriph ADC_TempSensorVrefintCmd: CR2 bit23 TSVREFE	decomp (V)
+0x08008620	func	CAN_DeInit	[V] StdPeriph CAN_DeInit: APB1 reset pulse bit25 (CAN1) / bit26 (CAN2)	decomp (V)
+0x08008646	func	CAN_Init	[V] StdPeriph CAN_Init: MCR INRQ/INAK wait (0xffff polls), MCR bits, BTR	decomp (V)
+0x0800872e	func	CAN_FilterInit	[V] StdPeriph CAN_FilterInit: FMR init, FA1R/FM1R/FS1R, FiR1/FiR2	decomp (V)
+0x080088a0	func	CAN_Transmit	[V] StdPeriph CAN_Transmit: mailbox select from TSR TME0/1/2 (4 = none), TIR/TDTR/TDLR/TDHR (+0x180), TXRQ	decomp (V)
+0x080089b4	func	CAN_Receive	[V] StdPeriph CAN_Receive: RIx at +0x1b0 + fifo*0x10: IDE bit2, StdId>>21	decomp (V)
+0x08008b68	func	CAN_ITConfig	[V] StdPeriph CAN_ITConfig: CAN IER (+0x14)	decomp (V)
+0x08008d04	func	DMA_DeInit	[V] StdPeriph DMA_DeInit: clears CCR/CNDTR/CPAR/CMAR, IFCR flags per channel	decomp (V)
+0x08008dde	func	DMA_Init	[V] StdPeriph DMA_Init: CCR/CNDTR/CPAR/CMAR from DMA_InitTypeDef	decomp (V)
+0x08008e32	func	DMA_Cmd	[V] StdPeriph DMA_Cmd: DMA channel CCR bit0 EN	decomp (V)
+0x08008e48	func	DMA_ITConfig	[V] StdPeriph DMA_ITConfig: DMA channel CCR |= it	decomp (V)
+0x08008e58	func	DMA_SetCurrDataCounter	[V] StdPeriph DMA_SetCurrDataCounter: CNDTR (+4)	decomp (V)
+0x08008e5c	func	DMA_GetCurrDataCounter	[V] StdPeriph DMA_GetCurrDataCounter: CNDTR (+4) & 0xffff	decomp (V)
+0x08008e7e	func	DMA_ClearITPendingBit	[V] StdPeriph DMA_ClearITPendingBit: DMA1/DMA2 IFCR (base+4) by bit 28	decomp (V)
+0x08008ee8	func	EXTI_Init	[V] StdPeriph EXTI_Init: IMR/EMR/RTSR/FTSR	decomp (V)
+0x08008fa4	func	EXTI_ClearITPendingBit	[V] StdPeriph EXTI_ClearITPendingBit: EXTI PR (+0x14)	decomp (V)
+0x08008fe6	func	FLASH_Unlock	[V] StdPeriph FLASH_Unlock: KEYR <- key1,key2	decomp (V)
+0x08008ffe	func	FLASH_Lock	[V] StdPeriph FLASH_Lock: CR |= 0x80	decomp (V)
+0x08009016	func	FLASH_GetStatus	[V] StdPeriph FLASH_GetStatus: SR: BSY=1, PGERR=2, WRPRTERR=3, else COMPLETE=4	decomp (V)
+0x08009038	func	FLASH_WaitForLastOperation	[V] StdPeriph FLASH_WaitForLastOperation: polls FLASH_GetStatus with count-down; 5 = timeout	decomp (V)
+0x0800905a	func	FLASH_ErasePage	[V] StdPeriph FLASH_ErasePage: CR PER(2), AR=addr, STRT(0x40), wait, clear	decomp (V)
+0x080092ea	func	FLASH_ReadOutProtection	[V] StdPeriph FLASH_ReadOutProtection: OPTKEYR, CR OPTER/STRT, OPTPG, RDP 0xA5 or 0; no direct callers (dead code or table-only)	decomp (V)
+0x080094e2	func	GPIO_Init	[V] StdPeriph GPIO_Init: CRL/CRH nibble programming; mode 0x28 IPD / 0x48 IPU sets BRR/BSRR; GPIOx, GPIO_InitTypeDef{pin u16,speed u8,mode u8}	decomp (V)
+0x080095b2	func	GPIO_SetBits	[V] StdPeriph GPIO_SetBits: BSRR (+0x10) = pins	decomp (V)
+0x08009646	func	GPIO_EXTILineConfig	[V] StdPeriph GPIO_EXTILineConfig: AFIO EXTICR[(line>>2)] nibble (line&3)*4	decomp (V)
+0x08009694	func	IWDG_WriteAccessCmd	[V] StdPeriph IWDG_WriteAccessCmd: KR = 0x5555/0	decomp (V)
+0x080096a0	func	IWDG_SetReload	[V] StdPeriph IWDG_SetReload: RLR (+8)	decomp (V)
+0x080096b0	func	IWDG_Enable	[V] StdPeriph IWDG_Enable: KR = 0xCCCC	decomp (V)
+0x08009812	func	RCC_ADCCLKConfig	[V] StdPeriph RCC_ADCCLKConfig: RCC CFGR bits 14-15 ADCPRE	decomp (V)
+0x08009854	func	rcc_get_clocks_freq	StdPeriph RCC_GetClocksFreq: out[0]=SYSCLK [1]=HCLK [2]=PCLK1 [3]=PCLK2 [4]=ADCCLK	disasm
+0x080098f2	func	RCC_APB2PeriphClockCmd	[V] StdPeriph RCC_APB2PeriphClockCmd: RCC+0x18 APB2ENR set/clear	decomp (V)
+0x08009904	func	RCC_APB1PeriphClockCmd	[V] StdPeriph RCC_APB1PeriphClockCmd: RCC+0x1c APB1ENR set/clear	decomp (V)
+0x08009916	func	RCC_APB2PeriphResetCmd	[V] StdPeriph RCC_APB2PeriphResetCmd: RCC+0x0c APB2RSTR	decomp (V)
+0x08009928	func	RCC_APB1PeriphResetCmd	[V] StdPeriph RCC_APB1PeriphResetCmd: RCC+0x10 APB1RSTR	decomp (V)
+0x08009d3c	func	TIM_TimeBaseInit	[V] StdPeriph TIM_TimeBaseInit: CR1, ARR(+0x2c), PSC(+0x28), RCR(+0x30), EGR=1	decomp (V)
+0x08009dae	func	TIM_OC1Init	[V] StdPeriph TIM_OC1Init: CCMR1/CCER/CCR1	decomp (V)
+0x08009e18	func	TIM_OC2Init	[V] StdPeriph TIM_OC2Init: by call order in tim2_init (pulses 999/5999/8999/13499) (name per SPL pattern; I)	decomp (V)
+0x08009e90	func	TIM_OC3Init	[V] StdPeriph TIM_OC3Init: by call order (name per SPL pattern; I)	decomp (V)
+0x08009f04	func	TIM_OC4Init	[V] StdPeriph TIM_OC4Init: by call order (name per SPL pattern; I)	decomp (V)
+0x0800a2b6	func	TIM_ITConfig	[V] StdPeriph TIM_ITConfig: DIER (+0x0c)	decomp (V)
+0x0800a6de	func	TIM_GetITStatus	[V] StdPeriph TIM_GetITStatus: TIM SR (+0x10) & DIER (+0x0c)	decomp (V)
+0x0800a6f6	func	TIM_ClearITPendingBit	[V] StdPeriph TIM_ClearITPendingBit: SR = ~bit	decomp (V)
+0x0800a6fc	func	USART_DeInit	[V] StdPeriph USART_DeInit: APB2/APB1 reset pulse per USART base	decomp (V)
+0x0800a75c	func	usart_init	StdPeriph USART_Init; BRR = int(25*clk/(4*baud)) split /100 and *16+50 /100; USART1 uses PCLK2 else PCLK1	disasm (verified)
+0x0800a84c	func	USART_Cmd	[V] StdPeriph USART_Cmd: CR1 bit13 UE	decomp (V)
+0x0800a860	func	USART_ITConfig	[V] StdPeriph USART_ITConfig: CR1/CR2/CR3 by it>>5	decomp (V)
+0x0800a890	func	USART_DMACmd	[V] StdPeriph USART_DMACmd: CR3 (+0x14)	decomp (V)
+0x0800a9ce	func	USART_GetITStatus	[V] StdPeriph USART_GetITStatus: SR + CR1/2/3 enable test	decomp (V)
+0x0800aa34	func	nvic_init_wrapper	3-arg NVIC_Init-style wrapper (IRQn, preempt_prio, sub_prio); call-site IRQn args match the real F103 vector table exactly (see air-router-stm32-full-pass.md §1) - the strongest confirmation this chip uses StdPeriph/SPL, not HAL/LL	systematic pass
+0x0800aa64	func	usart1_tx_dma_irq	[V] vector 30 (IRQ14 DMA1_Ch4): refill USART1 TX DMA from uart_io.usart1_tx ring (<=0x100 B)	decomp (V)
+0x0800aac4	func	usart2_tx_dma_irq	[V] vector 33 (IRQ17 DMA1_Ch7): refill USART2 TX DMA (board 7 only is live)	decomp (V)
+0x0800ab26	func	usart3_tx_dma_irq	[V] vector 28 (IRQ12 DMA1_Ch2): refill USART3 TX DMA	decomp (V)
+0x0800ab86	func	usart1_irq	IDLE IRQ: stop DMA ch5, count = 0x200 - remaining, copy to RX FIFO, re-arm	disasm
+0x0800abe4	func	usart2_irq	IDLE IRQ: same pattern as usart1_irq/usart3_irq; pushes into ring at DAT_0800ae6c+0x3c (=0x20000053), matches the pre-existing can413_pump board-7 USART2 note	disasm (verified 2026-10-25)
+0x0800ac42	func	usart3_irq	IDLE IRQ: same pattern, buffer size 0x100; pushes into ring at DAT_0800ae6c+0x64 (=0x2000007b) - drained by fpga_uart_to_fc_relay	disasm (verified 2026-10-25)
+0x0800aca0	func	uart_init	USART1 256000 8N1 (DMA1 ch4 TX buf 0x200001d0, ch5 RX 0x200002d0 512 B); USART2 250000 only if board==7; USART3 256000 8N1 (DMA ch2 TX 0x200007d0, ch3 RX 0x200008d0 256 B); RX IDLE-line IRQ framing	disasm (verified)
+0x0800b0a4	func	uart_send	args (port 1/2/3, buf, len): copies into per-port TX FIFO then starts DMA (port1 buf 0x200001d0, port2 0x200004d0, port3 0x200007d0)	disasm (verified)
+0x0800b23c	func	can_rx0_handler	CAN RX0 IRQ (vector 20): match StdId to queue objects, push bytes	disasm
+0x0800b298	func	can1_tx_irq	[V] vector 35 (IRQ19 USB_HP_CAN1_TX): scans tx[13], first queue with data -> up to 8 B -> CAN_Transmit (StdId=queue std_id, IDE=0 RTR=0); none left -> TMEIE off, can_state.tx_idle=1	decomp (V)
+0x0800b31c	func	can_init	CAN1: PA11 RX IPU, PA12 TX AF_PP, prescaler 3, SJW 1tq, BS1 6tq, BS2 5tq => 1 Mbit/s at PCLK1 36 MHz; ABOM+AWUM; called only if board in {2,4,5,6}	disasm (verified)
+0x0800b3ec	func	can_queue_init	(obj, std_id, is_tx, size, buf): ring for one CAN id; TX => table 0x200015d0+0x34, RX => exact-match filter (bank = RX count) + table 0x200015d0; callers 0x080113a8 (0x412 TX, 0x413 RX; board-gated) and 0x08011828 (0x414 TX, 0x415 RX; ungated)	disasm
+0x0800b468	func	can_enqueue_and_tx	enqueue bytes into queue obj then CAN_Transmit up to 8 B with StdId=obj[0] when TX idle	disasm
+0x0800b4e6	func	can_queue_reset	[V] zero ring head/tail of a CanQueue (obj+4, obj+8)	decomp (V)
 0x0800b500	func	SPI_UsrWaitTransferComplete	send 1 byte on SPI2: wait TXE (200 polls), write DR, wait RXNE (200 polls), return rx byte; returns 0 silently on expiry	disasm (verified)
+0x0800b536	func	spi2_init	SPI2 master, 8-bit, CPOL0 CPHA1, soft NSS, BR /8 (4.5 MHz at PCLK1 36), MSB first; PB13/PB15 AF_PP, PB14 input, PB12 CS output high	disasm (verified; Renode CR1=0x355)
 0x0800b5e8	func	spi_fpga_or_tcx_transfer_mark	CS assert: GPIOB ODR (0x4001100c) bit12 cleared (active low)	disasm (verified)
 0x0800b5f6	func	spi_fpga_or_tcx_transfer_clear	CS deassert: GPIOB ODR bit12 set	disasm (verified)
+0x0800b60c	func	din_gpio_init	[V] configures the board-dependent input read by din_sample; role of the pin U	decomp (V)
+0x0800b688	func	din_edge	[I] returns 1 (count>=2, level flag set), 2 (released edge), 0 otherwise; state din_debounce	decomp (V)
+0x0800b6ac	func	din_sample	[V] samples a board-dependent input (boards 4/5 PA2, boards 6/2 PC13, board 7 PA11; IDR), increments din_debounce.count while low	decomp (V)
+0x0800b70c	func	gpiob_pb89_init	[V] PB8/PB9 push-pull 50 MHz, GPIO_SetBits(0x300)	decomp (V)
+0x0800b73e	func	gpiob_pb89_clear	[V] GPIOB ODR (0x40010c0c) clear bit8 (mask bit0) / bit9 (mask bit1)	decomp (V)
+0x0800b75a	func	gpiob_pb89_set	[V] GPIOB ODR set bit8/bit9 by mask bit0/bit1	decomp (V)
+0x0800b776	func	gpiob_pb89_toggle	[V] GPIOB ODR toggle bit8/bit9 by mask bit0/bit1	decomp (V)
+0x0800b79c	func	pa1_gpio_init	[V] PA1 push-pull 50 MHz, set high (idle); strobed by pa1_pulse_strobe	decomp (V)
+0x0800b7cc	func	pa1_pulse_strobe	[V] if pa1_fault_counters.call_count>=0x4b: PA1 low, optionally delay_units(10) + high + delay_units(500), zero both counters; returns 1 if fired	decomp (V); structs in m0900-structs.h
+0x0800b808	func	pa1_fault_counter_tick	increments both PA1FaultCounters fields; no caller found this pass	systematic pass, spot-checked
+0x0800b830	func	tim3_irq	[V] vector 45 (IRQ29 TIM3): TIM_GetITStatus(TIM3,UIF)->clear->call *tim3_cb_ptr	systematic pass
+0x0800b858	func	tim3_init_14ms	[V] TIM3 PSC 71 ARR 13999 (1 MHz, 14 ms), update IRQ, NVIC IRQ29 prio 2/0	decomp (V)
+0x0800b8a2	func	tim3_cb_set	[V] setter for tim3_cb_ptr	systematic pass
+0x0800b8a8	func	tim3_start	[V] TIM3 CR1 |= 1	decomp (V)
+0x0800b8b4	func	tim3_stop	[V] TIM3 CR1 &= ~1	decomp (V)
+0x0800b8c0	func	tim3_restart	[V] CR1 &= ~1; CNT = 0; CR1 |= 1	decomp (V)
+0x0800b8e4	func	tim2_stop	[V] TIM2 CR1 &= ~1	decomp (V)
+0x0800b8f2	func	tim2_irq	[V] vector 44 (IRQ28 TIM2): tests TIM2 flags 1/4/8/0x10, clears, calls matching tim2_cb_table slot	systematic pass
+0x0800b97a	func	tim2_init_oc4	[V] TIM2 PSC 71 ARR 13999 + OC1..4 compare at 999/5999/8999/13499 (14 ms frame, 4 slots)	decomp (V)
+0x0800ba14	func	tim2_cb_table_set	[V] setter(index 0..3, cb) for tim2_cb_table	systematic pass
+0x0800ba60	func	exti1_irq	[V] vector 23 (IRQ7 EXTI1): EXTI_ClearITPendingBit(line1) then jump *exti1_cb_ptr if set	decomp (V)
+0x0800ba78	func	exti1_init	[V] PB1 input pull-up, GPIO_EXTILineConfig(port B, line 1), EXTI_Init line 1, NVIC IRQ7 prio 3	decomp (V)
+0x0800bac8	func	exti1_cb_set	[V] setter for exti1_cb_ptr	systematic pass
+0x0800bace	func	exti1_clear_pending	[V] EXTI_ClearITPendingBit(line 1)	decomp (V)
+0x0800bb14	func	quadrant_request_set	[V] writes AntennaQuadrantState.requested_a/b	decomp (V)
+0x0800bb1c	func	quadrant_state_apply	applies requested_a/requested_b into two 32-bit regs, writes back applied_a/applied_b	systematic pass, spot-checked
+0x0800bb84	func	quadrant_gpio_init	[V] GPIOA (pins 0xc4) + GPIOB (0x100) outputs, then quadrant_request_set(3,2)	decomp (V)
+0x0800bbe0	func	flash_program_halfwords	[V] loops FLASH_ProgramHalfWord (0x080091de) over a halfword buffer	decomp (V)
+0x0800bc16	func	copy_bytes_src_dst	[V] byte copy (src, dst, n); used to read flash pages into RAM	decomp (V)
+0x0800bc2c	func	flash_write	[V] unlock; per 0x400-B page: copy to RAM, check erased(0xff), erase page if needed, merge, program halfwords, lock; returns 0 on error	decomp (V)
+0x0800bcea	func	flash_erase_range	[V] unlock; FLASH_ErasePage each 0x400-B page in range; lock; 1 ok / 0 fail	decomp (V)
+0x0800bd30	func	iwdg_init	IWDG PR=4 (/64) RLR=0x271 => 1.0 s at LSI 40 kHz nominal	disasm
+0x0800bd74	func	iwdg_feed_if_active	feeds IWDG (0xAAAA) only if iwdg_stop_feed_flag==0	systematic pass, spot-checked
+0x0800bd82	func	iwdg_stop_set	sets iwdg_stop_feed_flag=1	systematic pass, spot-checked
+0x0800bd98	func	adc1_init_cal	[I] ADC1 clock/prescaler, ADC_Init, TSVREFE on, ADC_Cmd, reset+start calibration with status polls	decomp (V)
+0x0800be36	func	fpga_sensor_avg_update	computes new sample via float-lib chain, pushes into ring, recomputes mean every 10th call; called by cmd_exec_set09_cmd13's reply path	systematic pass
+0x0800bec8	func	board_pin_set	[I] sets PA3 (boards 4/5/7) or PB5 (boards 6/2) in ODR	decomp (V)
+0x0800bf68	func	board_pin_init	[I] companion of board_pin_set: configures that pin as 50 MHz output	decomp (V)
+0x0800bff4	func	gpiob4_read_cache	returns gpiob4_state_cache byte	systematic pass
+0x0800bffa	func	gpiob4_write	sets gpiob4_state_cache and toggles GPIOB ODR bit4 to match	systematic pass
+0x0800c020	func	gpiob4_init	[V] PB4 push-pull output, gpiob4_write(1)	decomp (V)
+0x0800c054	func	gpio_init_clk	[V] (port, pins, speed/mode...): enable APB2 clock for GPIOA/B/C by base compare then GPIO_Init; used by fpga_gpio_init	decomp (V)
+0x0800c0bc	func	board_straps_read	PA0 pull-up in, PC15/PC14 floating in -> board_version = PA0<<2 | PC15<<1 | PC14 (RAM 0x200000d8)	disasm (verified)
 0x0800c142	func	get_board_version	returns byte at RAM 0x200000d8; AD9363 paths test {2,4,5} and {6,7}	disasm
-0x200000d8	ram	board_version	0 under emulation (no straps); mapping of codes to hardware revisions (e.g. P01007.06) UNKNOWN	disasm 0x0800c142
+0x0800c154	func	tick_scheduler	increments RAM 0x200000e0, sets flags 0x200000dc/dd/de every 5/20/100 ticks	disasm
+0x0800c194	func	systick_tim1_init	[V] SysTick LOAD 0x1193f (71999) = 1 ms at 72 MHz, CLKSOURCE=HCLK, prio 0xf0, enable; TIM1 clock + TIM_TimeBaseInit	decomp (V)
 0x0800c1dc	func	delay_units	delay used by script op 0x0B and poll loops (unit not verified; ms assumed)	disasm callers
+0x0800c24c	func	ring_count	[V] bytes available in ByteRing (IRQs toggled around read)	decomp (V)
+0x0800c274	func	ring_push	[V] ByteRing push one byte (drops silently if size==0; no full check)	decomp (V)
+0x0800c294	func	ring_pop	[V] ByteRing pop one byte, wrap at size	decomp (V)
+0x0800c2b8	func	nullsub_1	empty stub; compiled-out log calls (strings Fpga Boot/Cfg remain in flash)	disasm (verified)
+0x0800c2bc	func	payload_chain_scramble	[V code, I role] b[0]=T[(seed%0x1f + b[0])&0xff]; b[i]=T[(b[i-1]+b[i])&0xff]; table at literal 0x0800c318	decomp (V)
+0x0800c320	func	status_flags_set	[V] status_state.flags |= mask	decomp (V)
+0x0800c33a	func	status_flags_clear	[V] status_state.flags &= ~mask	decomp (V)
+0x0800c34a	func	status_report_tick	[V] every call: status_state.tick++; every 50 ticks or on flag change sends DUML cs0 cmd 0xf1 (4-B status word) to rx 2 (APP) and rx 3 (FLYC); every 25 ticks ages assoc_table and sends cs0 cmd 0xf9 (5 B/entry) to rx 2	decomp (V)
+0x0800c440	func	assoc_table_lookup_or_insert	generic byte-keyed lookup-or-insert into a 20-slot table; table base/callers not traced	systematic pass
+0x0800c4b4	func	des_initial_perm	[V] DES IP bit permutation (8 B -> 2 x u32)	decomp (V)
+0x0800c6d8	func	des_final_perm	[V] DES FP bit permutation	decomp (V)
+0x0800c8e8	func	des_feistel	[V] expansion, key XOR, 8 S-box lookups (S-box table 0x08015e5c), P permutation; 800 B	decomp (V)
+0x0800cc08	func	des_key_schedule	[V] DES key schedule (PC1/PC2/shift tables, 16 x 6-byte subkeys; decrypt flag reverses order)	decomp (V)
+0x0800cd4c	func	des_crypt_block	[V] IP, 16 Feistel rounds, FP with one 96-B schedule	decomp (V)
+0x0800cd92	func	des3_key_schedule	[V] 3 x des_key_schedule over key[0..7], key[8..15], key[16..23] (K1 enc, K2 dec order, K3 enc); 0x120 B schedule	decomp (V)
+0x0800cde2	func	des3_crypt_block	[V] 3 x des_crypt_block with schedule +0, +0x60, +0xc0 (in-place after first pass)	decomp (V)
+0x0800ce14	func	fpga_gpio_init	PB3 push-pull out set high (FPGA reset idle), PA13 push-pull out low	disasm (verified)
+0x0800ce48	func	fpga_reset_pulse	PB3 low, ~200 loop iterations, PB3 high (reset role inferred)	disasm (verified action)
 0x0800ce76	func	spi_fpga_raw_write	SPI2 [0x0E, reg, val] -> FPGA reg write	disasm
 0x0800ce9a	func	spi_fpga_raw_read	SPI2 [0x0F, reg, 0xFF] -> FPGA reg read	disasm
 0x0800cebe	func	ad936x_reg_sync_write	args (addr16, val, flag): FPGA [0E 01 01] arm; CS low; [0x80|addr>>8, addr&0xff, val]; CS high; FPGA [0E 01 (flag?02:00)] trailer	disasm (verified)
 0x0800cf00	func	ad936x_reg_sync_read	args (addr16, flag): arm [0E 01 01]; CS low; [(addr>>8)&0x7f, addr&0xff, 0xff]; CS high; trailer [0E 01 (flag?02:00)]	disasm (verified)
+0x0800cf48	func	fpga_bits_set	set bits of FPGA reg per record idx in table 0x0801623c	disasm (verified)
+0x0800cf66	func	fpga_bits_clear	clear bits per record idx	disasm (verified)
+0x0800cf86	func	fpga_bits_test	test bits per record idx; returns reg & mask	disasm (verified)
+0x0800cf9e	func	fpga_read_id32	[V] FPGA regs 0x8b,0x8c,0x8d,0x8e packed into one word	decomp (V)
+0x0800cfd0	func	fpga_boot_status	FPGA boot handshake via reg0/0x8A, retries 3x; returns 3/4/8/9 (meaning of 4 = ready inferred from caller)	disasm (partial)
+0x0800d112	func	fpga_upgrade_enter	FPGA upgrade-mode handshake (boot-style records + 6,7); status 0 ok, 5/8/9 fail; called by Enter Loader (receiver 0x13)	disasm (verified flow)
+0x0800d1ea	func	fpga_update_confirm	compare [0x200000f4] with 0x010007ec, set bit records 10/1; returns 0	disasm
+0x0800d206	func	fpga_update_finish	check FPGA reg0F b1, compare regs 0x09/0x08 with 2 host bytes, handshake; 4 ok, 6/7/8/9 fail, 2 -> reload	disasm (verified flow)
+0x0800d2d8	func	fpga_reload	set reg0 b0 and wait for reg 0x8A[1:0]==1 (3x400 polls); returns 3 ok or 9	disasm
 0x0800d318	func	ad_script_exec_record	interprets one 4-byte script record [op,a,b,c]: 05 FPGA wr(reg=b,val=c); 06 AD wr(a:b,c; reg 0xA3 value patched from RAM 0x20000100); 08 AD rd; 0A poll AD reg((a&0xF)<<8|b) bit(c>>4)==(c&1), 300 tries; 0B delay c; others nop	disasm (verified)
 0x0800d3d0	func	fpga_passthrough_mode	r0=1: FPGA reg0 |= 0x88; r0=2: FPGA reg0 = (reg0|0x08)&~0x80 (brackets set-09 raw reg access)	disasm (partial)
 0x0800d7a4	func	fpga_reg0_toggle	FPGA reg0 |= 9 then &= 0xfe; real prologue push{r4,lr} at this address	disasm (verified)
 0x0800d7c6	func	init_fpga_config	FPGA cfg tables 0x08016260/0x08016460 -> FPGA regs 0..0xff (2 pages; page 2 sets reg 0xE9 = 0x03 on boards 2/4/5); then runs AD9363 script (see below) via 0x0800d318; then ENSM/lock status reads	disasm (verified)
-0x08016660	table	ad9363_script_a	2639 x 4-byte records, boards 2/4/5 (limit 0x293c); includes RFPLL words, BBPLL, filters, gain table (91 idx), cals; decode: scripts/re/m0900_ad_script.py	disasm+decode (verified)
-0x08018f9c	table	ar8003_script_b	0x10c bytes of records, boards 6/7 = Artosyn AR8003 variants ar6/ar7 (64 regs, no polls); not an AD9363 profile	disasm+decode
-0x080190a8	table	fpga_extra_writes	14 FPGA writes [05 0e reg val] (regs 0x00,0x03,0x2c,0x2f,0x30,0x31,0x33,0x34,0x35,0x3b,0x3f,0x00), run when board 4/5 and [0x200000f8]==0x01000910	disasm
-0x080190e0	table	channel_table_a	39 x 9 B: int16 N, frac24, float32 MHz; boards 2/4/5; MHz/N = 20.000 (RFPLL ref 80 MHz /4); ch00=2404 .. ch38=2480 MHz step 2; ch09 (2422) is what the base script programs	decode (table verified; float=LO MHz inferred)
-0x0801923f	table	channel_table_b	39 x 9 B; boards 6/7 (Artosyn AR8003); same MHz list 2404..2480; MHz/N 19.35-19.5 (different ref)	decode (inferred)
+0x0800daa2	func	fpga_reg0_pulse_b2	[V] FPGA reg0 |= 0x0c then &= ~0x04	decomp (V)
+0x0800dac4	func	fpga_reg0_pulse_b1	[V] FPGA reg0 |= 0x0a then &= ~0x02	decomp (V)
+0x0800db00	func	main	boot: peripheral init, board straps, FPGA boot, init_fpga_config, radio_start_chain, then tick-flag main loop at 0x0800dc62	disasm (verified)
+0x0800dd18	func	NMI_Handler	[V] vector 2 of the Cortex-M3 table; 2-byte stub (b .)	vector table 0x08008000
+0x0800dd1a	func	HardFault_Handler	[V] vector 3 of the Cortex-M3 table; 2-byte stub (b .)	vector table 0x08008000
+0x0800dd1c	func	MemManage_Handler	[V] vector 4 of the Cortex-M3 table; 2-byte stub (b .)	vector table 0x08008000
+0x0800dd1e	func	BusFault_Handler	[V] vector 5 of the Cortex-M3 table; 2-byte stub (b .)	vector table 0x08008000
+0x0800dd20	func	UsageFault_Handler	[V] vector 6 of the Cortex-M3 table; 2-byte stub (b .)	vector table 0x08008000
+0x0800dd22	func	SVC_Handler	[V] vector 11 of the Cortex-M3 table; 2-byte stub (b .)	vector table 0x08008000
+0x0800dd24	func	DebugMon_Handler	[V] vector 12 of the Cortex-M3 table; 2-byte stub (b .)	vector table 0x08008000
+0x0800dd26	func	PendSV_Handler	[V] vector 14 of the Cortex-M3 table; 2-byte stub (b .)	vector table 0x08008000
+0x0800dd28	func	set_sysclk	HSE on, FLASH 2 wait states, PPRE1 /2, PLLSRC=HSE PLLMUL x6, PLL on, SW=PLL; HSE_VALUE literal 0xb71b00 = 12 MHz => 72 MHz SYSCLK, PCLK1 36, PCLK2 72	disasm (verified; crystal inferred)
+0x0800ddc8	func	system_init	SystemInit: HSION, clears CFGR/CR, CIR=0x9f0000, then falls into set_sysclk	disasm (verified)
+0x0800ddfa	func	rcc_clock_calc_cached	RCC_GetClocksFreq-shaped helper computing one scaled clock value into rcc_clock_cache_scalar	systematic pass
+0x0800e008	func	fpga_link_payload_descramble	[V] XORs 0x38 B (bytes 1..0x37) against repeating 8-B key at radio_state_s+0x64 (0x20001b18 = link_xor_key), two-stage CRC16 (duml_crc16_calc, seed 0x55aa), on success updates radio-config field + pushes 0x1c B into rf_rx_ring 0x20000144. Sole caller fpga_link_rx_poll. Key IS written at runtime by radio_session_key_init 0x0800ea34 (3DES of a constant under a random 24-byte key) when FPGA reg 0xE9 bits[1:0]==3; earlier "always zero" conclusion superseded	decomp (V 2026-11-02)
+0x0800e30e	func	crc8_verify_trailer	[I] crc8_calc(buf,len-1) == buf[len-1]; caller fpga_link_rx_poll path FUN_0800f6a0	decomp (V)
+0x0800e41a	func	link_status_push	[I] 10-B record (XOR checksum over 9 B) from radio link fields: DUML cs1 cmd1 to rx 1/3/4 and cs6 cmd 0x50 (6 B) to rx 1/3/0x11#7; caller FUN_080105da (main tick task)	decomp (V)
+0x0800e5fa	func	bitrev11	[V] reverse the low 11 bits	decomp (V)
+0x0800e78a	code	channel_index_calc	if cfg bit21: S+0x84 = ((cfg>>12)&0x3f) % S+0x88; else hop: index advanced mod S+0x88 using sequence table at S+0x90 indexed by S+0x80&0x1f. Inferred hopper (not run)	disasm (inferred)
+0x0800e820	func	radio_hop_seed_update	[I] sets radio_state_s+0x80 (hop sequence seed) from crc8 over S+1..4 (ID bytes) or byte sum; board-dependent tables	decomp (V)
+0x0800e9e8	func	radio_cfg_page_load	[V] load_cfg_page (flash 0x7b00) else board default table (6: 0x08019ba0, 7: 0x08019d44); copies 0xfc B to radio_cfg_page_s 0x200019b8	decomp (V)
+0x0800ea34	func	radio_session_key_init	[V] once (flag 0x2000015f): srand(SysTick VAL); 24 random bytes -> radio_session_key (0x20001b00); des3_key_schedule; 3DES-encrypt const 8 B {78 65 54 87 62 23 36 47} -> link_xor_key (0x20001b18). Called by fpga_link_rx_poll when FPGA reg 0xE9 bits[1:0]==3	decomp (V)
+0x0800eb46	func	fpga_regs_2_9e_9f_set	[I] passthrough mode 1: reg2 low fields; mode 2: regs 0x9e/0x9f from 5-byte table 0x08019ee8 idx	decomp (V)
+0x0800eba8	func	fpga_channel_write	[I] FPGA regs 0xBA-0xBE (boards 2/4/5) or 0xB8-0xBB (6/7) from the 9-byte channel record of channel_index_calc; then reg 0x23	decomp (V)
 0x0800f0bc	func	tcx_config_update1	TX attenuation update: boards 2/4/5 write AD9363 0x073/0x075 (TX1/TX2 ATTEN_0) when radio_state+0x11b differs from applied [0x20000167]; boards 6/7 write FPGA 0xCE and AD 0x054/0x05C. Writes NO RF-PLL regs. Guards: [+0x119]!=0, +0x11b != [0x20000167], FPGA reg 0xE9 bits 0 AND 1 set	disasm (verified)
 0x0800f3d8	func	fpga_cfg_load	writes FPGA regs 0x97-0x9b, 0x04-0x07.. from two structs; called from radio_start_stop and 0x080100ae	disasm
 0x0800f436	func	radio_config_apply	sets radio_state+0x84 = 3, then FPGA regs 0xBA-0xBE (boards 2/4/5) / 0xB8-0xBB (6/7) <- 9-byte channel table record [idx]; stores float at +5 to radio_state+0x94. Whether +0x84 is re-set before use elsewhere: UNKNOWN	disasm
+0x0800f510	func	fpga_dual_temp_filter_update	reads FPGA regs 0xc5/0xc6, 10-sample-averages two channels into radio_state_s+0x10d/0x10e (pad_10f region), optionally triggers a calibration lookup via FUN_08014258	systematic pass
+0x0800f978	func	fpga_link_rx_poll	polls spi_fpga_raw_read(0xe9) (FPGA status reg), branches on demod-lock state, calls FUN_0800f6a0 ("new frame?") then fpga_link_payload_descramble on the just-arrived frame. This is the live radio-link RX poll loop	disasm (verified 2026-10-25)
 0x0800fc4c	func	tcx_tune_caller	only caller of tcx_config_update1; no direct BL caller (table/task)	trace
+0x0800fd18	func	send_alter_notify	[V] cs9 cmd 0x0d (2 B {1,x}) to rx 0xe (OSD); compiled-out log string "set alter:%d"	decomp (V)
 0x0800fdc2	func	tcx_config_power_zone	AD9363 TX attenuation / power zone writes	0030 map
-0x080100ae	func	radio_start_chain	large init function (push.w {r1-fp,lr}); BL at 0x0801015a calls radio_config_apply (0x0800f436); also calls 0x0800f3d8 and 0x0800e820	disasm (verified)
+0x08010078	func	tim2_restart	[V] if radio first-init done (S+0x109): TIM2 stop, CNT=0, start	decomp (V)
 0x08010092	func	radio_first_init	small: if [S+0x109]==0 call 0x0800bace, 0x0800bad4, set [S+0x109]=1. Does NOT call radio_config_apply	disasm (verified)
+0x080100ae	func	radio_start_chain	large init function (push.w {r1-fp,lr}); BL at 0x0801015a calls radio_config_apply (0x0800f436); also calls 0x0800f3d8 and 0x0800e820	disasm (verified)
+0x0801029e	func	radio_status_push	[V] every 50 ticks: cs9 cmd3 (5 B) -> rx 8; cs9 cmd8 (3 B) -> rx 2 and rx 0x11#7; cs9 cmd0 (0x43 B, includes radio_session_key bytes, I) -> rx 0xe; every 10 ticks cs9 cmd 0x16 (4 B) -> rx 2	decomp (V)
+0x080103f8	func	fpga_uart_to_fc_relay	drains two rings (0x20000144 [src: FUN_0800e008, RF payload descrambler], 0x2000007b [src: usart3_irq, FPGA UART]) via duml_parser_feed; on complete frame, tail-calls send_usart1 directly - bypasses duml_dispatch entirely. Called every other tick from the main scheduler (0x080105da). See air-router-deep-dive.md §6a	disasm (verified 2026-10-25)
+0x080104bc	func	periodic_100_task	[I] every 100 ticks: jump table on state byte (S3x); on board 7 sends cs0 cmd 0x48 (5 B) to rx 1	decomp (V)
+0x080105d2	func	radio_state_get_6c	[V] returns radio_state_s+0x6c (0x20001b20); compared with 2 in fpga_link_rx_poll	decomp (V)
 0x08010864	func	radio_start_stop	r0=1 start / 0=stop; guarded by [S+0x11a]==0 for start; calls 0x08010286, 0x0800f3d8, 0x0800e820, 0x08010092. That it touches no AD9363 register is NOT proven (indirect calls not followed)	disasm
-0x20001ab4	ram	radio_state_S	struct base. +0x0c cfg word (below); +0x84 channel index; +0x88 channel count(?); +0x94 channel MHz float; +0x109 first-init flag; +0x119 active; +0x11a started; +0x11b TX atten index (written to AD9363 0x073/0x075); +0x128/+0x12a/+0x12c set by 0x0913	disasm
-0x20001ac0	ram	radio_cfg_word	S+0x0c: bit21 fixed-channel flag (0x08010900); bits12-17 fixed channel idx (0x08010916); bits7-11 5-bit field (0x0801092c); bits18-20 3-bit field (0x08010942); bits27-29 3-bit field (0x08010968); bit31 compared in tcx_config_update1 to select atten values	disasm (setters verified; meaning inferred)
-0x20000167	ram	applied_tx_atten	last applied value compared with S+0x11b by tcx_config_update1	disasm
-0x0800e78a	code	channel_index_calc	if cfg bit21: S+0x84 = ((cfg>>12)&0x3f) % S+0x88; else hop: index advanced mod S+0x88 using sequence table at S+0x90 indexed by S+0x80&0x1f. Inferred hopper (not run)	disasm (inferred)
-0x080118d0	func	packet_send	DUML tx	0030 map
-0x08011d66	func	packet_make_response	DUML response builder (r0=send fn, r1=req, r2=payload, r3=len)	disasm
+0x08010afc	func	geo_to_ecef	[I] (lat,lon,h doubles) -> 3 doubles using sin/cos and an ellipsoid constant pair	decomp (V)
+0x08010d3a	func	geo_pair_distance	[I] two geodetic points -> ECEF -> difference -> distance scaled; caller FUN_08010e5c	decomp (V)
 0x080110f2	func	duml_cmd_0904	reply id 0x0954, 16-byte body	disasm
 0x08011122	func	duml_cmd_0911	reply id 0x0961, 4+ bytes	disasm
 0x0801114a	func	duml_cmd_0912	reply id 0x0962; value from 0x080105d2	disasm
 0x08011180	func	duml_cmd_0913	radio config SET (reply 0x0963): payload u16 at +8 = mode. mode0: radio_start_stop(1); byte+0x12 -> cfg bits27-29; byte+0xc -> bits7-11; s16 +0xa -> S+0x12a; u16 +0x10 -> S+0x12c. mode1: radio_start_stop(1); flag(1) -> bit21; byte+0x18 -> bits12-17; byte+0x1c -> bits27-29; S+0x128=0	disasm (verified flow; field meanings inferred)
 0x080111fc	func	duml_cmd_0914	radio status GET (reply 0x0964); sub-modes 0/4/5 compute from helpers (not decoded)	disasm (partial)
+0x08011324	func	flyc_detect_ring_write	on sample_timer>0x46(70): samples the current DUML cmd 0xda packet into flyc_detect_ring, resets sample_timer	systematic pass
+0x08011368	func	flyc_detect_ring_read	reads next flyc_detect_ring slot, advances ring_index	systematic pass
+0x0801141c	func	route_path_a	boards 2/4/5/6: CAN queue 0x20002330; board 7: type 8 idx 1 or 7 => USART1 else USART2	disasm (verified)
+0x0801148c	func	can413_pump	drain ring 0x20002350 (boards 2/4/5/6) or 0x20000053 USART2 (board 7) -> parser 0x20002368 -> duml_dispatch; watchdog 0x96 -> 0x0800c320(8)	disasm (verified)
+0x08011540	func	gimbal_rc_send	[I] 4 x 11-bit RC fields (0x400 = neutral) built from link_rx_record, chain-scrambled (payload_chain_scramble, seed = seq), sent as cs4 cmd1 (8 B) to rx 4 (GIMBAL) and rx 0x11#7, and cs4 cmd6 (8 B) to rx 4	decomp (V)
+0x08011682	func	link_event_poll	[I] polls 5 link-flag edge detectors (0x0800df10/df6e/dfa0/de86/ded2) and sends cs2 cmd 0x7c notifications (duml_notify_seq_counter) to rx 1	decomp (V)
+0x08011828	func	can_aux_init	can_queue_init 0x414 TX obj 0x20002538 (64 B) + 0x415 RX obj 0x20002554 (64 B); parser 0x20002570 bufsize 64; no board gate; called from 0x0800db9c	disasm (verified)
+0x08011876	func	can414_send	can_enqueue_and_tx(0x20002538,...); only reached from packet_send type 30 (0x0801194a)	disasm (verified)
+0x08011882	func	can415_pump	drain ring 0x20002558 -> parser 0x20002570 -> duml_dispatch; no link watchdog	disasm (verified)
+0x080118d0	func	packet_send	DUML tx	0030 map
+0x080118e4	table	packet_send_route_tbb	31-byte tbb indexed by pkt[5]&0x1f: types 2,6,13,14,16,20,22 => uart_send(3); 1,4,8,15 => 0x0801141c; 3,5,10,11,12,18,21,23 => 0x08011938 (=> 0x0801261c uart_send(1), all boards); 17 => 0x0801195c (USART1 / board 7 path A); 30 => 0x0801190e (CAN 0x414 / board 7 USART1); others dropped	disasm (verified)
+0x0801198a	func	duml_dispatch	walks 8-byte records at 0x0801a120 [handler,type,index,set,id] matching pkt[5] pkt[9] pkt[10]; no match => tail-call packet_send (forward)	disasm (verified)
+0x080119dc	func	duml_parser_resync_len	[I] after len>bufsize: if buf[1]==0x55 shift by 1 (state 2) else if buf[2]==0x55 shift by 2 (state 1) else reset	decomp (V)
+0x08011a08	func	duml_parser_resync_hdr	[I] after header CRC8 fail: search 0x55 in buf[1..3], shift, restore state	decomp (V)
+0x08011a66	func	duml_parser_version_class	[V] (buf[2]>>2): 0 -> returns 1, 1 -> returns 2, else 0; selects frame-body state 0xc vs 4	decomp (V)
+0x08011a7e	func	duml_parser_init	(parser, frame_cb, buf, bufsize): +0 buf, +4 frame_cb, +8 bufsize; all channels use frame_cb 0x08011be7 [V decomp, arg order corrected 2026-11-02]	disasm (verified)
+0x08011a8e	func	duml_parser_feed	byte state machine: 0x55 sync, 10-bit len <= bufsize, version 0/1, CRC8 seed 0x77 (0x08011e0e), body then frame_cb; returns 2 on good frame	disasm (verified)
+0x08011be6	func	duml_crc16_check	CRC16 seed 0x3692 over len-2 vs last u16	disasm (verified)
+0x08011c0a	func	duml_parser_put_byte	[V] append byte to parser buf if cur_len < bufsize	decomp (V)
+0x08011c1e	func	duml_build_send	[V] (send_fn, rx_idx, rx_type, seq, ack_type, enc, is_ack, cmdset, cmdid, payload, len): sender type 9 (m0900), memclr 0x140, 0x55 frame, CRC8+CRC16, calls send_fn(buf,len); all 25 call sites pass packet_send 0x080118d0	decomp (V)
+0x08011cd0	func	duml_reply_from_req_pp	[I] like packet_make_response but request is **pp; building reply with flags&0xff9f|0x80; callers: 2	decomp (V)
+0x08011d66	func	packet_make_response	DUML response builder (r0=send fn, r1=req, r2=payload, r3=len)	disasm
+0x08011df8	func	duml_crc8_calc	[V] table CRC8 (buf, len, seed)	decomp (V)
+0x08011e0e	func	duml_crc8_check	[V] CRC8 (seed 0x77) over len-1 bytes vs last byte; used on the 4-byte header	decomp (V)
+0x08011e34	func	duml_crc8_fix	[V] writes CRC8 (seed 0x77) over buf[0..len-2] into buf[len-1]; header fix with len=4	decomp (V)
+0x08011e54	func	duml_crc16_calc	[V] table CRC16 (buf, len, seed); returns 0xffff if buf NULL; DUML seed 0x3692, link seed 0x55aa	decomp (V)
+0x08011eae	func	duml_crc16_fix	recompute DUML CRC16 (seed 0x3692) over pkt[0..len-3] and store at tail	disasm
+0x08011ed4	func	duml_set03_id43_fwd	dispatch key 0x43030009: rewrite receiver type to 2 then 1, fix CRC, packet_send (fan-out of FC OSD push)	disasm (verified)
+0x08012012	func	duml_set03_id42_fwd	dispatch key 0x42030009: rewrite receiver type to 4 (gimbal), fix CRC, packet_send	disasm (verified)
 0x08012102	func	cmd_exec_set09_cmd05	DUML set 0x09 cmd 0x05: FPGA reg read, payload[0]=reg; reply [0, val]	disasm (verified)
 0x08012122	func	cmd_exec_set09_cmd06	DUML set 0x09 cmd 0x06: WRITE only. payload [lo,hi,val]; hi==0xFE -> FPGA reg lo (spi_fpga_raw_write, IRQs off); else ad936x_reg_sync_write(addr=hi:lo, val, 1). Reply [0]	disasm (verified)
 0x0801216a	func	cmd_exec_set09_cmd07	DUML set 0x09 cmd 0x07: read counterpart of cmd 0x06 (hi==0xFE -> FPGA read, else ad936x_reg_sync_read); reply [0, val]	disasm (verified)
 0x080121b4	func	cmd_exec_set09_cmd12	DUML set 0x09 cmd 0x12 SET: calls radio_start_stop(0); b0 bit7 -> cfg bit21, b0&0x7f -> bits12-17; b1>>6 -> bits27-29; b1&0x3f -> bits7-11 (5-bit setter); b2 -> S+0x11b (TX atten idx); b3 -> bits18-20. Reply [0]. Does not itself call tcx_config_update1/radio_config_apply	disasm (verified)
 0x08012210	func	cmd_exec_set09_cmd13	DUML set 0x09 cmd 0x13 GET: returns readback of the cmd 0x12 fields + float(0x0800be36)*10 u16 (8 bytes)	disasm (partial)
 0x0801226e	func	cmd_exec_set09_default	handler for keys 0x01 (set 0x09 and 0x13), builds 0x22-byte reply with board-dependent words from RAM 0x200000f4/0x200000f8	disasm (partial)
-0x08012320	func	cmd_exec_key07_set00	table entries 0x07000009/0x07000013 share this handler (not decoded)	table
-0x0801253a	func	cmd_exec_set09_catchall	keys 0xff000009 / 0xff000013 (not decoded)	table
-0x080123b8	func	cmd_exec_set13_cmd08	key 0x08000013 (not decoded)	table
-0x0801a0f0	table	duml_dispatch_a	records [handler|1, id16]: 0x0904 0x0911 0x0912 0x0913 0x0914; then 0x42030009 0x43030009 0x44030009 0xda03000e 0x0e090009 (keys cmdid<<24|set<<16|0x0009)	table dump (verified)
-0x0801a160	table	duml_dispatch_set09	records [handler|1, (cmdid<<24)|(set<<16)|0x0009]: cmd 05 06 07 12 13 01(set00 & 13) ff(09&13) 07(set00,13) 08(set13)	table dump (verified)
-0x08016260	table	fpga_cfg_table_a	boards 2/4/5; 2x256 bytes written to FPGA regs 0..0xff; page 2 [0xE9]=0x03	init_fpga_config
-0x08016460	table	fpga_cfg_table_b	boards 6/7; page 2 [0xE9]=0x80	init_fpga_config
-0x0800ddc8	func	system_init	SystemInit: HSION, clears CFGR/CR, CIR=0x9f0000, then falls into set_sysclk	disasm (verified)
-0x0800dd28	func	set_sysclk	HSE on, FLASH 2 wait states, PPRE1 /2, PLLSRC=HSE PLLMUL x6, PLL on, SW=PLL; HSE_VALUE literal 0xb71b00 = 12 MHz => 72 MHz SYSCLK, PCLK1 36, PCLK2 72	disasm (verified; crystal inferred)
-0x08009854	func	rcc_get_clocks_freq	StdPeriph RCC_GetClocksFreq: out[0]=SYSCLK [1]=HCLK [2]=PCLK1 [3]=PCLK2 [4]=ADCCLK	disasm
-0x0800aca0	func	uart_init	USART1 256000 8N1 (DMA1 ch4 TX buf 0x200001d0, ch5 RX 0x200002d0 512 B); USART2 250000 only if board==7; USART3 256000 8N1 (DMA ch2 TX 0x200007d0, ch3 RX 0x200008d0 256 B); RX IDLE-line IRQ framing	disasm (verified)
-0x0800a75c	func	usart_init	StdPeriph USART_Init; BRR = int(25*clk/(4*baud)) split /100 and *16+50 /100; USART1 uses PCLK2 else PCLK1	disasm (verified)
-0x0800b0a4	func	uart_send	args (port 1/2/3, buf, len): copies into per-port TX FIFO then starts DMA (port1 buf 0x200001d0, port2 0x200004d0, port3 0x200007d0)	disasm (verified)
-0x0800b536	func	spi2_init	SPI2 master, 8-bit, CPOL0 CPHA1, soft NSS, BR /8 (4.5 MHz at PCLK1 36), MSB first; PB13/PB15 AF_PP, PB14 input, PB12 CS output high	disasm (verified; Renode CR1=0x355)
-0x0800b31c	func	can_init	CAN1: PA11 RX IPU, PA12 TX AF_PP, prescaler 3, SJW 1tq, BS1 6tq, BS2 5tq => 1 Mbit/s at PCLK1 36 MHz; ABOM+AWUM; called only if board in {2,4,5,6}	disasm (verified)
-0x0800b3ec	func	can_queue_init	(obj, std_id, is_tx, size, buf): ring for one CAN id; TX => table 0x200015d0+0x34, RX => exact-match filter (bank = RX count) + table 0x200015d0; callers 0x080113a8 (0x412 TX, 0x413 RX; board-gated) and 0x08011828 (0x414 TX, 0x415 RX; ungated)	disasm
-0x0800b468	func	can_enqueue_and_tx	enqueue bytes into queue obj then CAN_Transmit up to 8 B with StdId=obj[0] when TX idle	disasm
-0x0800b23c	func	can_rx0_handler	CAN RX0 IRQ (vector 20): match StdId to queue objects, push bytes	disasm
-0x0800ab86	func	usart1_irq	IDLE IRQ: stop DMA ch5, count = 0x200 - remaining, copy to RX FIFO, re-arm	disasm
-0x0800ac42	func	usart3_irq	IDLE IRQ: same pattern, buffer size 0x100; pushes into ring at DAT_0800ae6c+0x64 (=0x2000007b) - drained by fpga_uart_to_fc_relay	disasm (verified 2026-10-25)
-0x0800abe4	func	usart2_irq	IDLE IRQ: same pattern as usart1_irq/usart3_irq; pushes into ring at DAT_0800ae6c+0x3c (=0x20000053), matches the pre-existing can413_pump board-7 USART2 note	disasm (verified 2026-10-25)
-0x080103f8	func	fpga_uart_to_fc_relay	drains two rings (0x20000144 [src: FUN_0800e008, RF payload descrambler], 0x2000007b [src: usart3_irq, FPGA UART]) via duml_parser_feed; on complete frame, tail-calls send_usart1 directly - bypasses duml_dispatch entirely. Called every other tick from the main scheduler (0x080105da). See air-router-deep-dive.md §6a	disasm (verified 2026-10-25)
-0x0800e008	func	fpga_link_payload_descramble	XORs 0x38 B against repeating 8-B key, two-stage chained checksum (FUN_08011e54, seed 0x55aa), on success updates radio-config field + pushes 0x1c B into ring 0x20000144 (fpga_uart_to_fc_relay's first ring). Sole caller: FUN_0800f978 (fpga_link_rx_poll). Key = radio_state_s+0x64 (0x20001b18), traced to a zero-fill boot RAM-init region, no writer found anywhere - key is always zero, XOR step is a no-op	disasm (verified 2026-10-25)
-0x0800f978	func	fpga_link_rx_poll	polls spi_fpga_raw_read(0xe9) (FPGA status reg), branches on demod-lock state, calls FUN_0800f6a0 ("new frame?") then fpga_link_payload_descramble on the just-arrived frame. This is the live radio-link RX poll loop	disasm (verified 2026-10-25)
-0x0801198a	func	duml_dispatch	walks 8-byte records at 0x0801a120 [handler,type,index,set,id] matching pkt[5] pkt[9] pkt[10]; no match => tail-call packet_send (forward)	disasm (verified)
-0x080118e4	table	packet_send_route_tbb	31-byte tbb indexed by pkt[5]&0x1f: types 2,6,13,14,16,20,22 => uart_send(3); 1,4,8,15 => 0x0801141c; 3,5,10,11,12,18,21,23 => 0x08011938 (=> 0x0801261c uart_send(1), all boards); 17 => 0x0801195c (USART1 / board 7 path A); 30 => 0x0801190e (CAN 0x414 / board 7 USART1); others dropped	disasm (verified)
-0x0801141c	func	route_path_a	boards 2/4/5/6: CAN queue 0x20002330; board 7: type 8 idx 1 or 7 => USART1 else USART2	disasm (verified)
-0x08011eae	func	duml_crc16_fix	recompute DUML CRC16 (seed 0x3692) over pkt[0..len-3] and store at tail	disasm
-0x08011ed4	func	duml_set03_id43_fwd	dispatch key 0x43030009: rewrite receiver type to 2 then 1, fix CRC, packet_send (fan-out of FC OSD push)	disasm (verified)
-0x08012012	func	duml_set03_id42_fwd	dispatch key 0x42030009: rewrite receiver type to 4 (gimbal), fix CRC, packet_send	disasm (verified)
-0x0800bd30	func	iwdg_init	IWDG PR=4 (/64) RLR=0x271 => 1.0 s at LSI 40 kHz nominal	disasm
-0x0800db00	func	main	boot: peripheral init, board straps, FPGA boot, init_fpga_config, radio_start_chain, then tick-flag main loop at 0x0800dc62	disasm (verified)
-0x0800c0bc	func	board_straps_read	PA0 pull-up in, PC15/PC14 floating in -> board_version = PA0<<2 | PC15<<1 | PC14 (RAM 0x200000d8)	disasm (verified)
-0x0800ce14	func	fpga_gpio_init	PB3 push-pull out set high (FPGA reset idle), PA13 push-pull out low	disasm (verified)
-0x0800ce48	func	fpga_reset_pulse	PB3 low, ~200 loop iterations, PB3 high (reset role inferred)	disasm (verified action)
-0x0800cfd0	func	fpga_boot_status	FPGA boot handshake via reg0/0x8A, retries 3x; returns 3/4/8/9 (meaning of 4 = ready inferred from caller)	disasm (partial)
-0x0800cf48	func	fpga_bits_set	set bits of FPGA reg per record idx in table 0x0801623c	disasm (verified)
-0x0800cf66	func	fpga_bits_clear	clear bits per record idx	disasm (verified)
-0x0800cf86	func	fpga_bits_test	test bits per record idx; returns reg & mask	disasm (verified)
-0x0801623c	table	fpga_bit_records	3-byte records [idx, fpga_reg, mask], 11 used	disasm (verified)
-0x0800c154	func	tick_scheduler	increments RAM 0x200000e0, sets flags 0x200000dc/dd/de every 5/20/100 ticks	disasm
-0x0800c2b8	func	nullsub_1	empty stub; compiled-out log calls (strings Fpga Boot/Cfg remain in flash)	disasm (verified)
-0x0800d112	func	fpga_upgrade_enter	FPGA upgrade-mode handshake (boot-style records + 6,7); status 0 ok, 5/8/9 fail; called by Enter Loader (receiver 0x13)	disasm (verified flow)
-0x0800d1ea	func	fpga_update_confirm	compare [0x200000f4] with 0x010007ec, set bit records 10/1; returns 0	disasm
-0x0800d206	func	fpga_update_finish	check FPGA reg0F b1, compare regs 0x09/0x08 with 2 host bytes, handshake; 4 ok, 6/7/8/9 fail, 2 -> reload	disasm (verified flow)
-0x0800d2d8	func	fpga_reload	set reg0 b0 and wait for reg 0x8A[1:0]==1 (3x400 polls); returns 3 ok or 9	disasm
 0x08012320	func	duml_enter_loader	set 0x00 cmd 0x07: receiver 9 writes OOXX to flash page 0x7400; receiver 0x13 (boards 4/5) enters FPGA upgrade	disasm (verified)
 0x080123b8	func	duml_update_confirm	set 0x00 cmd 0x08 (receiver 0x13): reply status and block size 0x200	disasm
 0x080123e6	func	duml_update_finish	set 0x00 cmd 0x0A (receiver 0x13): calls fpga_update_finish, reply status	disasm
 0x08012428	func	duml_reboot_chip	set 0x00 cmd 0x0B	table only
-0x080110f2	func	duml_req_0904	request 0x0904: reply 0x0954 with STM32 96-bit UID (12 B)	disasm (verified)
-0x080127be	func	read_stm32_uid	copies 12 bytes from 0x1FFFF7E8; single caller 0x08011110	disasm (verified)
-0x0801279a	func	load_cfg_page	reads 256 B from flash offset 0x7b00, validates via 0x08011e7a	disasm
-0x08012690	func	flash_write_magic	flash write of 4 bytes at offset 0x7400 (helper 0x0800bc2c); returns 1 if all bytes written	disasm (inferred write)
-0x08011828	func	can_aux_init	can_queue_init 0x414 TX obj 0x20002538 (64 B) + 0x415 RX obj 0x20002554 (64 B); parser 0x20002570 bufsize 64; no board gate; called from 0x0800db9c	disasm (verified)
-0x08011876	func	can414_send	can_enqueue_and_tx(0x20002538,...); only reached from packet_send type 30 (0x0801194a)	disasm (verified)
-0x08011882	func	can415_pump	drain ring 0x20002558 -> parser 0x20002570 -> duml_dispatch; no link watchdog	disasm (verified)
-0x0801148c	func	can413_pump	drain ring 0x20002350 (boards 2/4/5/6) or 0x20000053 USART2 (board 7) -> parser 0x20002368 -> duml_dispatch; watchdog 0x96 -> 0x0800c320(8)	disasm (verified)
-0x08012626	func	usart1_pump	drain ring 0x2000002b -> parser 0x20002620 -> duml_dispatch; watchdog 0x258 -> 0x0800c320(4)	disasm (verified)
+0x0801253a	func	cmd_exec_set09_catchall	keys 0xff000009 / 0xff000013 (not decoded)	table
 0x0801261c	func	send_usart1	uart_send(1, pkt, len)	disasm (verified)
-0x08011a7e	func	duml_parser_init	(parser, buf, frame_cb, bufsize); all channels use frame_cb 0x08011be7	disasm (verified)
-0x08011a8e	func	duml_parser_feed	byte state machine: 0x55 sync, 10-bit len <= bufsize, version 0/1, CRC8 seed 0x77 (0x08011e0e), body then frame_cb; returns 2 on good frame	disasm (verified)
-0x08011be6	func	duml_crc16_check	CRC16 seed 0x3692 over len-2 vs last u16	disasm (verified)
-0x200000a4	ram	pa1_fault_counters	PA1FaultCounters{fail_count,call_count}: fail_count>10 forces GPIOA ODR bit1 high directly; call_count gates pa1_pulse_strobe at 0x4b(75), both zeroed together	systematic pass (air-router-stm32-full-pass.md), spot-checked
-0x0800b808	func	pa1_fault_counter_tick	increments both PA1FaultCounters fields; no caller found this pass	systematic pass, spot-checked
-0x200000ac	ram	exti_cb1_ptr	single-slot EXTI/pending-flag callback pointer	systematic pass
-0x0800b8a2	func	exti_cb1_set	setter for exti_cb1_ptr	systematic pass
-0x0800b830	func	exti_cb1_dispatch	checks DAT_0800b8dc pending flag, clears it, calls *exti_cb1_ptr	systematic pass
-0x200000b0	ram	exti_cb_table	4-slot EXTI/pending-flag callback table	systematic pass
-0x0800ba14	func	exti_cb_table_set	setter(index 0..3, cb) for exti_cb_table	systematic pass
-0x0800b8f2	func	exti_cb_table_dispatch	tests 4 distinct 0x40000000-family pending flags, clears, dispatches matching slot	systematic pass
-0x200000c0	ram	exti_cb2_ptr	another single-slot callback pointer; no dispatcher found this pass	systematic pass
-0x0800bac8	func	exti_cb2_set	setter for exti_cb2_ptr	systematic pass
-0x200000c4	ram	antenna_quadrant_state	AntennaQuadrantState{applied_a,requested_a,applied_b,requested_b}; address-exact match to upstream active_quadrant_state/quadrant_state/active_quadrant_num/quadrant_num	systematic pass + upstream map cross-check, spot-checked
-0x0800bb1c	func	quadrant_state_apply	applies requested_a/requested_b into two 32-bit regs, writes back applied_a/applied_b	systematic pass, spot-checked
-0x0800bd82	func	iwdg_stop_set	sets iwdg_stop_feed_flag=1	systematic pass, spot-checked
-0x0800bd74	func	iwdg_feed_if_active	feeds IWDG (0xAAAA) only if iwdg_stop_feed_flag==0	systematic pass, spot-checked
-0x200000cc	ram	fpga_sensor_avg_state	FpgaSensorAvgState{ring_index,cached_avg}; 10-sample moving average, ring at fpga_sensor_avg_ring	systematic pass
-0x0800be36	func	fpga_sensor_avg_update	computes new sample via float-lib chain, pushes into ring, recomputes mean every 10th call; called by cmd_exec_set09_cmd13's reply path	systematic pass
-0x20001638	ram	fpga_sensor_avg_ring	float[10] ring backing fpga_sensor_avg_state	systematic pass
-0x0800bff4	func	gpiob4_read_cache	returns gpiob4_state_cache byte	systematic pass
-0x0800bffa	func	gpiob4_write	sets gpiob4_state_cache and toggles GPIOB ODR bit4 to match	systematic pass
+0x08012626	func	usart1_pump	drain ring 0x2000002b -> parser 0x20002620 -> duml_dispatch; watchdog 0x258 -> 0x0800c320(4)	disasm (verified)
+0x08012690	func	flash_write_magic	flash write of 4 bytes at offset 0x7400 (helper 0x0800bc2c); returns 1 if all bytes written	disasm (inferred write)
+0x0801279a	func	load_cfg_page	reads 256 B from flash offset 0x7b00, validates via 0x08011e7a	disasm
+0x080127be	func	read_stm32_uid	copies 12 bytes from 0x1FFFF7E8; single caller 0x08011110	disasm (verified)
+0x080127d8	func	srand	[I] fills the 55-word ring from an LCG (mult 0x66d619e1... ) seeded by argument	decomp (V)
+0x08012814	func	memcmp	[I] word compare with byte-swap on mismatch, byte tail	decomp (I)
+0x080128aa	func	__aeabi_memcpy	[I] (dst, src, n) unaligned-capable word/byte copy	decomp (I)
+0x08012934	func	__aeabi_memcpy4	[I] 4-byte-aligned copy, 32-byte unrolled	decomp (I)
+0x08012998	func	__aeabi_memclr	[I] (ptr, n) zero fill, handles unaligned head	decomp (I)
+0x080129dc	func	__aeabi_memclr4	[I] aligned zero fill	decomp (I)
+0x08012a3a	func	set_errno	[V] *__aeabi_errno_addr() = value	decomp (V)
+0x08012a48	func	__aeabi_errno_addr	[V] returns address of the errno cell	decomp (V)
+0x08012abc	func	dfp_classify	[I] flags: 4 nonzero mantissa, 1 nonzero exponent, 2 exp==0x7ff; 5 = normal	decomp (I)
+0x08012ae4	func	__ieee754_rem_pio2	[I] fdlibm argument reduction; 830 B	decomp (I)
+0x08012e6c	func	__kernel_cos	[I] fdlibm kernel (6 coefficients)	decomp (I)
+0x08012f68	func	poly_eval_double	[I] Horner evaluation, n coefficients (6/5 used by kernel cos/sin)	decomp (I)
+0x08013014	func	__kernel_sin	[I] fdlibm kernel (5 loop + 1 coefficients)	decomp (I)
+0x08013110	func	atan	[I] fdlibm 5-range structure (id -1..3 with scalbn/ddiv); 478 B	decomp (I)
+0x080134b4	func	cos	[I] rem_pio2 then n&3 selects kernel_cos/kernel_sin(+-)	decomp (I)
+0x080140f8	func	sin	[I] rem_pio2 then n&3 selects kernel_sin/kernel_cos(+-)	decomp (I)
+0x08014258	func	__aeabi_dadd	[I] soft-float helper by structure (IEEE-754 field masks/shifts); ABI name. 57 callers	decomp (I)
+0x080143d0	func	__aeabi_ddiv	[I] soft-float helper by structure (IEEE-754 field masks/shifts); ABI name. reciprocal table 0x08014578	decomp (I)
+0x08014680	func	__aeabi_d2iz	[I] soft-float helper by structure (IEEE-754 field masks/shifts); ABI name. 	decomp (I)
+0x0801473a	func	__aeabi_i2d	[I] soft-float helper by structure (IEEE-754 field masks/shifts); ABI name. 	decomp (I)
+0x08014768	func	__aeabi_ui2d	[I] soft-float helper by structure (IEEE-754 field masks/shifts); ABI name. 	decomp (I)
+0x08014808	func	__aeabi_dmul	[I] soft-float helper by structure (IEEE-754 field masks/shifts); ABI name. 94 callers	decomp (I)
+0x0801495c	func	dfp_special_case	[I] NaN/Inf operand dispatch via inline table at LR (RVCT __fpl_dcheck_NaN2 shape)	decomp (I)
+0x08014a70	func	__aeabi_drsub	[I] soft-float helper by structure (IEEE-754 field masks/shifts); ABI name. 22-byte prefix negates operand a then enters dadd body	decomp (I)
+0x08014c54	func	__aeabi_dsub	[I] soft-float helper by structure (IEEE-754 field masks/shifts); ABI name. 53 callers	decomp (I)
+0x08014e80	func	__aeabi_fadd	[I] soft-float helper by structure (IEEE-754 field masks/shifts); ABI name. 	decomp (I)
+0x08014f68	func	__aeabi_fdiv	[I] soft-float helper by structure (IEEE-754 field masks/shifts); ABI name. table 0x080150b0	decomp (I)
+0x080150ec	func	__aeabi_f2iz	[I] soft-float helper by structure (IEEE-754 field masks/shifts); ABI name. 	decomp (I)
+0x08015124	func	__aeabi_f2uiz	[I] soft-float helper by structure (IEEE-754 field masks/shifts); ABI name. 	decomp (I)
+0x08015164	func	__aeabi_i2f	[I] soft-float helper by structure (IEEE-754 field masks/shifts); ABI name. 	decomp (I)
+0x08015194	func	__aeabi_ui2f	[I] soft-float helper by structure (IEEE-754 field masks/shifts); ABI name. 	decomp (I)
+0x08015224	func	__aeabi_fmul	[I] soft-float helper by structure (IEEE-754 field masks/shifts); ABI name. 	decomp (I)
+0x08015326	func	ffp_special_case	[I] float counterpart of dfp_special_case	decomp (I)
+0x08015434	func	__aeabi_fsub	[I] soft-float helper by structure (IEEE-754 field masks/shifts); ABI name. 	decomp (I)
+0x08015582	func	scalbn	[I] (double, int n): add n to exponent with over/underflow handling	decomp (I)
+0x08015e5c	table	des_sbox	[V] 8 x 64 B DES S-boxes; first row of S1 = 14,4,13,1,2,15,11,8,3,10,6,12,5,9,0,7 (FIPS 46-3)	data read
+0x0801623c	table	fpga_bit_records	3-byte records [idx, fpga_reg, mask], 11 used	disasm (verified)
+0x08016260	table	fpga_cfg_table_a	boards 2/4/5; 2x256 bytes written to FPGA regs 0..0xff; page 2 [0xE9]=0x03	init_fpga_config
+0x08016460	table	fpga_cfg_table_b	boards 6/7; page 2 [0xE9]=0x80	init_fpga_config
+0x08016660	table	ad9363_script_a	2639 x 4-byte records, boards 2/4/5 (limit 0x293c); includes RFPLL words, BBPLL, filters, gain table (91 idx), cals; decode: scripts/re/m0900_ad_script.py	disasm+decode (verified)
+0x08018f9c	table	ar8003_script_b	0x10c bytes of records, boards 6/7 = Artosyn AR8003 variants ar6/ar7 (64 regs, no polls); not an AD9363 profile	disasm+decode
+0x080190a8	table	fpga_extra_writes	14 FPGA writes [05 0e reg val] (regs 0x00,0x03,0x2c,0x2f,0x30,0x31,0x33,0x34,0x35,0x3b,0x3f,0x00), run when board 4/5 and [0x200000f8]==0x01000910	disasm
+0x080190e0	table	channel_table_a	39 x 9 B: int16 N, frac24, float32 MHz; boards 2/4/5; MHz/N = 20.000 (RFPLL ref 80 MHz /4); ch00=2404 .. ch38=2480 MHz step 2; ch09 (2422) is what the base script programs	decode (table verified; float=LO MHz inferred)
+0x0801923f	table	channel_table_b	39 x 9 B; boards 6/7 (Artosyn AR8003); same MHz list 2404..2480; MHz/N 19.35-19.5 (different ref)	decode (inferred)
+0x0801a0f0	table	duml_dispatch_a	records [handler|1, id16]: 0x0904 0x0911 0x0912 0x0913 0x0914; then 0x42030009 0x43030009 0x44030009 0xda03000e 0x0e090009 (keys cmdid<<24|set<<16|0x0009)	table dump (verified)
+0x0801a160	table	duml_dispatch_set09	records [handler|1, (cmdid<<24)|(set<<16)|0x0009]: cmd 05 06 07 12 13 01(set00 & 13) ff(09&13) 07(set00,13) 08(set13)	table dump (verified)
+0x20000014	ram	uart_io	[V] type=UartIo; size=0x7b; per-port busy flags + 6 byte rings (usart1/2/3 tx,rx), see m0900-structs.h	decomp+xref (V): uart_send 0x0800b0a4, usartN_irq
+0x20000090	ram	can_state	[V] type=CanState; size=0xc; tx_idle flag + tx/rx queue counts	decomp+xref (V): can1_tx_irq, can_queue_init
+0x2000009c	ram	din_debounce	[V] type=DinDebounce; size=8; level flag + low-sample count of the din pin	decomp+xref (V): din_sample, din_edge
+0x200000a4	ram	pa1_fault_counters	type=PA1FaultCounters; PA1FaultCounters{fail_count,call_count}: fail_count>10 forces GPIOA ODR bit1 high directly; call_count gates pa1_pulse_strobe at 0x4b(75), both zeroed together	systematic pass (air-router-stm32-full-pass.md), spot-checked
+0x200000ac	ram	tim3_cb_ptr	[V] single-slot TIM3 update callback; set by tim3_cb_set, called by tim3_irq	systematic pass
+0x200000b0	ram	tim2_cb_table	[V] 4-slot TIM2 callback table (flags UIF/CC2/CC3/CC4 = 1/4/8/0x10); type=u32[4]; size=16	systematic pass
+0x200000c0	ram	exti1_cb_ptr	[V] callback for EXTI line 1; read by exti1_irq (vector 23)	systematic pass
+0x200000c4	ram	antenna_quadrant_state	type=AntennaQuadrantState; AntennaQuadrantState{applied_a,requested_a,applied_b,requested_b}; address-exact match to upstream active_quadrant_state/quadrant_state/active_quadrant_num/quadrant_num	systematic pass + upstream map cross-check, spot-checked
+0x200000cc	ram	fpga_sensor_avg_state	type=FpgaSensorAvgState; FpgaSensorAvgState{ring_index,cached_avg}; 10-sample moving average, ring at fpga_sensor_avg_ring	systematic pass
+0x200000d4	ram	gpiob4_state_cache	[V] type=u8; size=1; last value written by gpiob4_write	decomp+xref (V): gpiob4_write
+0x200000d8	ram	board_version	0 under emulation (no straps); mapping of codes to hardware revisions (e.g. P01007.06) UNKNOWN	disasm 0x0800c142
+0x200000dc	ram	tick_state	[V] type=TickState; size=8; 5/20/100 ms flags + tick counter (SysTick 1 ms)	decomp+xref (V): tick_scheduler, main
 0x200000e4	ram	assoc_table_init_flag	lazy-init flag for a 20x6-byte generic keyed table	systematic pass
-0x0800c440	func	assoc_table_lookup_or_insert	generic byte-keyed lookup-or-insert into a 20-slot table; table base/callers not traced	systematic pass
+0x200000e8	ram	status_state	[V] type=StatusState; size=0xc; status bit word, report tick, last-sent word (DUML cs0 cmd 0xf1)	decomp+xref (V): status_report_tick, status_flags_set/clear
+0x200000f4	ram	fpga_id_word0	[I] written by fpga_boot_status (FPGA id/version read via regs 0x8b-0x8e); compared with 0x010007ec by fpga_update_confirm	decomp (I)
+0x200000f8	ram	fpga_id_word1	[I] second id word; compared with 0x01000910 by init_fpga_config	decomp (I)
 0x20000104	ram	rcc_clock_cache_scalar	cached derived clock value; consumer not traced	systematic pass
-0x0800ddfa	func	rcc_clock_calc_cached	RCC_GetClocksFreq-shaped helper computing one scaled clock value into rcc_clock_cache_scalar	systematic pass
-0x2000019c	ram	flyc_detect_sampler	FlycDetectSampler{ring_index,sample_timer}; formalizes air-router-deep-dive.md's existing cmd0xda note	systematic pass
-0x08011368	func	flyc_detect_ring_read	reads next flyc_detect_ring slot, advances ring_index	systematic pass
-0x08011324	func	flyc_detect_ring_write	on sample_timer>0x46(70): samples the current DUML cmd 0xda packet into flyc_detect_ring, resets sample_timer	systematic pass
-0x20001f08	ram	flyc_detect_ring	byte[0x34] (13 x 4-byte records) ring backing flyc_detect_sampler	systematic pass
+0x20000144	ram	rf_rx_ring	[V] type=ByteRing; size=0x14; 0x1c-B payloads pushed by fpga_link_payload_descramble, drained by fpga_uart_to_fc_relay	decomp+xref (V): fpga_link_payload_descramble, fpga_uart_to_fc_relay
+0x2000015f	ram	session_key_done	[V] byte flag set by radio_session_key_init after first run	decomp (V)
+0x20000167	ram	applied_tx_atten	last applied value compared with S+0x11b by tcx_config_update1	disasm
+0x2000019c	ram	flyc_detect_sampler	type=FlycDetectSampler; FlycDetectSampler{ring_index,sample_timer}; formalizes air-router-deep-dive.md's existing cmd0xda note	systematic pass
+0x200001a4	ram	gimbal_rc_state	[V] size=0x18; +4 seq counter, +8 and +0x10 two 8-B RC payloads	decomp+xref (V): gimbal_rc_send, can413_pump
 0x200001bc	ram	duml_notify_seq_counter	shared u16 DUML seq for 5 cmdset0/cmd0x7c notification senders (0x08011682/0x080116e8/0x08011738/0x08011786/0x080117d2); which events map to which sender not traced	systematic pass
 0x200001c0	ram	route_counter_generic	plain increment-only u32 counter, incremented by FUN_080118b8; purpose not traced	systematic pass
-0x0800f510	func	fpga_dual_temp_filter_update	reads FPGA regs 0xc5/0xc6, 10-sample-averages two channels into radio_state_s+0x10d/0x10e (pad_10f region), optionally triggers a calibration lookup via FUN_08014258	systematic pass
-0x0800aa34	func	nvic_init_wrapper	3-arg NVIC_Init-style wrapper (IRQn, preempt_prio, sub_prio); call-site IRQn args match the real F103 vector table exactly (see air-router-stm32-full-pass.md §1) - the strongest confirmation this chip uses StdPeriph/SPL, not HAL/LL	systematic pass
+0x200001d0	ram	usart1_tx_dma_buf	[V] type=u8[256]; size=0x100; DMA1 ch4 source	decomp+xref (V): uart_send, usart1_tx_dma_irq
+0x200002d0	ram	usart1_rx_dma_buf	[V] type=u8[512]; size=0x200; DMA1 ch5 circular RX, IDLE-line IRQ framing	decomp+xref (V): usart1_irq
+0x200004d0	ram	usart2_tx_dma_buf	[V] type=u8[256]; size=0x100; DMA1 ch7 source (board 7)	decomp+xref (V): uart_send
+0x200005d0	ram	usart2_rx_dma_buf	[V] type=u8[512]; size=0x200; DMA1 ch6 RX (board 7)	decomp+xref (V): usart2_irq
+0x200007d0	ram	usart3_tx_dma_buf	[V] type=u8[256]; size=0x100; DMA1 ch2 source	decomp+xref (V): uart_send, usart3_tx_dma_irq
+0x200008d0	ram	usart3_rx_dma_buf	[V] type=u8[256]; size=0x100; DMA1 ch3 RX	decomp+xref (V): usart3_irq
+0x200015d0	ram	can_tables	[V] type=CanTables; size=0x68; rx[13] then tx[13] CanQueue pointers	decomp+xref (V): can_queue_init, can_rx0_handler
+0x20001638	ram	fpga_sensor_avg_ring	float[10] ring backing fpga_sensor_avg_state	systematic pass
+0x200016c4	ram	assoc_table	[V] type=AssocEntry[20]; size=0x78; keyed peer/ID table aged every 25 ticks, reported by DUML cs0 cmd 0xf9	decomp+xref (V): assoc_table_lookup_or_insert, status_report_tick
+0x2000175c	ram	link_rx_record	[V] type=u8[27]; size=0x1b; last good link frame header/fields copied by fpga_link_payload_descramble; decoded by FUN_0800e16c	decomp+xref (V): fpga_link_payload_descramble, FUN_0800e16c
+0x200019b8	ram	radio_cfg_page_s	[V] type=u8[252]; size=0xfc; radio config page (flash 0x7b00 or board default), see air-router-io-and-naming.md	decomp+xref (V): radio_cfg_page_load, FUN_0800e8b8
+0x20001ab4	ram	radio_state_S	struct base. +0x0c cfg word (below); +0x84 channel index; +0x88 channel count(?); +0x94 channel MHz float; +0x109 first-init flag; +0x119 active; +0x11a started; +0x11b TX atten index (written to AD9363 0x073/0x075); +0x128/+0x12a/+0x12c set by 0x0913	disasm
+0x20001ac0	ram	radio_cfg_word	S+0x0c: bit21 fixed-channel flag (0x08010900); bits12-17 fixed channel idx (0x08010916); bits7-11 5-bit field (0x0801092c); bits18-20 3-bit field (0x08010942); bits27-29 3-bit field (0x08010968); bit31 compared in tcx_config_update1 to select atten values	disasm (setters verified; meaning inferred)
+0x20001b00	ram	radio_session_key	[V] type=u8[24]; size=0x18; random 3DES key made at link-up (S+0x4c); bytes copied into the cs9 cmd0 push	decomp+xref (V): radio_session_key_init, radio_status_push
+0x20001b18	ram	link_xor_key	[V] type=u8[8]; size=8; 3DES(const) result = XOR key of fpga_link_payload_descramble (S+0x64)	decomp+xref (V): radio_session_key_init, fpga_link_rx_poll
+0x20001ce8	ram	relay_parser_rf	[V] type=DumlParser; size=0x10; parser for rf_rx_ring (buf 0x20001cf8, 256 B)	decomp+xref (V): fpga_uart_to_fc_relay
+0x20001cf8	ram	relay_parser_rf_buf	[V] type=u8[256]; size=0x100	decomp+xref (V): fpga_uart_to_fc_relay
+0x20001df8	ram	relay_parser_usart3	[V] type=DumlParser; size=0x10; parser for usart3 RX ring 0x2000007b (buf 0x20001e08, 256 B)	decomp+xref (V): fpga_uart_to_fc_relay
+0x20001e08	ram	relay_parser_usart3_buf	[V] type=u8[256]; size=0x100	decomp+xref (V): fpga_uart_to_fc_relay
+0x20001f08	ram	flyc_detect_ring	byte[0x34] (13 x 4-byte records) ring backing flyc_detect_sampler	systematic pass
+0x20001f30	ram	can412_tx_buf	[V] type=u8[512]; size=0x200; ring storage of the 0x412 TX queue	decomp+xref (V): can_queue_init
+0x20002130	ram	can413_rx_buf	[V] type=u8[512]; size=0x200; ring storage of the 0x413 RX queue	decomp+xref (V): can_queue_init
+0x20002330	ram	can412_tx_q	[V] type=CanQueue; size=0x1c; StdId 0x412 TX (receiver types 1,4,8,15; boards 2/4/5/6)	decomp+xref (V): route_path_a, can_enqueue_and_tx
+0x2000234c	ram	can413_rx_q	[V] type=CanQueue; size=0x1c; StdId 0x413 RX, filter bank 0	decomp+xref (V): can_rx0_handler, can413_pump
+0x20002368	ram	can413_parser	[V] type=DumlParser; size=0x10; buf can413_parser_buf (320 B)	decomp+xref (V): can413_pump
+0x20002378	ram	can413_parser_buf	[V] type=u8[320]; size=0x140	decomp+xref (V): can413_pump
+0x200024b8	ram	can414_tx_buf	[V] type=u8[64]; size=0x40; ring storage of the 0x414 TX queue	decomp+xref (V): can_aux_init
+0x200024f8	ram	can415_rx_buf	[V] type=u8[64]; size=0x40; ring storage of the 0x415 RX queue	decomp+xref (V): can_aux_init
+0x20002538	ram	can414_tx_q	[V] type=CanQueue; size=0x1c; StdId 0x414 TX (receiver type 30 only)	decomp+xref (V): can414_send
+0x20002554	ram	can415_rx_q	[V] type=CanQueue; size=0x1c; StdId 0x415 RX, filter bank 1	decomp+xref (V): can_rx0_handler, can415_pump
+0x20002570	ram	can415_parser	[V] type=DumlParser; size=0x10; buf can415_parser_buf (64 B)	decomp+xref (V): can415_pump
+0x20002580	ram	can415_parser_buf	[V] type=u8[64]; size=0x40	decomp+xref (V): can415_pump
+0x20002620	ram	usart1_parser	[V] type=DumlParser; size=0x10; buf usart1_parser_buf (320 B)	decomp+xref (V): usart1_pump
+0x20002630	ram	usart1_parser_buf	[V] type=u8[320]; size=0x140	decomp+xref (V): usart1_pump
+0x20002770	ram	rand_ring	[V] type=u32[55]; size=0xdc; lagged-Fibonacci state; index cells at 0x2000284c/0x20002850	decomp+xref (V): rand, srand
