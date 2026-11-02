@@ -29,8 +29,9 @@ auto-grant: the native `AoaShim.connect()` (`android/app/.../AoaShim.kt`) calls
 `usb.requestPermission()` and silently awaits a system `UsbPermissionActivity` dialog that
 nothing answers in a non-interactive launch. The Dart side (`AoaTransport.connect()`,
 `lib/transport/aoa_transport.dart`) sits in `LinkState.connecting` forever - no exception,
-no timeout, no log line past `[relay] connected to ...`. Fixed in `7385613`: a 60 s timeout
-on the permission wait now surfaces `LinkState.failed` (not re-tested on hardware). Confirmed via
+no timeout, no log line past `[relay] connected to ...`. Fixed in `7385613`, bound later tightened to 3 s: the permission wait
+now fails fast with `LinkState.failed`; the dialog stays up and a repeat `CONNECT` after the tap
+connects at once (not re-tested on hardware). Confirmed via
 `adb shell dumpsys window | grep mCurrentFocus` showing
 `com.android.systemui/.usb.UsbPermissionActivity` focused, and a screenshot reading
 "Allow AWTO DJI to access DJI Inspire 1?". Manually tapping OK (adb `input tap`, matching

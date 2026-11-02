@@ -77,7 +77,7 @@ Source: pasted transcript, truncated mid-sentence in an Intel WiMAX paste. Re-ch
 | Assertion in chat | Verdict | Where / result |
 |---|---|---|
 | Session work committed: #64 fix, #67 fix, Mbps UI, tooling/docs | V | `b33166e`, `8df2ddc`, `53f20b8`, `e26f633` |
-| Permission-wait timeout fix; envelope-leak "real bug, fixed" | V | `7385613` (60 s timeout; trims over-declared envelope length). The live-test doc still said "not resolved": **fixed in place** in `docs/aoa-live-test-2026-10-26.md`. |
+| Permission-wait timeout fix; envelope-leak "real bug, fixed" | V | `7385613` (permission-wait timeout, now 3 s; trims over-declared envelope length). The live-test doc still said "not resolved": **fixed in place** in `docs/aoa-live-test-2026-10-26.md`. |
 | Own earlier comment on #64 ("unresolved possible leak") | wrong | Contradicts `7385613`. Correction drafted, not yet posted. |
 | Zero-IDR evidence added to #26 | V | Comment present on #26. |
 | S9 parked in `awtoau/awto-samsung-s9#1`, kept out of this repo | V | Issue open. Build repo `awto-samsung-s9-build` has `docs/building.md` + scripts, 1 commit (`c9e472e`). |

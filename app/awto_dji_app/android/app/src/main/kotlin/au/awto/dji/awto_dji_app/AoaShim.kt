@@ -99,18 +99,18 @@ class AoaShim(private val ctx: Context, messenger: BinaryMessenger) :
                 }
             }
         }
-        // A real system dialog waiting on a human tap, not a hardware handshake -
-        // 60s is generous for someone to notice and respond, not a device timing
-        // bound. Without this, a non-interactive launch (e.g. `adb shell am start`)
-        // with nothing to answer the dialog hangs AoaTransport.connect() in
-        // LinkState.connecting forever (awto-dji, intent-driven-connect permission gap).
+        // Waits for Android's "Allow ... to access ..." dialog (USB accessory permission).
+        // Expected: with the grant present the connect completes in well under a second
+        // (docs/aoa-live-test-2026-10-26.md); 3 s is ~3x that margin, not a human-tap bound.
+        // On expiry: fail fast (LinkState.failed); the dialog stays up, the caller answers
+        // it and sends the CONNECT intent again, which then connects at once.
         timeoutRunnable = Runnable {
             if (permReceiver === rx) {
                 ctx.unregisterReceiver(rx)
                 permReceiver = null
                 result.error(
                     "permission_timeout",
-                    "USB accessory permission dialog went unanswered for 60s",
+                    "USB accessory permission not granted within 3 s; dialog still showing - answer it and send CONNECT again",
                     null,
                 )
             }
@@ -126,7 +126,7 @@ class AoaShim(private val ctx: Context, messenger: BinaryMessenger) :
         val flags = if (Build.VERSION.SDK_INT >= 31) PendingIntent.FLAG_MUTABLE else 0
         val pi = PendingIntent.getBroadcast(ctx, 0, Intent(action).setPackage(ctx.packageName), flags)
         usb.requestPermission(acc, pi)
-        main.postDelayed(timeoutRunnable, 60_000)
+        main.postDelayed(timeoutRunnable, 3_000)
     }
 
     private fun open(acc: UsbAccessory, result: MethodChannel.Result) {
