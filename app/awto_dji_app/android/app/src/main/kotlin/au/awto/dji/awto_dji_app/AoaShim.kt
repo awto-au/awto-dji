@@ -35,7 +35,8 @@ class AoaShim(private val ctx: Context, messenger: BinaryMessenger) :
     private var output: FileOutputStream? = null
     private var reader: Thread? = null
     private var permReceiver: BroadcastReceiver? = null
-    private val writer = java.util.concurrent.Executors.newSingleThreadExecutor()
+    // One writer thread per session (a write blocked on the old peer must not stall the new one).
+    private var writer: java.util.concurrent.ExecutorService? = null
     @Volatile private var generation = 0L
 
     init {
@@ -56,9 +57,10 @@ class AoaShim(private val ctx: Context, messenger: BinaryMessenger) :
             "write" -> {
                 val data = call.arguments as? ByteArray
                 val out = output
-                if (data == null || out == null) {
+                val w = writer
+                if (data == null || out == null || w == null) {
                     result.error("not_open", "accessory not open", null)
-                } else writer.execute {
+                } else w.execute {
                     // Off the main thread: a peer that stops reading blocks write() and
                     // would freeze the Dart side too. One thread keeps write order.
                     try {
@@ -135,19 +137,24 @@ class AoaShim(private val ctx: Context, messenger: BinaryMessenger) :
     }
 
     private fun open(acc: UsbAccessory, result: MethodChannel.Result) {
+        // Close the old session first: two fds on the accessory at once let the old
+        // close tear down or steal the new session's endpoints.
+        closeAccessory()
         val fd = usb.openAccessory(acc)
         if (fd == null) {
             result.error("open_failed", "openAccessory returned null", null)
             return
         }
-        closeAccessory()
         pfd = fd
         input = FileInputStream(fd.fileDescriptor)
         output = FileOutputStream(fd.fileDescriptor)
         val stream = input!!
         val readerGeneration = generation
+        writer = java.util.concurrent.Executors.newSingleThreadExecutor()
+        Log.i("AoaShim", "session gen=$readerGeneration open, reader starting")
         reader = Thread {
             val buf = ByteArray(16384)
+            Log.i("AoaShim", "reader gen=$readerGeneration running")
             try {
                 while (true) {
                     val n = stream.read(buf)
@@ -160,11 +167,13 @@ class AoaShim(private val ctx: Context, messenger: BinaryMessenger) :
             }
             main.post { if (generation == readerGeneration) sink?.endOfStream() }
         }.also { it.isDaemon = true; it.start() }
-        result.success(null)
+        result.success(readerGeneration)
     }
 
     private fun closeAccessory() {
         generation++
+        writer?.shutdownNow()
+        writer = null
         val oldReader = reader
         // input.close() first: closing the FileInputStream (not just the
         // ParcelFileDescriptor wrapper) is what reliably interrupts a thread

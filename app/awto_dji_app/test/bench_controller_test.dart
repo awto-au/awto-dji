@@ -6,6 +6,7 @@ import 'dart:typed_data';
 import 'package:awto_dji_app/bench/aoat.dart';
 import 'package:awto_dji_app/bench/bench_controller.dart';
 import 'package:awto_dji_app/bench/bench_model.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 /// Fake host: a loopback TCP server collecting app lines, able to send commands.
@@ -125,6 +126,93 @@ void main() {
     await got.future.timeout(const Duration(seconds: 3));
     c.dispose();
     await server.close();
+  });
+
+  group('accessory generations', () {
+    const aoaCh = MethodChannel('au.awto.dji/aoa');
+    const benchCh = MethodChannel('au.awto.dji/bench');
+    const evCh = EventChannel('au.awto.dji/aoa/bytes');
+    final sinks = <MockStreamHandlerEventSink>[];
+    final calls = <String>[];
+    Completer<void>? connectGate;
+    late BenchController c;
+    final messenger = TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+
+    setUp(() {
+      sinks.clear();
+      calls.clear();
+      connectGate = null;
+      messenger.setMockMethodCallHandler(benchCh, (call) async {
+        if (call.method == 'usbInfo') return {'attached': true, 'permission': true};
+        return null;
+      });
+      messenger.setMockMethodCallHandler(aoaCh, (call) async {
+        calls.add(call.method);
+        if (call.method == 'connect') {
+          await connectGate?.future;
+          return 7;
+        }
+        return null;
+      });
+      messenger.setMockStreamHandler(
+        evCh,
+        MockStreamHandler.inline(onListen: (args, sink) => sinks.add(sink)),
+      );
+      c = BenchController(tick: const Duration(milliseconds: 50), controlPort: null);
+    });
+
+    tearDown(() {
+      c.dispose();
+      messenger.setMockMethodCallHandler(aoaCh, null);
+      messenger.setMockMethodCallHandler(benchCh, null);
+      messenger.setMockStreamHandler(evCh, null);
+    });
+
+    // 20 ms steps, bound 3 s: mocks answer in ms; the longest wait is the 1 s retry backoff.
+    Future<void> until(bool Function() ok, String what) async {
+      for (var i = 0; i < 150 && !ok(); i++) {
+        await Future<void>.delayed(const Duration(milliseconds: 20));
+      }
+      expect(ok(), true, reason: what);
+    }
+
+    test('bytes_in counts per session and restarts on the next attach', () async {
+      await c.start();
+      await until(() => c.snapshot.port == PortState.connected, 'open');
+      final g1 = c.accessoryGen;
+      sinks.single.success(Uint8List.fromList([1, 2, 3, 4]));
+      await until(() => c.bytesIn == 4, 'bytes counted');
+      sinks.single.error(code: 'io', message: 'read failed EIO');
+      await until(() => c.accessoryGen > g1 && c.snapshot.port == PortState.connected && sinks.length == 2, 'reopened');
+      expect(c.bytesIn, 0);
+      sinks.last.success(Uint8List.fromList([9, 9]));
+      await until(() => c.bytesIn == 2, 'new session reads');
+    });
+
+    test('stream end during connect is not reported as an open accessory', () async {
+      connectGate = Completer<void>();
+      await c.start();
+      await until(() => sinks.length == 1, 'listening');
+      sinks.single.error(code: 'io', message: 'read failed EIO'); // old session dies while the native connect is pending
+      await until(() => calls.contains('disconnect'), 'closed');
+      connectGate!.complete();
+      connectGate = null;
+      await until(() => c.lines.any((l) => l.contains('closed during connect')), 'connect noticed the close');
+      // the retry opens a fresh session that actually delivers bytes
+      await until(() => c.snapshot.port == PortState.connected && sinks.length >= 2, 'retry opened');
+      sinks.last.success(Uint8List.fromList([5, 6, 7]));
+      await until(() => c.bytesIn == 3, 'retry session reads');
+    });
+
+    test('stale-generation error and end are ignored', () async {
+      await c.start();
+      await until(() => c.snapshot.port == PortState.connected, 'open');
+      final g = c.accessoryGen;
+      // an event handler of generation g-1 must not close generation g
+      c.debugStaleEvent(g - 1);
+      expect(c.accessoryGen, g);
+      expect(c.snapshot.port, PortState.connected);
+    });
   });
 
   group('control port', () {

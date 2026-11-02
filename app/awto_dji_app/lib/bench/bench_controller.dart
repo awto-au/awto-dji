@@ -94,6 +94,15 @@ class BenchController extends ChangeNotifier {
   IOSink? _fileSink;
 
   bool _open = false;
+
+  /// Per-attach generation: bumped by every accessory connect; stale session events are dropped.
+  int _gen = 0;
+  int _bytesIn = 0;
+
+  /// Closes in flight: no new connect starts until they finish (else the close's native disconnect kills it).
+  int _closing = 0;
+  int get accessoryGen => _gen;
+  int get bytesIn => _bytesIn;
   bool _connecting = false;
   bool _autoConnect = true;
   int _nextAttemptMs = 0;
@@ -215,7 +224,9 @@ class BenchController extends ChangeNotifier {
           ..['m'] = engine.mode.name
           ..['test'] = engine.testId
           ..['switch_us'] = sw.elapsedMicroseconds
-          ..['accessory_open'] = _open;
+          ..['accessory_open'] = _open
+          ..['accessory_gen'] = _gen
+          ..['bytes_in'] = _bytesIn;
       case ResultCmd():
         engine.emitResult();
       case GetCmd():
@@ -223,7 +234,9 @@ class BenchController extends ChangeNotifier {
         extra
           ..['state'] = snapshot.toJson()
           ..['result'] = engine.result()
-          ..['accessory_open'] = _open;
+          ..['accessory_open'] = _open
+          ..['accessory_gen'] = _gen
+          ..['bytes_in'] = _bytesIn;
       case StatsResetCmd():
         _rate.reset();
         _maxChunk = 0;
@@ -260,7 +273,7 @@ class BenchController extends ChangeNotifier {
   }
 
   void _maybeConnect() {
-    if (!_autoConnect || _open || _connecting) return;
+    if (!_autoConnect || _open || _connecting || _closing > 0) return;
     if (_usb['attached'] != true) return;
     if (_nowMs() < _nextAttemptMs) return;
     unawaited(_connectAccessory());
@@ -269,28 +282,40 @@ class BenchController extends ChangeNotifier {
   Future<void> _connectAccessory() async {
     _connecting = true;
     _mux.reset();
-    _log('I', 'connecting accessory ${AoaIdentity.manufacturer}/${AoaIdentity.model}');
+    final gen = ++_gen;
+    _bytesIn = 0;
+    _log('I', 'connecting accessory gen=$gen ${AoaIdentity.manufacturer}/${AoaIdentity.model}');
     try {
       _sub = _events.receiveBroadcastStream().listen(
-        ingest,
+        (dynamic c) {
+          if (gen == _gen) ingest(c);
+        },
         onError: (Object e) {
+          if (gen != _gen) return _log('W', 'stale gen=$gen error ignored: $e');
           _log('E', 'accessory stream error: $e');
           _error = '$e';
-          unawaited(_closeAccessory('stream error'));
+          unawaited(_closeAccessory('stream error', gen: gen));
         },
         onDone: () {
+          if (gen != _gen) return _log('W', 'stale gen=$gen end ignored');
           _log('W', 'accessory stream ended');
-          unawaited(_closeAccessory('stream ended'));
+          unawaited(_closeAccessory('stream ended', gen: gen));
         },
       );
-      await _aoa.invokeMethod<void>('connect', <String, String>{
+      final nativeGen = await _aoa.invokeMethod<int>('connect', <String, String>{
         'manufacturer': AoaIdentity.manufacturer,
         'model': AoaIdentity.model,
       });
+      if (gen != _gen) {
+        // A close ran while the connect was in flight; it already disconnected natively.
+        _log('W', 'accessory gen=$gen closed during connect; retrying');
+        _backoff();
+        return;
+      }
       _open = true;
       _error = null;
       _retryBackoff = const Duration(seconds: 1);
-      _log('I', 'accessory open');
+      _log('I', 'accessory open gen=$gen native_gen=$nativeGen');
     } on PlatformException catch (e) {
       _error = '${e.code}: ${e.message}';
       _log('E', 'connect failed: $_error');
@@ -309,32 +334,51 @@ class BenchController extends ChangeNotifier {
     }
   }
 
+  /// Test hook: deliver a stream-ended event as session [gen].
+  @visibleForTesting
+  void debugStaleEvent(int gen) {
+    if (gen != _gen) {
+      _log('W', 'stale gen=$gen end ignored');
+      return;
+    }
+    unawaited(_closeAccessory('stream ended', gen: gen));
+  }
+
   void _backoff() {
     _nextAttemptMs = _nowMs() + _retryBackoff.inMilliseconds;
     final next = _retryBackoff * 2;
     _retryBackoff = next > const Duration(seconds: 8) ? const Duration(seconds: 8) : next;
   }
 
-  Future<void> _closeAccessory(String why) async {
+  Future<void> _closeAccessory(String why, {int? gen}) async {
+    if (gen != null && gen != _gen) return;
+    _gen++;
     final was = _open;
     _open = false;
-    await _sub?.cancel();
-    _sub = null;
-    _mux.finish();
-    engine.reset();
+    _closing++;
     try {
-      await _aoa.invokeMethod<void>('disconnect');
-    } on Object {
-      // already closed / not on Android
+      final sub = _sub;
+      _sub = null;
+      await sub?.cancel();
+      _mux.finish();
+      engine.reset();
+      try {
+        await _aoa.invokeMethod<void>('disconnect');
+      } on Object {
+        // already closed / not on Android
+      }
+      if (was) _log('I', 'accessory closed ($why)');
+      if (why.contains('error') || why.contains('ended')) _backoff();
+    } finally {
+      _closing--;
     }
-    if (was) _log('I', 'accessory closed ($why)');
-    if (why.contains('error') || why.contains('ended')) _backoff();
     _refresh(force: true);
   }
 
   /// Entry for raw accessory bytes (also the test hook).
   void ingest(dynamic chunk) {
     final b = chunk as Uint8List;
+    _bytesIn += b.length;
     if (b.length > _maxChunk) _maxChunk = b.length;
     // passive + duml go through the AOA envelope mux; echo/sink/source see raw chunks
     // (an empty chunk is a zero-length packet and only the raw modes count it).
