@@ -116,3 +116,63 @@ candidate - next step below.
 3. If a newer GCC/armclang version is ever needed, the STM32CubeCLT installer
    (`st-stm32cubeclt_1.21.0_...rpm_bundle.sh`, see above) is sitting downloaded and unrun - ask before
    running it.
+
+## Fuzzy-match mode (`--mode fuzzy`, #41 pt 2 follow-up)
+
+For functions that already fail `--mode exact` (byte-diff) against every toolchain above - the
+firmware's soft-float/CMSIS code is a structurally different implementation, not just a different
+load address or opt level (see "Known-negative retest" above). Real IDA FLIRT signatures only
+wildcard relocation-patched bytes and otherwise need an exact byte/CRC match - no help here, since
+the divergence is structural. `python-flirt` (PyPI, under `/usr/bin/python3` only - see repo-wide
+agent rules) was evaluated and not used for that reason: it would just re-run the same byte+wildcard
+comparison already proven negative, with no tolerance of its own for register-allocation/instruction-
+scheduling differences.
+
+`--mode fuzzy` instead computes a composite of three signals, same philosophy as FLIRT (pattern +
+masked variable bytes + call shape) but each one tolerant of a different kind of divergence:
+- **masked-byte identity** (40%): byte match % after zeroing branch/call-target, pc-relative-literal,
+  and movw/movt operand bytes (generic analog of relocation-masking - works on raw firmware with no
+  ELF relocation table, since both fw and ref are disassembled through the same `objdump` pass).
+- **mnemonic histogram overlap** (35%): order-insensitive opcode multiset overlap - tolerates
+  register allocation/instruction scheduling differences the existing ordered `insn_ratio`/
+  `mnemonic_ratio` (exact mode) rejects.
+- **call-fanout shape** (25%): `min(calls)/max(calls)` of `bl`/`blx` sites in fw vs ref.
+Threshold: composite >=70% AND size ratio >=50% -> `I (fuzzy match)`; below that -> `U`. Never
+upgrades to V (re-rules.md pt 7: V needs an exact byte-diff). Calibrated conservatively - a ranking
+aid for a human RE pass, not a prover.
+
+**Retest results (2026-11-02), all still U:**
+
+| Module | Firmware fn (size) | Best exact (toolchain) | Fuzzy composite (GCC / armclang) |
+|---|---|---|---|
+| m0400 | `memcpy` (36B) | U vs newlib libc.a (308B) | 29.2% / - (no compiler-rt memcpy) |
+| m0400 | `__aeabi_dadd` (352B) | U vs libgcc (630B) / LLVM (880B) | 10.8% / 26.8% |
+| m0400 | `__aeabi_dmul` (228B) | U vs libgcc (596B) / LLVM (664B) | 7.2% / 8.7% |
+| m0400 | `__aeabi_ddiv` (222B) | U vs libgcc (464B) / LLVM (896B) | 34.9% / 34.1% |
+| m0400 | `__aeabi_d2f` (74B) | U vs libgcc (158B) / LLVM (288B) | 31.2% / 33.1% |
+| m0400 | `__aeabi_llsl` (30B) | U vs libgcc (24B) / LLVM (34B) | 44.2% / 54.6% (highest found this pass) |
+| m0400 | `__aeabi_f2d` (38B) | U vs libgcc (66B) / LLVM (116B) | 32.1% / 33.5% |
+| m0900 | `__aeabi_dadd` (316B) | U vs Cortex-M3 soft libgcc (630B) - **new, first compile-diff for m0900** | 37.8% / untried (armclang) |
+| m0900 | `__aeabi_ddiv` (538B) | U vs libgcc (464B) - new | 16.6% |
+| m0900 | `__aeabi_dmul` (312B) | U vs libgcc (596B) - new | 14.6% |
+| m0900 | `__aeabi_dsub` (464B) | U vs libgcc (634B) - new | 16.0% |
+| m0900 | `__aeabi_fadd` (192B) | U vs libgcc (352B) - new | 13.2% |
+| m0900 | `__aeabi_fdiv` (306B) | U vs libgcc (310B, closest size match found) - new | 39.4% |
+| m0900 | `__aeabi_fmul` (234B) | U vs libgcc (360B) - new | 20.1% |
+| m0900 | `__aeabi_fsub` (234B) | U vs libgcc (356B) - new | 15.1% |
+
+No candidate reached the 70% floor; `__aeabi_llsl` (54.6%, armclang) is the closest and still well
+short. **Conclusion (V, by exclusion): fuzzy FLIRT-style matching against our own compiled reference
+corpus finds nothing for the soft-float/libgcc family on either m0400 or m0900** - confirms the
+exact-mode conclusion (not stock GCC/LLVM soft-float) with a tolerant method, doesn't overturn it.
+m0900's soft-float family (`__aeabi_dadd/ddiv/dmul/dsub/fadd/fdiv/fmul/fsub`, `docs/m0900-naming-
+pass.md` line 119, all `I`-shape-named) had never been compile-diffed before this pass - now has a
+real negative result on record instead of an open shape guess, same pattern m0400 reached in
+pass 2. Cross-module read (re-rules.md pt 9): both STM32 modules' soft-float is non-stock by a wide
+size margin (2-2.9x), consistent with a single hand-tuned or ARMCC-family soft-float runtime shared
+across the firmware family rather than two independent non-stock implementations - still **I**, no
+third module checked yet.
+
+Not attempted this pass (time-boxed): CMSIS-DSP radix4 family fuzzy retest (needs a
+`git worktree add` from the `zephyrproject-rtos/cmsis-dsp` mirror at commit `147cb4e3`, not set up
+yet) and m1400/m0306 (µC/OS-III kernel candidates, no FUN_* soft-float shapes found in either dump).

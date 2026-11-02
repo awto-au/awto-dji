@@ -189,3 +189,15 @@ Bus: CAN1, PA11 RX / PA12 TX, 1 Mbit/s (BRP 3, BS1 6 tq, BS2 5 tq at PCLK1 36 MH
 - Meaning of the status bits, `din` pin role, `assoc_table` keys, `link_rx_record` fields (U).
 - 86 functions remain `FUN_*` (mostly radio/FPGA tuning chain `0x0800e*`-`0x08010*` and libm tails).
 - Passive CAN capture to confirm the inventory on a real bus (U).
+
+## 8. Compile-and-diff library-match pass (#41 pt 2 follow-up, 2026-11-02)
+
+m0900's soft-float family (line 1's "identity... is I") had never been `mcu_libmatch.py`-diffed -
+only m0400 had (naming-pass.md S6). Ran `--mode exact` + `--mode fuzzy` for all 8 double/single
+soft-float ops against `arm-none-eabi-gcc` 15.2.0 Cortex-M3 soft libgcc.a (`-mcpu=cortex-m3
+-mfloat-abi=soft`, no `-mfpu`, matching this module's no-HW-FPU part). All 8 are **U** on exact
+byte-diff (firmware 1.8-2.9x smaller than stock GCC in every case: `__aeabi_dadd` 316B vs 630B,
+`__aeabi_fdiv` 306B vs 310B closest) and U on fuzzy (composite 13.2-39.4%, floor is 70%) - full
+table in `docs/toolchain-inventory.md` "Fuzzy-match mode". **Conclusion (V, by exclusion): m0900's
+soft-float is not stock GCC libgcc either**, same pattern as m0400's pass 2 - identity of the 8 rows
+stays **I** (shape/ABI-name only), armclang/LLVM not yet tried here.

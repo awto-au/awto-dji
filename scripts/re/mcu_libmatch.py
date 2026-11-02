@@ -56,6 +56,7 @@ import difflib
 import subprocess
 import sys
 import tempfile
+from collections import Counter
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -108,6 +109,104 @@ def parse_objdump_insns(text: str) -> list[str]:
         if insn and not insn.startswith(("...", ".word", ".short", ".byte")):
             out.append(insn)
     return out
+
+
+# FLIRT-style fuzzy mode (issue #41 pt 2 follow-up): for functions that fail exact byte-diff
+# (structurally different compiler, not just a different load address/opt level - e.g. m0400's
+# __aeabi_f2d, 38 B firmware vs 116 B LLVM compiler-rt). Real IDA FLIRT signatures only wildcard
+# relocation-patched bytes and otherwise require an exact byte/CRC match - useless here, since the
+# divergence is structural (different register allocation, different algorithm), not relocation
+# noise. This mode keeps FLIRT's idea (pattern + masked variable bytes + call-graph shape) but
+# replaces FLIRT's strict CRC-of-remaining-bytes with three tolerant signals: masked-byte-identity
+# ratio, order-insensitive mnemonic histogram overlap, and call-fanout shape. python-flirt (the
+# IDA .sig/.pat library, installed under /usr/bin/python3 only) was evaluated and not used: it
+# would reduce to the same byte+wildcard comparison already proven negative in
+# docs/toolchain-inventory.md, with no histogram/call-graph tolerance of its own to add.
+_ADDR_DEP_RE = __import__("re").compile(
+    r"^(bl|blx|b|b\.w|bne|beq|bgt|blt|bge|ble|bhi|bls|bcs|bcc|bmi|bpl|bvs|bvc|cbz|cbnz|"
+    r"adr|adr\.w|movw|movt)(\.n|\.w)?$"
+)
+
+
+def _is_addr_dependent(mnemonic: str, operand: str) -> bool:
+    """True if this instruction's operand bytes encode a call target, branch target, pc-relative
+    literal address, or absolute movw/movt immediate - i.e. a value that depends on load address
+    or register allocation, not on the algorithm. Masked out before any fuzzy byte comparison."""
+    if _ADDR_DEP_RE.match(mnemonic):
+        return True
+    return mnemonic.startswith("ldr") and "[pc" in operand
+
+
+_DETAIL_LINE = __import__("re").compile(r"^\s*([0-9a-f]+):\s*((?:[0-9a-f]{2,4}\s*)+)\t(\S+)\s*(.*)$")
+
+
+def disassemble_detailed(prefix: str, raw: bytes, vma: int) -> dict:
+    """Disassemble raw Thumb bytes; return masked-byte copy (address-dependent operands zeroed),
+    the mnemonic+operand instruction list, and a call-fanout count (bl/blx sites) for the
+    FLIRT-style fuzzy comparison. vma must match the byte buffer's real load address so `addr -
+    vma` gives a correct offset into `raw` (same convention as objdump_raw_thumb)."""
+    with tempfile.NamedTemporaryFile(suffix=".bin", delete=False) as f:
+        f.write(raw)
+        path = f.name
+    try:
+        cmd = [tool(prefix, "objdump"), "-D", "-b", "binary", "-m", "arm", "-Mforce-thumb",
+               f"--adjust-vma={vma:#x}", path]
+        cp = run(cmd)
+    finally:
+        Path(path).unlink(missing_ok=True)
+    masked = bytearray(raw)
+    insns: list[str] = []
+    calls = 0
+    for line in cp.stdout.splitlines():
+        m = _DETAIL_LINE.match(line)
+        if not m:
+            continue
+        addr_s, hexbytes, mnemonic, operand = m.groups()
+        if mnemonic.startswith((".word", ".short", ".byte", "...")):
+            continue
+        insns.append(f"{mnemonic} {operand}".strip())
+        if mnemonic in ("bl", "blx"):
+            calls += 1
+        if _is_addr_dependent(mnemonic, operand):
+            addr = int(addr_s, 16)
+            off = addr - vma
+            width = len(hexbytes.split()) if " " in hexbytes.strip() else len(hexbytes.strip()) // 2
+            if 0 <= off < len(masked):
+                for i in range(off, min(off + width, len(masked))):
+                    masked[i] = 0
+    return {"masked": bytes(masked), "insns": insns, "calls": calls, "len": len(raw)}
+
+
+def fuzzy_compare(fw: dict, ref: dict) -> dict:
+    """Composite FLIRT-style fuzzy score: masked-byte identity (tolerates relocation/address
+    differences), order-insensitive mnemonic histogram overlap (tolerates register-allocation/
+    instruction-scheduling differences a strict insn_ratio rejects), and call-fanout shape
+    (tolerates everything except how many things the function calls)."""
+    n = min(fw["len"], ref["len"])
+    masked_pct = 100.0 * sum(1 for i in range(n) if fw["masked"][i] == ref["masked"][i]) / n if n else 0.0
+    fw_mn, ref_mn = Counter(mnemonics(fw["insns"])), Counter(mnemonics(ref["insns"]))
+    overlap = sum((fw_mn & ref_mn).values())
+    denom = max(sum(fw_mn.values()), sum(ref_mn.values()), 1)
+    histogram_pct = 100.0 * overlap / denom
+    hi, lo = max(fw["calls"], ref["calls"]), min(fw["calls"], ref["calls"])
+    call_shape_pct = 100.0 if hi == 0 else 100.0 * lo / hi
+    size_ratio = min(fw["len"], ref["len"]) / max(fw["len"], ref["len"], 1)
+    composite = 0.40 * masked_pct + 0.35 * histogram_pct + 0.25 * call_shape_pct
+    return {
+        "masked_byte_pct": masked_pct, "histogram_pct": histogram_pct,
+        "call_shape_pct": call_shape_pct, "size_ratio_pct": 100.0 * size_ratio,
+        "composite_pct": composite, "fw_calls": fw["calls"], "ref_calls": ref["calls"],
+        "fw_len": fw["len"], "ref_len": ref["len"],
+    }
+
+
+def fuzzy_verdict(res: dict) -> str:
+    # Threshold calibrated conservatively: this is a ranking aid for a human RE pass, not a prover.
+    # Composite >=70% AND size within 2x each way is the floor for "worth a human look" - below
+    # that, the shape itself carries no signal (confirmed by this mode's own negative runs).
+    if res["composite_pct"] >= 70.0 and res["size_ratio_pct"] >= 50.0:
+        return f"I (fuzzy match, composite={res['composite_pct']:.1f}%) - inferred only, re-rules.md pt 7/10: V needs an exact byte-diff"
+    return f"U (no fuzzy match, composite={res['composite_pct']:.1f}%)"
 
 
 def extract_from_archive(prefix: str, archive: Path, member: str, symbol: str) -> tuple[bytes, int]:
@@ -271,6 +370,12 @@ def main() -> int:
                                             "st-arm-clang/<ver>/bin/starm-clang")
     ap.add_argument("--clang-target", default="arm-none-eabi",
                      help="--target= value for --toolchain armclang (default arm-none-eabi)")
+    ap.add_argument("--mode", choices=["exact", "fuzzy"], default="exact",
+                     help="exact (default, unchanged): byte-diff + ordered insn/mnemonic ratio, V only on an "
+                          "exact or instruction-identical match. fuzzy: additionally compute the FLIRT-style "
+                          "composite score (masked-byte identity + mnemonic histogram + call-fanout shape) for "
+                          "candidates that already failed exact - never upgrades a result past I. Use after "
+                          "--mode exact has returned U for every toolchain in docs/toolchain-inventory.md.")
     args = ap.parse_args()
     if args.toolchain == "armclang" and not args.armclang_bin:
         raise SystemExit("--toolchain armclang requires --armclang-bin <path to clang binary>")
@@ -282,9 +387,10 @@ def main() -> int:
 
     fw = read_fw_bytes(args.image, args.base, args.addr, args.size)
     fw_insns = objdump_raw_thumb(args.toolchain_prefix, fw, args.addr)
+    fw_detail = disassemble_detailed(args.toolchain_prefix, fw, args.addr) if args.mode == "fuzzy" else None
 
     tag = f"[{args.module}] " if args.module else ""
-    log(f"{tag}addr=0x{args.addr:x} size={args.size} symbol={args.ref_symbol!r}")
+    log(f"{tag}mode={args.mode} addr=0x{args.addr:x} size={args.size} symbol={args.ref_symbol!r}")
 
     results = []
     if args.ref_archive:
@@ -292,6 +398,9 @@ def main() -> int:
         ref_insns = objdump_raw_thumb(args.toolchain_prefix, ref, 0)
         res = compare(fw, ref, fw_insns, ref_insns)
         res["candidate"] = f"{args.ref_archive}:{args.ref_member}:{args.ref_symbol}"
+        if args.mode == "fuzzy":
+            ref_detail = disassemble_detailed(args.toolchain_prefix, ref, 0)
+            res["fuzzy"] = fuzzy_compare(fw_detail, ref_detail)
         results.append(res)
     else:
         for opt in args.opt_levels.split(","):
@@ -311,6 +420,9 @@ def main() -> int:
             ref_insns = objdump_raw_thumb(args.toolchain_prefix, ref, 0)
             res = compare(fw, ref, fw_insns, ref_insns)
             res["candidate"] = f"[{args.toolchain}] {args.source.name}:{args.ref_symbol}@-{opt}"
+            if args.mode == "fuzzy":
+                ref_detail = disassemble_detailed(args.toolchain_prefix, ref, 0)
+                res["fuzzy"] = fuzzy_compare(fw_detail, ref_detail)
             results.append(res)
 
     for res in results:
@@ -321,9 +433,22 @@ def main() -> int:
             f"(fw {res['fw_insn_count']} insns, ref {res['ref_insn_count']} insns) -> {v}")
         print(f"{res['candidate']}: {v} (len fw={res['fw_len']} ref={res['ref_len']}, "
               f"insn_ratio={res['insn_ratio_pct']:.1f}%, mnemonic_ratio={res['mnemonic_ratio_pct']:.1f}%)")
+        if args.mode == "fuzzy":
+            fz = res["fuzzy"]
+            fv = fuzzy_verdict(fz)
+            log(f"{tag}{res['candidate']} [fuzzy]: masked_byte={fz['masked_byte_pct']:.1f}% "
+                f"histogram={fz['histogram_pct']:.1f}% call_shape={fz['call_shape_pct']:.1f}% "
+                f"(fw_calls={fz['fw_calls']} ref_calls={fz['ref_calls']}) "
+                f"composite={fz['composite_pct']:.1f}% -> {fv}")
+            print(f"  [fuzzy] {fv} (masked_byte={fz['masked_byte_pct']:.1f}%, "
+                  f"histogram={fz['histogram_pct']:.1f}%, call_shape={fz['call_shape_pct']:.1f}%, "
+                  f"composite={fz['composite_pct']:.1f}%)")
 
     best = max(results, key=lambda r: r["insn_ratio_pct"])
-    log(f"{tag}best: {best['candidate']} -> {verdict(best)}")
+    log(f"{tag}best (exact ranking): {best['candidate']} -> {verdict(best)}")
+    if args.mode == "fuzzy":
+        best_fz = max(results, key=lambda r: r["fuzzy"]["composite_pct"])
+        log(f"{tag}best (fuzzy ranking): {best_fz['candidate']} -> {fuzzy_verdict(best_fz['fuzzy'])}")
     return 0
 
 

@@ -270,24 +270,24 @@ addr	kind	name	note	source
 0x08013110	func	atan	[I] fdlibm 5-range structure (id -1..3 with scalbn/ddiv); 478 B	decomp (I)
 0x080134b4	func	cos	[I] rem_pio2 then n&3 selects kernel_cos/kernel_sin(+-)	decomp (I)
 0x080140f8	func	sin	[I] rem_pio2 then n&3 selects kernel_sin/kernel_cos(+-)	decomp (I)
-0x08014258	func	__aeabi_dadd	[I] soft-float helper by structure (IEEE-754 field masks/shifts); ABI name. 57 callers	decomp (I)
-0x080143d0	func	__aeabi_ddiv	[I] soft-float helper by structure (IEEE-754 field masks/shifts); ABI name. reciprocal table 0x08014578	decomp (I)
+0x08014258	func	__aeabi_dadd	[I] soft-float helper by structure (IEEE-754 field masks/shifts); ABI name. 57 callers; libmatch vs GCC 15.2.0 Cortex-M3 soft libgcc.a _arm_addsubdf3.o __aeabi_dadd: U, firmware's is 316B vs 630B stock; fuzzy composite=37.8% - still U (#41 pt2, first compile-diff attempt for m0900; toolchain-inventory.md "Fuzzy-match mode")	decomp+libmatch
+0x080143d0	func	__aeabi_ddiv	[I] soft-float helper by structure (IEEE-754 field masks/shifts); ABI name. reciprocal table 0x08014578; libmatch vs GCC libgcc.a _arm_muldivdf3.o __aeabi_ddiv: U, 538B vs 464B stock; fuzzy composite=16.6% (toolchain-inventory.md "Fuzzy-match mode")	decomp+libmatch
 0x08014680	func	__aeabi_d2iz	[I] soft-float helper by structure (IEEE-754 field masks/shifts); ABI name. 	decomp (I)
 0x0801473a	func	__aeabi_i2d	[I] soft-float helper by structure (IEEE-754 field masks/shifts); ABI name. 	decomp (I)
 0x08014768	func	__aeabi_ui2d	[I] soft-float helper by structure (IEEE-754 field masks/shifts); ABI name. 	decomp (I)
-0x08014808	func	__aeabi_dmul	[I] soft-float helper by structure (IEEE-754 field masks/shifts); ABI name. 94 callers	decomp (I)
+0x08014808	func	__aeabi_dmul	[I] soft-float helper by structure (IEEE-754 field masks/shifts); ABI name. 94 callers; libmatch vs GCC libgcc.a _arm_muldf3.o __aeabi_dmul: U, 312B vs 596B stock; fuzzy composite=14.6% (toolchain-inventory.md "Fuzzy-match mode")	decomp+libmatch
 0x0801495c	func	dfp_special_case	[I] NaN/Inf operand dispatch via inline table at LR (RVCT __fpl_dcheck_NaN2 shape)	decomp (I)
 0x08014a70	func	__aeabi_drsub	[I] soft-float helper by structure (IEEE-754 field masks/shifts); ABI name. 22-byte prefix negates operand a then enters dadd body	decomp (I)
-0x08014c54	func	__aeabi_dsub	[I] soft-float helper by structure (IEEE-754 field masks/shifts); ABI name. 53 callers	decomp (I)
-0x08014e80	func	__aeabi_fadd	[I] soft-float helper by structure (IEEE-754 field masks/shifts); ABI name. 	decomp (I)
-0x08014f68	func	__aeabi_fdiv	[I] soft-float helper by structure (IEEE-754 field masks/shifts); ABI name. table 0x080150b0	decomp (I)
+0x08014c54	func	__aeabi_dsub	[I] soft-float helper by structure (IEEE-754 field masks/shifts); ABI name. 53 callers; libmatch vs GCC libgcc.a _arm_addsubdf3.o __aeabi_dsub: U, 464B vs 634B stock; fuzzy composite=16.0% (toolchain-inventory.md "Fuzzy-match mode")	decomp+libmatch
+0x08014e80	func	__aeabi_fadd	[I] soft-float helper by structure (IEEE-754 field masks/shifts); ABI name. ; libmatch vs GCC libgcc.a _arm_addsubsf3.o __aeabi_fadd: U, 192B vs 352B stock; fuzzy composite=13.2% (toolchain-inventory.md "Fuzzy-match mode")	decomp+libmatch
+0x08014f68	func	__aeabi_fdiv	[I] soft-float helper by structure (IEEE-754 field masks/shifts); ABI name. table 0x080150b0; libmatch vs GCC libgcc.a _arm_muldivsf3.o __aeabi_fdiv: U, 306B vs 310B stock (close size, different code); fuzzy composite=39.4% (toolchain-inventory.md "Fuzzy-match mode")	decomp+libmatch
 0x080150ec	func	__aeabi_f2iz	[I] soft-float helper by structure (IEEE-754 field masks/shifts); ABI name. 	decomp (I)
 0x08015124	func	__aeabi_f2uiz	[I] soft-float helper by structure (IEEE-754 field masks/shifts); ABI name. 	decomp (I)
 0x08015164	func	__aeabi_i2f	[I] soft-float helper by structure (IEEE-754 field masks/shifts); ABI name. 	decomp (I)
 0x08015194	func	__aeabi_ui2f	[I] soft-float helper by structure (IEEE-754 field masks/shifts); ABI name. 	decomp (I)
-0x08015224	func	__aeabi_fmul	[I] soft-float helper by structure (IEEE-754 field masks/shifts); ABI name. 	decomp (I)
+0x08015224	func	__aeabi_fmul	[I] soft-float helper by structure (IEEE-754 field masks/shifts); ABI name. ; libmatch vs GCC libgcc.a _arm_mulsf3.o __aeabi_fmul: U, 234B vs 360B stock; fuzzy composite=20.1% (toolchain-inventory.md "Fuzzy-match mode")	decomp+libmatch
 0x08015326	func	ffp_special_case	[I] float counterpart of dfp_special_case	decomp (I)
-0x08015434	func	__aeabi_fsub	[I] soft-float helper by structure (IEEE-754 field masks/shifts); ABI name. 	decomp (I)
+0x08015434	func	__aeabi_fsub	[I] soft-float helper by structure (IEEE-754 field masks/shifts); ABI name. ; libmatch vs GCC libgcc.a _arm_addsubsf3.o __aeabi_fsub: U, 234B vs 356B stock; fuzzy composite=15.1% (toolchain-inventory.md "Fuzzy-match mode")	decomp+libmatch
 0x08015582	func	scalbn	[I] (double, int n): add n to exponent with over/underflow handling	decomp (I)
 0x08015e5c	table	des_sbox	[V] 8 x 64 B DES S-boxes; first row of S1 = 14,4,13,1,2,15,11,8,3,10,6,12,5,9,0,7 (FIPS 46-3)	data read
 0x0801623c	table	fpga_bit_records	3-byte records [idx, fpga_reg, mask], 11 used	disasm (verified)
