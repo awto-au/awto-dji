@@ -8,9 +8,18 @@ candidate source with the project's arm-none-eabi toolchain and diff the result 
 bytes at the real address. This script does that diff, generically:
 
   - --ref-archive/--ref-member/--ref-symbol : pull a symbol straight out of a prebuilt .a (libgcc.a,
-    libm.a, libc.a) - fastest, "the exact binary the vendor likely linked" when it matches.
+    libm.a, libc.a, or ARM Compiler 6's libclang_rt.builtins.a) - fastest, "the exact binary the
+    vendor likely linked" when it matches. Toolchain-agnostic: GNU ar/readelf/objcopy (the
+    --toolchain-prefix tools) read any of these archive formats fine.
   - --source/--ref-symbol (+ --cpu/--fpu/--float-abi/--opt-levels/--define/--include) : compile a
-    candidate .c with arm-none-eabi-gcc at several -O levels and diff each.
+    candidate .c at several -O levels and diff each. Backend picked by --toolchain:
+      gcc (default)    : arm-none-eabi-gcc flag syntax (-mcpu=/-mfpu=/-mfloat-abi=).
+      armclang         : ARM Compiler 6 / clang flag syntax (--target=/-mcpu=/-mfpu=/-mfloat-abi=),
+                          needs --armclang-bin (e.g. ST's repackaged armclang, "starm-clang") and
+                          optionally --clang-target (default arm-none-eabi). Disassembly/extraction
+                          of the clang-produced .o still goes through the GNU --toolchain-prefix
+                          tools (readelf/objcopy/objdump) - verified compatible, see
+                          docs/toolchain-inventory.md.
 
 Always logs to ./tmp/logs/mcu_libmatch.log. Never executes the firmware or the compiled reference -
 static byte/instruction comparison only.
@@ -21,12 +30,20 @@ Usage (prebuilt archive, e.g. newlib sqrtf against m0400 Cortex-M4F):
     --ref-archive /usr/arm-none-eabi/lib/thumb/v7e-m+fp/hard/libm.a \\
     --ref-member libm_a-wf_sqrt.o --ref-symbol sqrtf
 
-Usage (compile CMSIS-DSP source, Cortex-M4F):
+Usage (compile CMSIS-DSP source, Cortex-M4F, GCC backend):
   python3 scripts/re/mcu_libmatch.py --image firmware/unpacked/P3X_FW_V01.11.0020_m0400.bin \\
     --base 0x08008000 --addr 0x08008360 --size 836 \\
     --source /path/to/cmsis-dsp/Source/TransformFunctions/arm_cfft_radix4_f32.c \\
     --ref-symbol arm_radix4_butterfly_f32 \\
     --include /path/to/cmsis-dsp/Include --include /path/to/CMSIS/Include \\
+    --cpu cortex-m4 --fpu fpv4-sp-d16 --float-abi hard --define ARM_MATH_CM4 --define __FPU_PRESENT=1
+
+Usage (same, armclang backend - see docs/toolchain-inventory.md for the --armclang-bin path):
+  python3 scripts/re/mcu_libmatch.py --image firmware/unpacked/P3X_FW_V01.11.0020_m0400.bin \\
+    --base 0x08008000 --addr 0x08008360 --size 836 \\
+    --source /path/to/cmsis-dsp/.../arm_cfft_radix4_f32.c --ref-symbol arm_radix4_butterfly_f32 \\
+    --include /path/to/cmsis-dsp/Include --include /path/to/CMSIS/Include \\
+    --toolchain armclang --armclang-bin ~/.local/share/stm32cube/bundles/st-arm-clang/21.1.1+st.7/bin/starm-clang \\
     --cpu cortex-m4 --fpu fpv4-sp-d16 --float-abi hard --define ARM_MATH_CM4 --define __FPU_PRESENT=1
 
 For a no-HW-FPU module (m0900/m1400, Cortex-M3): --cpu cortex-m3 --fpu none --float-abi soft (or omit
@@ -143,6 +160,7 @@ def extract_symbol_bytes(prefix: str, obj: Path, symbol: str) -> tuple[bytes, in
 
 def compile_source(prefix: str, source: Path, opt: str, cpu: str, fpu: str | None, float_abi: str,
                     defines: list[str], includes: list[str], extra: list[str]) -> Path:
+    """gcc-style flag dialect: -mcpu=/-mfpu=/-mfloat-abi=, triple implied by the prefixed binary name."""
     out = Path(tempfile.mkstemp(suffix=f"_{opt}.o")[1])
     cmd = [tool(prefix, "gcc"), f"-mcpu={cpu}", "-mthumb", f"-mfloat-abi={float_abi}"]
     if fpu and fpu != "none":
@@ -157,6 +175,33 @@ def compile_source(prefix: str, source: Path, opt: str, cpu: str, fpu: str | Non
     if cp.returncode != 0:
         out.unlink(missing_ok=True)
         raise SystemExit(f"compile failed ({' '.join(cmd)}):\n{cp.stderr}")
+    return out
+
+
+def compile_source_armclang(clang_bin: str, target: str, source: Path, opt: str, cpu: str,
+                             fpu: str | None, float_abi: str, defines: list[str], includes: list[str],
+                             extra: list[str]) -> Path:
+    """armclang/clang-style flag dialect: --target=/-mcpu=/-mfpu=/-mfloat-abi=.
+
+    `-Wno-missing-multilib` silences the "no multilib found" warning: we only compile (-c), never
+    link, so the clang-runtimes multilib variant doesn't matter here - confirmed on ST's armclang
+    21.1.1 repackaging (docs/toolchain-inventory.md).
+    """
+    out = Path(tempfile.mkstemp(suffix=f"_{opt}.o")[1])
+    cmd = [clang_bin, f"--target={target}", f"-mcpu={cpu}", f"-mfloat-abi={float_abi}",
+           "-Wno-missing-multilib"]
+    if fpu and fpu != "none":
+        cmd.append(f"-mfpu={fpu}")
+    cmd += [f"-{opt}", "-c", str(source), "-o", str(out)]
+    for d in defines:
+        cmd.append(f"-D{d}")
+    for i in includes:
+        cmd += ["-I", i]
+    cmd += extra
+    cp = run(cmd)
+    if cp.returncode != 0:
+        out.unlink(missing_ok=True)
+        raise SystemExit(f"armclang compile failed ({' '.join(cmd)}):\n{cp.stderr}")
     return out
 
 
@@ -216,8 +261,19 @@ def main() -> int:
     ap.add_argument("--opt-levels", default="O0,O1,O2,O3,Os")
     ap.add_argument("--define", action="append", default=[], dest="defines")
     ap.add_argument("--include", action="append", default=[], dest="includes")
-    ap.add_argument("--cc-arg", action="append", default=[], dest="extra", help="extra arm-none-eabi-gcc argument")
+    ap.add_argument("--cc-arg", action="append", default=[], dest="extra", help="extra compiler argument")
+    ap.add_argument("--toolchain", choices=["gcc", "armclang"], default="gcc",
+                     help="compile-path backend flag dialect (--source only; --ref-archive is toolchain-"
+                          "agnostic). gcc = arm-none-eabi-gcc syntax (default). armclang = ARM Compiler 6"
+                          "/clang syntax, needs --armclang-bin. See docs/toolchain-inventory.md (#41 pt 10).")
+    ap.add_argument("--armclang-bin", help="path to the armclang/clang binary (--toolchain armclang only), "
+                                            "e.g. ST's repackaged ~/.local/share/stm32cube/bundles/"
+                                            "st-arm-clang/<ver>/bin/starm-clang")
+    ap.add_argument("--clang-target", default="arm-none-eabi",
+                     help="--target= value for --toolchain armclang (default arm-none-eabi)")
     args = ap.parse_args()
+    if args.toolchain == "armclang" and not args.armclang_bin:
+        raise SystemExit("--toolchain armclang requires --armclang-bin <path to clang binary>")
 
     if not args.ref_symbol:
         raise SystemExit("--ref-symbol is required")
@@ -239,15 +295,22 @@ def main() -> int:
         results.append(res)
     else:
         for opt in args.opt_levels.split(","):
-            obj = compile_source(args.toolchain_prefix, args.source, opt, args.cpu, args.fpu, args.float_abi,
-                                  args.defines, args.includes, args.extra)
+            if args.toolchain == "armclang":
+                obj = compile_source_armclang(args.armclang_bin, args.clang_target, args.source, opt,
+                                               args.cpu, args.fpu, args.float_abi, args.defines,
+                                               args.includes, args.extra)
+            else:
+                obj = compile_source(args.toolchain_prefix, args.source, opt, args.cpu, args.fpu,
+                                      args.float_abi, args.defines, args.includes, args.extra)
             try:
+                # readelf/objcopy/objdump stay on --toolchain-prefix (GNU binutils): confirmed
+                # compatible with armclang-produced ELF objects, docs/toolchain-inventory.md.
                 ref, sz = extract_symbol_bytes(args.toolchain_prefix, obj, args.ref_symbol)
             finally:
                 obj.unlink(missing_ok=True)
             ref_insns = objdump_raw_thumb(args.toolchain_prefix, ref, 0)
             res = compare(fw, ref, fw_insns, ref_insns)
-            res["candidate"] = f"{args.source.name}:{args.ref_symbol}@-{opt}"
+            res["candidate"] = f"[{args.toolchain}] {args.source.name}:{args.ref_symbol}@-{opt}"
             results.append(res)
 
     for res in results:

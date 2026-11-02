@@ -58,6 +58,7 @@ of fact-changes (docs state current facts only).
 
 - `prior-art.md` — positioning vs existing DJI RE (o-gs/dji-firmware-tools): what we reuse (extraction, decryption, the param-table/defaults dump = `dji_flyc_param_ed.py`), what's new here (SPL ID, I/O pin map, control-authority, sim/RC-loss, Linux→FC, FPGA), and that upstream already ships an `m0306` symbol map worth cross-checking (GPL-3.0, compatible).
 - `re-rules.md` — firmware RE rules as applied here (subsystem prefixes, confidence tags, no single-path assumption, scope); canonical copy in awto-dan `embedded-rules.md`.
+- [toolchain-inventory.md](toolchain-inventory.md) — every ARM/MCU compiler toolchain actually installed and confirmed-runnable on this machine (GCC x2, ST armclang, arm-linux-gnu-gcc; no ARM Compiler 5, no IAR, no Keil found), for `mcu_libmatch.py` library-match passes (#41, re-rules.md point 10).
 - `stm32-reversing-process.md` — the repeatable STM32 checklist (Ghidra, SVD, SPL/HAL/LL ID, string-anchored naming, param tables) distilled from reversing m0306.
 - `lpc-reversing-process.md` — the NXP/LPC parallel (m1400): what's the same (xV4, string-anchoring, V/I/U), what's different (no DJI AES wrapper, LPCOpen/IAP not SPL, legacy-SPI0 gotcha, no Ghidra project built yet), and the open SVD/tooling gaps.
 
