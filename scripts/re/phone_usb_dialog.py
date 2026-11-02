@@ -68,9 +68,10 @@ class NeverIdle(Exception):
 def dump(serial):
     local = os.path.join("tmp", f"usb_dialog_{serial}.xml")
     os.makedirs(os.path.dirname(local), exist_ok=True)
-    out = _adb(serial, "shell", "uiautomator", "dump", REMOTE)
-    if "could not get idle state" in out:
-        raise NeverIdle(out.strip())
+    r = subprocess.run(["adb", "-s", serial, "shell", "uiautomator", "dump", REMOTE],
+                       capture_output=True, text=True, timeout=ADB_TIMEOUT_S)
+    if "could not get idle state" in r.stdout + r.stderr:
+        raise NeverIdle((r.stdout + r.stderr).strip())
     _adb(serial, "pull", REMOTE, local)
     with open(local, encoding="utf-8") as f:
         return f.read()
