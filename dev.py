@@ -874,6 +874,142 @@ def cmd_grant(extra: list[str]) -> int:
     return rc
 
 
+# ---- suite / up / rc --------------------------------------------------------
+SUITE_NAMES = ["size_sweep", "zero_length", "throughput", "limits", "fuzz", "soak", "all"]
+# Suites print only when a case ends, so a stall rule would fire on a healthy run; each wait
+# inside bench_host is already bounded. 1800 s covers limits/throughput (not timed: backstop).
+SUITE_OVERALL_S = 1800
+
+
+def suite_argv(names: list[str], port: int, passthrough: list[str]) -> list[str]:
+    argv = bench_host_argv("--listen", str(port))
+    for n in names:
+        argv += ["--suite", n]
+    return argv + passthrough
+
+
+def suite_overall_s(passthrough: list[str]) -> float:
+    if "--soak-minutes" in passthrough:
+        i = passthrough.index("--soak-minutes")
+        try:
+            return SUITE_OVERALL_S + float(passthrough[i + 1]) * 60
+        except (IndexError, ValueError):
+            pass
+    return SUITE_OVERALL_S
+
+
+@command("run bench_host suites against the connected app (app must be started with `connect`; "
+         "stop any `listen` first, the suite owns the port)",
+         args="NAME [NAME...] [--port 9910] [--fuzz-seed N --fuzz-steps N --soak-minutes N ...]")
+@_guarded
+def cmd_suite(extra: list[str]) -> int:
+    ap = _parser("suite", "run bench suites")
+    ap.add_argument("names", nargs="+", choices=SUITE_NAMES)
+    ap.add_argument("--port", type=int, default=DEFAULT_PORT)
+    # declared (not left to parse_known_args) so their values are not read as suite names
+    for opt in ("--fuzz-seed", "--fuzz-steps", "--soak-minutes", "--connect-timeout"):
+        ap.add_argument(opt, dest=opt[2:].replace("-", "_"))
+    a, rest = _parse(ap, extra, known_only=True)
+    for opt in ("--fuzz-seed", "--fuzz-steps", "--soak-minutes", "--connect-timeout"):
+        v = getattr(a, opt[2:].replace("-", "_"))
+        if v is not None:
+            rest += [opt, v]
+    try:
+        refuse_if_busy(a.port)
+    except PhoneError as e:
+        log(str(e), "ERROR")
+        return 1
+    return _exec(suite_argv(a.names, a.port, rest), why="bench suites", echo=True,
+                 overall_s=suite_overall_s(rest), tee=LOGS / "suite.log").rc
+
+
+def rc_argv(mode: str, file: str | None, serial: str | None, passthrough: list[str]) -> list[str]:
+    argv = [sys.executable, "-I", "scripts/re/t600_rc_emulator.py", mode]
+    if file:
+        argv.append(file)
+    if serial:
+        argv += ["--adb-serial", serial]
+    return argv + passthrough
+
+
+@command("play the RC toward the phone (t600_rc_emulator.py): handshake | listen | replay FILE",
+         args="[--serial S] [handshake|listen|replay FILE] [--vid H --pid H --seconds N --accept-dialog]")
+@_guarded
+def cmd_rc(extra: list[str]) -> int:
+    ap = _parser("rc", "RC emulator front")
+    ap.add_argument("--serial")
+    ap.add_argument("mode", nargs="?", default="handshake", choices=["handshake", "listen", "replay"])
+    ap.add_argument("file", nargs="?")
+    for opt in ("--vid", "--pid", "--seconds"):
+        ap.add_argument(opt)
+    ap.add_argument("--accept-dialog", action="store_true")
+    a, rest = _parse(ap, extra, known_only=True)
+    for opt in ("--vid", "--pid", "--seconds"):
+        if getattr(a, opt[2:]) is not None:
+            rest += [opt, getattr(a, opt[2:])]
+    if a.accept_dialog:
+        rest.append("--accept-dialog")
+    serial = a.serial or os.environ.get("AWTO_PHONE")    # optional for the emulator: no scan
+    seconds = 10.0
+    if "--seconds" in rest:
+        try:
+            seconds = float(rest[rest.index("--seconds") + 1])
+        except (IndexError, ValueError):
+            pass
+    # handshake re-enumerates within 5 s; listen runs --seconds; replay length is unknown.
+    overall = 600 if a.mode == "replay" else seconds * 1.25 + 30
+    return _exec(rc_argv(a.mode, a.file, serial, rest), why=f"rc {a.mode}", echo=True,
+                 overall_s=overall, tee=LOGS / "rc.log").rc
+
+
+@command("whole bench bring-up: phone -> load --bench -> listener (background) -> connect -> "
+         "listener attached in the foreground",
+         args="[--serial S] [--connect IP:PORT] [--no-build] [--host H] [--port 9910]")
+@_guarded
+def cmd_up(extra: list[str]) -> int:
+    ap = _parser("up", "one-command bench bring-up")
+    ap.add_argument("--serial")
+    ap.add_argument("--connect", metavar="IP:PORT")
+    ap.add_argument("--no-build", action="store_true")
+    ap.add_argument("--host", "--hosts", dest="host")
+    ap.add_argument("--port", type=int, default=DEFAULT_PORT)
+    a, _ = _parse(ap, extra)
+    try:
+        _need_tool("adb", *(["flutter"] if not a.no_build else []))
+        serial = resolve_serial(a.serial, a.connect)
+        log(f"phone: {serial}")
+        load(serial, ["bench"], build=not a.no_build)
+        refuse_if_busy(a.port)
+    except PhoneError as e:
+        log(str(e), "ERROR")
+        return 1
+    listener = _spawn(bench_host_argv("--listen", str(a.port), "--tail"), why="background listener")
+    try:
+        # the listener binds within ms (bench_host.start() allows 5 s); connect_app checks it is up
+        deadline = time.monotonic() + 5
+        gate = threading.Event()
+        while not port_in_use(a.port) and listener.poll() is None and time.monotonic() < deadline:
+            gate.wait(0.1)
+        if listener.poll() is not None or not port_in_use(a.port):
+            log("listener did not come up within 5 s (bench_host binds in ms)", "ERROR")
+            return 1
+        connect_app(serial, PKG_BENCH, a.host, a.port)
+        log("attached: listener in the foreground, ^C to stop")
+        return listener.wait()          # unbounded by design: interactive until ^C
+    except PhoneError as e:
+        log(str(e), "ERROR")
+        return 1
+    except KeyboardInterrupt:
+        return 0
+    finally:
+        if listener.poll() is None:
+            listener.terminate()
+            try:
+                listener.wait(5)        # bench_host.stop() closes sockets in ms
+            except subprocess.TimeoutExpired:
+                listener.kill()
+
+
 def usage() -> int:
     print(__doc__.split("Scaffold usage:")[0].rstrip())
     print(f"\nUsage: ./dev.py <command> [args]\n")

@@ -352,3 +352,98 @@ def test_grant_calls_accept_with_resolved_serial(fake, monkeypatch):
     monkeypatch.chdir(REPO)
     assert dev.cmd_grant([]) == 0
     assert got == ["192.168.25.50:37123"]
+
+
+# ---- suite / rc / up -----------------------------------------------------------------------------
+
+def test_suite_argv_passthrough_and_values_not_read_as_names(fake):
+    p = free_port()
+    assert dev.cmd_suite(["fuzz", "size_sweep", "--fuzz-seed", "7", "--port", str(p),
+                          "--soak-minutes", "2"]) == 0
+    assert fake.calls == [[sys.executable, "-I", "scripts/re/bench_host.py", "--listen", str(p),
+                           "--suite", "fuzz", "--suite", "size_sweep",
+                           "--fuzz-seed", "7", "--soak-minutes", "2"]]
+
+
+def test_suite_refuses_busy_port(fake, busy_port):
+    assert dev.cmd_suite(["soak", "--port", str(busy_port)]) == 1
+    assert not any("bench_host.py" in " ".join(c) for c in fake.calls)
+
+
+def test_suite_rejects_unknown_name(fake):
+    assert dev.cmd_suite(["bogus"]) == 2
+
+
+def test_suite_overall_grows_with_soak():
+    assert dev.suite_overall_s(["--soak-minutes", "10"]) == dev.SUITE_OVERALL_S + 600
+
+
+def test_rc_front(fake, monkeypatch):
+    monkeypatch.setenv("AWTO_PHONE", "SER1")
+    assert dev.cmd_rc(["replay", "cap.json", "--vid", "18d1", "--pid", "4ee1"]) == 0
+    assert fake.calls == [[sys.executable, "-I", "scripts/re/t600_rc_emulator.py", "replay",
+                           "cap.json", "--adb-serial", "SER1", "--vid", "18d1", "--pid", "4ee1"]]
+
+
+def test_rc_defaults_to_handshake_without_adb_serial(fake):
+    assert dev.cmd_rc(["--vid", "1", "--pid", "2", "--accept-dialog"]) == 0
+    assert fake.calls[0][3] == "handshake"
+    assert "--adb-serial" not in fake.calls[0] and "--accept-dialog" in fake.calls[0]
+
+
+class FakeProc:
+    def __init__(self):
+        self.terminated = False
+
+    def poll(self):
+        return 0 if self.terminated else None
+
+    def wait(self, t=None):
+        return 0
+
+    def terminate(self):
+        self.terminated = True
+
+    def kill(self):
+        self.terminated = True
+
+
+def test_up_order_phone_load_listen_connect(conn, monkeypatch, apkenv):
+    spawned = []
+    proc = FakeProc()
+    monkeypatch.setattr(dev, "_spawn", lambda argv, why: (spawned.append(argv), proc)[1])
+    monkeypatch.setattr(dev, "port_in_use", lambda p: bool(spawned))   # free until spawned
+    log_ = dev.BENCH_HOST_LOG
+    log_.parent.mkdir(parents=True, exist_ok=True)
+    conn.hooks.append(("am start", lambda argv: log_.write_text("t STATE port=idle\n")))
+    assert dev.cmd_up(["--port", "9911"]) == 0
+    j = conn.joined()
+    i_devices = next(i for i, x in enumerate(j) if "devices -l" in x)
+    i_build = next(i for i, x in enumerate(j) if x.startswith("flutter build"))
+    i_install = next(i for i, x in enumerate(j) if " install -r " in x)
+    i_start = next(i for i, x in enumerate(j) if " am start " in x)
+    assert i_devices < i_build < i_install < i_start
+    assert spawned == [[sys.executable, "-I", "scripts/re/bench_host.py", "--listen", "9911", "--tail"]]
+    assert proc.terminated      # listener is cleaned up on exit
+
+
+def test_up_no_build_skips_flutter(conn, monkeypatch, apkenv):
+    dev.APK_DIR.mkdir(exist_ok=True)
+    dev.apk_copy("bench").write_bytes(b"x")
+    monkeypatch.setattr(dev, "_spawn", lambda argv, why: FakeProc())
+    monkeypatch.setattr(dev, "port_in_use", lambda p: False)
+    assert dev.cmd_up(["--no-build", "--port", "9911"]) == 1       # listener never "binds"
+    assert not any(c[0] == "flutter" for c in conn.calls)
+
+
+def test_up_stops_when_port_busy_before_building_listener(conn, busy_port, apkenv, monkeypatch):
+    spawned = []
+    monkeypatch.setattr(dev, "_spawn", lambda argv, why: spawned.append(argv))
+    assert dev.cmd_up(["--no-build", "--port", str(busy_port)]) == 1
+    assert spawned == []
+
+
+def test_describe_lists_new_commands():
+    for name in ("phone-connect", "load", "unload", "listen", "connect", "grant",
+                 "suite", "up", "rc", "phone"):
+        assert name in dev.COMMANDS and dev.COMMANDS[name]["summary"]
