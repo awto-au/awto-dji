@@ -20,7 +20,7 @@ android {
         // AOA bench build: AWTO_BENCH=1 gives it its own package id and launcher label, so it
         // installs NEXT TO the DJI app and does not replace it. Classes keep the namespace above.
         if (System.getenv("AWTO_BENCH") == "1") {
-            applicationIdSuffix = ".aoabench"
+            applicationId = "au.awto.aoabench"
             manifestPlaceholders["appLabel"] = "AOA Bench"
         } else {
             manifestPlaceholders["appLabel"] = "AWTO DJI"
