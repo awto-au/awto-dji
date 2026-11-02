@@ -2,7 +2,7 @@
 """Rebuild the m1400 (LPC1765 RC MCU) Ghidra project and APPLY committed names. Issue #84 (model: m0900_ghidra_names.py).
 
 1. Gate: image reset vector (SP 0x10007f60, reset 0x23ba9) must land on a push {..,lr} at base 0xA000 + 0x19ba8.
-2. analyzeHeadless: raw binary, ARM:LE:32:Cortex, base 0xA000; post-scripts M1400Names.java (applies
+2. analyzeHeadless: raw binary, ARM:LE:32:Cortex, base 0xA000; pre-script M1400Setup.java (SRAM/AHB SRAM/peripheral blocks so RAM rows apply); post-scripts M1400Names.java (applies
    docs/symbols/c1_m1400.tsv) then DumpLPC17xx.java (SVD labels, xrefs, disassembly, decompilation).
 3. Outputs (tracked): re/ghidra-projects/m1400_radio/proj/, re/ghidra-projects/m1400_radio/m1400_dump.txt.
 Log: ./tmp/logs/m1400_ghidra_names.log. Stall guard: no headless output for 60 s -> kill, fail.
@@ -52,6 +52,7 @@ def run_ghidra() -> None:
     tmp_dump.parent.mkdir(parents=True, exist_ok=True)
     cmd = [exe, str(proj), "M1400Project", "-import", str(FW), "-processor", "ARM:LE:32:Cortex",
            "-loader", "BinaryLoader", "-loader-baseAddr", f"{BASE:#x}", "-scriptPath", str(SCRIPT_DIR),
+           "-preScript", "M1400Setup.java",
            "-postScript", "M1400Names.java", str(SYMBOLS),
            "-postScript", "DumpLPC17xx.java", str(tmp_dump), str(SVD)]
     log("running: " + " ".join(cmd))
