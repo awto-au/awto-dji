@@ -250,9 +250,9 @@ m0900's soft-float family demonstrably matches ARM Compiler 5's own compiled lib
 3. If a newer GCC/armclang version is ever needed, the STM32CubeCLT installer
    (`st-stm32cubeclt_1.21.0_...rpm_bundle.sh`, see above) is sitting downloaded and unrun - ask before
    running it.
-4. STM32 HAL/LL/SPL peripheral-driver libmatch for m0306 (not yet attempted - m0400 done, see
-   below) and the CAN_Init/ADC_Init/USART_Init negatives below (only GCC+armclang tried; armcc
-   tried only for GPIO_Init/SPI_Init so far).
+4. ~~STM32 HAL/LL/SPL peripheral-driver libmatch for m0306~~ - done (#41 pt4, 2026-11-03, "m0306 SPL
+   peripheral-driver retest" above): `gpio_init`/`can_init` V (byte-identical), `adc_common_init` I,
+   `usart_init` U (genuinely different code, not just an untried opt level).
 
 ## STM32 peripheral-driver libmatch: Keil pack contents + SPL retest (#41 pt3 addendum, 2026-11-03)
 
@@ -336,6 +336,40 @@ code, different provenance, both now better evidenced than before this pass.
 the same request but not retested - no still-unnamed FUN_* candidate list was pulled from
 `docs/m0306-naming-pass.md` this pass; given m0400's result, m0306's existing "SPL by structure"
 call is now a good bet to retest the same way (high expected payoff, cheap to try).
+
+## m0306 SPL peripheral-driver retest (#41 pt4, 2026-11-03)
+
+Followed up the note above: m0306's own already-named peripheral-init functions
+(`docs/symbols/m0306.tsv`/`m0306-names.tsv`, tagged "V by register offsets" i.e. decompiled/
+inferred, never compile-diff verified) retested against the same unmodified community SPL mirror
+(`github.com/quintin-lee/STM32F4_Stdlib`) and the same ARM Compiler 5.06u6 armcc backend that
+found m0400's byte-exact matches. Same image/base as `docs/m0306-naming-pass.md`
+(`P3X_FW_V01.11.0020_m0306.bin`, base `0x08020000`), `--cpu Cortex-M4.fp.sp --apcs=/hardfp`.
+No SPI_Init/I2C_Init/TIM_Init/DMA_Init candidates exist in m0306's naming docs to retest (checked
+`docs/symbols/m0306*.tsv` - only GPIO/CAN/USART/ADC-common init are named).
+
+m0400 matched at `-O0` only; m0306 does **not** - swept `-O0..-O3,-Ospace,-Otime` per function
+and found m0306's match point is **`-O2`/`-O3`/`-Ospace`** (identical codegen across those three),
+a different optimisation level than m0400's firmware build of the same library:
+
+| m0306 function (fw addr, size) | Best armcc match | insn/mnemonic ratio | Verdict |
+|---|---|---|---|
+| `gpio_init` (0x0806396c, 120B) | `GPIO_Init` `-O2`/`-O3`/`-Ospace` (120B) | 92.5% / 100.0% | **V (byte-identical)** |
+| `can_init` (0x0803ae02, 232B) | `CAN_Init` `-O2`/`-O3`/`-Ospace` (232B) | 79.4% / 100.0% | **V (byte-identical)** |
+| `adc_common_init` (0x080374be, 30B) | `ADC_CommonInit` `-O1` (30B, same size) | 30.8% / 92.3% | **I** (same opcode sequence, different register allocation - just under the V floor, same pattern as m0400's USART_Init/ADC_Init) |
+| `usart_init` (0x0803b5d8, 172B) | `USART_Init`, every opt level tried (164-204B) | best 13.6% / 36.4% (`-O2`) | **U** - genuinely different code, not a near-miss: disassembly shows the firmware's version has no APB1/APB2-base comparison (`CMP r4,#0x40011000`/`#0x40011400`) that this SPL mirror's `USART_Init` does, and uses a different BRR-fractional divisor computation (threshold compares against `0xbf00`/`0xbeff` immediates absent from the reference) - different algorithm, not a compiler/opt-level artifact |
+
+**Conclusion: m0306's `gpio_init` and `can_init` are V, linked unmodified ST SPL compiled with ARM
+Compiler 5.06u6 at `-O2` (or equivalent `-O3`/`-Ospace`)** - a third, independent confirmation
+(after m0400's peripheral code and m0900's soft-float family) that this firmware family used
+Keil/ARM Compiler 5, and the first real compiled-code evidence (not just naming-convention
+inference) behind the existing `docs/HISTORY.md` "SPL not HAL" call for m0306 specifically.
+`adc_common_init` stays I (consistent with m0400's ADC_Init/USART_Init landing just under the V
+floor). `usart_init` is a genuine U, not a near-miss like m0400's `USART_Init` was - the firmware's
+clock-source selection and BRR computation are structurally different from this SPL release, worth
+flagging as a real divergence (possibly a different SPL point release, or DJI customisation) rather
+than an unexplored opt level, if anyone revisits it.
+
 
 ## Fuzzy-match mode (`--mode fuzzy`, #41 pt 2 follow-up)
 
