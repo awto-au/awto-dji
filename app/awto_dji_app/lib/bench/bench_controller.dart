@@ -67,6 +67,16 @@ class BenchController extends ChangeNotifier {
   final _rate = RateWindow();
   final List<String> lines = [];
 
+  /// What the screen draws: the same lines with elapsed time `mm:ss.mmm` since the
+  /// controller started, so a line wraps less. The file and the host get the full ISO form.
+  final List<String> display = [];
+  final DateTime _t0 = DateTime.now();
+
+  static String elapsed(Duration d) {
+    String two(int v) => v.toString().padLeft(2, '0');
+    return '${two(d.inMinutes)}:${two(d.inSeconds % 60)}.${(d.inMilliseconds % 1000).toString().padLeft(3, '0')}';
+  }
+
   Timer? _timer;
   StreamSubscription<dynamic>? _sub;
   BenchHostClient? _hostClient;
@@ -435,6 +445,8 @@ class BenchController extends ChangeNotifier {
     final line = '$ts $lvl $msg';
     lines.add(line);
     if (lines.length > logRing) lines.removeRange(0, lines.length - logRing);
+    display.add('${elapsed(DateTime.now().difference(_t0))} $lvl $msg');
+    if (display.length > logRing) display.removeRange(0, display.length - logRing);
     _fileSink?.writeln(line);
     _hostClient?.send(LogMsg(ts, lvl, msg));
     debugPrint('[bench] $line');

@@ -84,8 +84,8 @@ class _BenchAppState extends State<BenchApp> {
                 child: ListView.builder(
                   controller: _scroll,
                   padding: const EdgeInsets.all(4),
-                  itemCount: _c.lines.length,
-                  itemBuilder: (_, i) => Text(_c.lines[i], style: _mono(11, _lineColor(_c.lines[i]))),
+                  itemCount: _c.display.length,
+                  itemBuilder: (_, i) => Text(_c.display[i], style: _mono(10, _lineColor(_c.display[i]))),
                 ),
               ),
             ],
