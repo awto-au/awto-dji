@@ -235,3 +235,120 @@ def test_unload_package_ids(fake):
         fake.calls.clear()
         assert dev.cmd_unload([flag]) == 0
         assert ["adb", "-s", "192.168.25.50:37123", "uninstall", pkg] in fake.calls
+
+
+# ---- listen / connect / grant -----------------------------------------------------------------
+
+import socket  # noqa: E402
+
+
+@pytest.fixture
+def busy_port():
+    s = socket.socket()
+    s.bind(("0.0.0.0", 0))
+    s.listen(1)
+    yield s.getsockname()[1]
+    s.close()
+
+
+def free_port():
+    s = socket.socket()
+    s.bind(("0.0.0.0", 0))
+    p = s.getsockname()[1]
+    s.close()
+    return p
+
+
+def test_listen_refuses_busy_port_and_shows_holder(fake, busy_port, capsys):
+    fake.replies["ss -ltnp"] = "LISTEN 0 1 0.0.0.0:%d users:((\"python3\",pid=42))\n" % busy_port
+    assert dev.cmd_listen(["--port", str(busy_port)]) == 1
+    assert fake.calls[0][:2] == ["ss", "-ltnp"]
+    assert not any("bench_host.py" in " ".join(c) for c in fake.calls)
+    assert "pid=42" in (dev.LOG.read_text())
+
+
+def test_listen_runs_bench_host_foreground_with_tail(fake):
+    p = free_port()
+    assert dev.cmd_listen(["--port", str(p)]) == 0
+    assert fake.calls == [[sys.executable, "-I", "scripts/re/bench_host.py",
+                           "--listen", str(p), "--tail"]]
+
+
+def test_route_src_from_canned_ip_route(fake):
+    fake.replies["ip -4 route get"] = IP_ROUTE
+    assert dev.route_src("192.168.25.50") == "192.168.25.114"
+    assert fake.calls[0] == ["ip", "-4", "route", "get", "192.168.25.50"]
+
+
+def test_route_src_unparseable_fails(fake):
+    fake.replies["ip -4 route get"] = "RTNETLINK answers: Network is unreachable\n"
+    with pytest.raises(dev.PhoneError):
+        dev.route_src("10.9.9.9")
+
+
+@pytest.fixture
+def conn(fake, monkeypatch, tmp_path, busy_port):
+    monkeypatch.setattr(dev, "BENCH_HOST_LOG", tmp_path / "logs" / "bench_host.log")
+    fake.replies["devices -l"] = DEVICES_ONE_WIFI
+    fake.replies["ip -4 route get"] = IP_ROUTE
+    fake.port = busy_port       # a live listener on this port
+    return fake
+
+
+def test_connect_command_construction_and_first_state(conn):
+    log_ = dev.BENCH_HOST_LOG
+    log_.parent.mkdir(parents=True, exist_ok=True)
+    log_.write_text("old STATE port=idle\n")        # before the offset: must be ignored
+    conn.hooks.append(("am start", lambda argv: log_.write_text(
+        log_.read_text() + "2026 STATE port=attached usb=det\n")))
+    assert dev.cmd_connect(["--port", str(conn.port)]) == 0
+    j = conn.joined()
+    s = "adb -s 192.168.25.50:37123 shell"
+    assert j.index(f"{s} am force-stop au.awto.aoabench") < j.index(
+        f"{s} am start -n au.awto.aoabench/au.awto.dji.awto_dji_app.MainActivity "
+        f"-a au.awto.dji.action.BENCH --es host 192.168.25.114 --ei port {conn.port}")
+
+
+def test_connect_explicit_host_skips_route(conn):
+    log_ = dev.BENCH_HOST_LOG
+    log_.parent.mkdir(parents=True, exist_ok=True)
+    conn.hooks.append(("am start", lambda argv: log_.write_text("x STATE port=idle\n")))
+    assert dev.cmd_connect(["--host", "10.1.2.3", "--port", str(conn.port), "--pkg", "dji"]) == 0
+    assert not any(c[0] == "ip" for c in conn.calls)
+    am = next(c for c in conn.calls if "start" in c)
+    assert "au.awto.dji.awto_dji_app/au.awto.dji.awto_dji_app.MainActivity" in am
+    assert am[am.index("--es") + 2] == "10.1.2.3"
+
+
+def test_connect_without_state_fails_with_logcat(conn, monkeypatch):
+    monkeypatch.setattr(dev, "CONNECT_WAIT_S", 0.3)
+    conn.replies["logcat"] = "E/AndroidRuntime: boom\n"
+    assert dev.cmd_connect(["--port", str(conn.port)]) == 1
+    assert any("logcat" in c for c in conn.calls)
+    assert "boom" in dev.LOG.read_text()
+
+
+def test_connect_without_listener_fails_before_touching_phone(conn):
+    assert dev.cmd_connect(["--port", str(free_port())]) == 1
+    assert not any("force-stop" in c for c in conn.calls)
+
+
+def test_phone_ip_from_wireless_serial_and_usb_fallback(fake):
+    assert dev.phone_ip("192.168.25.50:37123") == "192.168.25.50"
+    fake.replies["route get 1.1.1.1"] = "1.1.1.1 via 10.0.0.1 dev wlan0 src 10.0.0.77 uid 0\n"
+    assert dev.phone_ip("8A1X") == "10.0.0.77"
+
+
+def test_grant_calls_accept_with_resolved_serial(fake, monkeypatch):
+    fake.replies["devices -l"] = DEVICES_ONE_WIFI
+    got = []
+
+    class Mod:
+        @staticmethod
+        def accept(serial, log=print):
+            got.append(serial)
+            return 0
+    monkeypatch.setattr(dev, "_usb_dialog", lambda: Mod)
+    monkeypatch.chdir(REPO)
+    assert dev.cmd_grant([]) == 0
+    assert got == ["192.168.25.50:37123"]

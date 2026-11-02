@@ -711,6 +711,169 @@ def cmd_unload(extra: list[str]) -> int:
     return 0 if r.rc == 0 and "Success" in r.out else 1
 
 
+# ---- listen / connect / grant ----------------------------------------------
+def port_in_use(port: int) -> bool:
+    """True if something already listens on port (bind probe, same wildcard bench_host uses)."""
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        try:
+            s.bind(("0.0.0.0", port))
+        except OSError:
+            return True
+    return False
+
+
+def port_holder(port: int) -> str:
+    r = _exec(["ss", "-ltnp", f"sport = :{port}"], why="who holds the port",
+              stall_s=5, overall_s=10)
+    return r.out.strip() or "(ss shows no listener; may be another user's process)"
+
+
+def refuse_if_busy(port: int) -> None:
+    if port_in_use(port):
+        raise PhoneError(f"port {port} is already in use (a listener is probably running):\n"
+                         f"{port_holder(port)}\nStop it, or pick another --port.")
+
+
+def bench_host_argv(*args: str) -> list[str]:
+    return [sys.executable, "-I", BENCH_HOST_PY, *args]
+
+
+@command("run the bench host listener (scripts/re/bench_host.py) in the foreground",
+         args="[--port 9910] [--tail]")
+@_guarded
+def cmd_listen(extra: list[str]) -> int:
+    ap = _parser("listen", "foreground bench listener")
+    ap.add_argument("--port", type=int, default=DEFAULT_PORT)
+    ap.add_argument("--tail", action="store_true",
+                    help="accepted for symmetry; always on, a listener without it exits at once")
+    a, _ = _parse(ap, extra)
+    try:
+        refuse_if_busy(a.port)
+    except PhoneError as e:
+        log(str(e), "ERROR")
+        return 1
+    # unbounded by design: a listener runs until ^C; bench_host bounds its own waits
+    return _exec(bench_host_argv("--listen", str(a.port), "--tail"), why="foreground listener",
+                 echo=True).rc
+
+
+def route_src(dest_ip: str) -> str:
+    """Local IPv4 that routes to dest_ip, from `ip route get`."""
+    r = _exec(["ip", "-4", "route", "get", dest_ip], why="local address toward the phone",
+              stall_s=5, overall_s=10)
+    m = re.search(r"\bsrc\s+(\d+\.\d+\.\d+\.\d+)", r.out)
+    if r.rc != 0 or not m:
+        raise PhoneError(f"cannot derive the local address toward {dest_ip}: {r.out.strip()}; "
+                         "pass --host")
+    return m.group(1)
+
+
+def phone_ip(serial: str) -> str:
+    m = re.match(r"^(\d+\.\d+\.\d+\.\d+):\d+$", serial)
+    if m:
+        return m.group(1)
+    # USB serial: ask the phone for the source address of its default route
+    r = _adb(serial, "shell", "ip", "-4", "route", "get", "1.1.1.1", why="phone wifi address")
+    m = re.search(r"\bsrc\s+(\d+\.\d+\.\d+\.\d+)", r.out)
+    if not m:
+        raise PhoneError("cannot find the phone's wifi address; pass --host")
+    return m.group(1)
+
+
+def am_start_argv(serial: str, pkg: str, host: str, port: int) -> list[str]:
+    return ["adb", "-s", serial, "shell", "am", "start", "-n", f"{pkg}/{ACTIVITY}",
+            "-a", BENCH_ACTION, "--es", "host", host, "--ei", "port", str(port)]
+
+
+def wait_first_state(offset: int, timeout_s: float) -> str | None:
+    """First `STATE ` line bench_host appended to its log after byte offset, or None."""
+    deadline = time.monotonic() + timeout_s
+    gate = threading.Event()
+    while True:
+        try:
+            with BENCH_HOST_LOG.open("rb") as fh:
+                fh.seek(offset)
+                for ln in fh.read().decode("utf-8", "replace").splitlines():
+                    if " STATE " in ln:
+                        return ln.split(" STATE ", 1)[1]
+        except OSError:
+            pass
+        if time.monotonic() >= deadline:
+            return None
+        gate.wait(0.25)
+
+
+def connect_app(serial: str, pkg: str, host: str | None, port: int) -> str:
+    """Restart the app pointed at host:port and return the first listener state line."""
+    if not port_in_use(port):
+        raise PhoneError(f"nothing listens on port {port}; start `./dev.py listen` first")
+    host = host or route_src(phone_ip(serial))
+    log(f"host {host}:{port} -> {pkg} on {serial}")
+    BENCH_HOST_LOG.parent.mkdir(parents=True, exist_ok=True)
+    offset = BENCH_HOST_LOG.stat().st_size if BENCH_HOST_LOG.exists() else 0
+    _adb(serial, "shell", "am", "force-stop", pkg, why="force-stop (intent to a running app is a no-op)")
+    r = _exec(am_start_argv(serial, pkg, host, port), why="am start", stall_s=ADB_STALL_S,
+              overall_s=ADB_STALL_S * 2)
+    if r.rc != 0 or "Error" in r.out:
+        raise PhoneError(f"am start failed: {r.out.strip()}")
+    line = wait_first_state(offset, CONNECT_WAIT_S)
+    if line is None:
+        tail = _adb(serial, "logcat", "-d", "-t", "60", why="logcat tail").out
+        raise PhoneError(f"no state from the app within {CONNECT_WAIT_S}s "
+                         f"(expected <=8s: cold start + backoff); logcat tail:\n{tail}")
+    log(f"first state: {line}", "ALERT")
+    print(line)
+    return line
+
+
+@command("start the app pointed at this PC and confirm it reached the listener",
+         args="[--serial S] [--host H] [--port 9910] [--pkg bench|dji]")
+@_guarded
+def cmd_connect(extra: list[str]) -> int:
+    ap = _parser("connect", "point the app at the listener")
+    ap.add_argument("--serial")
+    ap.add_argument("--host", "--hosts", dest="host", help="default: local address routing to the phone")
+    ap.add_argument("--port", type=int, default=DEFAULT_PORT)
+    ap.add_argument("--pkg", choices=["bench", "dji"], default="bench")
+    a, _ = _parse(ap, extra)
+    try:
+        _need_tool("adb")
+        serial = resolve_serial(a.serial)
+        connect_app(serial, PACKAGES[a.pkg], a.host, a.port)
+    except PhoneError as e:
+        log(str(e), "ERROR")
+        return 1
+    return 0
+
+
+def _usb_dialog():
+    sys.path.insert(0, str(REPO / "scripts" / "re"))
+    import phone_usb_dialog
+    return phone_usb_dialog
+
+
+@command("answer the USB accessory permission dialog and tick 'use by default'",
+         args="[--serial S]")
+@_guarded
+def cmd_grant(extra: list[str]) -> int:
+    ap = _parser("grant", "accept the accessory dialog")
+    ap.add_argument("--serial")
+    a, _ = _parse(ap, extra)
+    try:
+        _need_tool("adb")
+        serial = resolve_serial(a.serial)
+    except PhoneError as e:
+        log(str(e), "ERROR")
+        return 1
+    log(f"phone_usb_dialog.accept({serial!r})  [adb calls bounded 15 s each by that module]")
+    os.chdir(REPO)       # accept() writes its dump under the relative tmp/
+    rc = _usb_dialog().accept(serial, log=log)
+    log(f"grant rc={rc} (0 granted, 1 no dialog, 2 controls not found)",
+        "INFO" if rc == 0 else "ERROR")
+    return rc
+
+
 def usage() -> int:
     print(__doc__.split("Scaffold usage:")[0].rstrip())
     print(f"\nUsage: ./dev.py <command> [args]\n")
