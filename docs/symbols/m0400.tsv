@@ -32,7 +32,7 @@ addr	kind	name	note	source
 0x08009238	func	ADC_CommonStructInit	[V] zero 4 fields	RM0090 regs
 0x08009244	func	ADC_GetConversionValue	[V] DR (+0x4c) & 0xffff	RM0090 regs
 0x0800924c	func	ADC_GetFlagStatus	[V] SR & flag	RM0090 regs
-0x08009260	func	ADC_Init	[V] CR1/CR2/SQR1 from struct	RM0090 regs
+0x08009260	func	ADC_Init	[V] CR1/CR2/SQR1 from struct; libmatch vs ST StdPeriph Lib (SPL) stm32f4xx_adc.c:ADC_Init, GCC O0-Os: U. vs ARM Compiler 5.06u6 -O0: fw 74B == ref 74B (same size), insn_ratio=93.8% mnemonic_ratio=100.0% -> I (same opcodes+operands, different byte encoding - just under the V floor). Fourth ARM Compiler 5 SPL match this pass (#41 pt3 addendum, 2026-11-03, docs/toolchain-inventory.md)	RM0090 regs
 0x080092b4	func	ADC_RegularChannelConfig	[V] SMPR1/2 and SQR1-3 per rank	RM0090 regs
 0x0800936c	func	ADC_SoftwareStartConv	[V] CR2 bit30 SWSTART	RM0090 regs
 0x08009376	func	ADC_StructInit	[V] default fields	RM0090 regs
@@ -61,7 +61,7 @@ addr	kind	name	note	source
 0x0800a0f8	func	CAN_DeInit	[V] APB1 reset pulse bit25 (CAN1) / bit26 (CAN2)	RM0090 regs
 0x0800a130	func	CAN_FilterInit	[V] FMR init, FA1R/FS1R/FM1R/FFA1R, FiR1/FiR2	RM0090 regs
 0x0800a238	func	CAN_ITConfig	[V] IER (+0x14) set/clear mask	RM0090 regs
-0x0800a24a	func	CAN_Init	[V] MCR INRQ wait (0xffff polls), MCR bits, BTR	RM0090 regs
+0x0800a24a	func	CAN_Init	[V] byte-exact match: libmatch vs ST StdPeriph Lib (SPL) stm32f4xx_can.c:CAN_Init, ARM Compiler 5.06u6 --cpu=Cortex-M4.fp.sp --apcs=/hardfp -O0: fw 276B == ref 276B, byte_exact=True. GCC/armclang do NOT match (insn_ratio<=2.7%). Same toolchain+opt level as GPIO_Init's exact match - second exact SPL match this pass, both unoptimized ARM Compiler 5 -O0 (#41 pt3 addendum, 2026-11-03, docs/toolchain-inventory.md)	RM0090 regs+libmatch V
 0x0800a35e	func	ringbuf_used	[V] (head - tail) & mask	decomp
 0x0800a36c	func	can_rings_init	[V] inits two ringbuf_s (ids 0x413 / 0x412, mask 0x3ff)	decomp
 0x0800a3b8	func	ringbuf_pop	[V] byte at buf[tail & mask]; tail++	decomp
@@ -93,7 +93,7 @@ addr	kind	name	note	source
 0x0800da3e	func	memcpy_words_u8count	[V] copy n u32 words, n masked to 8 bits; 9 callers	decomp
 0x0800da58	func	flash_erase_program_verify	[I] erase covered sectors then program words and read back	decomp
 0x0800dadc	func	store_be_u32x2	[V] writes two u32 big-endian into 8 bytes; 133 callers	decomp
-0x0800db18	func	GPIO_Init	[V] MODER/OTYPER/OSPEEDR/PUPDR per pin from struct {pin u32, mode,speed,otype,pupd u8}; 16 callers	RM0090 regs
+0x0800db18	func	GPIO_Init	[V] byte-exact match: libmatch vs ST StdPeriph Lib (SPL, github.com/quintin-lee/STM32F4_Stdlib mirror) stm32f4xx_gpio.c:GPIO_Init, compiled with ARM Compiler 5.06u6 (Keil MDK 5.31) --cpu=Cortex-M4.fp.sp --apcs=/hardfp -O0: fw 144B == ref 144B, byte_exact=True. 144/144 bytes identical confirmed independently (not just the tool's verdict). GCC/armclang (all opt levels) do NOT match (4.7-40.6% mnemonic_ratio) - this firmware function is ARM Compiler 5-compiled SPL source, unoptimized (-O0), not GCC/armclang (#41 pt3 addendum, 2026-11-03, docs/toolchain-inventory.md)	RM0090 regs+libmatch V
 0x0800dba8	func	GPIO_PinAFConfig	[V] AFRL/AFRH nibble (+0x20 + (pin>>3)*4)	RM0090 regs
 0x0800dbee	func	GPIO_ReadInputDataBit	[V] IDR (+0x10) & pin	RM0090 regs
 0x0800dc00	func	GPIO_ResetBits	[V] BSRRH (+0x1a) = mask	RM0090 regs
@@ -154,7 +154,7 @@ addr	kind	name	note	source
 0x080111c6	func	SPI_I2S_GetFlagStatus	[V] SR (+8) & flag	RM0090 regs
 0x080111d8	func	SPI_I2S_ReceiveData	[V] DR (+0xc) read	RM0090 regs
 0x080111de	func	SPI_I2S_SendData	[V] DR (+0xc) write	RM0090 regs
-0x080111e2	func	SPI_Init	[V] CR1 from struct, I2SCFGR.I2SMOD cleared, CRCPR	RM0090 regs
+0x080111e2	func	SPI_Init	[V] byte-exact match: libmatch vs ST StdPeriph Lib (SPL) stm32f4xx_spi.c:SPI_Init, ARM Compiler 5.06u6 --cpu=Cortex-M4.fp.sp --apcs=/hardfp -O0: fw 60B == ref 60B, byte_exact=True, insn_ratio=100.0%. Third exact SPL match this pass alongside GPIO_Init and CAN_Init, all unoptimized ARM Compiler 5 -O0 (#41 pt3 addendum, 2026-11-03, docs/toolchain-inventory.md)	RM0090 regs+libmatch V
 0x08011220	func	SetSysClock	[V] HSE on, PWR VOS, HPRE/1 PPRE2/2 PPRE1/4, PLLCFGR=0x0740540c (M12 N336 P2 Q7, HSE 12 MHz => SYSCLK 168 MHz), FLASH_ACR=0x705	decomp
 0x080114cc	func	SystemInit	[V] CMSIS SystemInit: CPACR FPU enable (0xf00000), RCC reset, SetSysClock, VTOR=0x08000000	decomp
 0x08011534	func	TIM1_TRG_COM_TIM11_IRQHandler	[V] vector 42 (IRQ26): TIM11 update -> imu_dma_kick	vector table
@@ -173,7 +173,7 @@ addr	kind	name	note	source
 0x080118a6	func	USART_GetFlagStatus	[V] SR & flag	RM0090 regs
 0x080118c0	func	USART_GetITStatus	[V] CR1/CR2/CR3 enable bit and SR flag for IT code (0x525 RXNE, 0x626 TXE)	RM0090 regs
 0x08011914	func	USART_ITConfig	[V] sets/clears enable bit in CR1/CR2/CR3	RM0090 regs
-0x08011960	func	USART_Init	[V] CR1/CR2/CR3 from struct, BRR from RCC_GetClocksFreq	RM0090 regs
+0x08011960	func	USART_Init	[V] CR1/CR2/CR3 from struct, BRR from RCC_GetClocksFreq; libmatch vs SPL stm32f4xx_usart.c:USART_Init, GCC O0-Os: U. vs ARM Compiler 5.06u6 -O0 (SAME TOOLCHAIN/OPT as GPIO_Init's exact match): fw 204B == ref 204B (same size), insn_ratio=85.9% mnemonic_ratio=100.0% -> I (same opcodes+operands, different byte encoding - just under the V floor, likely an IT-instruction-width or immediate-encoding difference, not a different algorithm). Second-strongest ARM Compiler 5 match in this pass after GPIO_Init's exact hit (#41 pt3 addendum, 2026-11-03, docs/toolchain-inventory.md)	RM0090 regs
 0x08011a8c	func	duml_crc16_check	[V] compare crc16 (init 0x3692) at frame end	decomp
 0x08011ac8	func	duml_crc8_check	[V] compare crc8 (init 0x77)	decomp
 0x08011af6	func	libm_fclassify_f64	[V] double analogue of libm_fclassify_f32	decomp

@@ -372,6 +372,29 @@ _FROMELF_INSN_LINE = __import__("re").compile(
     r"^\s*0x([0-9a-fA-F]{8}):\s+([0-9a-fA-F]+)\s+.*?\s{2,}(\S.*)$"
 )
 _FROMELF_SECTION_LINE = __import__("re").compile(r"^\*\* Section #\d+ '([^']*)'")
+# fromelf's own symbol table (`-s`), e.g.:
+#   "     17  GPIO_Init                  0x000000dd   Gb    2  Code  Hi   0x90"
+# Gives the real symbol size, needed because a multi-function source file compiles every function
+# of the .c into ONE shared section (armcc does not do -ffunction-sections by default) - without
+# the real size, scanning "until the next Section" (fine for a single-function --source file)
+# silently captures however many bytes of the NEXT function(s) happen to follow in that section
+# too. Caught on GPIO_Init (#41 pt3 addendum, 2026-11-03): capturing to end-of-section inflated
+# ref_len from the true 144 B to 384 B (GPIO_Init + the start of GPIO_StructInit etc), which
+# diluted insn_ratio/mnemonic_ratio enough to read as U even though the real 144 B were byte-
+# exact. Always anchor on the symbol table's own Size column, never section boundaries.
+_FROMELF_SYM_ROW = __import__("re").compile(
+    r"^\s*\d+\s+(\S+)\s+0x([0-9a-fA-F]+)\s+\S+\s+\S+\s+\S+\s+\S+\s+0x([0-9a-fA-F]+)\s*$"
+)
+
+
+def _fromelf_symbol_size(stdout: str, symbol: str) -> int:
+    """Look up `symbol`'s Size column in fromelf's own symbol table listing (requires -s)."""
+    for line in stdout.splitlines():
+        m = _FROMELF_SYM_ROW.match(line)
+        if m and m.group(1) == symbol:
+            return int(m.group(3), 16)
+    raise SystemExit(f"symbol {symbol!r} not found (with a size) in fromelf -s symbol table\n"
+                      f"(stdout follows)\n{stdout}")
 
 
 def _fromelf_halfwords_to_bytes(hexstr: str) -> bytes:
@@ -388,30 +411,34 @@ def extract_symbol_bytes_fromelf_text(fromelf_bin: str, wineprefix: str, obj: Pa
                                        symbol: str) -> tuple[bytes, int]:
     """Parse `fromelf --text -c -s <obj>` (via wine) to reconstruct a symbol's raw bytes + insn
     list, for ARM Compiler 5 objects GNU readelf/objdump can't read (see compile_source_armcc).
-    Assumes one target function per compiled source file (same convention as --source for the
-    other backends): takes the whole section containing the `symbol` label line.
+    Looks up the real size from fromelf's own symbol table first (see _fromelf_symbol_size - a
+    multi-function source file packs every function of the .c into one shared section, so the
+    disassembly alone can't tell where `symbol` ends), then reads exactly that many bytes
+    starting at the `symbol` label line in the disassembly.
     """
     env = {**__import__("os").environ, "WINEPREFIX": wineprefix, "WINEDEBUG": "-all"}
     cp = run(["wine", fromelf_bin, "--text", "-c", "-s", _wine_path(obj)], env=env)
+    size = _fromelf_symbol_size(cp.stdout, symbol)
     lines = cp.stdout.splitlines()
-    in_target_section = False
+    in_target = False
     found_symbol = False
     raw = bytearray()
     insns: list[str] = []
     for line in lines:
-        sec_m = _FROMELF_SECTION_LINE.match(line.strip())
-        if sec_m:
+        if _FROMELF_SECTION_LINE.match(line.strip()):
             if found_symbol:
-                break  # next section after the one with our symbol: done
-            in_target_section = False
+                break
+            in_target = False
             continue
         stripped = line.strip()
         if stripped == symbol:
             found_symbol = True
-            in_target_section = True
+            in_target = True
             continue
-        if not in_target_section:
+        if not in_target:
             continue
+        if len(raw) >= size:
+            break  # reached the known symbol size: stop before the next function's instructions
         m = _FROMELF_INSN_LINE.match(line)
         if m:
             _addr, hexstr, rest = m.groups()
@@ -420,7 +447,7 @@ def extract_symbol_bytes_fromelf_text(fromelf_bin: str, wineprefix: str, obj: Pa
     if not found_symbol:
         raise SystemExit(f"symbol {symbol!r} not found in fromelf --text output of {obj}\n"
                           f"(stdout follows)\n{cp.stdout}")
-    return bytes(raw), len(raw)
+    return bytes(raw[:size]), min(len(raw), size)
 
 
 def mnemonics(insns: list[str]) -> list[str]:

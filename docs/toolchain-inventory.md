@@ -250,20 +250,92 @@ m0900's soft-float family demonstrably matches ARM Compiler 5's own compiled lib
 3. If a newer GCC/armclang version is ever needed, the STM32CubeCLT installer
    (`st-stm32cubeclt_1.21.0_...rpm_bundle.sh`, see above) is sitting downloaded and unrun - ask before
    running it.
-4. **STM32 HAL/LL/SPL peripheral-driver libmatch (flagged 2026-11-02, not yet attempted this
-   pass)** - `mcu_libmatch.py` has only ever been tried against soft-float/libgcc/libm/CMSIS-DSP
-   candidates. m0400 and m0306 are both STM32F4-family (per this doc's toolchain table) and have
-   plenty of still-unnamed `FUN_*` shaped like peripheral init/IRQ handlers (GPIO/UART/CAN/ADC/
-   SPI), not math code - these have never been diffed against ST's own HAL/LL drivers or the
-   older Standard Peripheral Library (SPL). Candidate sources: ST's own GitHub
-   (`STMicroelectronics/STM32CubeF4`, `STM32CubeF1` - authoritative, easier to pull than parsing
-   a Keil pack) for HAL/LL, or a Keil device pack (`Keil.STM32F4xx_DFP`/`Keil.STM32F1xx_DFP`,
-   `https://www.keil.com/pack/<Vendor>.<Name>.<Version>.pack` - same URL pattern as the packs
-   already cached at `/mnt/2tb/git/awto-snoopfrog/tmp/keil/Keil.STM32F4xx_DFP.3.1.1` and
-   `Keil.STM32G4xx_DFP.2.2.0`) if it turns out to bundle HAL/LL/SPL source rather than just CMSIS
-   device headers - unconfirmed either way, not checked this pass. Pick candidates from
-   `docs/m0400-naming-pass.md`/`docs/m0306-naming-pass.md`'s still-unnamed `FUN_*` list, matched
-   against the firmware's actual peripheral set in `docs/board-connections.md`.
+4. STM32 HAL/LL/SPL peripheral-driver libmatch for m0306 (not yet attempted - m0400 done, see
+   below) and the CAN_Init/ADC_Init/USART_Init negatives below (only GCC+armclang tried; armcc
+   tried only for GPIO_Init/SPI_Init so far).
+
+## STM32 peripheral-driver libmatch: Keil pack contents + SPL retest (#41 pt3 addendum, 2026-11-03)
+
+**Keil device pack contents, checked against Dan's hypothesis that DFP packs bundle more than
+CMSIS headers:** confirmed true, but narrower than it first looks. The already-cached
+`Keil.STM32F4xx_DFP.3.1.1` (`/mnt/2tb/git/awto-snoopfrog/tmp/keil/ext-Keil.STM32F4xx_DFP.3.1.1/`)
+contains a full, real copy of ST's **HAL** driver (`stm32f4xx_hal*.c/h` - `HAL_`-prefixed,
+`*_HandleTypeDef`-based API) - but only under
+`CMSIS/Flash/STM32F469_QSPI_N25Q128A/Drivers/STM32F4xx_HAL_Driver/`, as a dependency of ONE
+flash-programming algorithm example (external QSPI NOR flash on the STM32469I-Discovery board),
+not as a general top-level SDK. Only 9 of ~80 HAL modules are present (`hal`, `hal_cortex`,
+`hal_dma`, `hal_dma_ex`, `hal_gpio`, `hal_pwr`, `hal_pwr_ex`, `hal_qspi`, `hal_rcc`, `hal_rcc_ex`)
+- no UART/CAN/ADC/SPI, so it can't cover this pass's candidates. No CMSIS/Flash algorithm in
+either cached pack bundles SPL (older `stm32f4xx_gpio.c`-style, `GPIO_Init`/no `HAL_` prefix)
+source at all. **Conclusion: Keil packs are confirmed NOT the useful source for this pass** -
+used ST's own GitHub mirror instead (below), which the original follow-up note correctly flagged
+as the easier/authoritative option.
+
+**Which library to target - SPL, not HAL:** m0400's peripheral-init functions are already named
+and `[V]`-tagged (`GPIO_Init`, `USART_Init`, `CAN_Init`, `ADC_Init`, `SPI_Init` in
+`docs/symbols/m0400.tsv`, from an earlier decompile-and-match-by-behavior pass, not shape-guess)
+- and their naming (bare `GPIO_Init`, no `HAL_` prefix, no `*_HandleTypeDef` struct parameter)
+matches ST's older **Standard Peripheral Library (SPL/StdPeriph)** calling convention, not HAL's.
+This corroborates the existing `docs/HISTORY.md` m0306 finding ("DJI's own raw HAL" corrected to
+SPL, by code structure). So this retest targeted SPL, not HAL - HAL would have been the wrong
+library per the firmware's own naming evidence, regardless of what the Keil pack happened to
+contain.
+
+**Source**: ST's SPL was never put on GitHub by ST itself (superseded by HAL/LL ~2014); used a
+community mirror, `github.com/quintin-lee/STM32F4_Stdlib` (`STM32F4xx_StdPeriph_Driver/src/
+stm32f4xx_{gpio,usart,can,adc,spi,rcc}.c` + CMSIS headers) - pulled via `raw.githubusercontent.com`,
+not cloned. Compiles cleanly with `arm-none-eabi-gcc -mcpu=cortex-m4 -mfpu=fpv4-sp-d16
+-mfloat-abi=hard -DUSE_STDPERIPH_DRIVER` (needs a stub `assert_param(expr) ((void)0)` in
+`stm32f4xx_conf.h`, standard SPL release-build pattern).
+
+**GCC and armclang results: all U.** Neither stock toolchain's compile of SPL matches (4.7-74.1%
+insn_ratio depending on function/opt-level, all below the exact-match floor) - consistent with
+the earlier finding that m0400's soft-float runtime doesn't match GCC/armclang either.
+
+**armcc (ARM Compiler 5) results: 3 of 5 byte-exact, 2 of 5 near-exact - all at `-O0`.** First
+attempt showed the same false "U" as GCC/armclang, but that was a **tooling bug**, not a real
+negative: `extract_symbol_bytes_fromelf_text()` (the armcc `--source` extraction path, see
+"ARM Compiler 5 object format" above) scanned from the target symbol's label to the next
+`** Section` line, correct for a single-function source file but wrong here - armcc does not do
+`-ffunction-sections` by default, so every function in `stm32f4xx_gpio.c` etc shares ONE section,
+and the scan silently captured the start of the *next* SPL function too (`GPIO_Init`'s real
+144 B read back as "384 B", diluting insn_ratio/mnemonic_ratio into U-looking territory even
+though the true 144 B were byte-identical - caught by noticing `byte_prefix_match=100.0%` on a
+"U" result, which should be structurally impossible for an unrelated function). **Fixed**:
+`extract_symbol_bytes_fromelf_text()` now looks up the real size from fromelf's own symbol table
+(`_fromelf_symbol_size()`, new) and stops there, the same anchor the GNU-readelf path already
+used correctly. Re-ran all 5 after the fix:
+
+| m0400 function (fw size) | ARM Compiler 5 `-O0` SPL match | insn/mnemonic ratio | Verdict |
+|---|---|---|---|
+| `GPIO_Init` (144B) | `GPIO_Init` (144B) | 100% byte match | **V (byte-identical)** |
+| `CAN_Init` (276B) | `CAN_Init` (276B) | 100% byte match | **V (byte-identical)** |
+| `SPI_Init` (60B) | `SPI_Init` (60B) | 100% byte match | **V (byte-identical)** |
+| `USART_Init` (204B) | `USART_Init` (204B, same size) | 85.9% / 100.0% | **I** (just under the V floor - likely one IT-block/immediate-encoding difference, not a different algorithm) |
+| `ADC_Init` (74B) | `ADC_Init` (74B, same size) | 93.8% / 100.0% | **I** (ditto) |
+
+All 5 at every opt level other than `-O0` are U (GCC-level mismatch) - the match is specific to
+**unoptimized** ARM Compiler 5 output. **Conclusion (V for 3, by exclusion across GCC+armclang+
+armcc for all 5): m0400's peripheral-init code is linked, unmodified ST Standard Peripheral
+Library source, compiled with ARM Compiler 5.06 at `-O0`.** This both confirms the existing
+`docs/HISTORY.md` m0306 "SPL not HAL" call (now with a real compiled-code match behind it, not
+just calling-convention inference) and is the second strand of evidence (after m0900's soft-
+float family) that this firmware family was built with Keil/ARM Compiler 5 - a different code
+region, same toolchain conclusion. `USART_Init`/`ADC_Init` not reaching V despite 100% mnemonic
+overlap and matching size is worth a closer manual instruction-diff if anyone wants the last 2
+confirmed exact; low priority given 3/5 are already proven.
+
+**This also means the earlier "m0400 does NOT match ARM Compiler 5" framing (soft-float family,
+above) needs a narrower reading**: m0400's *peripheral driver* code is ARM Compiler 5 + stock
+SPL; its *soft-float runtime* specifically is not ARM Compiler 5's own library (nor GCC's nor
+LLVM's) - a real, compiler-identified toolchain for one region of the firmware, and a genuinely
+unidentified (possibly hand-tuned/replaced) runtime for another. Not a contradiction - different
+code, different provenance, both now better evidenced than before this pass.
+
+**Not attempted this pass:** m0306 (also STM32F4-family per the toolchain table) was flagged by
+the same request but not retested - no still-unnamed FUN_* candidate list was pulled from
+`docs/m0306-naming-pass.md` this pass; given m0400's result, m0306's existing "SPL by structure"
+call is now a good bet to retest the same way (high expected payoff, cheap to try).
 
 ## Fuzzy-match mode (`--mode fuzzy`, #41 pt 2 follow-up)
 
