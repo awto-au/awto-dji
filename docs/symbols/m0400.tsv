@@ -1,0 +1,278 @@
+addr	kind	name	note	source
+0x08008000	region	app_base	[V] load base (gate: m0400_base_check.py; main sets VTOR=0x08000000+0x8000); SP 0x2000fc40, reset 0x0800819d	m0400_base_check.py
+0x08008190	func	main_thunk	[I] `ldr r0,=main; bx r0`, target of the startup stub chain	disasm
+0x0800819c	func	Reset_Handler	[V] vector 1; blx SystemInit (0x080114cd) then bx 0x08008189	vector table
+0x080081a4	func	NMI_Handler	[V] vector 2; `b .` spin	vector table
+0x080081a6	func	HardFault_Handler	[V] vector 3; `b .` spin	vector table
+0x080081a8	func	MemManage_Handler	[V] vector 4; `b .` spin	vector table
+0x080081aa	func	BusFault_Handler	[V] vector 5; `b .` spin	vector table
+0x080081ac	func	UsageFault_Handler	[V] vector 6; `b .` spin	vector table
+0x080081ae	func	SVC_Handler	[V] vector 11; `b .` spin	vector table
+0x080081b0	func	DebugMon_Handler	[V] vector 12; `b .` spin	vector table
+0x080081b2	func	PendSV_Handler	[V] vector 14; `b .` spin	vector table
+0x080081b4	func	SysTick_Handler	[V] vector 15; `b .` spin	vector table
+0x080081b6	func	Default_Handler	[V] target of vectors 16-34,37,38,40,41,43-45,47-52,55-71,73,74,76-97; `b .`	vector table
+0x080081c0	func	cmplx_mag_f32	[I] sqrt(re^2+im^2) over array (CMSIS-DSP shape)	decomp
+0x08008360	func	radix4_butterfly_f32	[I] CMSIS-DSP radix-4 FFT butterfly	decomp
+0x080086a4	func	radix4_butterfly_inverse_f32	[I] inverse radix-4 FFT butterfly	decomp
+0x08008a08	func	cfft_radix4_f32	[I] picks forward/inverse butterfly from instance flag	decomp
+0x08008a44	func	cfft_radix4_init_f32	[I] fills instance for fftLen=16 (twiddle len 0x40)	decomp
+0x08008adc	func	memcpy	[V] word copy when both aligned, else bytes (__aeabi_memcpy shape); 14 callers	decomp
+0x08008b0e	func	memclr	[V] zero n bytes (__aeabi_memclr shape)	decomp
+0x08008b40	func	__aeabi_dadd	[I] IEEE double add (soft path with FPU single only); 17 callers	decomp
+0x08008c82	func	__aeabi_dadd_alias	[I] tail-calls __aeabi_dadd	decomp
+0x08008c88	func	__aeabi_drsub	[I] flips sign of first operand then dadd (b - a)	decomp
+0x08008c8e	func	__aeabi_dmul	[I] IEEE double multiply; 19 callers	decomp
+0x08008d8c	func	__aeabi_f2d	[V] float->double: exp+0x380, mantissa>>3	decomp
+0x08008de4	func	__aeabi_d2f	[I] double->float with rounding	decomp
+0x08008e1c	func	__aeabi_llsl	[V] 64-bit shift left	decomp
+0x08008f86	func	__aeabi_ddiv	[I] IEEE double divide	decomp
+0x08009208	func	ADC_CommonInit	[V] ADC_CCR (common +0x304)	RM0090 regs
+0x08009238	func	ADC_CommonStructInit	[V] zero 4 fields	RM0090 regs
+0x08009244	func	ADC_GetConversionValue	[V] DR (+0x4c) & 0xffff	RM0090 regs
+0x0800924c	func	ADC_GetFlagStatus	[V] SR & flag	RM0090 regs
+0x08009260	func	ADC_Init	[V] CR1/CR2/SQR1 from struct	RM0090 regs
+0x080092b4	func	ADC_RegularChannelConfig	[V] SMPR1/2 and SQR1-3 per rank	RM0090 regs
+0x0800936c	func	ADC_SoftwareStartConv	[V] CR2 bit30 SWSTART	RM0090 regs
+0x08009376	func	ADC_StructInit	[V] default fields	RM0090 regs
+0x0800939e	func	angle_wrap_f32	[V] subtract/add 2pi (0x40c90fdb) until in [-pi,+pi] (0x40490fdb)	decomp
+0x080093e4	func	duml_crc16_append	[V] crc16 (init 0x3692) over n-2 bytes, stored LE	decomp
+0x08009410	func	duml_crc8_append	[V] crc8 (init 0x77) over header bytes, stored at frame[n-1]	decomp
+0x080095b8	func	can1_init	[V] GPIOD PD0/PD1 AF9, CAN_Init, filters, can_tx_stage std id 0x321, NVIC IRQ20+IRQ19, CAN_ITConfig(3)	decomp
+0x080096c0	func	can1_nvic_init	[V] NVIC_Init for IRQ20 (preempt 1 sub 2) and IRQ19	decomp
+0x0800987c	func	can_send_urgent	[V] fills can_tx_stage; direct CAN_Transmit if mailbox free else copies to can_tx_urgent and sets flag	decomp
+0x08009918	func	can_send	[V] fills can_tx_stage; direct CAN_Transmit if mailbox free else enqueues in can_txq (256 x 20 B)	decomp
+0x080099cc	func	can_send_split8	[V] sends a buffer as consecutive 8-byte CAN frames (last short); 08009918 per chunk	decomp
+0x08009a20	func	gpio_misc_init	[V] outputs PG10, PG11, PI10 (table 0x0801b9d8), PE3 out, PA5/PA7/PA15 bus pins, PA6 EXTI input	decomp
+0x08009b3c	func	tim4_init_2khz	[V] TIM4 PSC 20 ARR 2000 at 84 MHz timer clock = 1999 Hz, update IRQ30 (prio 1/2)	decomp
+0x08009ba8	func	uart4_getc	[V] pop uart4_rx_buf (mask 0x3ff) or -1	decomp
+0x08009be0	func	uart4_init	[V] PA0/PA1 AF8, UART4 at 0x40004c00, IT, NVIC IRQ52; main passes 115200	decomp
+0x08009cb4	func	uart4_putc	[V] direct DR write when idle else push uart4_tx_buf	decomp
+0x08009d08	func	usart1_init	[V] PB6/PB7 AF7, USART_Init(baud), RXNE/TXE IT, NVIC IRQ37; main passes 0x1c200 (115200)	decomp
+0x08009dd4	func	usart2_getc	[V] pop usart2_rx_buf (mask 0x3ff) or -1	decomp
+0x08009e0c	func	usart2_init	[V] PA2/PA3 AF7, USART_Init(baud), IT, NVIC IRQ38; main passes 115200	decomp
+0x08009ee8	func	usart2_putc	[V] direct DR write when idle else push usart2_tx_buf	decomp
+0x08009f3c	func	CAN1_RX0_IRQHandler	[V] vector 36 (IRQ20): CAN_Receive(FIFO0) -> can_rx_dispatch -> CAN_ClearITPendingBit	vector table
+0x08009f60	func	can_send_4xu16	[V] packs four u16 into 8 bytes, can_send_urgent	decomp
+0x08009fd2	func	can_send_thunk	[V] tail-calls can_send	decomp
+0x08009fe8	func	CAN1_TX_IRQHandler	[V] vector 35 (IRQ19): pops can_txq / can_tx_urgent into CAN_Transmit	vector table
+0x0800a050	func	CAN_ClearITPendingBit	[V] switch on IT mask -> MSR/TSR/RF0R/RF1R/ESR write-1-clear	RM0090 regs
+0x0800a0f8	func	CAN_DeInit	[V] APB1 reset pulse bit25 (CAN1) / bit26 (CAN2)	RM0090 regs
+0x0800a130	func	CAN_FilterInit	[V] FMR init, FA1R/FS1R/FM1R/FFA1R, FiR1/FiR2	RM0090 regs
+0x0800a238	func	CAN_ITConfig	[V] IER (+0x14) set/clear mask	RM0090 regs
+0x0800a24a	func	CAN_Init	[V] MCR INRQ wait (0xffff polls), MCR bits, BTR	RM0090 regs
+0x0800a35e	func	ringbuf_used	[V] (head - tail) & mask	decomp
+0x0800a36c	func	can_rings_init	[V] inits two ringbuf_s (ids 0x413 / 0x412, mask 0x3ff)	decomp
+0x0800a3b8	func	ringbuf_pop	[V] byte at buf[tail & mask]; tail++	decomp
+0x0800a3cc	func	ringbuf_push	[V] copies n bytes when free space > n (capacity 0x400); 0 on overflow	decomp
+0x0800a40e	func	CAN_Receive	[V] RIxR/RDTxR/RDLxR/RDHxR (+0x1b0), releases FIFO (RFxR bit5)	RM0090 regs
+0x0800a4fe	func	CAN_StructInit	[V] defaults (prescaler 1, BS1 3, BS2 2)	RM0090 regs
+0x0800a51e	func	CAN_Transmit	[V] mailbox select from TSR TME0/1/2 (4=none), TIxR/TDTxR/TDLxR/TDHxR (+0x180)	RM0090 regs
+0x0800cf9c	func	DMA2_Stream0_IRQHandler	[V] vector 72 (IRQ56): SPI1 RX burst done; 15 B at imu_dma_buf decoded, gyro 16x oversampled	decomp
+0x0800d140	func	DMA2_Stream3_IRQHandler	[V] vector 75 (IRQ59): clears SPI1 TX DMA flag if set	vector table
+0x0800d160	func	DMA_ClearITPendingBit	[V] L/HIFCR = mask	RM0090 regs
+0x0800d194	func	DMA_Cmd	[V] SxCR bit0 EN	RM0090 regs
+0x0800d1ac	func	DMA_DeInit	[V] clears SxCR..SxFCR and the stream flags in L/HIFCR	RM0090 regs
+0x0800d304	func	DMA_GetITStatus	[V] L/HISR vs mask with enable check	RM0090 regs
+0x0800d368	func	DMA_ITConfig	[V] SxCR bits 1-4 and SxFCR bit7	RM0090 regs
+0x0800d3a4	func	DMA_Init	[V] SxCR/FCR/NDTR/PAR/M0AR from struct	RM0090 regs
+0x0800d3fc	func	clamp_sym_f32	[V] clamp *p to [-limit,+limit]	decomp
+0x0800d42a	func	delay_loop	[V] spins n*42 iterations (no timer)	decomp
+0x0800d43c	func	EXTI9_5_IRQHandler	[V] vector 39 (IRQ23): line 6 (PA6, MPU INT) -> imu_dma_kick	vector table
+0x0800d464	func	EXTI_ClearITPendingBit	[V] EXTI_PR = mask	RM0090 regs
+0x0800d470	func	EXTI_GetITStatus	[V] EXTI_PR & mask	RM0090 regs
+0x0800d828	func	FLASH_ClearFlag	[V] FLASH_SR = mask (called with 0xf3)	RM0090 regs
+0x0800d834	func	FLASH_EraseSector	[V] CR SER, SNB (sector<<3), PSIZE, STRT 0x10000	RM0090 regs
+0x0800d8f4	func	FLASH_GetStatus	[V] SR -> 1 busy / 2 PGERR / 6 WRPERR / 7 other / 8 / 9 complete	RM0090 regs
+0x0800d948	func	FLASH_Lock	[V] CR bit31	RM0090 regs
+0x0800d95c	func	FLASH_ProgramByte	[V] CR PG, PSIZE 0, byte write	RM0090 regs
+0x0800d9a8	func	FLASH_ProgramWord	[V] CR PG, PSIZE x32 (0x200), word write	RM0090 regs
+0x0800d9f8	func	FLASH_Unlock	[V] KEYR key1/key2 when CR.LOCK	RM0090 regs
+0x0800da1c	func	FLASH_WaitForLastOperation	[V] spins FLASH_GetStatus while busy; no timeout (unbounded wait)	decomp
+0x0800da3e	func	memcpy_words_u8count	[V] copy n u32 words, n masked to 8 bits; 9 callers	decomp
+0x0800da58	func	flash_erase_program_verify	[I] erase covered sectors then program words and read back	decomp
+0x0800dadc	func	store_be_u32x2	[V] writes two u32 big-endian into 8 bytes; 133 callers	decomp
+0x0800db18	func	GPIO_Init	[V] MODER/OTYPER/OSPEEDR/PUPDR per pin from struct {pin u32, mode,speed,otype,pupd u8}; 16 callers	RM0090 regs
+0x0800dba8	func	GPIO_PinAFConfig	[V] AFRL/AFRH nibble (+0x20 + (pin>>3)*4)	RM0090 regs
+0x0800dbee	func	GPIO_ReadInputDataBit	[V] IDR (+0x10) & pin	RM0090 regs
+0x0800dc00	func	GPIO_ResetBits	[V] BSRRH (+0x1a) = mask	RM0090 regs
+0x0800dc04	func	GPIO_SetBits	[V] BSRRL (+0x18) = mask	RM0090 regs
+0x0800dc08	func	GPIO_StructInit	[V] pin=0xffff, zero other fields	RM0090 regs
+0x0800dc1a	func	GPIO_ToggleBits	[V] ODR (+0x14) ^= mask	RM0090 regs
+0x0800dc22	func	GPIO_WriteBit	[V] BSRRH when value 0 else BSRRL	RM0090 regs
+0x0800dcb4	func	can_checksum_u16	[I] two table-substitution passes over payload bytes -> u16	decomp
+0x0800dce0	func	can_param_frame_store	[I] stores 8-byte payload of ids 0x20e/0x23e into param block, converts to float	decomp
+0x0800de9c	func	flash_addr_to_sector	[V] address ranges 0x08004000.. 0x080e0000 -> sector<<3 (0x08..0x58); sector table implies >= 1 MB flash map	decomp
+0x0800df80	func	crc16_calc	[V] table-driven reflected CRC16 (table 0x0801b6d4), init arg	decomp
+0x0800dfb4	func	crc8_calc	[V] table-driven CRC8 (table 0x0801b8d7), init arg	decomp
+0x0800dfd8	func	flash_param_save	[V] writes seq+0x3fc payload to next free 0x400 slot of 128 in the store at 0x08060000; erases sector 7 when full	decomp
+0x0800e07c	func	flash_param_load	[V] copies 0x3fc payload of latest slot; -1 if store empty	decomp
+0x0800e0b0	func	quat_conj	[V] (w,-x,-y,-z)	decomp
+0x0800e0e4	func	sw2w_imu_probe	[V] programs regs 0-6,0x16 then reads ID reg 0x20: 0xb4/0xb1/0xb2 accepted (data reg 0x30/0x36), else falls back to imu_mpu_spi_init	decomp
+0x0800e1d8	func	sw2w_read_bytes	[V] same framing as sw2w_read_reg, reads n bytes (n-1 down to 0 into buffer)	decomp
+0x0800e32c	func	sw2w_imu_read_sample	[V] if imu_use_spi1==0 reads 12 bytes from reg 0x24 into imu_2wire_raw	decomp
+0x0800e358	func	sw2w_read_reg	[V] bit-bang PA5 clock / PA7 data: 6-bit register address MSB first, then 8 data bits	decomp
+0x0800e454	func	sw2w_imu_read_aux	[V] if imu_use_spi1==0 reads 2 bytes from reg [sw2w_data_reg]	decomp
+0x0800e484	func	imu_process_sample	[I] scales/converts raw sample into imu_out floats	decomp
+0x0800e5c0	func	sw2w_write_reg	[V] 6-bit address + 8-bit value	decomp
+0x0800e6b8	func	nop_delay_5	[V] 5-iteration empty loop (bit-bang delay); 31 callers	decomp
+0x0800f01c	func	imu_mpu_spi_init	[V] MPU-6500/9250/ICM-20608 family register writes over spi1_xfer_byte, then TIM11 pacing; see docs/m0400-naming-pass.md	decomp
+0x0800f224	func	imu_dma_kick	[V] restarts DMA2 S0/S3 for the 15-byte burst (INT_STATUS..GYRO_ZOUT); called from TIM11 and EXTI9_5 ISRs	decomp
+0x0800f2d0	func	imu_spi_read_reg	[V] reg|0x80 then read via spi1_xfer_byte	decomp
+0x0800f304	func	imu_spi_write_reg	[V] reg then value via spi1_xfer_byte	decomp
+0x0800ff50	func	matvec_f32	[V] out[i]=sum_j M[i*3+j]*v[j] (row stride 0xc)	decomp
+0x0800ffb4	func	NVIC_DeInit_like	[I] clears 8 ICER/ICPR style words (e000e180/e280/e400)	RM0090 regs
+0x0800ffe4	func	NVIC_Init	[V] struct {IRQ u8, preempt u8, sub u8, enable u8}; PRIGROUP from AIRCR; IPR + ISER/ICER	RM0090 regs
+0x0801005c	func	NVIC_PriorityGroupConfig	[V] AIRCR (e000ed0c) = 0x05FA0000 | group	RM0090 regs
+0x08010070	func	NVIC_SetVectorTable	[V] VTOR (e000ed08) = base | offset	RM0090 regs
+0x080100ac	func	quat_normalize	[V] divide by sqrtf(w2+x2+y2+z2)	decomp
+0x080101cc	func	clamp_sym_f32_b	[V] same as clamp_sym_f32 (separate copy)	decomp
+0x08010200	func	imu_axes_remap	[I] sign flips/scale of axis vectors (negations of components)	decomp
+0x080106f0	func	quat_to_dcm	[I] quaternion -> 3x3 matrix terms (products of components)	decomp
+0x08010816	func	quat_to_euler	[V] atan2f/asinf of standard quaternion expressions; 9 callers	decomp
+0x08010930	func	quat_rot_angle	[I] 2*asinf(|xyz|) rotation angle of a unit quaternion	decomp
+0x08010984	func	quat_pack_aux	[U] quaternion-related helper, role unresolved	decomp
+0x08010a20	func	quat_mul_out_last	[V] Hamilton product (a,b,out) by arithmetic; 15 callers	decomp
+0x08010af2	func	quat_nlerp	[V] a=a*(1-t)+b*t then normalize	decomp
+0x08010b7c	func	quat_mul_out_first	[V] Hamilton product (out,a,b); same math as quat_mul_out_last	decomp
+0x08010c54	func	RCC_AHB1PeriphClockCmd	[V] RCC_AHB1ENR set/clear mask	RM0090 regs
+0x08010c74	func	RCC_AHB2PeriphClockCmd	[V] RCC_AHB2ENR set/clear mask	RM0090 regs
+0x08010c94	func	RCC_APB1PeriphClockCmd	[V] RCC_APB1ENR set/clear mask	RM0090 regs
+0x08010cb4	func	RCC_APB1PeriphResetCmd	[V] RCC_APB1RSTR set/clear mask	RM0090 regs
+0x08010cd4	func	RCC_APB2PeriphClockCmd	[V] RCC_APB2ENR set/clear mask	RM0090 regs
+0x08010cf4	func	RCC_APB2PeriphResetCmd	[V] RCC_APB2RSTR set/clear mask	RM0090 regs
+0x08010d14	func	RCC_GetClocksFreq	[V] SWS decode, HSI 16 MHz (0xf42400) / HSE 12 MHz (0xb71b00) literals, PLLCFGR M/N/P, AHB/APB prescaler	decomp
+0x08010dfc	func	RNG_Cmd	[V] RNG_CR bit2 RNGEN	RM0090 regs
+0x08010e20	func	RNG_GetFlagStatus	[V] RNG_SR & mask	RM0090 regs
+0x08010e38	func	RNG_GetRandomNumber	[V] reads RNG_DR	RM0090 regs
+0x08010f68	func	spi1_dma_init	[V] PA5/PA6/PA7 AF5 (SCK/MISO/MOSI), SPI_Init, DMA2 stream0 RX / stream3 TX to imu_dma_buf	decomp
+0x0801113c	func	spi1_xfer_byte	[V] wait TXE, send, wait RXNE, return DR; used by imu_spi_read_reg/write_reg	decomp
+0x08011174	func	SPI_BaudRatePrescalerConfig	[V] CR1 BR[5:3] then SPI_Cmd(1)	RM0090 regs
+0x0801119c	func	SPI_Cmd	[V] CR1 bit6 SPE	RM0090 regs
+0x080111b4	func	SPI_I2S_DMACmd	[I] CR2 (+4) set/clear mask (TXDMAEN/RXDMAEN)	RM0090 regs
+0x080111c6	func	SPI_I2S_GetFlagStatus	[V] SR (+8) & flag	RM0090 regs
+0x080111d8	func	SPI_I2S_ReceiveData	[V] DR (+0xc) read	RM0090 regs
+0x080111de	func	SPI_I2S_SendData	[V] DR (+0xc) write	RM0090 regs
+0x080111e2	func	SPI_Init	[V] CR1 from struct, I2SCFGR.I2SMOD cleared, CRCPR	RM0090 regs
+0x08011220	func	SetSysClock	[V] HSE on, PWR VOS, HPRE/1 PPRE2/2 PPRE1/4, PLLCFGR=0x0740540c (M12 N336 P2 Q7, HSE 12 MHz => SYSCLK 168 MHz), FLASH_ACR=0x705	decomp
+0x080114cc	func	SystemInit	[V] CMSIS SystemInit: CPACR FPU enable (0xf00000), RCC reset, SetSysClock, VTOR=0x08000000	decomp
+0x08011534	func	TIM1_TRG_COM_TIM11_IRQHandler	[V] vector 42 (IRQ26): TIM11 update -> imu_dma_kick	vector table
+0x08011564	func	TIM4_IRQHandler	[V] vector 46 (IRQ30): clears UIF, sets tick_flag (main loop gate)	vector table
+0x08011580	func	TIM_ARRPreloadConfig	[V] CR1 bit7 ARPE	RM0090 regs
+0x08011598	func	TIM_ClearITPendingBit	[V] SR (+0x10) = ~mask	RM0090 regs
+0x0801159e	func	TIM_Cmd	[V] CR1 bit0 CEN	RM0090 regs
+0x080115b6	func	TIM_GetITStatus	[V] SR & DIER & mask	RM0090 regs
+0x080115d8	func	TIM_ITConfig	[V] DIER (+0xc) set/clear	RM0090 regs
+0x080115ec	func	TIM_TimeBaseInit	[V] CR1 CMS/CKD, ARR(+0x2c) PSC(+0x28) EGR=1, RCR(+0x30) only TIM1/TIM8	RM0090 regs
+0x08011670	func	UART4_IRQHandler	[V] vector 68 (IRQ52): TXE pops uart4_tx_buf, RXNE pushes uart4_rx_buf	vector table
+0x08011724	func	USART1_IRQHandler	[V] vector 53 (IRQ37): RXNE pushes usart1_rx_buf, TXE pops usart1_tx_buf	vector table
+0x080117bc	func	USART2_IRQHandler	[V] vector 54 (IRQ38): RXNE pushes usart2_rx_buf, TXE pops usart2_tx_buf	vector table
+0x08011870	func	USART_ClearITPendingBit	[V] SR = ~(1<<(it>>8))	RM0090 regs
+0x0801188e	func	USART_Cmd	[V] CR1 (+0xc) bit13 UE	RM0090 regs
+0x080118a6	func	USART_GetFlagStatus	[V] SR & flag	RM0090 regs
+0x080118c0	func	USART_GetITStatus	[V] CR1/CR2/CR3 enable bit and SR flag for IT code (0x525 RXNE, 0x626 TXE)	RM0090 regs
+0x08011914	func	USART_ITConfig	[V] sets/clears enable bit in CR1/CR2/CR3	RM0090 regs
+0x08011960	func	USART_Init	[V] CR1/CR2/CR3 from struct, BRR from RCC_GetClocksFreq	RM0090 regs
+0x08011a8c	func	duml_crc16_check	[V] compare crc16 (init 0x3692) at frame end	decomp
+0x08011ac8	func	duml_crc8_check	[V] compare crc8 (init 0x77)	decomp
+0x08011af6	func	libm_fclassify_f64	[V] double analogue of libm_fclassify_f32	decomp
+0x08011b26	func	libm_fclassify_f32	[V] bit0 normal, bit1 inf/nan, bit2 mantissa!=0	decomp
+0x08011b4c	func	acosf	[I] asin/acos-shaped (|x|<=1 else errno); no uses found beyond libm	decomp
+0x08011c64	func	asinf	[I] used as asin(|xyz|) in quat_rot_angle and quat_to_euler	decomp
+0x08012258	func	atan2f	[I] two-arg arctangent used by quat_to_euler	decomp
+0x080124a8	func	cosf	[V] same reduction as sinf, returns 1.0 for tiny |x|	decomp
+0x08013248	func	sinf	[V] argument reduction (Cody-Waite) + polynomial; 23 callers	decomp
+0x080133d8	func	sqrtf	[V] hardware vsqrt with errno on domain error; 15 callers	decomp
+0x080135f4	func	libm_rem_pio2f	[I] large-argument reduction used by sinf/cosf	decomp
+0x08013768	func	libm_set_errno	[I] stores code to errno global; callers sinf/cosf/sqrtf/asinf/acosf	decomp
+0x08013774	func	duml_h_general_30_sub1	[I] builds reply frame (sender 4, id 0x30, trailer 0xe0)	decomp
+0x080139ac	func	duml_h_general_30_ack72	[I] ack-flag frame of len 0x48: copies 0x20+10+0x10 bytes into a block, sets flag	decomp
+0x08013a18	func	duml_h_general_30_sub3	[U] not decompiled this pass	decomp
+0x08013c54	func	duml_h_general_30_sub2	[I] arms a state block (0x7cfd, copies sender/seq)	decomp
+0x08013fcc	func	duml_h_general_30_subdispatch	[V] switches on frame[0xb] 1/2/3; 72-byte ack frames go to _ack72	duml_table
+0x080148b4	func	app_init	[I] clears state blocks, loads params (flash_param_load/app_param_load), board_rev_read, runs 12-entry init-callback table; called once from main	decomp
+0x08014c10	func	main_loop	[V] never returns; gated by tick_flag (TIM4 2 kHz); runs sensor read, attitude, control, comms, LED each pass	decomp
+0x08015824	func	duml_assemble_can	[V] state machine (5 states) over can_rx_ring bytes; feeds duml_dispatch with port tag 1	decomp
+0x08015a44	func	nop_delay_5_b	[V] copy of nop_delay_5; 6 callers	decomp
+0x08015a50	func	duml_h_gimbal_0a_angle_control	[V] name GIMBAL/AngleControl per commands.yaml; int16 x pi/180, extra fields	duml_table
+0x08015c88	func	duml_h_gimbal_0c_speed_control	[V] name GIMBAL/SpeedControl per commands.yaml; 3 int16 x pi/180, out-of-range -> 0	duml_table
+0x08015eb4	func	duml_h_gimbal_0b_status_readback	[V] reply-only 17-byte status, no request payload read	duml_table
+0x08015fe0	func	duml_h_gimbal_14_abs_angle_control	[V] name GIMBAL/AbsAngleControl per commands.yaml; 3 int16 x0.1deg integrated into position target	duml_table
+0x08016188	func	duml_h_general_09_ack	[I] ack-only, length code 0x12	duml_table
+0x080161e8	func	duml_h_gimbal_13_reload_block	[I] copies 0xd8-byte block then two no-arg calls	duml_table
+0x08016254	func	duml_h_general_01_get_version	[V] reads 2 words at flash 0x080C0000 (outside image)	duml_table
+0x080162e4	func	duml_h_general_0a_ack	[I] ack-only, length code 0x0e	duml_table
+0x08016338	func	duml_h_general_07_get_params	[V] type-switch copy from 0x34-byte-stride param table, error 0xe3 for index >= 0xc	duml_table
+0x080163c4	func	duml_h_gimbal_10_get_params	[V] same type-switch copy engine as duml_h_general_07_get_params	duml_table
+0x08016564	func	duml_h_gimbal_01_control	[V] name GIMBAL/Control per commands.yaml; 3 int16 centred 0x400, clamp +-0x295	duml_table
+0x08016634	func	duml_h_flyc_42_attitude_quat	[V] 4 floats at +0xb..+0x17 unit-norm checked [0.95,1.05] else identity	duml_table
+0x0801675c	func	duml_h_gimbal_06	[I] 3-4 int16 centred on 0x400, deadband +-0x295, gated by encoding byte	duml_table
+0x080167e0	func	duml_h_gimbal_0e	[U] see docs/m0400-naming-pass.md	duml_table
+0x08016840	func	duml_h_general_0b_trim_adjust	[I] same trim accumulator as duml_h_gimbal_07_trim_adjust	duml_table
+0x080168ac	func	duml_h_gimbal_07_trim_adjust	[I] signed accumulator clamp [-100,100], 0 resets	duml_table
+0x08016930	func	duml_h_gimbal_11_commit_config	[I] checks state-machine result 9, else error 0xe6	duml_table
+0x08016990	func	duml_h_gimbal_08_auto_calibration	[V] name GIMBAL/AutoCalibration per commands.yaml; ack echoes set 4 id 8	duml_table
+0x08016a98	func	duml_h_gimbal_0f_get_params_by_index	[V] up to 12 (index,len<=8) pairs copied from param table	duml_table
+0x08016bf8	func	duml_h_general_0d_block_write	[I] validated 0x10-byte block write, error 0xf4 on failure	duml_table
+0x08016c78	func	duml_h_special_01	[I] gated on state != 3; copies 4+2 bytes into a block	duml_table
+0x08016cdc	func	duml_h_general_08_ack	[I] ack-only, length code 0x10	duml_table
+0x08016d30	func	duml_h_general_0c_ack_word	[I] ack with a global word in payload, length code 0x13	duml_table
+0x08016d94	func	duml_send_frame	[V] if len field == n: crc8 header + crc16 append, then send by port (0 usart2, 1 CAN 0x413, 2 uart4)	decomp
+0x08016e14	func	duml_h_gimbal_20	[I] copies 4+1+1 bytes into a global, no reply	duml_table
+0x08016e30	func	duml_h_gimbal_21	[I] gated on frame[0xb]==0; copies 3 x (4+2 bytes) records	duml_table
+0x08016eac	func	duml_h_gimbal_0d_enable_latch	[I] 0x2ab5 sets, 0x7ef2 clears one flag bit	duml_table
+0x08016fac	func	duml_dispatch_short	[V] walks duml_table_empty (0x0801d464, zero entries) matching u16 at +4; no entries, dead	decomp
+0x08016ff4	func	duml_dispatch	[V] frame[5]&0x1f==4 && frame[5]>>5==0: walk duml_table matching id=frame[10], set=frame[9]; else forward raw frame to UART/USART2 by port tag	decomp
+0x0801716c	func	led_update	[I] 3 pattern channels, 200-tick divider, drives PE0/PE1 via BSRR	decomp
+0x08018c54	func	duml_frame_version	[V] u16 at +1 >> 10 (length is the low 10 bits)	decomp
+0x08018c70	func	board_rev_read	[I] ADC mV snapped to 300/500/700/900 (+-100) or 100; PI11 high => 0xce6	decomp
+0x08019014	func	adc1_read_mv_avg32	[V] 32 samples, sum/32*3300/4096; returns 100 on 0x5dc-poll timeout	decomp
+0x08019068	func	adc1_ch10_init	[V] PC0 analog, ADC1 ch10 sample time, ADC_Init, enable and calibrate	decomp
+0x08019138	func	sbox_chain_decode	[I] chained table decode with key%31 seed	decomp
+0x080195b8	func	can_rx_dispatch	[V] switch on std id 0x101,0x200-0x205,0x2f0-0x2f6,0x412; 0x412 pushes payload to can_rx_ring; replies 0x20d/0x23d	decomp
+0x08019cd0	func	within_100	[V] 1 when |a - b| < 100	decomp
+0x08019eb0	func	flash_param_find_free	[V] first slot whose seq == 0xffffffff, else -1	decomp
+0x08019ed4	func	flash_param_find_latest	[V] slot with highest u32 seq among 128 slots (stride 0x400)	decomp
+0x08019f04	func	main	[V] NVIC_SetVectorTable(0x08000000,0x8000); PRIGROUP; usart1/gpio/can1/can queues/usart2/uart4/2-wire IMU init; blinks PE3 x10; app_init; main_loop	decomp+disasm
+0x0801a09c	func	sbox_add	[I] *p = T[(*p + k) & 0xff]	decomp
+0x0801a0b0	func	sbox_sub	[I] *p = T[*p] - k	decomp
+0x0801a7bc	func	duml_assemble_usart2	[V] state machine over usart2_getc bytes; feeds duml_dispatch	decomp
+0x0801a918	func	gimbal_push_params_send	[V] builds 0x55 frame sender 4 set 0x04 id 0x05 (GetPushParams; attitude x10 int16 + flags); ports by arg; called every 200/33/40 ticks	decomp
+0x0801aba0	func	gimbal_push_15_send	[V] builds 0x55 frame sender 4 set 0x04 id 0x15 (6 bytes scaled x25); called once per 200 ticks (phase 0x19)	decomp
+0x0801af44	func	duml_assemble_uart4	[V] state machine over uart4_getc bytes; feeds duml_dispatch	decomp
+0x0801b0a0	func	usart2_rx_flush	[V] drain usart2_getc until -1, clear state flag	decomp
+0x0801b6d4	table	crc16_table	[V] reflected CRC16 table, 256 x u16 (starts 0000 8911 2312)	disasm
+0x0801b8d7	table	crc8_table	[V] DUML CRC8 table, 256 x u8 (starts 00 5e bc e2)	disasm
+0x0801b9d8	table	gpio_pin_table	[V] 3 x {GPIO base, pin mask, RCC AHB1 bit}: PG10, PG11, PI10 type=gpio_pin_ent_s[3]	disasm
+0x0801d464	table	duml_table_empty	[V] zero-length table walked by duml_dispatch_short	disasm
+0x0801d46c	table	duml_table	[V] 27 entries {handler|1, id, set, pad[2]} + zero terminator at 0x0801d544 type=duml_h_entry_s[28]	disasm
+0x08060000	label	flash_param_store	[V] 128 slots x 0x400 in flash sector 7 (outside image); slot = u32 seq + 0x3fc payload	flash_param_save
+0x20000000	ram	can_tx_urgent_flag	[V] 1 when can_tx_urgent holds a frame; cleared by CAN1_TX_IRQHandler type=u32	dump refs
+0x20000004	ram	can_txq_head	[V] u8-wrapped write index of can_txq_buf type=u16	dump refs
+0x20000006	ram	can_txq_tail	[V] u8-wrapped read index of can_txq_buf type=u16	dump refs
+0x2000000c	ram	usart2_idx	[V] tx_head,tx_tail,rx_head,rx_tail (mask 0x3ff) type=uart_idx_s	dump refs
+0x20000014	ram	usart1_idx	[V] indices (mask 0x1ff); no reader of usart1_rx_buf found type=uart_idx_s	dump refs
+0x2000001c	ram	uart4_idx	[V] indices (mask 0x3ff) type=uart_idx_s	dump refs
+0x20000024	ram	sw2w_data_reg	[V] data register address of the 2-wire chip: 0x30 (id 0xb4) or 0x36 (id 0xb1/0xb2) type=u8	dump refs
+0x20000025	ram	imu_use_spi1	[V] 0 = 2-wire chip present, 1 = fallback to SPI1 MPU-family type=u8	dump refs
+0x2000030c	ram	tick_flag	[V] set by TIM4_IRQHandler, cleared at end of main_loop pass type=u8	dump refs
+0x20000374	ram	loop_count	[V] incremented once per main_loop pass type=u32	dump refs
+0x200007d8	ram	libm_errno	[I] written by libm_set_errno type=u32	dump refs
+0x200007dc	ram	can_tx_stage	[V] staging CanTxMsg for all senders; std id 0x321 set in can1_init type=can_tx_msg_s	dump refs
+0x20000804	ram	can_txq_buf	[V] 256 x 20-byte CanTxMsg ring (0x20000804..0x20001c04) type=can_tx_msg_s[256]	dump refs
+0x20001c04	ram	can_tx_urgent	[V] single pending CanTxMsg sent by CAN1_TX_IRQHandler first type=can_tx_msg_s	dump refs
+0x20002618	ram	can_rx_ring_buf	[V] 0x400-byte storage of can_rx_ring type=u8[1024]	dump refs
+0x20002a18	ram	can_rx_ring	[V] filled by can_rx_dispatch from CAN id 0x412, drained by duml_assemble_can; field id = 0x413 type=ringbuf_s	dump refs
+0x20002a30	ram	can_ring_b_buf	[V] storage of can_ring_b; no other reference found type=u8[1024]	dump refs
+0x20002e30	ram	can_ring_b	[V] second ring (field id 0x412); no reader or writer found type=ringbuf_s	dump refs
+0x20002e48	ram	usart2_tx_buf	[V] 0x400 B type=u8[1024]	dump refs
+0x20003248	ram	usart2_rx_buf	[V] 0x400 B type=u8[1024]	dump refs
+0x20003648	ram	usart1_tx_buf	[V] 0x200 B type=u8[512]	dump refs
+0x20003848	ram	usart1_rx_buf	[V] 0x200 B type=u8[512]	dump refs
+0x20003a48	ram	uart4_tx_buf	[V] 0x400 B type=u8[1024]	dump refs
+0x20003e48	ram	uart4_rx_buf	[V] 0x400 B type=u8[1024]	dump refs
+0x20004248	ram	imu_out	[V] decimated IMU output written by DMA2_Stream0_IRQHandler (gyro 16x oversampled) type=u8[8]	dump refs
+0x20004250	ram	imu_2wire_raw	[V] 12 bytes from sw2w_imu_read_sample type=u8[12]	dump refs
+0x20004294	ram	imu_dma_buf	[V] 15-byte SPI1 burst: INT_STATUS, accel 6, temp 2, gyro 6 type=imu_burst_s	dump refs
+0x200048c4	ram	loop_tim4_stamps	[V] TIM4_CNT sampled at 5 points per main_loop pass type=u32[5]	dump refs
+0x20004c48	ram	led_state	[I] enable mask +1, 3 channels +4, tick +0x1c type=led_state_s	dump refs
