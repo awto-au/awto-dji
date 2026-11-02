@@ -91,7 +91,8 @@ for k in range(1, a.levels + 1):
 HEAD_RAMS = [(36, 62), (23, 61), (36, 54), (23, 55), (23, 54)]   # M9Ks heading the dead chain (4b x 2048, no init data)
 for xy in HEAD_RAMS:
     m = P.m9k[xy]
-    for grp, cells in (("we", [cell_of(m["we"])]), ("data", [cell_of(q) for q in m["data"]])):
+    for grp, cells in (("we", [cell_of(m["we"])]), ("data", [cell_of(q) for q in m["data"]]),
+                       ("raddr", [cell_of(q) for q in m["raddr"]]), ("rce", [cell_of(m["ce_core"])] if m.get("ce_core") else [])):
         leaves = set()
         for c in cells:
             if isinstance(c, str) and c.startswith("lc_"):

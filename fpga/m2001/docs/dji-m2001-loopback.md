@@ -88,8 +88,12 @@ Conditions: Verilator, rtl_s emit, m1400 boot-table stimulus, 4-6M clk_main cycl
 - The playback gate reads copy0: `ff_26_78_8` = reg 0x08 bit 4, `ff_26_78_15` = reg 0x09 bit 2, `ff_26_78_5` = reg 0x09 bit 3 (V, `cycloneiv_clean_image_sim.spi_regs`).
 - Replaying boot table 2 into copy0 as well (copy0 = 0x15 / 0x80 / 0xDF): `ff_26_78_15` goes to 1, playback data FFs still 0, TXD 0, AC8 closed (V). The config copy is not the blocker.
 - Gate structure (V, LUT init): chain FFs are 2:1 muxes selected by `ff_26_78_15`, e.g. `ff_19_64_0` D = sel ? `lc_18_64_5` : `ff_18_63_3` (init 0xAACC). Both sources are 0.
-- Dead frontier (dead FFs feeding the chain, probed): `ff_18_63_3`, `ff_17_63_14`, `ff_13_62_14`, `ff_18_63_1`. The zero starts upstream of the 3 probed stages (I: the data source is the OFDM modulator / uplink-record path; not traced).
-- Open: expand probes outward from the dead frontier only; `uplink_record_readers` outputs (record bytes are non-zero); register group `ff_37_79_*` (`ena = lc_37_82_1`, not in the SPI register map); reg 0x02 copy0 never written.
+- Dead frontier (dead FFs feeding the chain, probed): `ff_18_63_3`, `ff_17_63_14`, `ff_13_62_14`, `ff_18_63_1`; enable `ff_13_61_15` is live (live-RX copy-A replay run, 8M half-cycles), data is 0.
+- Frontier expansion (`loopback_mkprobes_frontier.py`, runs pf/ph/pi, same stimulus): the dead chain runs back through `fr1`..`fr5` to five M9K read ports (36,62) (23,61) (36,54) (23,55) (23,54), 4b x 2048 SDP, no init data (0 of 2048 words non-zero), we = `lc_34_61_1` / `lc_34_61_7`.
+- Those RAMs are written (output FFs go non-zero once) but only by a few 0->1->0 pulses; write data comes from `ff_102_60/61_*` via `ff_84_61_*` / `ff_87_61_*` (enable `ff_87_61_2`), sequencer enable `ff_32_73_0` <- `ff_31_73_4`.
+- Read side: read-address FFs change 1-2 times, at the times of SPI register writes (half-cycles 11148, 45452, 945036, 970124, 1912122). I: the RAMs are register-indexed lookup tables, not RX sample buffers. Not traced one-for-one to the register FFs.
+- `ff_31_73_4` also enables `ff_26_72_2` (enable of `ff_15_62_1/2`, in the playback-RAM we cone): I, one sequencer gates both paths.
+- Open: which table word is read and whether the table write (`ff_102_60/61_*`, `ff_87_61_2`, `ff_31_73_4`) ever targets it; `uplink_record_readers` outputs (record bytes are non-zero); register group `ff_37_79_*` (`ena = lc_37_82_1`, not in the SPI register map); reg 0x02 copy0 never written.
 
 ## Lift faults found
 
@@ -111,5 +115,5 @@ python3.15t fpga/m2001/scripts/cycloneiv_clean_loopback_sim.py run --tag f1 --fo
 python3.15t fpga/m2001/scripts/cycloneiv_clean_loopback_sim.py analyse --tag tx; ... probes --tag f1
 ```
 Force sweep (bounded parallel): `python3.15t fpga/m2001/scripts/loopback_force_sweep.py --jobs 5`.
-Probes: `loopback_mkprobes_ram.py` writes `tmp/loopback/probes_ram.json` (playback-RAM cones, 3 upstream FF stages, regfile copies 0x00/0x02/0x08/0x09); rebuild the sim after changing it. Decoders: `loopback_probe_boundary.py TAG` (dead FFs with live inputs), `loopback_probe_regs.py TAG` (register value history). The sim also reads `tmp/loopback/probes_extra.json` if present (earlier regfile/TX-RAM set from `spi_regs`; the file was overwritten on 2026-11-02 and not regenerated).
+Probes: `loopback_mkprobes_frontier.py [--trace TAG]` appends backward stages (`fr*`) and head-RAM write/read cones (`hw*`) to the same file. `loopback_mkprobes_ram.py` writes `tmp/loopback/probes_ram.json` (playback-RAM cones, 3 upstream FF stages, regfile copies 0x00/0x02/0x08/0x09); rebuild the sim after changing it. Decoders: `loopback_probe_boundary.py TAG` (dead FFs with live inputs), `loopback_probe_regs.py TAG` (register value history). The sim also reads `tmp/loopback/probes_extra.json` if present (earlier regfile/TX-RAM set from `spi_regs`; the file was overwritten on 2026-11-02 and not regenerated).
 Static traces: `cycloneiv_clean_fsm_rxdetect_trace.py`, `cycloneiv_clean_playback_ram_trace.py` (`--nl tmp/image_sim_dji_push/nl.pkl`).
