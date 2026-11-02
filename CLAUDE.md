@@ -18,6 +18,11 @@ core and (parked) MAVLink ground clients.
   as proof.
 - Cite exact offsets / reproduction commands so claims can be re-derived.
 
+## Docs hygiene
+
+- Dated history and superseded results live in `docs/HISTORY.md`; analysis docs state the current result only (no superseded numbers).
+- Each claim tagged V/I/U with offsets and a reproduction command; fix a doc when a finding changes it.
+
 ## Firmware RE rules
 
 - `docs/re-rules.md` (applied here) → canonical `awto-dan/docs/embedded/embedded-rules.md`. Read before Ghidra work.

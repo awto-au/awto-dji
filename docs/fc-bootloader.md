@@ -203,7 +203,7 @@ layer is "documented" by the vendor and carried verbatim in the symbol map). The
 internals), so the analysis in this doc is original RE. The gimbal's `packet_exec_gener_*` update
 command names do appear in the upstream map.
 
-**Remaining open (U):** `m0305` target types 0–5 (6/7 confirmed), the air-radio (m0900) loader, and
+**Remaining open (U):** `m0305` types 0–5 are other modules' targets in the shared enum (6/7 are the only ones m0305 uses; parser not decompiled, #58), the air-radio (m0900) loader, and
 the resident FC loader at `0x08000000` (needs an SWD dump). Everything else in the FC boot/upgrade
 path is now analysed.
 
