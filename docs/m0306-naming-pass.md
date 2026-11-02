@@ -37,7 +37,7 @@ Names are applied from `docs/symbols/m0306*.tsv` + the C block of `docs/symbols/
 |---|---|---|
 | runtime | `__aeabi_f2d/d2f/dmul/dadd/dsub`, `memcpy`, `irq_save_disable/irq_restore`, `sqrtf`, `isnanf/isinff` | V (bit patterns), memcpy/memclr I |
 | debug log | `dbg_log_printf` (423 callers: vsnprintf, DUML-framed log sink), `_short`, `_ch`, `duml_frame_build` | V/I |
-| StdPeriph | `flash_unlock/lock/erase_sector/program_word/get_status`, `nvic_init`, `nvic_priority_group_config`, `dma_deinit/clear_flag/get_flag_status`, `syscfg_exti_line_config`, `exti_*`, `adc_common_init`, `sdio_send_command`, `pwr_enter_stop_mode`, `rcc_*`, `can_init`, `usart_init`, `gpio_init` | V by register offsets |
+| StdPeriph | `flash_unlock/lock/erase_sector/program_word/get_status`, `nvic_init`, `nvic_priority_group_config`, `dma_deinit/clear_flag/get_flag_status`, `syscfg_exti_line_config`, `exti_*`, `adc_common_init`, `sdio_send_command`, `pwr_enter_stop_mode`, `rcc_*`, `can_init`, `usart_init`, `gpio_init` | V by register offsets; `gpio_init`/`can_init` now also V by compile-diff (section 7), `adc_common_init` I, `usart_init` U by compile-diff - library identity, not the register-offset behaviour tag |
 | uC/OS-III | `OSTaskCreate` (13 args, 4 callers), `OS_TaskInitTCB`, `OS_TickTaskInit`, `OS_IdleTaskInit`, `OS_StatTaskInit` | V (strings "uC/OS-III * Task", arg shape) |
 | hard fault | `hardfault_print_ufsr/bfsr/mfsr`, `hardfault_dump_tcb/context/task_info/stack/os_state/spec_regs` | V (strings) |
 | safety/activation | `fc_activation_state_read` `0x08046d54`, `fc_motor_start_gate` `0x08024b46`, `fc_motor_check_activated`, `fc_motor_can_run`, `fc_auto_takeoff_state_machine` | V (`fc-auth-enforcement-trace.md`) |
@@ -58,6 +58,26 @@ Names are applied from `docs/symbols/m0306*.tsv` + the C block of `docs/symbols/
 - IMU/baro/GPS drivers other than IST8303 not identified; UART/ESC state objects only partly (`g_uart_port_table`).
 - Dispatch handlers' payload layouts not decoded; 6 handler ids have no known command name.
 
+
+## 7. SPL library-identity compile-diff retest (2026-11-03, #41 pt4)
+
+Section 4's StdPeriph group was named/verified by register offsets only (decompile evidence that
+the code *does* what SPL's `GPIO_Init`/`CAN_Init`/`USART_Init`/`ADC_CommonInit` do), never
+compile-diffed against real SPL source per `re-rules.md` pt 7. Retested per that rule, same
+recipe that found m0400's byte-exact SPL match (`docs/toolchain-inventory.md` "m0306 SPL
+peripheral-driver retest" - full detail there): `gpio_init` and `can_init` are **V, byte-identical**
+to the unmodified `github.com/quintin-lee/STM32F4_Stdlib` mirror compiled with ARM Compiler
+5.06u6 at `-O2`/`-O3`/`-Ospace` (m0400 matched at `-O0` - a different opt level, same library/
+compiler). `adc_common_init` is **I** (same size, 92.3% mnemonic overlap, not byte-exact).
+`usart_init` is a genuine **U**: its disassembly lacks the APB1/APB2-base comparison and uses a
+different BRR-fractional divisor computation than this SPL release's `USART_Init` - a real
+algorithmic difference, not an untried opt level or toolchain. No SPI_Init/I2C_Init/TIM_Init/
+DMA_Init candidates exist in m0306's naming docs to retest.
+
+This is the third independent confirmation (after m0400's peripheral code and m0900's soft-float
+family) that this firmware family was built with Keil/ARM Compiler 5, and upgrades the existing
+`docs/HISTORY.md` "SPL not HAL" call for m0306 from naming-convention inference to a real
+compiled-code match for 2 of 4 functions checked.
 
 ## External corroboration (2026-11-02)
 

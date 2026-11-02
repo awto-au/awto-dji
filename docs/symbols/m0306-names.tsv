@@ -96,7 +96,7 @@ addr	kind	name	note	source
 0x0803b58e	func	exti_generate_sw_interrupt	[V] EXTI->SWIER (+0x14) <- line	decomp
 0x0803bc44	func	syscfg_exti_line_config	[V] SYSCFG->EXTICR[(pin>>2)] 4-bit field = port (SYSCFG_EXTILineConfig)	decomp
 0x08027c14	func	pwr_enter_stop_mode	[V] PWR_CR bits | SCB_SCR SLEEPDEEP, then WFI (arg 1) or WFE (PWR_EnterSTOPMode)	decomp
-0x080374be	func	adc_common_init	[V] ADC_CommonInit: ADC_CCR (0x40012304) <- mode|prescaler|dma_mode|delay	decomp
+0x080374be	func	adc_common_init	[V] ADC_CommonInit: ADC_CCR (0x40012304) <- mode|prescaler|dma_mode|delay; libmatch vs github.com/quintin-lee/STM32F4_Stdlib ADC_CommonInit, ARM Compiler 5.06u6 -O1: same size (30B), 92.3% mnemonic overlap, not byte-exact - library identity stays [I] (toolchain-inventory.md #41 pt4)	decomp+libmatch
 0x080333c6	func	dwt_cyccnt_read	[V] returns DWT->CYCCNT (0xE0001004)	decomp
 0x0804d0e6	func	tim_get_it_status	[I] TIM_GetITStatus(TIMx, flag) pattern from TIM8_BRK_TIM12/TIM8_UP_TIM13 ISRs	decomp
 0x0804d0fe	func	tim_clear_it_pending_bit	[I] TIM_ClearITPendingBit(TIMx, flag)	decomp
