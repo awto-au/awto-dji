@@ -294,6 +294,78 @@ see [PC video notes](pc-video-preview.md).
 - **I.** Replay sends only DUML frames with receiver 0x02 (the app) and never an app-sent frame; it forwards recorded frames and builds none, so no flight-control path. Covered by `test_t600_rc_emulator.py` (fake backend).
 - **U.** Nothing here has run on hardware: PyUSB switch, bulk endpoints, re-enumeration (limit 5 s), `--accept-dialog` timing. `CynthionBackend` is a stub awaiting `usb <port> aoa|tx|rx` shell verbs.
 
+## AOA bench app
+
+Generic AOA test rig, not DJI-specific: a Cynthion (RISC-V shell) or `t600_rc_emulator.py` plays the AOA host, this app is the AOA **device**, a script on the PC drives it over WiFi.
+
+### Build / install / run
+- **I.** `cd app/awto_dji_app && flutter build apk --debug --dart-define=BENCH=true`; `lib/main.dart` switches on `const bool.fromEnvironment('BENCH')`.
+- **I.** Same package id (`au.awto.dji.awto_dji_app`) as the DJI app: installing it **replaces** the DJI app on the test phone (and the reverse). Without the define you get the DJI app.
+- **V.** Last build: BENCH=true debug APK built (Gradle ok). **U.** Never installed or run on a phone.
+- PC: `python3 -I scripts/re/bench_host.py --listen 9910 --tail` (port 9910 is unused elsewhere in the repo; relay uses 9900/9901).
+- Start (phone must reach the PC over WiFi):
+```
+adb -s <serial> shell am force-stop au.awto.dji.awto_dji_app
+adb -s <serial> shell am start -n au.awto.dji.awto_dji_app/.MainActivity \
+    -a au.awto.dji.action.BENCH --es host <pc-ip> --ei port 9910
+```
+- `au.awto.dji.action.CONNECT` accepts the same `host`/`port` extras; `DISCONNECT` stops the accessory pump. Relaunch by `USB_ACCESSORY_ATTACHED` after process death has no host (not persisted): re-send the intent. **U.**
+- Log also in the phone's external files dir: `bench.log`.
+
+### Screen
+- Top half, 2 Hz: PORT (`idle|attached|permission|connected|streaming|failed` + last error), USB (attached, permission, manufacturer/model/description/version/uri/serial), POWER (BatteryManager: plugged usb/ac/wireless/none, status, mV, uA), SPEED, MSGS (1 s and 10 s rates, totals, seconds since last, CRC-bad, discarded bytes), MODE (test verdict), HOST (TCP link + RTT).
+- Bottom half: timestamped log, newest last, auto-follow, 2000-line ring, mirrored to the file and the host.
+- SPEED: Android exposes no USB speed or endpoint info for accessories. Label is **inferred** from bulk max packet (512 high, 64 full, 1024 super); the app currently has no max packet source so it shows `unknown`, plus `/sys/class/udc/*/current_speed` when readable and the largest single read (`chunk`). **U** (all three).
+- PORT `streaming` = envelope/chunk within the last 2 s.
+
+### JSON protocol (one object per line, app is the TCP client)
+| Dir | Message | Meaning |
+|---|---|---|
+| app>host | `{"t":"hello","app","build"}` | on connect (log ring replayed after) |
+| app>host | `{"t":"state", usb, power, speed, msgs, port, host, mode, echo}` | every 500 ms and at once on a discrete change |
+| app>host | `{"t":"log","ts","lvl","msg"}` | each log line |
+| app>host | `{"t":"rx","ch","len","crc_ok"}` | each decoded AOA envelope (passive/duml modes); DUML CRCs checked on ch 0x5749 |
+| app>host | `{"t":"result","test","mode","frames","bytes","pass","first_mismatch":{"seq","offset","got","expected","hint"},...}` | test verdict; `final:true` when a run ends |
+| app>host | `{"t":"pong","id"}` / `{"t":"ping","id"}` | answer to host ping / app-initiated RTT probe (host answers `{"cmd":"pong","id"}`; added beyond the brief so the grid shows RTT) |
+| host>app | `{"cmd":"ping","id"}` | app answers `pong` |
+| host>app | `{"cmd":"send","hex"}` | raw bytes on bulk-out, one write |
+| host>app | `{"cmd":"echo","on"}` | passive-mode echo of each decoded payload (not the envelope) |
+| host>app | `{"cmd":"mode","m":"passive\|echo\|sink\|source\|duml", ...params}` | see modes |
+| host>app | `{"cmd":"result"}` | emit a `result` now, test continues |
+| host>app | `{"cmd":"stats_reset"}` / `disconnect` / `reconnect` | reset counters / stop pump and auto-connect / drop and reconnect now |
+
+Bounds: host TCP connect 3 s (LAN <= 1 s, 3x); host reconnect backoff 1,2,4,8 s then 8 s (cap bounds how long a freshly started script waits); accessory retry backoff 1..8 s likewise; AoaShim permission wait 3 s; source `dur_ms` default 10 s. Each is commented where it is set.
+
+### Modes (`{"cmd":"mode","m":...}`)
+| Mode | Params | Behaviour |
+|---|---|---|
+| `passive` | none | default: decode envelopes via `AoaMux`, count, `rx` messages |
+| `echo` | none | write every raw read back unchanged (empty read -> empty write) |
+| `sink` | `test`, `expect` (auto-finish after N frames) | parse AOAT stream, verify, report first mismatch offset; counts headerless `<24 B` transfers as `short`, empty reads as `zlp` |
+| `source` | `test`,`size`,`count` (0=until `dur_ms`),`rate` (fps, 0=max),`gap_ms`,`idle_ms`,`dur_ms`,`pattern` (addr\|counter\|random\|zeros\|ones\|alt),`seed` | generate AOAT frames app>host; `size` 0 = empty write, `<24` = headerless address-pattern bytes |
+| `duml` | `act` (`answer` default\|`emit`), `sender`,`receiver`,`cmd_set`,`cmd_id`,`seq0`,`payload_len`,`seed`,`count`,`rate`,`bad` (none\|hdr\|crc\|mix) | answer valid DUML requests with swapped addresses, or emit enveloped DUML test frames with a fake address-pattern payload and chosen addresses / bad CRC |
+
+### AOAT test frame (shared: `scripts/re/aoa_testkit.py`, `lib/bench/aoat.dart`, vectors `scripts/re/aoat_vectors.json`)
+- Little endian: `'AOAT'`, test_id u16, pattern u8, flags u8, run_seed u32, seq u32, total_len u32, payload, crc32 (zlib) over all before it. Min 24 B; accepted max 8 MiB.
+- Patterns: `addr` (every 32-bit word = byte offset XOR mix(seed,seq,test): a wrong word names the offset it was generated for), `counter`, `random` (xorshift32), `zeros`/`ones`/`alt` (0xAA,0x55; bit-stuffing/NRZI stress).
+- A corrupt frame still localises: payload is compared to the regenerated one, first differing offset + hint reported even when the CRC also fails.
+- **V.** Python and Dart produce byte-identical frames for the golden vectors (both test suites).
+
+### Test catalog (`scripts/re/bench_host.py --suite <name>`; peer = the other end of the cable)
+| Suite | Cases | Bounds |
+|---|---|---|
+| `size_sweep` | 0,1,2,3,7,8,15,16,31,32,63,64,65,127,128,255,256,511,512,513,1023,1024,1025,4095,4096,16383,16384,65535,65536 B, both directions | wait = 1 s + bytes / 100 kB/s (slowest plausible full-speed rate, 10x under ceiling) |
+| `zero_length` | frame-level empty payload (24 B frame); USB-level: exact multiples of the peer's max packet (64 or 512) sent with and without a trailing ZLP, both directions; reported as `ZLP:` cases | same |
+| `throughput` | 64, 512, 4096, 16384, 65536 B per direction, bytes/s over a 2 s window (>10 state ticks, skips ramp-up, 20 windows = 40 s) | window + 1 s |
+| `limits` | largest accepted transfer (128 KiB doubling to 4 MiB), 10000 x 24 B back-to-back, 5 s idle then 200 x 512 B burst (5 s = 2.5x Android's 2 s USB autosuspend) | per size |
+| `fuzz` | `--fuzz-seed N` (logged; omitted = random, printed): random sizes/patterns/gaps, truncated and oversized frames, DUML with bad CRC, ZLPs; oracle = `aoa_testkit.SinkModel` over the same chunks | bytes-based |
+| `soak` | `--soak-minutes N` stream from seq 0xFFFFFF00 (u32 wrap in first 256 frames), 10 s windows, drift = max deviation from median < 50% | N min |
+
+- API: `BenchHost.start()`, `wait_for_state(pred, timeout)`, `wait_for_result(...)`, `send_cmd(dict)`, `latest_state()`, `log_lines()`, `ping()`; `Peer` interface (`tx`, `rx`, `max_packet`) is implemented by `EmulatorPeer` (over `t600_rc_emulator.Backend`) or a Cynthion shell driver. CLI `--peer none` runs app-only steps and fails peer steps.
+- **V.** pytest: `scripts/re/test_aoa_testkit.py`, `scripts/re/test_bench_host.py` (fake in-process app + loop peer); `flutter test` covers model, AOAT codec, mode engine, controller over loopback TCP.
+- **I.** Fuzz oracle matches the Dart sink only as far as the two implementations agree on edge cases (headerless chunk rule, resync); only checked Python-vs-fake-app.
+- **U.** Everything on hardware: `BenchShim.kt` (accessory info, battery, udc speed, log dir); `FileOutputStream.write` of 0 bytes emitting a ZLP; `FileInputStream.read` surfacing a ZLP as a 0-length read; transfers >= 64 KiB through the accessory driver; read coalescing vs the sink's chunk rule; WiFi half-open detection (no heartbeat from the app side beyond RTT probe); bench screen layout on a phone; `EmulatorPeer`/Cynthion driver against real USB.
+
 ## What this doesn't cover
 
 - The aircraft's **front micro-USB port** (`/dev/ttyACM11` on the PC, not through the
