@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 """Decode m0900's CAN TX routing table (packet_send, issue #36 payload-meaning question).
 
-packet_send (FUN_080098d0 in the issue-#36 CAN-focused Ghidra pass, tmp/m0900_can_ghidra/)
+packet_send (0x080118d0)
 dispatches an outbound DUML frame by `byte5 & 0x1f` (the DUML receiver-type byte, masked)
-through a 31-entry Thumb `tbb [pc,r0]` table at flash 0x080098e4 (target = table_addr +
+through a 31-entry Thumb `tbb [pc,r0]` table at flash 0x080118e4 (target = table_addr +
 2*byte). This reads that table directly out of the firmware image (no Ghidra needed - the
 table is flash data, not an opcode) and prints receiver-type -> target-address.
 
-Also dereferences the literal pool slots that resolve `FUN_080030a4`'s reason-code (1/2/3)
+Also dereferences the literal pool slots that resolve `uart_send`'s reason-code (1/2/3)
 to a concrete USART TX-DMA buffer address, confirming reason 1/2/3 = USART1/2/3 (cross-
 checked against docs/data/m0900-buses.tsv's documented DMA buffer addresses).
 
@@ -27,8 +27,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from _log import REPO, log  # noqa: E402
 
 FW = REPO / "firmware" / "P3X_FW_V01.11.0020_m0900.bin"
-BASE = 0x08000000
-TABLE_ADDR = 0x080098E4
+BASE = 0x08008000  # see m0900_base_check.py
+TABLE_ADDR = 0x080118E4
 TABLE_ENTRIES = 31  # tbb guards r0 >= 0x1f (31) -> default, so only 0..30 are real
 
 # DUML DeviceType values this table's targets correspond to (docs/data/apk-cmdset-devicetype.tsv).
@@ -38,12 +38,12 @@ DEVICE_TYPE = {
     15: "TRANSFORM", 16: "TRANSFORM_G", 17: "SINGLE", 18: "DOUBLE", 19: "FPGA", 20: "FPGA_G",
 }
 
-# FUN_080030a4's reason-code -> USARTx TX-DMA buffer literal (dereferenced below), per
+# uart_send's reason-code -> USARTx TX-DMA buffer literal (dereferenced below), per
 # docs/data/m0900-buses.tsv's documented DMA buffer addresses (0x200001d0/4d0/7d0).
 REASON_LITERALS = {
-    1: 0x08003234,  # -> 0x200001d0 = USART1 TX DMA buf
-    2: 0x08003238,  # -> 0x200004d0 = USART2 TX DMA buf
-    3: 0x08003224,  # -> 0x200007d0 = USART3 TX DMA buf
+    1: 0x0800B234,  # -> 0x200001d0 = USART1 TX DMA buf
+    2: 0x0800B238,  # -> 0x200004d0 = USART2 TX DMA buf
+    3: 0x0800B224,  # -> 0x200007d0 = USART3 TX DMA buf
 }
 USART_BUF = {0x200001D0: "USART1", 0x200004D0: "USART2", 0x200007D0: "USART3"}
 
@@ -70,7 +70,7 @@ def main() -> int:
         names = [f"{i}({DEVICE_TYPE.get(i, '?')})" for i in idxs]
         lines.append(f"target {target:#010x}: receiver types {', '.join(names)}")
     lines.append("")
-    lines.append("FUN_080030a4 reason-code -> USART TX-DMA buffer (cross-check):")
+    lines.append("uart_send reason-code -> USART TX-DMA buffer (cross-check):")
     for reason, lit_addr in sorted(REASON_LITERALS.items()):
         val = struct.unpack_from("<I", data, lit_addr - BASE)[0]
         lines.append(f"  reason {reason}: [{lit_addr:#010x}] = {val:#010x} "

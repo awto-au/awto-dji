@@ -1,16 +1,15 @@
 #!/usr/bin/env python3
 """Re-check whether {0x412,0x413,0x414,0x415} is m0900's complete CAN-ID set - issue #36
 correction. The prior "closed" claim only enumerated call sites of ONE helper
-(`can_endpoint_register`, 0x080033ec). That proves exhaustiveness for sends routed through
+(`can_endpoint_register`, 0x0800b3ec). That proves exhaustiveness for sends routed through
 that helper, not for a direct/inline mailbox-register write placed anywhere else in the
 322-function image - STM32's bxCAN has independent TX mailboxes and no hardware requirement
 that every send goes through one software abstraction.
 
 Two independent checks, both against the full raw image + full disassembly already dumped
-by scripts/re/m0900_can_ghidra.py (tmp/m0900_can_ghidra/m0900_dump.txt, archived project
-re/ghidra-projects/m0900_can.tar.gz):
+by scripts/re/m0900_ghidra_names.py (re/ghidra-projects/m0900_radio/m0900_dump.txt):
 
-1. RX filter-bank check: every call site of CAN_FilterInit (0x0800072e). Reported for
+1. RX filter-bank check: every call site of CAN_FilterInit (0x0800872e). Reported for
    completeness, but it has exactly one caller (can_endpoint_register) -> NOT independent
    evidence, just a restatement of the same call-site search.
 2. Register-range literal-pool scan: every 4-byte-aligned word in the raw firmware image
@@ -27,11 +26,8 @@ re/ghidra-projects/m0900_can.tar.gz):
 
 Follow-up trace (operator-specified addresses, 2026-10-24), appended to the same report:
 
-4. Base-address sanity check: dumps the raw words at file offset 0x0 (true Cortex-M vector
-   table location) and 0x8000 (the base `scripts/re/m0900_ghidra_disasm.py` loads at) so a
-   human can see which one is a real vector table (valid SRAM stack pointer + odd/Thumb
-   handler addresses) and which is instruction garbage - settles which of this repo's two
-   m0900 Ghidra projects uses the true link base.
+4. Base-address sanity check: dumps the raw words at file offsets 0x0 and 0x200 (vector table,
+   Reset_Handler); full gate in m0900_base_check.py (link base 0x08008000).
 5. IRQ20 (CAN1_RX0, vector word index 36) raw handler address, read directly from the file -
    base-independent fact, cross-checked against `vec_36` in this (can_ghidra) project.
 6. Endpoint-registration trace for std ID 0x414's object at SRAM 0x20002538: confirms the ID
@@ -52,12 +48,12 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from _log import REPO, log  # noqa: E402
 
 FW = REPO / "firmware" / "P3X_FW_V01.11.0020_m0900.bin"
-DUMP = REPO / "tmp" / "m0900_can_ghidra" / "m0900_dump.txt"
-BASE = 0x08000000
+DUMP = REPO / "re" / "ghidra-projects" / "m0900_radio" / "m0900_dump.txt"
+BASE = 0x08008000  # app link base, see m0900_base_check.py
 
 CAN1_RANGE = (0x40006400, 0x400067FF)
 CAN2_RANGE = (0x40006800, 0x40006BFF)
-FILTERINIT_ADDR = 0x0800072E
+FILTERINIT_ADDR = 0x0800872E  # can_filter_init
 
 
 def find_filterinit_callers(disasm: str) -> list[str]:
@@ -94,7 +90,7 @@ def main() -> int:
     out_path = out_dir / "can_closure_check.txt"
     lines: list[str] = []
 
-    lines.append("### 1. CAN_FilterInit (0x0800072e) callers")
+    lines.append("### 1. CAN_FilterInit (0x0800872e) callers")
     callers = re.findall(rf"(\S+) \[(\S+)\]: bl 0x{FILTERINIT_ADDR:08x}\b", disasm)
     lines.append(f"found {len(callers)} call site(s): {callers}")
     lines.append("-> only can_endpoint_register calls it; NOT independent of the "
@@ -126,24 +122,15 @@ def main() -> int:
         lines.append("  " + l)
 
     lines.append("")
-    lines.append("### 5. Base-address sanity check (true link base vs m0900_ghidra_disasm.py's base)")
-    for off, label in ((0x0, "file offset 0x0 (true Cortex-M vector table location)"),
-                       (0x8000, "file offset 0x8000 (m0900_ghidra_disasm.py's BASE_ADDR)")):
+    lines.append("### 5. Base-address sanity check (see m0900_base_check.py)")
+    for off, label in ((0x0, "file offset 0x0 (vector table)"),
+                       (0x200, "file offset 0x200 (Reset_Handler)")):
         words = [struct.unpack_from("<I", data, off + 4 * i)[0] for i in range(6)]
         lines.append(f"  {label}: {[f'{w:#010x}' for w in words]}")
-    lines.append("  -> offset 0x0 is a valid vector table (plausible SRAM initial SP, odd/Thumb "
-                 "handler addresses); offset 0x8000 is not. True link base is 0x08000000: "
-                 "m0900_can_ghidra (this project, all of docs/dataflow.md sec. 7-7.11) used it "
-                 "correctly. m0900_ghidra (BASE_ADDR 0x08008000, used for docs/data/m0900-buses.tsv's "
-                 "CAN1 row) is off by +0x8000 on every function address it reports - "
-                 "its can_init/ring-init/can_enqueue_and_tx addresses (0x0800b31c/0x0800b3ec/0x0800b468) "
-                 "translate to this project's can_bus_init/can_endpoint_register/can_send_bytes "
-                 "(0x0800331c/0x080033ec/0x08003468) by subtracting 0x8000 - exact match, confirming "
-                 "the translation. Raw vector-table VALUES (read straight from the file, independent "
-                 "of either project's base) are correct in both; only Ghidra-computed function "
-                 "addresses in the wrongly-based project need the -0x8000 correction.")
+    lines.append("  -> reset vector 0x08008201 puts the vector table at 0x08008000 (reset at file "
+                 "offset 0x200). Link base is 0x08008000; bootloader occupies 0x08000000-0x08008000.")
 
-    irq20_off = 0x40 + 4 * 20
+    irq20_off = 0x40 + 4 * 20  # vector 16+20 = IRQ20
     irq20_val = struct.unpack_from("<I", data, irq20_off)[0]
     lines.append("")
     lines.append(f"### 6. IRQ20 (CAN1_RX0) vector table entry, file offset {irq20_off:#x}: "
