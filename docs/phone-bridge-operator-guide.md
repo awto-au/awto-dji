@@ -287,6 +287,13 @@ see [PC video notes](pc-video-preview.md).
 - **I.** The "default" tick makes Android launch the app on `USB_ACCESSORY_ATTACHED` with the grant; it survives reboot, not uninstall or clear-data.
 - **U.** Persists per manufacturer+model on Android 12 (Pixel 3 XL): confirm with `adb -s <serial> shell dumpsys usb` after the first grant. Control ids (`android:id/alwaysUse`, `button1`) are unverified on a phone.
 
+## Emulating the RC from a PC or a Cynthion
+
+- **I.** `scripts/re/t600_rc_emulator.py` plays the RC (AOA accessory host, manufacturer/model parsed from `aoa_identity.dart`) toward the phone: `handshake`, `listen`, `replay FILE`; log `tmp/logs/t600_rc_emulator.log`.
+- **V.** description/version/uri/serial = `DJI` / `v1.2.3.4` / `www.dji.com` / `12345678`, as read off the phone with a real RC (`docs/aoa-live-test-2026-10-23.md`).
+- **I.** Replay sends only DUML frames with receiver 0x02 (the app) and never an app-sent frame; it forwards recorded frames and builds none, so no flight-control path. Covered by `test_t600_rc_emulator.py` (fake backend).
+- **U.** Nothing here has run on hardware: PyUSB switch, bulk endpoints, re-enumeration (limit 5 s), `--accept-dialog` timing. `CynthionBackend` is a stub awaiting `usb <port> aoa|tx|rx` shell verbs.
+
 ## What this doesn't cover
 
 - The aircraft's **front micro-USB port** (`/dev/ttyACM11` on the PC, not through the
