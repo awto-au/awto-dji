@@ -1,4 +1,4 @@
-=== FUNCTIONS (337) ===
+=== FUNCTIONS (338) ===
 FUNCTION main_thunk @ 08008190 size=4 callsites=1
 FUNCTION Reset_Handler @ 0800819c size=8 callsites=0
 FUNCTION NMI_Handler @ 080081a4 size=2 callsites=0
@@ -12,9 +12,10 @@ FUNCTION PendSV_Handler @ 080081b2 size=2 callsites=0
 FUNCTION SysTick_Handler @ 080081b4 size=2 callsites=0
 FUNCTION Default_Handler @ 080081b6 size=2 callsites=0
 FUNCTION cmplx_mag_f32 @ 080081c0 size=236 callsites=2
+FUNCTION arm_bitreversal_f32 @ 080082b0 size=176 callsites=0
 FUNCTION radix4_butterfly_f32 @ 08008360 size=836 callsites=1
 FUNCTION radix4_butterfly_inverse_f32 @ 080086a4 size=868 callsites=1
-FUNCTION cfft_radix4_f32 @ 08008a08 size=234 callsites=2
+FUNCTION cfft_radix4_f32 @ 08008a08 size=58 callsites=2
 FUNCTION cfft_radix4_init_f32 @ 08008a44 size=116 callsites=2
 FUNCTION memcpy @ 08008adc size=36 callsites=17
 FUNCTION memclr @ 08008b0e size=18 callsites=5
@@ -730,57 +731,57 @@ FUNCTION FUN_0801b62c @ 0801b62c size=158 callsites=1
 080082a6 [cmplx_mag_f32]: subs r2,r2,#0x1
 080082a8 [cmplx_mag_f32]: bne 0x0800827c ; ref->0800827c(CONDITIONAL_JUMP)
 080082aa [cmplx_mag_f32]: bx lr
-080082b0 [cfft_radix4_f32]: push {r4,r5,r6,r7,r8}
-080082b4 [cfft_radix4_f32]: lsrs r6,r1,#0x1
-080082b6 [cfft_radix4_f32]: movs r4,#0x1
-080082b8 [cfft_radix4_f32]: mov.w r12,#0x0
-080082bc [cfft_radix4_f32]: add.w r7,r4,r1, lsr #0x1
-080082c0 [cfft_radix4_f32]: mov r1,r12
-080082c2 [cfft_radix4_f32]: sub.w r8,r6,#0x2
-080082c6 [cfft_radix4_f32]: b 0x08008322 ; ref->08008322(UNCONDITIONAL_JUMP)
-080082c8 [cfft_radix4_f32]: cmp r1,r12
-080082ca [cfft_radix4_f32]: bcs 0x08008322 ; ref->08008322(CONDITIONAL_JUMP)
-080082cc [cfft_radix4_f32]: add.w r5,r0,r12, lsl #0x3
-080082d0 [cfft_radix4_f32]: add.w r4,r0,r1, lsl #0x3
-080082d4 [cfft_radix4_f32]: vldr.32 s1,[r5]
-080082d8 [cfft_radix4_f32]: vldr.32 s0,[r4]
-080082dc [cfft_radix4_f32]: vstr.32 s1,[r4]
-080082e0 [cfft_radix4_f32]: vstr.32 s0,[r5]
-080082e4 [cfft_radix4_f32]: vldr.32 s1,[r5,#0x4]
-080082e8 [cfft_radix4_f32]: vldr.32 s0,[r4,#0x4]
-080082ec [cfft_radix4_f32]: vstr.32 s1,[r4,#0x4]
-080082f0 [cfft_radix4_f32]: vstr.32 s0,[r5,#0x4]
-080082f4 [cfft_radix4_f32]: add.w r5,r12,r7
-080082f8 [cfft_radix4_f32]: adds r4,r1,r7
-080082fa [cfft_radix4_f32]: add.w r5,r0,r5, lsl #0x3
-080082fe [cfft_radix4_f32]: add.w r4,r0,r4, lsl #0x3
-08008302 [cfft_radix4_f32]: vldr.32 s1,[r5]
-08008306 [cfft_radix4_f32]: vldr.32 s0,[r4]
-0800830a [cfft_radix4_f32]: vstr.32 s1,[r4]
-0800830e [cfft_radix4_f32]: vstr.32 s0,[r5]
-08008312 [cfft_radix4_f32]: vldr.32 s1,[r5,#0x4]
-08008316 [cfft_radix4_f32]: vldr.32 s0,[r4,#0x4]
-0800831a [cfft_radix4_f32]: vstr.32 s1,[r4,#0x4]
-0800831e [cfft_radix4_f32]: vstr.32 s0,[r5,#0x4]
-08008322 [cfft_radix4_f32]: add.w r4,r0,r1, lsl #0x3
-08008326 [cfft_radix4_f32]: add r12,r6
-08008328 [cfft_radix4_f32]: add.w r12,r0,r12, lsl #0x3
-0800832c [cfft_radix4_f32]: vldr.32 s0,[r4,#0x8]
-08008330 [cfft_radix4_f32]: vldr.32 s1,[r12]
-08008334 [cfft_radix4_f32]: adds r1,r1,#0x2
-08008336 [cfft_radix4_f32]: vstr.32 s1,[r4,#0x8]
-0800833a [cfft_radix4_f32]: vstr.32 s0,[r12]
-0800833e [cfft_radix4_f32]: vldr.32 s0,[r4,#0xc]
-08008342 [cfft_radix4_f32]: ldr.w r5,[r12,#0x4]
-08008346 [cfft_radix4_f32]: str r5,[r4,#0xc]
-08008348 [cfft_radix4_f32]: vstr.32 s0,[r12,#0x4]
-0800834c [cfft_radix4_f32]: ldrh.w r12,[r3,#0x0]
-08008350 [cfft_radix4_f32]: uxth r1,r1
-08008352 [cfft_radix4_f32]: add.w r3,r3,r2, lsl #0x1
-08008356 [cfft_radix4_f32]: cmp r1,r8
-08008358 [cfft_radix4_f32]: bls 0x080082c8 ; ref->080082c8(CONDITIONAL_JUMP)
-0800835a [cfft_radix4_f32]: pop.w {r4,r5,r6,r7,r8}
-0800835e [cfft_radix4_f32]: bx lr
+080082b0 [arm_bitreversal_f32]: push {r4,r5,r6,r7,r8}
+080082b4 [arm_bitreversal_f32]: lsrs r6,r1,#0x1
+080082b6 [arm_bitreversal_f32]: movs r4,#0x1
+080082b8 [arm_bitreversal_f32]: mov.w r12,#0x0
+080082bc [arm_bitreversal_f32]: add.w r7,r4,r1, lsr #0x1
+080082c0 [arm_bitreversal_f32]: mov r1,r12
+080082c2 [arm_bitreversal_f32]: sub.w r8,r6,#0x2
+080082c6 [arm_bitreversal_f32]: b 0x08008322 ; ref->08008322(UNCONDITIONAL_JUMP)
+080082c8 [arm_bitreversal_f32]: cmp r1,r12
+080082ca [arm_bitreversal_f32]: bcs 0x08008322 ; ref->08008322(CONDITIONAL_JUMP)
+080082cc [arm_bitreversal_f32]: add.w r5,r0,r12, lsl #0x3
+080082d0 [arm_bitreversal_f32]: add.w r4,r0,r1, lsl #0x3
+080082d4 [arm_bitreversal_f32]: vldr.32 s1,[r5]
+080082d8 [arm_bitreversal_f32]: vldr.32 s0,[r4]
+080082dc [arm_bitreversal_f32]: vstr.32 s1,[r4]
+080082e0 [arm_bitreversal_f32]: vstr.32 s0,[r5]
+080082e4 [arm_bitreversal_f32]: vldr.32 s1,[r5,#0x4]
+080082e8 [arm_bitreversal_f32]: vldr.32 s0,[r4,#0x4]
+080082ec [arm_bitreversal_f32]: vstr.32 s1,[r4,#0x4]
+080082f0 [arm_bitreversal_f32]: vstr.32 s0,[r5,#0x4]
+080082f4 [arm_bitreversal_f32]: add.w r5,r12,r7
+080082f8 [arm_bitreversal_f32]: adds r4,r1,r7
+080082fa [arm_bitreversal_f32]: add.w r5,r0,r5, lsl #0x3
+080082fe [arm_bitreversal_f32]: add.w r4,r0,r4, lsl #0x3
+08008302 [arm_bitreversal_f32]: vldr.32 s1,[r5]
+08008306 [arm_bitreversal_f32]: vldr.32 s0,[r4]
+0800830a [arm_bitreversal_f32]: vstr.32 s1,[r4]
+0800830e [arm_bitreversal_f32]: vstr.32 s0,[r5]
+08008312 [arm_bitreversal_f32]: vldr.32 s1,[r5,#0x4]
+08008316 [arm_bitreversal_f32]: vldr.32 s0,[r4,#0x4]
+0800831a [arm_bitreversal_f32]: vstr.32 s1,[r4,#0x4]
+0800831e [arm_bitreversal_f32]: vstr.32 s0,[r5,#0x4]
+08008322 [arm_bitreversal_f32]: add.w r4,r0,r1, lsl #0x3
+08008326 [arm_bitreversal_f32]: add r12,r6
+08008328 [arm_bitreversal_f32]: add.w r12,r0,r12, lsl #0x3
+0800832c [arm_bitreversal_f32]: vldr.32 s0,[r4,#0x8]
+08008330 [arm_bitreversal_f32]: vldr.32 s1,[r12]
+08008334 [arm_bitreversal_f32]: adds r1,r1,#0x2
+08008336 [arm_bitreversal_f32]: vstr.32 s1,[r4,#0x8]
+0800833a [arm_bitreversal_f32]: vstr.32 s0,[r12]
+0800833e [arm_bitreversal_f32]: vldr.32 s0,[r4,#0xc]
+08008342 [arm_bitreversal_f32]: ldr.w r5,[r12,#0x4]
+08008346 [arm_bitreversal_f32]: str r5,[r4,#0xc]
+08008348 [arm_bitreversal_f32]: vstr.32 s0,[r12,#0x4]
+0800834c [arm_bitreversal_f32]: ldrh.w r12,[r3,#0x0]
+08008350 [arm_bitreversal_f32]: uxth r1,r1
+08008352 [arm_bitreversal_f32]: add.w r3,r3,r2, lsl #0x1
+08008356 [arm_bitreversal_f32]: cmp r1,r8
+08008358 [arm_bitreversal_f32]: bls 0x080082c8 ; ref->080082c8(CONDITIONAL_JUMP)
+0800835a [arm_bitreversal_f32]: pop.w {r4,r5,r6,r7,r8}
+0800835e [arm_bitreversal_f32]: bx lr
 08008360 [radix4_butterfly_f32]: push {r4,r5,r6,r7,r8,r9,r10,r11,lr}
 08008364 [radix4_butterfly_f32]: lsr.w r12,r1,#0x2
 08008368 [radix4_butterfly_f32]: mov.w r8,#0x0
@@ -24329,7 +24330,8 @@ void Default_Handler(void)
 
 ---- cmplx_mag_f32 @ 080081c0 ----
 
-/* [I] sqrt(re^2+im^2) over array (CMSIS-DSP shape) */
+/* [I] sqrt(re^2+im^2) over array (CMSIS-DSP shape); libmatch vs CMSIS-DSP V1.4.5
+   arm_cmplx_mag_f32.c O0-Os: U, no match (naming-pass.md S6) */
 
 void cmplx_mag_f32(float *param_1,float *param_2,uint param_3)
 
@@ -24399,9 +24401,69 @@ void cmplx_mag_f32(float *param_1,float *param_2,uint param_3)
 }
 
 
+---- arm_bitreversal_f32 @ 080082b0 ----
+
+/* [I] NEW (#41 pass 2): bit-reversal permutation hidden inside cfft_radix4_f32's Ghidra function
+   boundary - tail-jumped to from 0x08008a34/0x08008a40, never given its own FUNCTION entry; args
+   (pSrc,fftSize,bitRevFactor,pBitRevTab) match CMSIS-DSP arm_bitreversal_f32 exactly, call site in
+   cfft_radix4_f32 matches `arm_bitreversal_f32(pSrc,fftLen,bitRevFactor,pBitRevTable)`; libmatch vs
+   CMSIS-DSP V1.4.5 arm_bitreversal.c O0-Os: U, no instruction match despite exact call signature
+   and size in the same ballpark (176B vs 194-200B) - see naming-pass.md S6 */
+
+void arm_bitreversal_f32(int param_1,uint param_2,int param_3,ushort *param_4)
+
+{
+  uint uVar1;
+  int iVar2;
+  undefined4 *puVar3;
+  int iVar4;
+  uint uVar5;
+  undefined4 *puVar6;
+  undefined4 uVar7;
+  
+  uVar5 = 0;
+  iVar4 = (param_2 >> 1) + 1;
+  uVar1 = 0;
+  while( true ) {
+    iVar2 = param_1 + uVar1 * 8;
+    puVar6 = (undefined4 *)(param_1 + (uVar5 + (param_2 >> 1)) * 8);
+    uVar7 = *(undefined4 *)(iVar2 + 8);
+    *(undefined4 *)(iVar2 + 8) = *puVar6;
+    *puVar6 = uVar7;
+    uVar7 = *(undefined4 *)(iVar2 + 0xc);
+    *(undefined4 *)(iVar2 + 0xc) = puVar6[1];
+    puVar6[1] = uVar7;
+    uVar5 = (uint)*param_4;
+    uVar1 = uVar1 + 2 & 0xffff;
+    param_4 = param_4 + param_3;
+    if ((param_2 >> 1) - 2 < uVar1) break;
+    if (uVar1 < uVar5) {
+      puVar3 = (undefined4 *)(param_1 + uVar5 * 8);
+      puVar6 = (undefined4 *)(param_1 + uVar1 * 8);
+      uVar7 = *puVar6;
+      *puVar6 = *puVar3;
+      *puVar3 = uVar7;
+      uVar7 = puVar6[1];
+      puVar6[1] = puVar3[1];
+      puVar3[1] = uVar7;
+      puVar3 = (undefined4 *)(param_1 + (uVar5 + iVar4) * 8);
+      puVar6 = (undefined4 *)(param_1 + (uVar1 + iVar4) * 8);
+      uVar7 = *puVar6;
+      *puVar6 = *puVar3;
+      *puVar3 = uVar7;
+      uVar7 = puVar6[1];
+      puVar6[1] = puVar3[1];
+      puVar3[1] = uVar7;
+    }
+  }
+  return;
+}
+
+
 ---- radix4_butterfly_f32 @ 08008360 ----
 
-/* [I] CMSIS-DSP radix-4 FFT butterfly */
+/* [I] CMSIS-DSP radix-4 FFT butterfly; libmatch vs CMSIS-DSP V1.4.5 arm_radix4_butterfly_f32 O0-Os:
+   U, sizes close (814-854B vs 836B) but no instruction match (naming-pass.md S6) */
 
 void radix4_butterfly_f32(int param_1,uint param_2,int param_3,uint param_4)
 
@@ -24569,7 +24631,8 @@ void radix4_butterfly_f32(int param_1,uint param_2,int param_3,uint param_4)
 
 ---- radix4_butterfly_inverse_f32 @ 080086a4 ----
 
-/* [I] inverse radix-4 FFT butterfly */
+/* [I] inverse radix-4 FFT butterfly; libmatch vs CMSIS-DSP V1.4.5 arm_radix4_butterfly_inverse_f32:
+   U, not byte/instruction-matched (same source file as radix4_butterfly_f32, naming-pass.md S6) */
 
 void radix4_butterfly_inverse_f32(float param_1,int param_2,uint param_3,int param_4,uint param_5)
 
@@ -24737,7 +24800,9 @@ void radix4_butterfly_inverse_f32(float param_1,int param_2,uint param_3,int par
 
 ---- cfft_radix4_f32 @ 08008a08 ----
 
-/* [I] picks forward/inverse butterfly from instance flag */
+/* [I] picks forward/inverse butterfly from instance flag; tail-jumps into an un-named bit-reversal
+   block at 0x080082b0 (see arm_bitreversal_f32 row) that Ghidra folds into this function's
+   disassembly despite being outside its FUNCTION byte range */
 
 void cfft_radix4_f32(ushort *param_1,int param_2)
 
@@ -24808,7 +24873,8 @@ void cfft_radix4_f32(ushort *param_1,int param_2)
 
 ---- cfft_radix4_init_f32 @ 08008a44 ----
 
-/* [I] fills instance for fftLen=16 (twiddle len 0x40) */
+/* [I] fills instance for fftLen=16 (twiddle len 0x40); libmatch vs CMSIS-DSP V1.4.5
+   arm_cfft_radix4_init_f32: U, no instruction match (naming-pass.md S6) */
 
 undefined4
 cfft_radix4_init_f32(undefined2 *param_1,int param_2,undefined1 param_3,undefined1 param_4)
@@ -24854,7 +24920,9 @@ cfft_radix4_init_f32(undefined2 *param_1,int param_2,undefined1 param_3,undefine
 
 ---- memcpy @ 08008adc ----
 
-/* [V] word copy when both aligned, else bytes (__aeabi_memcpy shape); 14 callers */
+/* [V] word copy when both aligned, else bytes (__aeabi_memcpy shape); 14 callers; libmatch vs
+   newlib (arm-none-eabi 5.4.1/15.2.0) libc.a memcpy: U, newlib's is a much larger unrolled impl
+   (naming-pass.md S6) */
 
 void memcpy(undefined4 *param_1,undefined4 *param_2,uint param_3)
 
@@ -24898,7 +24966,9 @@ void memclr(undefined1 *param_1,int param_2)
 
 ---- __aeabi_dadd @ 08008b40 ----
 
-/* [I] IEEE double add (soft path with FPU single only); 17 callers */
+/* [I] IEEE double add (soft path with FPU single only); 17 callers; libmatch vs libgcc
+   (5.4.1/14.3.1/15.2.x, all identical here) _arm_addsubdf3.o __aeabi_dadd: U, firmware's is 352B vs
+   630B stock - not stock GCC's ARM-optimized soft-double (naming-pass.md S6) */
 
 uint __aeabi_dadd(uint param_1,uint param_2,uint param_3,uint param_4)
 
@@ -25004,7 +25074,8 @@ void __aeabi_drsub(undefined4 param_1,uint param_2)
 
 ---- __aeabi_dmul @ 08008c8e ----
 
-/* [I] IEEE double multiply; 19 callers */
+/* [I] IEEE double multiply; 19 callers; libmatch vs libgcc _arm_muldivdf3.o __aeabi_dmul: U,
+   firmware's is 228B vs 596B stock (naming-pass.md S6) */
 
 void __aeabi_dmul(uint param_1,uint param_2,uint param_3,uint param_4)
 
@@ -25046,7 +25117,8 @@ void __aeabi_dmul(uint param_1,uint param_2,uint param_3,uint param_4)
 
 ---- __aeabi_f2d @ 08008d8c ----
 
-/* [V] float->double: exp+0x380, mantissa>>3 */
+/* [V] float->double: exp+0x380, mantissa>>3; libmatch vs libgcc __aeabi_f2d: U, firmware's is 38B
+   vs 66B stock, different bit-trick (naming-pass.md S6) */
 
 undefined8 __aeabi_f2d(uint param_1)
 
@@ -25073,7 +25145,8 @@ int FUN_08008db4(int param_1,int param_2)
 
 ---- __aeabi_d2f @ 08008de4 ----
 
-/* [I] double->float with rounding */
+/* [I] double->float with rounding; libmatch vs libgcc _arm_truncdfsf2.o __aeabi_d2f: U, firmware's
+   is 74B vs 158B stock (naming-pass.md S6) */
 
 uint __aeabi_d2f(uint param_1,uint param_2)
 
@@ -25102,7 +25175,8 @@ uint __aeabi_d2f(uint param_1,uint param_2)
 
 ---- __aeabi_llsl @ 08008e1c ----
 
-/* [V] 64-bit shift left */
+/* [V] 64-bit shift left; libmatch vs libgcc _ashldi3.o __aeabi_llsl: U, no instruction match
+   despite close size (30B vs 24B) (naming-pass.md S6) */
 
 longlong __aeabi_llsl(uint param_1,int param_2,uint param_3)
 
@@ -25188,7 +25262,8 @@ ulonglong FUN_08008eea(undefined4 param_1,int param_2,int param_3,int param_4,ui
 
 ---- __aeabi_ddiv @ 08008f86 ----
 
-/* [I] IEEE double divide */
+/* [I] IEEE double divide; libmatch vs libgcc _arm_muldivdf3.o __aeabi_ddiv: U, firmware's is 222B
+   vs 464B stock (naming-pass.md S6) */
 
 undefined8 __aeabi_ddiv(uint param_1,uint param_2,uint param_3,uint param_4)
 
@@ -31634,7 +31709,8 @@ uint libm_fclassify_f32(uint param_1)
 
 ---- acosf @ 08011b4c ----
 
-/* [I] asin/acos-shaped (|x|<=1 else errno); no uses found beyond libm */
+/* [I] asin/acos-shaped (|x|<=1 else errno); no uses found beyond libm; libmatch vs newlib libm.a
+   wf_acos.o acosf: U, firmware's is 234B vs 88B stock (naming-pass.md S6) */
 
 float acosf(float param_1)
 
@@ -31682,7 +31758,8 @@ float acosf(float param_1)
 
 ---- asinf @ 08011c64 ----
 
-/* [I] used as asin(|xyz|) in quat_rot_angle and quat_to_euler */
+/* [I] used as asin(|xyz|) in quat_rot_angle and quat_to_euler; libmatch vs newlib libm.a wf_asin.o
+   asinf: U, firmware's is 258B vs 88B stock (naming-pass.md S6) */
 
 float asinf(float param_1)
 
@@ -31993,7 +32070,10 @@ LAB_0801215a:
 
 ---- atan2f @ 08012258 ----
 
-/* [I] two-arg arctangent used by quat_to_euler */
+/* [I] two-arg arctangent used by quat_to_euler; libmatch vs newlib libm.a wf_atan2.o atan2f: U -
+   stock newlib's atan2f is a 4B thunk promoting to double atan2(); firmware implements
+   single-precision atan2f directly (508B), confirming a different libm design, not stock newlib
+   (naming-pass.md S6) */
 
 float atan2f(float param_1,float param_2)
 
@@ -32117,7 +32197,9 @@ float atan2f(float param_1,float param_2)
 
 ---- cosf @ 080124a8 ----
 
-/* [V] same reduction as sinf, returns 1.0 for tiny |x| */
+/* [V] same reduction as sinf, returns 1.0 for tiny |x|; libmatch vs newlib libm.a sf_cos.o cosf: U
+   (library identity only, arithmetic already V), firmware's is 280B vs 112B thin-wrapper stock
+   (naming-pass.md S6) */
 
 float cosf(float param_1)
 
@@ -32188,7 +32270,9 @@ undefined4 FUN_080125f8(undefined4 param_1)
 ---- sinf @ 08013248 ----
 
 /* WARNING: Restarted to delay deadcode elimination for space: stack */
-/* [V] argument reduction (Cody-Waite) + polynomial; 23 callers */
+/* [V] argument reduction (Cody-Waite) + polynomial; 23 callers; libmatch vs newlib libm.a sf_sin.o
+   sinf: U (library identity only, arithmetic already V), firmware's is 360B vs 116B thin-wrapper
+   stock (naming-pass.md S6) */
 
 float sinf(float param_1)
 
@@ -32258,7 +32342,10 @@ float sinf(float param_1)
 
 ---- sqrtf @ 080133d8 ----
 
-/* [V] hardware vsqrt with errno on domain error; 15 callers */
+/* [V] hardware vsqrt with errno on domain error; 15 callers; libmatch vs newlib libm.a wf_sqrt.o
+   sqrtf: U (library identity only, arithmetic already V) - stock calls a separate __ieee754_sqrtf
+   and uses a vcmp/vdiv-by-zero errno trick, firmware does a direct bit-pattern exponent check
+   inline (naming-pass.md S6) */
 
 float sqrtf(float param_1)
 

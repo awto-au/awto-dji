@@ -76,7 +76,74 @@ Result: **STM32F405/F407/F415/F417-class, 1 MB, 168 MHz, >= 144-pin; exact part 
 - **Board revision (I):** `board_rev_read` snaps the ADC1 ch10 (PC0) mV average to 300/500/700/900 (+-100) or 100; PI11 high returns `0xce6`.
 - Handler `0x04/0x0e` (V): not a no-op; converts the first int16 to a float global and relays three int16 to CAN `0x20b`.
 
-## 6. Not named / still U
+## 6. Compile-and-diff library-match pass (#41, pass 2)
+
+Dan's instruction: for anything shaped like libm/CMSIS-DSP/soft-float, don't just name by shape -
+COMPILE the real candidate source with the project's own toolchain and diff the machine code
+against the firmware bytes. Method generalised into `scripts/re/mcu_libmatch.py` (any module: takes
+`--image/--base/--addr/--size`, either `--ref-archive/--ref-member/--ref-symbol` to pull a symbol
+straight out of a prebuilt libgcc.a/libm.a/libc.a, or `--source/--ref-symbol` + `--cpu/--fpu
+/--float-abi/--opt-levels` to compile a candidate `.c`; disassembles both with `objdump` and reports
+byte-exact / instruction-sequence-ratio / mnemonic-only-ratio). Logs `./tmp/logs/mcu_libmatch.log`.
+
+**Candidates tried, toolchains used:**
+- libgcc/newlib soft-double (`__aeabi_dadd/dmul/ddiv/f2d/d2f/llsl`) and `memcpy`: extracted straight
+  from prebuilt `libgcc.a`/`libc.a` of arm-none-eabi-gcc 15.2.0 (Fedora), 15.2.1 (Arm GNU Toolchain),
+  14.3.1 (ST's STM32CubeIDE bundle), and 5.4.1 (Arm GNU Toolchain 5_4-2016q3, downloaded for this
+  pass - closest in vintage to this firmware). All four give byte-identical soft-double code to each
+  other (this code hasn't changed in GCC since ~2012) - and none match the firmware. Firmware's
+  `__aeabi_dadd` is 352 B vs every GCC's 630 B; `__aeabi_f2d` is 38 B vs 66 B; `memcpy` is 36 B vs
+  308 B. **Conclusion (V, by exclusion): the firmware's soft-float/memcpy is NOT stock GCC
+  libgcc/newlib from any version checked** - smaller and structurally different (e.g. exponent
+  bit-pattern tricks where newlib calls a separate `__ieee754_*` helper). Likely a different
+  compiler (ARM Compiler/Keil armcc was common for drone FC firmware of this era, or a hand-tuned
+  soft-float) - not open source, out of reach of this method.
+- `sinf/cosf/sqrtf/asinf/acosf/atan2f`: extracted from the same newlib builds (libm.a). All U for the
+  same reason - newlib's wrappers are thin (4-148 B) and promote to double or call separate
+  `__kernel_*`/`__ieee754_*` functions; firmware inlines the single-precision kernel directly into
+  the wrapper (e.g. `atan2f` is a 4 B double-promoting thunk in newlib vs a standalone 508 B
+  single-precision implementation in the firmware). Arithmetic behaviour tags (`sinf`/`cosf`/`sqrtf`
+  already [V]) are unaffected - V there means "verified what it computes", not "verified which
+  library wrote it"; library identity stays [I], now with a real negative result on record instead
+  of an open guess.
+- CMSIS-DSP radix-4 FFT (`cmplx_mag_f32`, `radix4_butterfly_f32`, `radix4_butterfly_inverse_f32`,
+  `cfft_radix4_f32`, `cfft_radix4_init_f32`): compiled CMSIS-DSP V1.4.5 (commit `147cb4e3`,
+  2016-12-14, from the zephyrproject-rtos/cmsis-dsp mirror - chosen for era, this radix4 API was
+  removed from later CMSIS-DSP releases) at `-O0/-O1/-O2/-O3/-Os`, `-mcpu=cortex-m4
+  -mfpu=fpv4-sp-d16 -mfloat-abi=hard`, against ARM's CMSIS Core headers (`core_cm4.h` etc, from the
+  local STM32Cube_FW_F4_V1.28.3 package). Sizes land close at `-O1` (e.g. `radix4_butterfly_f32`
+  854 B vs firmware's 836 B) but instruction-sequence and even opcode-only-sequence ratios are low
+  (<30%) at every opt level - register allocation and instruction scheduling diverge almost
+  immediately after the shared `push {..,lr}` prologue. **Still U/[I]-shape-only, not upgraded** -
+  close byte count alone is not evidence per the task's bar (shared opcodes/operands/constant pools
+  in the same order). Not reached: trying other CMSIS-DSP point releases between V1.4.0-V1.5.x, or
+  ARM Compiler (armcc/armclang) output, which ST and DJI-era toolchains sometimes used instead of
+  GCC for CMSIS libraries.
+- **New finding from tracing cfft_radix4_f32's calls:** `cfft_radix4_f32` (0x08008a08) tail-jumps
+  (`b`) to 0x080082b0, a 176 B bit-reversal permutation that Ghidra's auto-analysis folded into
+  cfft_radix4_f32's *disassembly* but never gave its own FUNCTION entry (non-contiguous function,
+  invisible to the FUN_* count and to the prior pass's 234 B size for cfft_radix4_f32, which was
+  actually this merged total - cfft_radix4_f32's real body is 58 B). Its argument register usage
+  (pSrc, fftSize, bitRevFactor, pBitRevTab) matches CMSIS-DSP's
+  `arm_bitreversal_f32(pSrc, fftLen, bitRevFactor, pBitRevTable)` call exactly. Named
+  `arm_bitreversal_f32` **[I]** (call-signature + argument match is solid; compile-diff against the
+  same CMSIS-DSP V1.4.5 source is U, same divergence pattern as the radix4 functions above).
+  `cfft_radix4_f32`'s size in the TSV/dump is now corrected to 58 B.
+- FUN_080172b0 (5474 B, the single largest remaining FUN_*) makes **zero** calls to any other
+  function (checked via the callsite table) - it is one large block of inlined float arithmetic with
+  no library call boundary to anchor a comparison on. Spot-checked as representative of the rest of
+  the 91 FUN_* list: these are DJI's own estimator/control code (prior pass's conclusion), not
+  library code, so the compile-and-diff method has no candidate source to try against them - they
+  are out of scope for this method, not unsolved by it.
+
+**Net result of this pass: 91 FUN_* unchanged (none of the 91 are library code - confirmed, not just
+assumed); 1 new name found (`arm_bitreversal_f32`, hidden inside an existing function's Ghidra
+boundary); ~18 existing [I]/[V]-arithmetic rows got a real compiled-diff result (all U - "tried, no
+match") recorded in their TSV note instead of an unverified shape guess.** No row was upgraded to
+[V] library-identity; none were downgraded either (decompiled arithmetic evidence for the [V] rows
+is untouched by a failed library-identity check).
+
+## 7. Not named / still U
 - 91 `FUN_*` = 35 KB, mostly the large floating-point estimator/control functions (`0800aa00`, `0800b994`, `0800f384`, `080172b0`, `08014214`, `08014ef4`, `0800d488`, ...), plus table-less helpers. Roles are visible only through callees (quaternion math, sin/cos, CAN `0x20d` senders); no names assigned without a decisive register or string anchor.
 - Strings `motor_stop`, `record_enc`, `read_backup`, `080e0000`, `080a0000` (`0x0801c22f..0x0801c25b`) have no code references (V, no xref in Ghidra); owner U.
 - `duml_h_general_30_sub3` (`0x08013a18`) not decompiled; sub1/sub2/ack72 are I.

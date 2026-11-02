@@ -12,21 +12,22 @@ addr	kind	name	note	source
 0x080081b2	func	PendSV_Handler	[V] vector 14; `b .` spin	vector table
 0x080081b4	func	SysTick_Handler	[V] vector 15; `b .` spin	vector table
 0x080081b6	func	Default_Handler	[V] target of vectors 16-34,37,38,40,41,43-45,47-52,55-71,73,74,76-97; `b .`	vector table
-0x080081c0	func	cmplx_mag_f32	[I] sqrt(re^2+im^2) over array (CMSIS-DSP shape)	decomp
-0x08008360	func	radix4_butterfly_f32	[I] CMSIS-DSP radix-4 FFT butterfly	decomp
-0x080086a4	func	radix4_butterfly_inverse_f32	[I] inverse radix-4 FFT butterfly	decomp
-0x08008a08	func	cfft_radix4_f32	[I] picks forward/inverse butterfly from instance flag	decomp
-0x08008a44	func	cfft_radix4_init_f32	[I] fills instance for fftLen=16 (twiddle len 0x40)	decomp
-0x08008adc	func	memcpy	[V] word copy when both aligned, else bytes (__aeabi_memcpy shape); 14 callers	decomp
+0x080081c0	func	cmplx_mag_f32	[I] sqrt(re^2+im^2) over array (CMSIS-DSP shape); libmatch vs CMSIS-DSP V1.4.5 arm_cmplx_mag_f32.c O0-Os: U, no match (naming-pass.md S6)	decomp+libmatch
+0x08008360	func	radix4_butterfly_f32	[I] CMSIS-DSP radix-4 FFT butterfly; libmatch vs CMSIS-DSP V1.4.5 arm_radix4_butterfly_f32 O0-Os: U, sizes close (814-854B vs 836B) but no instruction match (naming-pass.md S6)	decomp+libmatch
+0x080086a4	func	radix4_butterfly_inverse_f32	[I] inverse radix-4 FFT butterfly; libmatch vs CMSIS-DSP V1.4.5 arm_radix4_butterfly_inverse_f32: U, not byte/instruction-matched (same source file as radix4_butterfly_f32, naming-pass.md S6)	decomp+libmatch
+0x08008a08	func	cfft_radix4_f32	[I] picks forward/inverse butterfly from instance flag; tail-jumps into an un-named bit-reversal block at 0x080082b0 (see arm_bitreversal_f32 row) that Ghidra folds into this function's disassembly despite being outside its FUNCTION byte range	decomp
+0x08008a44	func	cfft_radix4_init_f32	[I] fills instance for fftLen=16 (twiddle len 0x40); libmatch vs CMSIS-DSP V1.4.5 arm_cfft_radix4_init_f32: U, no instruction match (naming-pass.md S6)	decomp+libmatch
+0x08008adc	func	memcpy	[V] word copy when both aligned, else bytes (__aeabi_memcpy shape); 14 callers; libmatch vs newlib (arm-none-eabi 5.4.1/15.2.0) libc.a memcpy: U, newlib's is a much larger unrolled impl (naming-pass.md S6)	decomp+libmatch
 0x08008b0e	func	memclr	[V] zero n bytes (__aeabi_memclr shape)	decomp
-0x08008b40	func	__aeabi_dadd	[I] IEEE double add (soft path with FPU single only); 17 callers	decomp
+0x080082b0	func	arm_bitreversal_f32	[I] NEW (#41 pass 2): bit-reversal permutation hidden inside cfft_radix4_f32's Ghidra function boundary - tail-jumped to from 0x08008a34/0x08008a40, never given its own FUNCTION entry; args (pSrc,fftSize,bitRevFactor,pBitRevTab) match CMSIS-DSP arm_bitreversal_f32 exactly, call site in cfft_radix4_f32 matches `arm_bitreversal_f32(pSrc,fftLen,bitRevFactor,pBitRevTable)`; libmatch vs CMSIS-DSP V1.4.5 arm_bitreversal.c O0-Os: U, no instruction match despite exact call signature and size in the same ballpark (176B vs 194-200B) - see naming-pass.md S6	decomp+libmatch
+0x08008b40	func	__aeabi_dadd	[I] IEEE double add (soft path with FPU single only); 17 callers; libmatch vs libgcc (5.4.1/14.3.1/15.2.x, all identical here) _arm_addsubdf3.o __aeabi_dadd: U, firmware's is 352B vs 630B stock - not stock GCC's ARM-optimized soft-double (naming-pass.md S6)	decomp+libmatch
 0x08008c82	func	__aeabi_dadd_alias	[I] tail-calls __aeabi_dadd	decomp
 0x08008c88	func	__aeabi_drsub	[I] flips sign of first operand then dadd (b - a)	decomp
-0x08008c8e	func	__aeabi_dmul	[I] IEEE double multiply; 19 callers	decomp
-0x08008d8c	func	__aeabi_f2d	[V] float->double: exp+0x380, mantissa>>3	decomp
-0x08008de4	func	__aeabi_d2f	[I] double->float with rounding	decomp
-0x08008e1c	func	__aeabi_llsl	[V] 64-bit shift left	decomp
-0x08008f86	func	__aeabi_ddiv	[I] IEEE double divide	decomp
+0x08008c8e	func	__aeabi_dmul	[I] IEEE double multiply; 19 callers; libmatch vs libgcc _arm_muldivdf3.o __aeabi_dmul: U, firmware's is 228B vs 596B stock (naming-pass.md S6)	decomp+libmatch
+0x08008d8c	func	__aeabi_f2d	[V] float->double: exp+0x380, mantissa>>3; libmatch vs libgcc __aeabi_f2d: U, firmware's is 38B vs 66B stock, different bit-trick (naming-pass.md S6)	decomp+libmatch
+0x08008de4	func	__aeabi_d2f	[I] double->float with rounding; libmatch vs libgcc _arm_truncdfsf2.o __aeabi_d2f: U, firmware's is 74B vs 158B stock (naming-pass.md S6)	decomp+libmatch
+0x08008e1c	func	__aeabi_llsl	[V] 64-bit shift left; libmatch vs libgcc _ashldi3.o __aeabi_llsl: U, no instruction match despite close size (30B vs 24B) (naming-pass.md S6)	decomp+libmatch
+0x08008f86	func	__aeabi_ddiv	[I] IEEE double divide; libmatch vs libgcc _arm_muldivdf3.o __aeabi_ddiv: U, firmware's is 222B vs 464B stock (naming-pass.md S6)	decomp+libmatch
 0x08009208	func	ADC_CommonInit	[V] ADC_CCR (common +0x304)	RM0090 regs
 0x08009238	func	ADC_CommonStructInit	[V] zero 4 fields	RM0090 regs
 0x08009244	func	ADC_GetConversionValue	[V] DR (+0x4c) & 0xffff	RM0090 regs
@@ -177,12 +178,12 @@ addr	kind	name	note	source
 0x08011ac8	func	duml_crc8_check	[V] compare crc8 (init 0x77)	decomp
 0x08011af6	func	libm_fclassify_f64	[V] double analogue of libm_fclassify_f32	decomp
 0x08011b26	func	libm_fclassify_f32	[V] bit0 normal, bit1 inf/nan, bit2 mantissa!=0	decomp
-0x08011b4c	func	acosf	[I] asin/acos-shaped (|x|<=1 else errno); no uses found beyond libm	decomp
-0x08011c64	func	asinf	[I] used as asin(|xyz|) in quat_rot_angle and quat_to_euler	decomp
-0x08012258	func	atan2f	[I] two-arg arctangent used by quat_to_euler	decomp
-0x080124a8	func	cosf	[V] same reduction as sinf, returns 1.0 for tiny |x|	decomp
-0x08013248	func	sinf	[V] argument reduction (Cody-Waite) + polynomial; 23 callers	decomp
-0x080133d8	func	sqrtf	[V] hardware vsqrt with errno on domain error; 15 callers	decomp
+0x08011b4c	func	acosf	[I] asin/acos-shaped (|x|<=1 else errno); no uses found beyond libm; libmatch vs newlib libm.a wf_acos.o acosf: U, firmware's is 234B vs 88B stock (naming-pass.md S6)	decomp+libmatch
+0x08011c64	func	asinf	[I] used as asin(|xyz|) in quat_rot_angle and quat_to_euler; libmatch vs newlib libm.a wf_asin.o asinf: U, firmware's is 258B vs 88B stock (naming-pass.md S6)	decomp+libmatch
+0x08012258	func	atan2f	[I] two-arg arctangent used by quat_to_euler; libmatch vs newlib libm.a wf_atan2.o atan2f: U - stock newlib's atan2f is a 4B thunk promoting to double atan2(); firmware implements single-precision atan2f directly (508B), confirming a different libm design, not stock newlib (naming-pass.md S6)	decomp+libmatch
+0x080124a8	func	cosf	[V] same reduction as sinf, returns 1.0 for tiny |x|; libmatch vs newlib libm.a sf_cos.o cosf: U (library identity only, arithmetic already V), firmware's is 280B vs 112B thin-wrapper stock (naming-pass.md S6)	decomp+libmatch
+0x08013248	func	sinf	[V] argument reduction (Cody-Waite) + polynomial; 23 callers; libmatch vs newlib libm.a sf_sin.o sinf: U (library identity only, arithmetic already V), firmware's is 360B vs 116B thin-wrapper stock (naming-pass.md S6)	decomp+libmatch
+0x080133d8	func	sqrtf	[V] hardware vsqrt with errno on domain error; 15 callers; libmatch vs newlib libm.a wf_sqrt.o sqrtf: U (library identity only, arithmetic already V) - stock calls a separate __ieee754_sqrtf and uses a vcmp/vdiv-by-zero errno trick, firmware does a direct bit-pattern exponent check inline (naming-pass.md S6)	decomp+libmatch
 0x080135f4	func	libm_rem_pio2f	[I] large-argument reduction used by sinf/cosf	decomp
 0x08013768	func	libm_set_errno	[I] stores code to errno global; callers sinf/cosf/sqrtf/asinf/acosf	decomp
 0x08013774	func	duml_h_general_30_sub1	[I] builds reply frame (sender 4, id 0x30, trailer 0xe0)	decomp
