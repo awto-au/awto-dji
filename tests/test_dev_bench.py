@@ -447,3 +447,16 @@ def test_describe_lists_new_commands():
     for name in ("phone-connect", "load", "unload", "listen", "connect", "grant",
                  "suite", "up", "rc", "phone"):
         assert name in dev.COMMANDS and dev.COMMANDS[name]["summary"]
+
+
+def test_dialog_accept_reports_an_unreadable_screen_instead_of_crashing():
+    import subprocess
+    sys.path.insert(0, str(REPO / "scripts" / "re"))
+    import phone_usb_dialog as pud
+
+    def dump_fails():
+        raise subprocess.CalledProcessError(1, ["adb", "pull"])
+
+    logged = []
+    assert pud.accept("S", dump_fn=dump_fails, tap_fn=lambda xy: None, log=logged.append) == 3
+    assert "cannot read the screen" in logged[0]
