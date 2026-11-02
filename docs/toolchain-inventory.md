@@ -145,8 +145,64 @@ open (U against GCC, ARM Compiler 6, and now ARM Compiler 5).
   `m0101-threadx-reversing.md`) is IAR-compiled - this is a real gap, not a speculative one. No IAR
   install exists to compile a verifying reference against; `arm-linux-gnu-gcc`/armclang Cortex-A9
   output is usable only for coarse instruction-shape comparison, not an exact match attempt.
+  **Checked again (#41 pt4, 2026-11-03) for a Keil-style free eval - wall hit, still not installed,
+  see "IAR Embedded Workbench eval - wall hit" below.**
 - **Keil MDK** (`UV4`, `Keil_v5`, `.uvprojx`/`.uvproj` project files) - no installation, no project
   files referencing it, found anywhere.
+
+## IAR Embedded Workbench eval - wall hit, not installed (#41 pt4, 2026-11-03)
+
+Looked for a Keil-style direct, anonymous eval installer blob (precedent: `armkeil.blob.core.
+windows.net/eval/MDK531.EXE`, no registration, no licence key, straight to a silent `/S` install).
+No IAR equivalent exists - every path found is subscription- or registration-gated, a different
+distribution model from ARM's eval tier.
+
+- **Product line for m0101's Cortex-A9**: confirmed IAR Embedded Workbench for Arm (EWARM) is the
+  one and only IAR product covering Arm - it spans ARM7/9/11 and Cortex-M/R/A in a single
+  toolchain (`github.com/iarsystems/arm` repo topics list `cortex-a cortex-m cortex-r` together).
+  There is no separate "IAR for Cortex-A" product line; EWARM is the right target, confirming the
+  task brief's guess.
+- **CLI build tools (`github.com/iarsystems/arm`, "IAR Build Tools for Arm", `cxarm`) - publicly
+  downloadable, but licence-gated at runtime, not an eval.** Native Linux x86_64 binaries
+  (`cxarm-10.10.2-linux-x86_64-base.tar.bz2`, 365 MB, SHA256 published alongside) sit on GitHub
+  Releases with no login wall on the download itself - looked like the Keil-style anonymous blob
+  at first glance. It isn't: per the repo's own `INSTALLATION.md`, every invocation of
+  `iccarm`/`iarbuild`/`ilinkarm` phones home to the IAR Cloud License Service over `tcp/443` and
+  requires `IAR_LMS_BEARER_TOKEN`, a token "provided by IAR Customer Support to IAR Subscribers" -
+  i.e. gated behind a paid subscription, no free/size-limited tier for this product. **Not
+  downloaded** - would fail immediately on first invocation with no token to set; nothing to gain
+  from fetching 365 MB that can't run.
+- **GUI eval (`iar.com/embedded-development-tools/free-trials` -> "IAR Embedded Workbench for
+  Arm") - the actual free/time-limited eval, and Windows-only** ("This evaluation is for Windows
+  only. For a Linux-native IDE evaluation, contact us."). Unlike Keil's `MDK531.EXE` (a direct
+  blob URL, no form, no license key, straight to a silent install), reaching this one requires
+  submitting a `register.iar.com/eval` web form with **first/last name, email, phone, company,
+  country, industry** before any file is served - a sales-lead-gen form, not a self-serve
+  anonymous download. No predictable/direct blob URL exists for it; the "Download now" links on
+  the free-trials page all resolve to this same registration form (differing only in the
+  `features=` query param per product), which gates the actual download, not a webpage in front
+  of one.
+- **TI's "IAR-KICKSTART" (`ti.com/tool/IAR-KICKSTART`)** - checked as the specific free/no-cost
+  "KickStart" edition the task brief named. Not usable here: TI's bundled IAR-ARM build only ships
+  device support for TI's own MCU/MPU families (TM4C/Tiva Cortex-M, SimpleLink, Hercules Safety
+  MCUs, Sitara) - no Ambarella A9SE or generic bare-metal Cortex-A9 entry exists in it - and it
+  still needs a TI.com account to download. Ruled out: m0101 is an Ambarella SoC, not a TI part,
+  and the download gate is the same registration-wall problem regardless.
+- **Wall, stated plainly:** no path to a runnable IAR compiler was found that doesn't require
+  either (a) a paid IAR subscription + activation token (`cxarm` CLI - confirmed dead end, no
+  eval/free tier exists for it), or (b) submitting Dan's real name/email/phone/company to IAR's
+  sales-lead system to receive a time-limited Windows eval licence. (a) is a clean no. (b) was
+  **not attempted** - submitting personal contact details to a vendor's sales funnel on Dan's
+  behalf is a decision for Dan, not something "install it the same way as Keil" authorises (Keil's
+  eval needed no such submission - that is the precedent this pass tried to match and couldn't).
+  Not fabricating a workaround past this; flagging for Dan to decide if registering personally
+  (with his own contact details) is worth it.
+- **Result: no IAR install exists on this machine. `mcu_libmatch.py` NOT extended with an
+  `iccarm`/`iccarm.exe` backend - there is no binary to call.** m0101's Cortex-A9 ThreadX/soft-
+  float/libm candidates (see `m0101-threadx-reversing.md`) remain unverified against any
+  IAR-produced reference; `arm-linux-gnu-gcc`/armclang Cortex-A9 output (already catalogued above)
+  stays the only available comparison, and it is instruction-shape only, not a compiler match
+  attempt (different toolchain family, not ABI-exact).
 
 ## Installer-only (downloaded, NOT run - do not install without asking first)
 
