@@ -1,0 +1,64 @@
+addr	kind	name	note	source
+0x080ab43c	table	g_duml_dispatch_tbl	[V] 65 x 8 B {u8 cmd_set,u8 cmd_id,u16 pad,u32 handler}; type=DumlDispatchEntry[65]; cmdsets 1,2,3(x58),4(x3),6,7; null handler = reserved id	m0306_duml_handlers.py
+0x080439a8	func	duml_h_flyc_3a_format_data_recorder	[I] DUML cmd_set 3 cmd_id 0x3a slot 0; duml_catalog name for this (set,id)	m0306_duml_handlers.py
+0x08044e8a	func	duml_h_flyc_3d_set_time_zone	[I] DUML cmd_set 3 cmd_id 0x3d slot 1; duml_catalog name for this (set,id)	m0306_duml_handlers.py
+0x08043ab8	func	duml_h_flyc_71_unk	[U] DUML cmd_set 3 cmd_id 0x71 slot 2; no catalog name or log string	m0306_duml_handlers.py
+0x08043b2c	func	duml_h_flyc_70_unk	[U] DUML cmd_set 3 cmd_id 0x70 slot 3; no catalog name or log string	m0306_duml_handlers.py
+0x08043a1c	func	duml_h_flyc_74_unk	[U] DUML cmd_set 3 cmd_id 0x74 slot 4; no catalog name or log string	m0306_duml_handlers.py
+0x08043a50	func	duml_h_flyc_75_unk	[U] DUML cmd_set 3 cmd_id 0x75 slot 5; no catalog name or log string	m0306_duml_handlers.py
+0x08043a8c	func	duml_h_flyc_76_get_product_id_new_standard	[I] DUML cmd_set 3 cmd_id 0x76 slot 6; duml_catalog name for this (set,id)	m0306_duml_handlers.py
+0x0807bb24	func	duml_h_flyc_80_navigation_switch	[I] DUML cmd_set 3 cmd_id 0x80 slot 7; duml_catalog name for this (set,id)	m0306_duml_handlers.py
+0x0807bbec	func	duml_h_flyc_82_upload_way_point_mission_msg	[I] DUML cmd_set 3 cmd_id 0x82 slot 8; duml_catalog name for this (set,id)	m0306_duml_handlers.py
+0x0807bc52	func	duml_h_flyc_84_upload_way_point_msg_by_index	[I] DUML cmd_set 3 cmd_id 0x84 slot 9; duml_catalog name for this (set,id)	m0306_duml_handlers.py
+0x0807bcc8	func	duml_h_flyc_86_way_point_mission_switch	[I] DUML cmd_set 3 cmd_id 0x86 slot 10; duml_catalog name for this (set,id)	m0306_duml_handlers.py
+0x0807bd52	func	duml_h_flyc_87_way_point_mission_pause_or_resume	[I] DUML cmd_set 3 cmd_id 0x87 slot 11; duml_catalog name for this (set,id)	m0306_duml_handlers.py
+0x0807be8c	func	duml_h_flyc_83_download_way_point_mission_msg	[I] DUML cmd_set 3 cmd_id 0x83 slot 12; duml_catalog name for this (set,id)	m0306_duml_handlers.py
+0x0807bedc	func	duml_h_flyc_85_download_way_point_msg_by_index	[I] DUML cmd_set 3 cmd_id 0x85 slot 13; duml_catalog name for this (set,id)	m0306_duml_handlers.py
+0x0807bdba	func	duml_h_flyc_9c_way_point_mission_set_idle_speed	[V] DUML cmd_set 3 cmd_id 0x9c slot 14; log: WP Mission: received idle vel cmd	m0306_duml_handlers.py
+0x0807be30	func	duml_h_flyc_9d_way_point_mission_get_idle_speed	[V] DUML cmd_set 3 cmd_id 0x9d slot 15; log: WP Mission: received get idle vel cmd	m0306_duml_handlers.py
+0x0807c3e2	func	duml_h_flyc_8a_start_hot_point_mission_with_info	[I] DUML cmd_set 3 cmd_id 0x8a slot 16; duml_catalog name for this (set,id)	m0306_duml_handlers.py
+0x0807c81e	func	duml_h_flyc_8b_cancel_hot_point_mission	[I] DUML cmd_set 3 cmd_id 0x8b slot 17; duml_catalog name for this (set,id)	m0306_duml_handlers.py
+0x0807c862	func	duml_h_flyc_8c_hot_point_mission_switch	[I] DUML cmd_set 3 cmd_id 0x8c slot 18; duml_catalog name for this (set,id)	m0306_duml_handlers.py
+0x0807c8e6	func	duml_h_flyc_96_hot_point_mission_download	[I] DUML cmd_set 3 cmd_id 0x96 slot 19; duml_catalog name for this (set,id)	m0306_duml_handlers.py
+0x0807c9ae	func	duml_h_flyc_99_hot_point_reset_params	[I] DUML cmd_set 3 cmd_id 0x99 slot 20; duml_catalog name for this (set,id)	m0306_duml_handlers.py
+0x0807ca58	func	duml_h_flyc_9a_hot_point_reset_radius	[I] DUML cmd_set 3 cmd_id 0x9a slot 21; duml_catalog name for this (set,id)	m0306_duml_handlers.py
+0x0807cac6	func	duml_h_flyc_9b_hot_point_reset_camera	[I] DUML cmd_set 3 cmd_id 0x9b slot 22; duml_catalog name for this (set,id)	m0306_duml_handlers.py
+0x0807caec	func	duml_h_flyc_97_start_ioc	[I] DUML cmd_set 3 cmd_id 0x97 slot 23; duml_catalog name for this (set,id)	m0306_duml_handlers.py
+0x0807cea6	func	duml_h_flyc_98_stop_ioc	[I] DUML cmd_set 3 cmd_id 0x98 slot 24; duml_catalog name for this (set,id)	m0306_duml_handlers.py
+0x0807c1b0	func	duml_h_flyc_90_start_follow_me_with_info	[I] DUML cmd_set 3 cmd_id 0x90 slot 25; duml_catalog name for this (set,id)	m0306_duml_handlers.py
+0x0807c300	func	duml_h_flyc_91_cancel_follow_me_mission	[I] DUML cmd_set 3 cmd_id 0x91 slot 26; duml_catalog name for this (set,id)	m0306_duml_handlers.py
+0x0807c344	func	duml_h_flyc_92_follow_me_mission_switch	[I] DUML cmd_set 3 cmd_id 0x92 slot 27; duml_catalog name for this (set,id)	m0306_duml_handlers.py
+0x0807c3a0	func	duml_h_flyc_93_send_gps_info	[I] DUML cmd_set 3 cmd_id 0x93 slot 28; duml_catalog name for this (set,id)	m0306_duml_handlers.py
+0x080a47b8	func	duml_h_flyc_8d_api_sub_mode	[V] DUML cmd_set 3 cmd_id 0x8d slot 29; log: app API sub_mode %d	m0306_duml_handlers.py
+0x080a4804	func	duml_h_flyc_8e_joy_stick	[I] DUML cmd_set 3 cmd_id 0x8e slot 30; duml_catalog name for this (set,id)	m0306_duml_handlers.py
+0x08044f54	func	duml_h_flyc_2a_function_control	[I] DUML cmd_set 3 cmd_id 0x2a slot 31; duml_catalog name for this (set,id)	m0306_duml_handlers.py
+0x0804538c	func	duml_h_flyc_2f_set_voltage_warnning	[I] DUML cmd_set 3 cmd_id 0x2f slot 32; duml_catalog name for this (set,id)	m0306_duml_handlers.py
+0x08045444	func	duml_h_flyc_30_get_voltage_warnning	[I] DUML cmd_set 3 cmd_id 0x30 slot 33; duml_catalog name for this (set,id)	m0306_duml_handlers.py
+0x0804549a	func	duml_h_flyc_31_set_home_point	[I] DUML cmd_set 3 cmd_id 0x31 slot 34; duml_catalog name for this (set,id)	m0306_duml_handlers.py
+0x080455aa	func	duml_h_special_01_control	[I] DUML cmd_set 1 cmd_id 0x01 slot 35; duml_catalog name for this (set,id)	m0306_duml_handlers.py
+0x08043c1c	func	duml_h_flyc_46_set_push_gps_snr	[I] DUML cmd_set 3 cmd_id 0x46 slot 36; duml_catalog name for this (set,id)	m0306_duml_handlers.py
+0x08043c44	func	duml_h_flyc_52_smart_low_battery_ack	[I] DUML cmd_set 3 cmd_id 0x52 slot 37; duml_catalog name for this (set,id) [U] same (set,id) also at another table slot	m0306_duml_handlers.py
+0x08043d66	func	duml_h_flyc_3f_set_fly_forbid_area_data	[I] DUML cmd_set 3 cmd_id 0x3f slot 38; duml_catalog name for this (set,id)	m0306_duml_handlers.py
+0x08043ecc	func	duml_h_flyc_41_upload_unlimit_areas	[I] DUML cmd_set 3 cmd_id 0x41 slot 39; duml_catalog name for this (set,id)	m0306_duml_handlers.py
+0x080441ae	func	duml_h_flyc_47_enable_unlimit_areas	[I] DUML cmd_set 3 cmd_id 0x47 slot 40; duml_catalog name for this (set,id)	m0306_duml_handlers.py
+0x080441e8	func	duml_h_flyc_6a_set_battery_valid_state	[V] DUML cmd_set 3 cmd_id 0x6a slot 41; log: [battery]current bat barcode is legal/illegal	m0306_duml_handlers.py
+0x08044228	func	duml_h_flyc_62_set_active_result	[I] DUML cmd_set 3 cmd_id 0x62 slot 42; duml_catalog name for this (set,id)	m0306_duml_handlers.py
+0x0804425e	func	duml_h_flyc_64_set_send_on_board	[I] DUML cmd_set 3 cmd_id 0x64 slot 43; duml_catalog name for this (set,id)	m0306_duml_handlers.py
+0x0808cbfe	func	duml_h_flyc_51_get_push_smart_battery	[I] DUML cmd_set 3 cmd_id 0x51 slot 45; duml_catalog name for this (set,id)	m0306_duml_handlers.py
+0x0808cc8a	func	duml_h_flyc_52_smart_low_battery_ack_slot46	[I] DUML cmd_set 3 cmd_id 0x52 slot 46; duml_catalog name for this (set,id) [U] same (set,id) also at another table slot	m0306_duml_handlers.py
+0x0808ccc0	func	duml_h_flyc_53_get_push_avoid_param	[I] DUML cmd_set 3 cmd_id 0x53 slot 47; duml_catalog name for this (set,id)	m0306_duml_handlers.py
+0x0804565c	func	duml_h_flyc_aa_unk	[U] DUML cmd_set 3 cmd_id 0xaa slot 49; no catalog name or log string	m0306_duml_handlers.py
+0x0804435e	func	duml_h_flyc_33_set_plane_name	[I] DUML cmd_set 3 cmd_id 0x33 slot 50; duml_catalog name for this (set,id)	m0306_duml_handlers.py
+0x08044382	func	duml_h_flyc_34_get_plane_name	[I] DUML cmd_set 3 cmd_id 0x34 slot 51; duml_catalog name for this (set,id)	m0306_duml_handlers.py
+0x08044dfa	func	duml_h_flyc_3b_set_fs_action	[V] DUML cmd_set 3 cmd_id 0x3b slot 52; log: set rc lost action	m0306_duml_handlers.py
+0x08044e54	func	duml_h_flyc_3c_get_fs_action	[V] DUML cmd_set 3 cmd_id 0x3c slot 53; log: get rc lost action	m0306_duml_handlers.py
+0x080456ee	func	duml_h_flyc_60_svo_api_pure_transfer	[V] DUML cmd_set 3 cmd_id 0x60 slot 54; log: svo api pure transfer	m0306_duml_handlers.py
+0x080448b4	func	duml_h_flyc_da_detection	[I] DUML cmd_set 3 cmd_id 0xda slot 55; duml_catalog name for this (set,id)	m0306_duml_handlers.py
+0x08044d2a	func	duml_h_flyc_f5_real_name_info	[V] DUML cmd_set 3 cmd_id 0xf5 slot 56; log: get_real_name_info / set_real_name_info	m0306_duml_handlers.py
+0x0804566e	func	duml_h_flyc_ab_atti_rcv	[V] DUML cmd_set 3 cmd_id 0xab slot 57; log: atti_rcv	m0306_duml_handlers.py
+0x080456ae	func	duml_h_flyc_ac_taillock_rcv	[V] DUML cmd_set 3 cmd_id 0xac slot 58; log: taillock_rcv	m0306_duml_handlers.py
+0x08084930	func	duml_h_camera_80_get_push_state_info	[I] DUML cmd_set 2 cmd_id 0x80 slot 59; duml_catalog name for this (set,id)	m0306_duml_handlers.py
+0x08044ee2	func	duml_h_gimbal_05_get_push_params	[I] DUML cmd_set 4 cmd_id 0x05 slot 60; duml_catalog name for this (set,id)	m0306_duml_handlers.py
+0x08044ef0	func	duml_h_gimbal_1c_get_push_type	[I] DUML cmd_set 4 cmd_id 0x1c slot 61; duml_catalog name for this (set,id)	m0306_duml_handlers.py
+0x08044f20	func	duml_h_gimbal_47_power_ctrl_time	[V] DUML cmd_set 4 cmd_id 0x47 slot 62; log: gimbal power ctrl time(100ms)	m0306_duml_handlers.py
+0x0804429e	func	duml_h_flyc_1c_set_date	[I] DUML cmd_set 3 cmd_id 0x1c slot 64; duml_catalog name for this (set,id); also keyed 6/0x1c	m0306_duml_handlers.py

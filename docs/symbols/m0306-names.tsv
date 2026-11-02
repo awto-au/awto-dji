@@ -1,0 +1,78 @@
+addr	kind	name	note	source
+0x080708c4	func	__aeabi_f2d	[V] float->double: exponent rebias +0x380, mantissa shift 29; 573 callers	decomp
+0x08072378	func	__aeabi_d2f	[V] double->float: rebias 0xc8000000, round-to-nearest-even	decomp
+0x08072700	func	__aeabi_dmul	[V] double multiply: 53-bit mantissa products, implicit bit 0x100000	decomp
+0x080725b0	func	__aeabi_dadd	[V] double add/sub core: exponent align, sign-xor path	decomp
+0x080735e0	func	__aeabi_dsub	[I] double subtract: dadd with sign of b flipped (param_2^0x80000000 first)	decomp
+0x08072854	func	memcpy	[I] byte/word copy (dst,src,len), 127 callers; aligned-head then word loop	decomp
+0x080728de	func	memcpy_aligned	[I] 32-byte block copy of word-aligned (dst,src,len)	decomp
+0x080705c4	func	memclr_aligned	[I] zero n bytes of word-aligned buffer in 32-byte blocks	decomp
+0x08070240	func	irq_save_disable	[V] returns PRIMASK enable state (privileged only), then disables IRQs	decomp
+0x08070248	func	irq_restore	[V] re-enables IRQs iff arg bit0 set (pair of irq_save_disable)	decomp
+0x0806f804	func	sqrtf	[V] VSQRT.F32 with domain-error hook FUN_08050218 on negative input	decomp
+0x0806915c	func	isnanf	[V] 0x7f800000 - (bits & 0x7fffffff) >> 31 = |x| > inf	decomp
+0x08069168	func	isinff	[V] (bits & 0x7fffffff) == 0x7f800000	decomp
+0x0804d560	func	vsnprintf	[I] (buf,size,fmt,va_list) used by dbg_log_printf with size 0x57	decomp
+0x080675d4	func	empty_stub	[V] 57 callers, body is bare return	decomp
+0x0806e4aa	func	copy_3words	[V] *dst[0..2] = *src[0..2]	decomp
+0x0806ee44	func	copy_16bytes	[V] two 64-bit copies	decomp
+0x080703a2	func	dbg_log_printf	[V] vsnprintf (cap 0x57) into frame body prefixed 0x7f, sent as DUML via duml_build_send(0x8000); 423 callers, the firmware log sink	decomp
+0x080702de	func	dbg_log_printf_lvl	[I] variant of dbg_log_printf with leading level byte and 0x222 header, sent via duml_frame_build	decomp
+0x08086cf4	func	duml_frame_build	[V] writes 0x55 SOF, 10-bit length (len+13), sender/receiver nibbles, seq, cmd bytes into a 0x140 B frame and sends	decomp
+0x0809f8f8	func	flash_unlock	[V] if CR(+0x10) bit31 LOCK: KEYR(+4) <- key1, key2 (FLASH_Unlock)	decomp
+0x0809f910	func	flash_lock	[V] CR |= 0x80000000 (FLASH_Lock)	decomp
+0x0809f91e	func	flash_get_status	[V] SR(+0xc): BSY bit16 ->1, PGSERR/PGPERR/PGAERR bits ->6/7/2/8, else 9=complete (FLASH_GetStatus)	decomp
+0x0809f958	func	flash_wait_last_operation	[I] polls flash_get_status until not busy (called before each CR write)	decomp
+0x0809f976	func	flash_erase_sector	[V] CR: PSIZE field from arg2 (0..3 -> 0/0x100/0x200/0x300), SNB<<3 from arg1, SER bit1, STRT bit16 (FLASH_EraseSector)	decomp
+0x0809fb24	func	flash_program_word	[V] CR PSIZE=0x200 (32-bit), PG bit0, *addr=data, wait, clear PG (FLASH_ProgramWord)	decomp
+0x0809fbf4	func	flash_ob_clear_wrp	[I] OPTCR+2 (nWRP bits) |= / &= ~mask by arg2	decomp
+0x0809fc44	func	flash_ob_set_wrp	[I] OPTCR+2 (nWRP bits) &= ~ / |= mask by arg2	decomp
+0x0809aeb4	func	fc_flash_erase_sectors	[I] erases sectors first..last in a loop via flash_erase_sector (PSIZE=2) under irq lock	decomp
+0x0809af90	func	fc_flash_write_words	[I] programs n words, verifies readback each word, returns 0 ok / 2 verify mismatch	decomp
+0x0802dd04	func	sdio_wait_cmd_response	[V] polls SDIO_STA until CCRCFAIL|CTIMEOUT|CMDREND (mask 0x45) (SDIO_GetCmdResp pattern)	decomp
+0x08036426	func	OSTaskCreate	[V] 13 args (tcb,name,fn,arg,prio,stk_base,stk_limit,stk_size,q_size,quanta,ext,opt,p_err); 4 callers: tick, stat, idle, workqueue_hi	decomp
+0x08036384	func	OS_TaskInitTCB	[V] zeroes TCB, sets name pointer to literal "?Task"	decomp+strings
+0x08037036	func	OS_TickTaskInit	[V] creates "uC/OS-III Tick Task" prio from global; error codes 0x7211-0x7213	decomp+strings
+0x0806816e	func	OS_IdleTaskInit	[V] creates "uC/OS-III Idle Task" at prio 0x3f	decomp+strings
+0x08027ab2	func	OS_StatTaskInit	[V] creates "uC/OS-III Stat Task"	decomp+strings
+0x08029de2	func	isr_SysTick	[V] irq_save_disable; ++nesting counter 0x2001cd7c; irq_restore; two scheduler calls (uC/OS-III OS_CPU_SysTickHandler shape)	decomp
+0x08022a14	func	hardfault_print_ufsr	[V] logs usage fault SCB_CFSR_UFSR bits (UNDEFINSTR, INVSTATE...)	strings
+0x08022a66	func	hardfault_print_bfsr	[V] logs bus fault BFSR bits (IBUSERR, PRECISERR...)	strings
+0x08022ac0	func	hardfault_print_mfsr	[V] logs mem manage MFSR bits (IACCVIOL, DACCVIOL...)	strings
+0x08022b5e	func	hardfault_dump_tcb	[V] logs task name, StkBasePtr/StkEndPtr/StkPtr/TaskState from a TCB	strings
+0x0802309c	func	hardfault_dump_context	[V] logs "contex info" (stacked registers)	strings
+0x0802323a	func	hardfault_dump_task_info	[V] logs task info addr/flag, handles null	strings
+0x08023cbc	func	hardfault_dump_stack	[V] logs stack contents or "stk is null"	strings
+0x08023d26	func	hardfault_dump_os_state	[V] logs sched_lock, int_nesting, running, highRdy, tick/timebase stamps, task_count	strings
+0x08023da2	func	hardfault_dump_spec_regs	[V] logs SCB special regs: failed vector fetch, debug event	strings
+0x080223ec	func	hardfault_save_info	[I] logs g_hardfault_info null / tick; stores fault record	strings
+0x08046d54	func	fc_activation_state_read	[V] return *(u8*)(comms_struct+0x28); the activation byte consumed by motor-start gate	fc-auth-enforcement-trace.md
+0x08046cfe	func	fc_activation_state_write	[I] stages an incoming 8-byte record and writes the activation byte read by fc_activation_state_read	fc-auth-enforcement-trace.md
+0x08024b46	func	fc_motor_start_gate	[V] emits "Product not activation,stop motor!"; go/no-go over battery/ESC/IMU/activation	fc-auth-enforcement-trace.md
+0x0809dd72	func	fc_motor_check_activated	[V] return fc_activation_state_read()!=0; one of 29 entries of fc_Motor_fail check table	fc-auth-enforcement-trace.md
+0x0809de70	func	fc_motor_can_run	[V] return fc_Motor_fail()==0	fc-auth-enforcement-trace.md
+0x080a7e84	func	fc_fly_mode_applicable_gate	[V] INAPPLICABLE_FLY_MODE / MOTOR_ON/OFF reasons; uses fc_motor_can_run	fc-auth-enforcement-trace.md
+0x080a8010	func	fc_auto_takeoff_state_machine	[V] TO_DO state 0 calls fc_motor_can_run before takeoff	fc-auth-enforcement-trace.md
+0x0805732a	func	fc_ctrl_dev_released_resume_rc	[I] old==2 && new==1 control-device transition (API released, RC resumes)	fc-message-path.md
+0x08047c08	func	md5_transform	[V] MD5 compression (K constants 0x6b901122/0xfd987193 at pool, F=(b&c)|(~b&d), rotl 7/12/17/22); split in two by Ghidra	decomp
+0x08047d5e	func	md5_transform_rounds	[V] continuation of md5_transform (rounds after block load); NOT check_activation_authority (stale V01.07 map address)	decomp
+0x20018064	ram	g_irq_cb_table	[V] type=IrqCb[96]; 8 B {cb,arg} per IRQ number, read by every stub ISR (vec_53 reads +0x128 = 8*37); type=IrqCb[96]	decomp
+0x2001cd7c	ram	g_isr_nesting_cnt	[I] byte incremented in isr_SysTick under irq_save; used by OSTaskCreate, hardfault os dump	decomp
+0x2000021c	ram	g_dbg_log_ctx	[I] first arg of duml_frame_build in dbg_log_printf (log sender context)	decomp
+0x08070566	func	dbg_log_printf_short	[I] push{r0-r3} varargs: prefix byte 1, vsnprintf cap 0x3f, sent via duml_frame_build; called by DUML handlers for "timezone set:%d" etc (not a Ghidra function in the base analysis)	decomp
+0x08070046	func	dbg_log_printf_ch	[I] vsnprintf cap 0x80 then duml_build_send(arg0+0xff00, buf, len+1); arg0 selects the log channel	decomp
+0x080351d0	func	can1_tx_pump	[I] called from isr_CAN1_TX: pops 16 B messages from CAN1 tx queues in CCM and loads TX mailboxes	decomp
+0x08035484	func	can2_tx_pump	[I] same for CAN2 (queue g_can2_tx_q)	decomp
+0x0803a804	func	can_msg_queue_push	[V] ring of 16 B messages: buf[(wr & mask)*16] = msg, wr++; returns 0 if full (called by the four CAN RX ISRs)	decomp
+0x0803a94c	func	can_msg_queue_pop	[V] ring pop: reads buf[(rd & mask)*16] into the caller buffer	decomp
+0x0803aaaa	func	can_msg_queue_full	[V] ((wr+1) & mask) == (rd & mask)	decomp
+0x08029f26	func	usb_otg_fs_irq_handler	[I] OTG_FS ISR body: reads core interrupt status, dispatches IN/OUT endpoint handlers	decomp
+0x10008000	ram	g_can1_tx_q0	[V] CanMsgQueue (CCM) polled by can1_tx_pump; type=CanMsgQueue	decomp
+0x10008014	ram	g_can1_tx_q1	[V] second CAN1 tx queue (can1_tx_pump tries it when q0 empty); type=CanMsgQueue	decomp
+0x10008028	ram	g_can2_tx_q	[V] CAN2 tx queue; type=CanMsgQueue	decomp
+0x1000803c	ram	g_can1_rx0_q	[V] filled by isr_CAN1_RX0; type=CanMsgQueue	decomp
+0x10008050	ram	g_can1_rx1_q	[V] filled by isr_CAN1_RX1; type=CanMsgQueue	decomp
+0x10008478	ram	g_can2_rx0_q	[V] filled by isr_CAN2_RX0 (base literal 0x10008464 + 0x14); type=CanMsgQueue	decomp
+0x1000848c	ram	g_can2_rx1_q	[V] filled by isr_CAN2_RX1 (base 0x10008464 + 0x28); type=CanMsgQueue	decomp
+0x20020a24	ram	g_uart_port_table	[V] 100 B/entry driver objects, <=2 active (uart_table_init); see fc-io-inventory.md	fc-io-inventory.md
+0x080ab66c	table	g_flyc_param_tbl	[V] 808 x 0x3c B FlycExportParam {nameptr,valptr,valsize,type_id,limits[36],attribute,callback}; first entry cfg_var_table_size_0, last wp_setting.action_on_rc_lost_0; type=FlycExportParam[808]	scripts/re/fc_param_table.py

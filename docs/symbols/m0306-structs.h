@@ -43,3 +43,15 @@ struct CtrlMode {  // 0x4 bytes
   +0x01 byte       src_flags; // bit1=src1, bit2=API/nav eligible
 };
 
+
+/* @ghidra-begin */
+#pragma pack(push, 1)
+typedef struct DumlFrame { unsigned char sof; unsigned char len_lo; unsigned char ver_len_hi; unsigned char hdr_crc8; unsigned char sender; unsigned char receiver; unsigned short seq; unsigned char cmd_type; unsigned char cmd_set; unsigned char cmd_id; unsigned char payload[1]; } DumlFrame;
+typedef struct CtrlAgency { unsigned char active; unsigned char pad_1[2]; unsigned char holder_id; unsigned char pad_4[28]; unsigned char granted; unsigned char pad_21[3]; } CtrlAgency;
+typedef struct CtrlMode { unsigned char active_device; unsigned char src_flags; unsigned char pad[2]; } CtrlMode;
+typedef struct DumlDispatchEntry { unsigned char cmd_set; unsigned char cmd_id; unsigned short pad; void *handler; } DumlDispatchEntry;
+typedef struct CanMsgQueue { unsigned char *buf; unsigned int wr; unsigned int rd; unsigned int u3; unsigned int mask; } CanMsgQueue;
+typedef struct IrqCb { void *cb; unsigned int arg; } IrqCb;
+typedef struct FlycExportParam { char *nameptr; void *valptr; unsigned int valsize; unsigned int type_id; unsigned char limits[36]; unsigned int attribute; void *callback; } FlycExportParam;
+#pragma pack(pop)
+/* @ghidra-end */
