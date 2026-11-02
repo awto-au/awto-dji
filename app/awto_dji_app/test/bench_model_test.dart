@@ -98,12 +98,23 @@ void main() {
         hostConnected: true,
         hostRttMs: 14,
         echo: true,
+        maxChunk: 512,
+        mode: 'sink',
+        testId: 3,
+        testFrames: 10,
+        testBytes: 1000,
+        testBad: 1,
+        firstMismatchOffset: 24,
+        testPass: false,
       );
       final m = rt(StateMsg(s)) as StateMsg;
       expect(jsonEncode(m.snapshot.toJson()), jsonEncode(s.toJson()));
       expect(m.snapshot.port, PortState.streaming);
       expect(m.snapshot.speed, contains('high-speed'));
       expect(s.toJson()['t'], 'state');
+      expect(m.snapshot.firstMismatchOffset, 24);
+      expect(m.snapshot.testPass, false);
+      expect(m.snapshot.maxChunk, 512);
     });
     test('state defaults when fields are missing', () {
       final m = AppMsg.decode('{"t":"state"}') as StateMsg;
@@ -129,6 +140,16 @@ void main() {
       final c = HostCmd.decode('{"cmd":"send","hex":"55 cc 49 57"}') as SendCmd;
       expect(c.bytes, [0x55, 0xcc, 0x49, 0x57]);
       expect((rt(c) as SendCmd).bytes, c.bytes);
+    });
+    test('mode and result', () {
+      final c = HostCmd.decode('{"cmd":"mode","m":"source","size":512,"rate":10}') as ModeCmd;
+      expect(c.m, 'source');
+      expect(c.params['size'], 512);
+      expect((rt(c) as ModeCmd).params, c.params);
+      expect(HostCmd.decode('{"cmd":"mode"}'), isNull);
+      expect(rt(const ResultCmd()), isA<ResultCmd>());
+      final r = AppMsg.decode(const ResultMsg({'test': 1, 'pass': true}).encode()) as ResultMsg;
+      expect(r.body, {'test': 1, 'pass': true});
     });
     test('echo on/off', () {
       expect((rt(const EchoCmd(true)) as EchoCmd).on, true);

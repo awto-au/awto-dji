@@ -83,6 +83,7 @@ class BenchSnapshot {
     this.permission = false,
     this.maxPacket,
     this.udcSpeed,
+    this.maxChunk = 0,
     this.plugged = 'none',
     this.charging = 'unknown',
     this.voltageMv,
@@ -101,6 +102,13 @@ class BenchSnapshot {
     this.hostConnected = false,
     this.hostRttMs,
     this.echo = false,
+    this.mode = 'passive',
+    this.testId = 0,
+    this.testFrames = 0,
+    this.testBytes = 0,
+    this.testBad = 0,
+    this.firstMismatchOffset,
+    this.testPass,
   });
 
   final bool usbAttached;
@@ -110,6 +118,9 @@ class BenchSnapshot {
 
   /// /sys/class/udc/*/current_speed when readable (best effort), else null.
   final String? udcSpeed;
+
+  /// Largest single read seen on the accessory (bytes); a hint only, reads may coalesce.
+  final int maxChunk;
   final String plugged; // usb / ac / wireless / none
   final String charging; // charging / discharging / full / not_charging / unknown
   final int? voltageMv, currentUa;
@@ -121,6 +132,12 @@ class BenchSnapshot {
   final bool hostConnected;
   final int? hostRttMs;
   final bool echo;
+
+  /// Test mode (passive/echo/sink/source/duml) and its running verdict.
+  final String mode;
+  final int testId, testFrames, testBytes, testBad;
+  final int? firstMismatchOffset;
+  final bool? testPass;
 
   String get speed => inferSpeed(maxPacket);
 
@@ -143,7 +160,7 @@ class BenchSnapshot {
       'voltage_mv': voltageMv,
       'current_ua': currentUa,
     },
-    'speed': {'label': speed, 'max_packet': maxPacket, 'udc': udcSpeed},
+    'speed': {'label': speed, 'max_packet': maxPacket, 'udc': udcSpeed, 'max_chunk': maxChunk},
     'msgs': {
       'per_s_1': msgsPerSec1,
       'per_s_10': msgsPerSec10,
@@ -158,6 +175,15 @@ class BenchSnapshot {
     'port': {'state': port.name, 'last_error': lastError},
     'host': {'connected': hostConnected, 'rtt_ms': hostRttMs},
     'echo': echo,
+    'mode': {
+      'm': mode,
+      'test': testId,
+      'frames': testFrames,
+      'bytes': testBytes,
+      'bad': testBad,
+      'first_mismatch': firstMismatchOffset,
+      'pass': testPass,
+    },
   };
 
   /// Inverse of [toJson]; unknown/missing fields fall back to defaults.
@@ -166,6 +192,7 @@ class BenchSnapshot {
         (j[k] as Map?)?.cast<String, Object?>() ?? const {};
     final usb = sub('usb'), power = sub('power'), speed = sub('speed');
     final msgs = sub('msgs'), port = sub('port'), host = sub('host');
+    final mode = sub('mode');
     double d(Object? v) => (v as num?)?.toDouble() ?? 0;
     return BenchSnapshot(
       usbAttached: usb['attached'] as bool? ?? false,
@@ -178,6 +205,7 @@ class BenchSnapshot {
       permission: usb['permission'] as bool? ?? false,
       maxPacket: (usb['max_packet'] as num?)?.toInt(),
       udcSpeed: speed['udc'] as String?,
+      maxChunk: (speed['max_chunk'] as num?)?.toInt() ?? 0,
       plugged: power['plugged'] as String? ?? 'none',
       charging: power['charging'] as String? ?? 'unknown',
       voltageMv: (power['voltage_mv'] as num?)?.toInt(),
@@ -199,6 +227,13 @@ class BenchSnapshot {
       hostConnected: host['connected'] as bool? ?? false,
       hostRttMs: (host['rtt_ms'] as num?)?.toInt(),
       echo: j['echo'] as bool? ?? false,
+      mode: mode['m'] as String? ?? 'passive',
+      testId: (mode['test'] as num?)?.toInt() ?? 0,
+      testFrames: (mode['frames'] as num?)?.toInt() ?? 0,
+      testBytes: (mode['bytes'] as num?)?.toInt() ?? 0,
+      testBad: (mode['bad'] as num?)?.toInt() ?? 0,
+      firstMismatchOffset: (mode['first_mismatch'] as num?)?.toInt(),
+      testPass: mode['pass'] as bool?,
     );
   }
 
@@ -219,7 +254,10 @@ class BenchSnapshot {
       port == o.port &&
       lastError == o.lastError &&
       hostConnected == o.hostConnected &&
-      echo == o.echo;
+      echo == o.echo &&
+      mode == o.mode &&
+      testPass == o.testPass &&
+      firstMismatchOffset == o.firstMismatchOffset;
 }
 
 // ---- app -> host messages ---------------------------------------------------
@@ -254,6 +292,8 @@ sealed class AppMsg {
           (j['len'] as num?)?.toInt() ?? 0,
           j['crc_ok'] as bool? ?? false,
         );
+      case 'result':
+        return ResultMsg(Map.of(j)..remove('t'));
       case 'pong':
         return PongMsg((j['id'] as num?)?.toInt() ?? 0);
       case 'ping':
@@ -302,6 +342,15 @@ class RxMsg extends AppMsg {
   };
 }
 
+/// Per-test verdict: `{t:result, test, mode, frames, bytes, bad_frames, first_mismatch,
+/// pass, ...}`. Body keys are free-form beyond those.
+class ResultMsg extends AppMsg {
+  const ResultMsg(this.body);
+  final Map<String, Object?> body;
+  @override
+  Map<String, Object?> toJson() => {'t': 'result', ...body};
+}
+
 /// Answer to a host `ping` command.
 class PongMsg extends AppMsg {
   const PongMsg(this.id);
@@ -345,6 +394,10 @@ sealed class HostCmd {
         return bytes == null ? null : SendCmd(bytes);
       case 'echo':
         return EchoCmd(j['on'] as bool? ?? false);
+      case 'mode':
+        return j['m'] is String ? ModeCmd(Map.of(j)..remove('cmd')) : null;
+      case 'result':
+        return const ResultCmd();
       case 'stats_reset':
         return const StatsResetCmd();
       case 'disconnect':
@@ -382,6 +435,22 @@ class EchoCmd extends HostCmd {
   final bool on;
   @override
   Map<String, Object?> toJson() => {'cmd': 'echo', 'on': on};
+}
+
+/// `{cmd:mode, m:echo|sink|source|duml|passive, ...params}`; params in docs.
+class ModeCmd extends HostCmd {
+  const ModeCmd(this.params);
+  final Map<String, Object?> params;
+  String get m => params['m'] as String;
+  @override
+  Map<String, Object?> toJson() => {'cmd': 'mode', ...params};
+}
+
+/// Ask the app to emit a `result` now (the test keeps running).
+class ResultCmd extends HostCmd {
+  const ResultCmd();
+  @override
+  Map<String, Object?> toJson() => {'cmd': 'result'};
 }
 
 class StatsResetCmd extends HostCmd {
