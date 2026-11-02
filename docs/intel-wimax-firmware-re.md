@@ -141,6 +141,15 @@ Image: `~/vendors/intel/wimax/sources/i6050-fw-usb-1.5.sbcf` (1531932 bytes; fet
   fit would restate a guess as a decode, which the honesty convention in this repo's `CLAUDE.md`
   rules out - left U.
 
+**Refinement (2026-11-02, `scripts/re/value_scale_match.py`):** all 4 fields factor exactly (0 error)
+as a power-of-two base times a small n/16: 352 = 512*11/16, 704 = 1024*11/16, 832 = 1024*13/16,
+464 = 512*29/32. The 5 MHz/10 MHz pair shares the identical 11/16 ratio while their bases double in
+step with bandwidth (512->1024), which is unlikely to be coincidence - consistent with these being
+samples-per-something scaled by an Nfft that doubles with BW (as 802.16e SOFDMA's fixed-subcarrier-
+spacing model predicts for 5/10 MHz specifically). What the field physically represents, and why
+7 MHz/8.75 MHz don't share a base with the other two, stays U. I (ratio is V by exact arithmetic;
+physical meaning is not).
+
 ## 6. Open
 - U: who consumes `rf_band_plan_cfg` beyond the validator (I: likely a runtime config-apply step not
   reached from any of this pass's decompile targets). U: SIGNED boot enforcement on a real card.
