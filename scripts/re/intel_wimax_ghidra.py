@@ -5,7 +5,8 @@
 2. analyzeHeadless imports reg_e80000.bin raw at 0xe80000 as ARM:LE:32:v5t; pre-script
    IntelWimaxSetup.java adds the other regions + seeds ARM/Thumb functions; auto-analysis runs;
    post-script IntelWimaxNames.java applies docs/symbols/intel_i6050_fw1.5.tsv and dumps to
-   tmp/intel-wimax/dump.txt.
+   tmp/intel-wimax/dump.txt; second post-script IntelWimaxDecompile.java decompiles DECOMPILE_TARGETS
+   (high-caller-count + known-interesting functions) to tmp/intel-wimax/decompile.txt.
 Project: tmp/intel-wimax/proj (regenerable; not committed: contains vendor code).
 Usage: intel_wimax_ghidra.py [--image PATH]   default ~/vendors/intel/wimax/sources/i6050-fw-usb-1.5.sbcf
 Log: tmp/logs/intel_wimax_ghidra.log (headless: tmp/logs/intel_wimax_ghidra_headless.log)
@@ -13,6 +14,23 @@ Stall guard: no headless output for 60 s -> kill, fail, log last line.
 """
 import argparse, os, shutil, subprocess, sys, time
 from pathlib import Path
+
+# Functions to decompile each pass: top call-count unnamed functions (#61 step 2) plus every
+# function this pass identified as a table reader/accessor/entry point (#61 steps 3-4).
+DECOMPILE_TARGETS = [
+    "0xebfd32",  # main
+    "0xec4e58",  # scheduler/event loop (I)
+    "0xea5ce8",  # rf_freq_khz_to_band_idx
+    "0xe9255c",  # rf_band_plan_cfg_get
+    "0xe982e8",  # rf_band_plan_cfg_validate (caller of the above)
+    "0xea3918",  # rf_cal_gain_lut_lookup (cal-table cluster)
+    "0xdfd7f4", "0xe805b0", "0xe05984", "0xe8775c", "0xed6240",
+    "0xe87490", "0xe832a0", "0xe31f68", "0xe3a1e0", "0xdc03e4", "0xeed994",
+    "0xea449c",  # rf_cal_bin_lookup candidate (called by ea3918 before the LUT byte read)
+    "0xea39d8", "0xea4330", "0xea4a28",  # ea3918's callees (calib coefficient unpack/apply)
+    "0xe9e49c",  # second band/channel index conversion used by ea3918
+    "0xe9ac58",  # sole caller of rf_freq_khz_to_band_idx
+]
 
 
 def repo_root():
@@ -73,7 +91,8 @@ def main():
            "-processor", "ARM:LE:32:v5t", "-loader", "BinaryLoader", "-loader-baseAddr", "0xe80000",
            "-scriptPath", str(sd),
            "-preScript", "IntelWimaxSetup.java", str(OUT),
-           "-postScript", "IntelWimaxNames.java", str(REPO / "docs/symbols/intel_i6050_fw1.5.tsv"), str(OUT)]
+           "-postScript", "IntelWimaxNames.java", str(REPO / "docs/symbols/intel_i6050_fw1.5.tsv"), str(OUT),
+           "-postScript", "IntelWimaxDecompile.java", ",".join(DECOMPILE_TARGETS), str(OUT)]
     log("running: " + " ".join(cmd))
     rc = run(cmd, REPO / "tmp/logs/intel_wimax_ghidra_headless.log")
     log("analyzeHeadless rc=%d" % rc)

@@ -7,7 +7,7 @@ Image: `~/vendors/intel/wimax/sources/i6050-fw-usb-1.5.sbcf` (1531932 bytes; fet
 - `python3 -I scripts/re/intel_wimax_sbcf.py ~/vendors/intel/wimax/sources/i6050-fw-usb-1.5.sbcf --out tmp/intel-wimax` (container + flat regions)
 - `python3 -I scripts/re/intel_wimax_base_check.py` (base verification)
 - `python3 -I scripts/re/intel_wimax_phy_tables.py` (PHY/RF tables)
-- `python3 -I scripts/re/intel_wimax_ghidra.py` (headless Ghidra; applies `docs/symbols/intel_i6050_fw1.5.tsv`; output `tmp/intel-wimax/dump.txt`)
+- `python3 -I scripts/re/intel_wimax_ghidra.py` (headless Ghidra; applies `docs/symbols/intel_i6050_fw1.5.tsv`; output `tmp/intel-wimax/dump.txt`; also decompiles `DECOMPILE_TARGETS` in the script to `tmp/intel-wimax/decompile.txt`)
 - `python3 -I scripts/re/intel_wimax_dis.py <hexaddr> <n> thumb|arm` (capstone, regions from tmp)
 
 ## 1. Container (SBCF) - V
@@ -78,9 +78,81 @@ Image: `~/vendors/intel/wimax/sources/i6050-fw-usb-1.5.sbcf` (1531932 bytes; fet
   - Differences: Intel frame 5 ms vs Lightbridge burst period 14.000 ms; Lightbridge 864 used carriers (+-432, pilot every 9th) vs the 802.16e PUSC/AMC sets in the other record fields (0x2c0 = 704, 0x33e = 830 etc., meanings U). Preamble: Lightbridge has no 1-in-3 802.16e preamble. So the radio *numerology* is shared, the *frame/MAC/PHY procedure* is not; stock firmware decoding Lightbridge remains unlikely. I
 - Frequency tuning: constants exist for 2.3-2.7 GHz and 3.3-3.8 GHz only in these tables; synthesiser limits U.
 
-## 5. Open
-- U: who consumes `rf_band_plan_cfg` (xrefs by pointer are absent; likely read by offset from a base). U: SIGNED boot enforcement on a real card. U: seg 0/2/4 (0x828000, 0x850000) content. U: function of the 0xdc0000 image vs 0xe80000 image (two code images; calls from 0xe80000 into 0xdc0000 exist, e.g. trace_event at 0xe09128).
-- Next: find readers of 0xc8fc00 and the cal table via literal xrefs in Ghidra; decode the numerology record fields (0x30, 0x2c0, 0x33e...) against the 802.16e subchannel tables; map the Thumb command dispatcher (host `I2400M_PT_CTRL` handling) to look for diagnostic/IQ-capture modes.
+## 5. Decompile pass + table readers (this pass, commit after 3148276)
+- Decompile: `scripts/re/ghidra/IntelWimaxDecompile.java` (DecompInterface, 30s/fn timeout - these
+  are all <=1200-byte functions, 30s is a backstop not a measured bound), driven as a second
+  `-postScript` from `intel_wimax_ghidra.py`. 23 functions decompiled (0 failures) across 2 passes:
+  the main/scheduler entry points, every high-caller-count unnamed function (>=100 callsites) not
+  already named, and every function this pass's manual disassembly flagged as interesting. Output:
+  `tmp/intel-wimax/decompile.txt` (not committed - vendor code).
+- **`rf_band_plan_cfg` (0xc8fc00) readers - found.** V: `rf_band_plan_cfg_get` (0xe9255c, 7 callers)
+  logs then returns the literal 0xc8fc00. `rf_band_plan_cfg_validate` (0xe982e8) calls it, then
+  checks dword-at-base == `0xcafe900d` and dword-at-(base+0x3ee) == `0xdeadbeef`. The two magics
+  bound the block at exactly 0x3f2 bytes - matches the SBCF load record's size exactly (table 1,
+  entry 10), i.e. the whole 0x3f2-byte block is header-magic .. payload .. footer-sentinel, not an
+  arbitrary cutoff. V (both magics read directly from the extracted image).
+  - Found via: scan every region for a 32-bit word whose value lands inside `[cfg_base, cfg_base+0x400)`
+    (per #61's hint to search base-relative loads, not literal xrefs) rather than grep for the base
+    address itself - the reader never embeds the bare `0xc8fc00` as an operand in-line, only through
+    this one `_get` wrapper's own literal pool.
+- **RF cal-bin table (0xeef5e4) consumer chain - found, with one correction.** `rf_calib_apply_channel`
+  (0xea3918, reached only indirectly - 0 direct `bl` callers, I: FSM/function-pointer dispatch) is the
+  reader: it calls `rf_calib_bin_search` (0xea449c) for an index, then reads
+  `*(byte*)(0xeef84e + idx - 1)` - a byte LUT (`rf_cal_gain_lut`) that starts immediately after the
+  48-row {lo,hi,idx} table ends (0xeef824; confirmed by `intel_wimax_phy_tables.py`'s own loop
+  terminator) plus a ~0x2a-byte header/count gap. V (address arithmetic, from both manual
+  pc-relative-literal decode and independent decompiler output - they agree).
+  - **Correction** (re-rules: fix on contradiction): `rf_calib_bin_search`'s decompiled body is
+    "scan 21 bytes at 0xea44c8, return the running max" - it does **not** read the {lo,hi,idx}
+    frequency-range table at 0xeef5e4 itself, contradicting this pass's own earlier raw-disassembly
+    guess that it was a frequency-range binary search. The 21-byte scratch array's own meaning is U.
+  - `rf_calib_apply_channel` then subtracts the LUT byte from a caller-struct int16 field at
+    `param_1+8`, and calls `rf_calib_coeff_fetch` (0xea39d8, reads an NVM-ish value via
+    `FUN_00ed7c9c`, U), `rf_calib_mode_select` (0xea4330, picks 1 of 3 coefficient presets by
+    capability-flag checks `FUN_00ea4600(x,{0,3,5,4})`, I), `rf_calib_apply_commit` (0xea4a28, I).
+    Field-level semantics of all three stay U/I; only the call structure and data flow are V.
+- **Band classifier consumer - found.** `rf_freq_khz_to_band_idx` (0xea5ce8) has exactly one caller:
+  `rf_channel_desc_get_or_create` (0xe9ac58), a 16-slot cache keyed on (freq_khz, qualifier byte).
+  On a cache miss it fills `band_idx = rf_freq_khz_to_band_idx(freq)` plus 3 more derived bytes
+  (`FUN_00e9e6d0`/`e9e6a4`/`e9b57c`, each U) into the new slot; on a hit it bumps a refcount. V
+  (decompiled directly) - so the classifier's result is cached per-channel-descriptor, not consumed
+  inline by a PHY-tuning routine directly.
+- **Generic accessor correction**: `FUN_00e805b0` (216 callers) and `FUN_00eed994` (101 callers) each
+  decompile to a one-line `return *param_1;` - trivial dword-dereference helpers, not the
+  selector-indexed dispatch/stub table this pass's raw disassembly first suggested (the surrounding
+  bytes that looked like a 4-byte-stride "opcode;branch" table are unrelated tail-merged fragments of
+  other functions, an artifact of reading disassembly without the decompiler). V (ptr_deref_u32,
+  ptr_deref_u32_b).
+- **Host control-message dispatcher - not found this pass.** Candidate-but-rejected:
+  `switch_jumptable_dispatch_stub` (0xdc03e4, 123 callers) is a naked-ARM helper that reads its own
+  caller's return address as a data pointer (count byte at `[lr-1]`, indirect call through a table at
+  `[lr]`) - Ghidra's decompiler itself flags "could not recover jumptable, too many branches". This
+  is almost certainly a compiler-emitted shared tail for ordinary bounded `switch` statements (used
+  123 times across the whole image), not a single host-command dispatcher. GeHdi_Ul.c
+  (`Y:\networking_1\Kernel\Hdi\Firmware\GeHDIv2\Source\GeHdi_Ul.c`, "Generic HDI" uplink buffer
+  management), `GenericControlSequencer` and `TlvLib.Inl` are the only host-interface-shaped string
+  hits found; none led to a single identifiable message-type switch in the time available. U.
+- **Numerology fields (704, 830ish, 352, 464) - not decoded.** Public reference found (RF Wireless
+  World, "OFDMA Physical Layer Basics": 802.16e mobile WiMAX 1024-FFT PUSC = 30 subchannels x 24
+  data subcarriers = 720 data + 120 pilot + 92/91 guard + 1 DC). None of the 4 still-unlabelled
+  numerology-record fields (index 4 of the 14-word record: 352/5MHz, 464/8.75MHz, 704/10MHz,
+  832/7MHz; index 2 is a constant 3 across all 4 records) divide cleanly against this table's
+  constants (720, 30, 24, 120, 92, 91) or against the record's own BW/Fs/symbol fields. Forcing a
+  fit would restate a guess as a decode, which the honesty convention in this repo's `CLAUDE.md`
+  rules out - left U.
+
+## 6. Open
+- U: who consumes `rf_band_plan_cfg` beyond the validator (I: likely a runtime config-apply step not
+  reached from any of this pass's decompile targets). U: SIGNED boot enforcement on a real card.
+  U: seg 0/2/4 (0x828000, 0x850000) content. U: function of the 0xdc0000 image vs 0xe80000 image.
+  U: the 21-byte scratch array at 0xea44c8 that `rf_calib_bin_search` maxes over. U: `rf_calib_coeff_fetch`'s
+  NVM-ish source (`FUN_00ed7c9c`) and the capability flags `rf_calib_mode_select` checks
+  (`FUN_00ea4600`). U: `rf_calib_step_search` (0xe9e49c) - a table search with heavy bit/shift
+  arithmetic, called once from `rf_calib_apply_channel`; not resolved to a clear purpose.
+- Next: trace what calls `rf_calib_apply_channel` indirectly (function-pointer/FSM table scan, since
+  it has 0 direct callers); decompile `FUN_00ea4600`/`FUN_00ed7c9c` to resolve the capability-flag and
+  NVM-read semantics; keep looking for the host control-message dispatcher - GeHdi_Ul.c is the
+  strongest lead not yet followed up.
 
 ## Sources consulted
 - Linux `drivers/net/wimax/i2400m/fw.c`, `include/uapi/linux/wimax/i2400m.h` (v5.10, git history of local kernel mirror): SBCF record/checksum layout.
