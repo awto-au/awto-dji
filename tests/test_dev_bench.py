@@ -471,3 +471,30 @@ def test_dialog_accept_treats_a_never_idle_foreground_as_no_dialog():
     logged = []
     assert pud.accept("S", dump_fn=never_idle, tap_fn=lambda xy: None, log=logged.append) == 1
     assert "not present" in logged[0]
+
+
+# ---- ctl ------------------------------------------------------------------------------------------
+
+def test_ctl_wifi_target_runs_client_directly(fake):
+    assert dev.cmd_ctl(["--target", "192.168.25.125", "mode", "source", "test=4", "pattern=prbs"]) == 0
+    assert fake.calls == [[sys.executable, "-I", "scripts/re/bench_ctl.py", "--host", "192.168.25.125",
+                           "--port", "6560", "mode", "source", "test=4", "pattern=prbs"]]
+
+
+def test_ctl_adb_forwards_allocated_port(fake, monkeypatch):
+    monkeypatch.setenv("AWTO_PHONE", "SER1")
+    fake.replies["forward tcp:0"] = "41234\n"
+    assert dev.cmd_ctl(["get"]) == 0
+    assert fake.joined()[0] == "adb -s SER1 forward tcp:0 tcp:6560"
+    assert fake.calls[1][3:7] == ["--host", "127.0.0.1", "--port", "41234"]
+
+
+def test_ctl_forward_failure_fails_fast(fake, monkeypatch):
+    monkeypatch.setenv("AWTO_PHONE", "SER1")
+    fake.replies["forward tcp:0"] = dev.ExecResult(1, "error: closed")
+    assert dev.cmd_ctl(["ping"]) == 1
+    assert len(fake.calls) == 1
+
+
+def test_ctl_needs_subcommand(fake):
+    assert dev.cmd_ctl(["--target", "1.2.3.4"]) == 2

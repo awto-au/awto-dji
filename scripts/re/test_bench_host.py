@@ -212,3 +212,85 @@ def test_cli_cmd_ping(tmp_path, capsys, monkeypatch):
         app.close()
     assert rc == [0]
     assert "ping rtt" in capsys.readouterr().out
+
+
+# ---- control port client (bench_ctl) against a scripted fake app ----------------------------
+
+import json
+import socket
+import threading
+
+import bench_ctl
+
+
+@pytest.fixture
+def ctl_server():
+    srv = socket.socket()
+    srv.bind(("127.0.0.1", 0))
+    srv.listen(1)
+    seen = []
+
+    def serve():
+        c, _ = srv.accept()
+        f = c.makefile("rwb")
+        for line in f:
+            cmd = json.loads(line)
+            seen.append(cmd)
+            if cmd["cmd"] == "ping":
+                out = {"t": "pong", "id": cmd["id"]}
+            elif cmd["cmd"] == "mode":
+                f.write(b'{"t":"result","mode":"sink","test":1,"pass":true}\n')
+                out = {"t": "reply", "cmd": "mode", "ok": cmd["m"] != "bad", "m": cmd["m"], "switch_us": 40}
+            elif cmd["cmd"] == "silent":
+                continue
+            else:
+                out = {"t": "reply", "cmd": cmd["cmd"], "ok": True}
+            f.write((json.dumps(out) + "\n").encode())
+            f.flush()
+        c.close()
+
+    threading.Thread(target=serve, daemon=True).start()
+    yield srv.getsockname()[1], seen
+    srv.close()
+
+
+def test_ctl_ping_mode_and_pushed_result(ctl_server):
+    port, seen = ctl_server
+    c = bench_ctl.BenchCtl("127.0.0.1", port)
+    assert c.ping() < 1000
+    r = c.mode("source", test=4, seed=9, pattern="prbs")
+    assert r["ok"] and r["switch_us"] == 40 and "rtt_ms" in r
+    assert seen[-1] == {"cmd": "mode", "m": "source", "test": 4, "seed": 9, "pattern": "prbs"}
+    assert c.wait_result(lambda x: x["mode"] == "sink", 1)["pass"] is True
+    c.close()
+
+
+def test_ctl_missing_reply_fails_within_bound(ctl_server):
+    port, _ = ctl_server
+    c = bench_ctl.BenchCtl("127.0.0.1", port)
+    with pytest.raises(bench_ctl.CtlError, match="no reply to 'silent' within 0.3s"):
+        c.request({"cmd": "silent"}, timeout=0.3)
+    c.close()
+
+
+def test_ctl_connect_refused_is_a_clear_error():
+    s = socket.socket()
+    s.bind(("127.0.0.1", 0))
+    port = s.getsockname()[1]
+    s.close()
+    with pytest.raises(bench_ctl.CtlError, match="connect 127.0.0.1"):
+        bench_ctl.BenchCtl("127.0.0.1", port, connect_s=0.5)
+
+
+def test_expected_source_matches_checker_for_every_pattern():
+    for name in tk.PATTERN_NAMES:
+        chk = tk.Checker(test_id=6)
+        for f in tk.expected_source(5, size_min=24, size_max=300, seed=0xBEEF, pattern=name, test_id=6):
+            chk.feed(f)
+        assert chk.report.frames == 5 and chk.report.passed, name
+
+
+def test_expected_source_random_sizes_are_deterministic_and_bounded():
+    a = [len(f) for f in tk.expected_source(20, size_min=24, size_max=100, seed=3, test_id=1)]
+    assert a == [len(f) for f in tk.expected_source(20, size_min=24, size_max=100, seed=3, test_id=1)]
+    assert all(24 <= n <= 100 for n in a) and len(set(a)) > 5

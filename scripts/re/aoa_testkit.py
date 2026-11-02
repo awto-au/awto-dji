@@ -116,6 +116,19 @@ def build_frame(total_len, pattern, seed, seq, test_id=0, flags=0):
     return pre + struct.pack("<I", zlib.crc32(pre) & MASK)
 
 
+def expected_source(count, size=64, seed=1, pattern="addr", test_id=0, size_min=None,
+                    size_max=None, first_seq=0):
+    """Transfers the app's source mode writes for the same mode params (the harness regenerates
+    its expectation from the shared test_id/seed). size_min/size_max = random sizes."""
+    pat = PATTERN_NAMES[pattern]
+    lo = size_min if size_min is not None else size
+    hi = size_max if size_max is not None else lo
+    for seq in range(first_seq, first_seq + count):
+        n = rand_size(lo, hi, seed, seq, test_id) if hi > lo else lo
+        yield make_payload(P_ADDR, n, seed, seq, test_id) if n < MIN_FRAME else \
+            build_frame(n, pat, seed, seq, test_id)
+
+
 def short_transfer(n, seed, seq, test_id=0):
     """Transfers under 24 bytes: raw address-pattern bytes, no header."""
     return make_payload(P_ADDR, n, seed, seq, test_id)

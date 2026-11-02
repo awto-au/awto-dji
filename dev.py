@@ -847,6 +847,56 @@ def cmd_connect(extra: list[str]) -> int:
     return 0
 
 
+CTL_PY = "scripts/re/bench_ctl.py"
+CTL_PORT = 6560        # the bench app's control port (BenchControlServer, benchControlPort)
+CTL_STALL_S = 8        # bench_ctl bounds connect 3 s + reply 2 s itself; 8 s = stall backstop
+
+
+def ctl_argv(host: str, port: int, rest: list[str]) -> list[str]:
+    return [sys.executable, "-I", CTL_PY, "--host", host, "--port", str(port), *rest]
+
+
+def adb_forward(serial: str, remote: int) -> int:
+    """adb forward tcp:0 -> remote; returns the local port adb allocated."""
+    r = _adb(serial, "forward", "tcp:0", f"tcp:{remote}", why="forward the control port")
+    m = re.search(r"^(\d+)\s*$", r.out.strip(), re.M)
+    if r.rc != 0 or not m:
+        raise PhoneError(f"adb forward failed: {r.out.strip() or r.reason}")
+    return int(m.group(1))
+
+
+@command("drive the running bench app over its control port: ping|get|reset|result|mode <m> k=v..|"
+         "send <hex>|raw <json>|tail <s>",
+         args="[--target IP | --adb [--serial S]] [--port 6560] <sub> [args]")
+@_guarded
+def cmd_ctl(extra: list[str]) -> int:
+    ap = _parser("ctl", "bench app control port client")
+    g = ap.add_mutually_exclusive_group()
+    g.add_argument("--target", help="phone wifi IP (no adb needed)")
+    g.add_argument("--adb", action="store_true", help="wired/adb: forward the port (default)")
+    ap.add_argument("--serial")
+    ap.add_argument("--port", type=int, default=CTL_PORT)
+    ap.add_argument("rest", nargs=argparse.REMAINDER, help="ping|get|reset|result|mode <m> k=v..|...")
+    a, _ = _parse(ap, extra)
+    if not a.rest:
+        log("ctl needs a subcommand (ping|get|reset|result|mode|send|raw|tail)", "ERROR")
+        return 2
+    try:
+        if a.target:
+            host, port = a.target, a.port
+        else:
+            _need_tool("adb")
+            host, port = "127.0.0.1", adb_forward(resolve_serial(a.serial), a.port)
+    except PhoneError as e:
+        log(str(e), "ERROR")
+        return 1
+    # tail <s> legitimately stays quiet for s seconds: stall limit grows with it
+    wait = float(a.rest[1]) if a.rest[0] == "tail" and len(a.rest) > 1 else 0
+    r = _exec(ctl_argv(host, port, a.rest), why=f"control port {host}:{port}",
+              stall_s=CTL_STALL_S + wait, overall_s=CTL_STALL_S * 2 + wait, echo=True)
+    return r.rc
+
+
 def _usb_dialog():
     sys.path.insert(0, str(REPO / "scripts" / "re"))
     import phone_usb_dialog
