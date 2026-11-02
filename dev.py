@@ -18,11 +18,16 @@ and should not need editing.
 
 from __future__ import annotations
 
+import argparse
 import json
 import os
+import re
 import shutil
+import socket
 import subprocess
 import sys
+import threading
+import time
 from datetime import datetime
 from pathlib import Path
 
@@ -345,6 +350,263 @@ COMMANDS.update({
     "keepalive":      _tool("scripts/re/keepalive.py", "PC-side periodic Get* sends to stop the RC idle-timing-out"),
     "dji-pilot":      _tool("scripts/re/dji_pilot_bench.py", "drive DJI Pilot (reference app): select-aircraft/connect/screenshot"),
 })
+
+
+# --------------------------------------------------------------------------
+# Phone / bench-app commands (docs/phone-bridge-operator-guide.md).
+# All APK and phone work goes through these; every external argv is logged.
+# Tests replace _exec / _spawn with a fake that records argv.
+# --------------------------------------------------------------------------
+PKG_DJI = "au.awto.dji.awto_dji_app"
+PKG_BENCH = "au.awto.aoabench"
+PKG_OLD_BENCH = "au.awto.dji.awto_dji_app.aoabench"   # superseded id, removed by `unload --old-bench`
+ACTIVITY = "au.awto.dji.awto_dji_app.MainActivity"    # namespace/classes are shared by all three ids
+BENCH_ACTION = "au.awto.dji.action.BENCH"
+PACKAGES = {"dji": PKG_DJI, "bench": PKG_BENCH, "old-bench": PKG_OLD_BENCH}
+APP_DIR = REPO / "app" / "awto_dji_app"
+APK_OUT = APP_DIR / "build" / "app" / "outputs" / "flutter-apk" / "app-debug.apk"
+APK_DIR = TMP / "apk"
+BENCH_HOST_PY = "scripts/re/bench_host.py"
+BENCH_HOST_LOG = LOGS / "bench_host.log"   # written by bench_host.py; `connect` watches it
+DEFAULT_PORT = 9910
+
+# Bounds. LAN adb calls answer in <1 s; 15 s = stall (matches phone_usb_dialog.ADB_TIMEOUT_S).
+ADB_STALL_S = 15
+# Build: no output for 120 s = gradle hung (owner rule). Overall is a backstop only: no cold
+# build has been timed on this box, so 1800 s is a guess, not 3x a measurement.
+BUILD_STALL_S, BUILD_OVERALL_S = 120, 1800
+# Install: streamed push of a ~100 MB debug APK over wifi adb prints nothing meanwhile.
+INSTALL_STALL_S, INSTALL_OVERALL_S = 90, 300
+# connect -> first STATE line: cold Flutter start ~5 s + one 1 s reconnect backoff + 2 s
+# margin = 8 s expected worst, x1.25 = 10 s. Expiry prints the logcat tail.
+CONNECT_WAIT_S = 10
+
+
+class ExecResult:
+    def __init__(self, rc: int, out: str = "", reason: str = ""):
+        self.rc, self.out, self.reason = rc, out, reason
+
+
+def _exec(argv: list[str], *, why: str, stall_s: float | None = None,
+          overall_s: float | None = None, env: dict | None = None, cwd=None,
+          tee: Path | None = None, echo: bool = False) -> ExecResult:
+    """Run argv, log it, kill on stall (no output for stall_s) or overall expiry.
+    stall_s/overall_s None = unbounded, only for foreground tools that run until ^C."""
+    log(f"exec: {' '.join(argv)}  [{why}; stall={stall_s}s overall={overall_s}s]")
+    full_env = None
+    if env is not None:
+        full_env = dict(os.environ)
+        for k, v in env.items():
+            if v is None:
+                full_env.pop(k, None)
+            else:
+                full_env[k] = v
+    try:
+        p = subprocess.Popen(argv, cwd=cwd or REPO, env=full_env, stdout=subprocess.PIPE,
+                             stderr=subprocess.STDOUT, bufsize=0)
+    except OSError as e:
+        log(f"exec failed to start: {e}", "ERROR")
+        return ExecResult(127, "", f"cannot start: {e}")
+    chunks: list[bytes] = []
+    state = {"last": time.monotonic()}
+    fh = None
+    if tee is not None:
+        tee.parent.mkdir(parents=True, exist_ok=True)
+        fh = tee.open("ab")
+
+    def pump():
+        assert p.stdout is not None
+        while True:
+            b = os.read(p.stdout.fileno(), 65536)
+            if not b:
+                return
+            state["last"] = time.monotonic()
+            chunks.append(b)
+            if fh:
+                fh.write(b)
+                fh.flush()
+            if echo:
+                sys.stdout.write(b.decode("utf-8", "replace"))
+                sys.stdout.flush()
+
+    t = threading.Thread(target=pump, daemon=True)
+    t.start()
+    t0 = time.monotonic()
+    reason = ""
+    try:
+        while True:
+            try:
+                p.wait(0.5)
+                break
+            except subprocess.TimeoutExpired:
+                now = time.monotonic()
+                if stall_s is not None and now - state["last"] > stall_s:
+                    reason = f"stall: no output for {stall_s}s ({why})"
+                elif overall_s is not None and now - t0 > overall_s:
+                    reason = f"overall limit {overall_s}s exceeded ({why})"
+                if reason:
+                    p.kill()
+                    p.wait()
+                    break
+    except KeyboardInterrupt:
+        p.terminate()
+        p.wait()
+        reason = "interrupted"
+    t.join(2)
+    if fh:
+        fh.close()
+    out = b"".join(chunks).decode("utf-8", "replace")
+    rc = p.returncode if not reason or reason == "interrupted" else -9
+    if reason:
+        tail = out.strip().splitlines()[-1:] or ["<no output>"]
+        la = os.getloadavg()[0] if hasattr(os, "getloadavg") else -1
+        log(f"{reason}; elapsed {time.monotonic() - t0:.1f}s; last line: {tail[0]!r}; "
+            f"loadavg {la:.2f}", "ERROR")
+    else:
+        log(f"rc={rc}: {argv[0]}", "INFO" if rc == 0 else "ERROR")
+    return ExecResult(rc, out, reason)
+
+
+def _spawn(argv: list[str], *, why: str):
+    """Start a long-lived child (the background listener); caller owns its lifetime."""
+    log(f"spawn: {' '.join(argv)}  [{why}]")
+    return subprocess.Popen(argv, cwd=REPO)
+
+
+def _parser(prog: str, summary: str) -> argparse.ArgumentParser:
+    ap = argparse.ArgumentParser(prog=f"./dev.py {prog}", description=summary)
+    return ap
+
+
+def _parse(ap: argparse.ArgumentParser, extra: list[str], known_only=False):
+    try:
+        if known_only:
+            return ap.parse_known_args(extra)
+        return ap.parse_args(extra), []
+    except SystemExit as e:
+        raise _Usage(int(e.code or 0)) from None
+
+
+class _Usage(Exception):
+    def __init__(self, rc: int):
+        self.rc = rc
+
+
+def _guarded(fn):
+    def inner(extra: list[str]) -> int:
+        try:
+            return fn(extra)
+        except _Usage as u:
+            return u.rc
+    inner.__name__ = fn.__name__
+    inner.__doc__ = fn.__doc__
+    return inner
+
+
+# ---- adb / phone resolution ------------------------------------------------
+_WIRELESS = re.compile(r"^(\d{1,3}(\.\d{1,3}){3}:\d+|adb-.*_adb-tls-connect\._tcp.*)$")
+
+
+def parse_devices(text: str) -> list[dict]:
+    """`adb devices -l` -> [{serial,state,model,wireless}]; header/daemon noise skipped."""
+    devs = []
+    for line in text.splitlines():
+        parts = line.split()
+        if len(parts) < 2 or line.startswith(("List of", "*")):
+            continue
+        model = next((p.split(":", 1)[1] for p in parts[2:] if p.startswith("model:")), "")
+        devs.append({"serial": parts[0], "state": parts[1], "model": model,
+                     "wireless": bool(_WIRELESS.match(parts[0]))})
+    return devs
+
+
+class PhoneError(Exception):
+    pass
+
+
+def pick_serial(serial: str | None, env_serial: str | None, devices: list[dict]) -> str:
+    """--serial, else $AWTO_PHONE, else the single usable device. Several (or none) raises.
+    A phone listed twice (USB + wireless, same model) resolves to the wireless entry."""
+    if serial:
+        return serial
+    if env_serial:
+        return env_serial
+    ok = [d for d in devices if d["state"] == "device"]
+    if len(ok) == 1:
+        return ok[0]["serial"]
+    if len(ok) > 1 and len({d["model"] for d in ok}) == 1:
+        wl = [d for d in ok if d["wireless"]]
+        if len(wl) == 1:
+            return wl[0]["serial"]
+    listing = "\n".join(f"  {d['serial']}  {d['state']}  {d['model']}"
+                        f"{'  (wireless)' if d['wireless'] else ''}" for d in devices) or "  (none)"
+    raise PhoneError(
+        ("no usable adb device" if not ok else f"{len(ok)} adb devices, cannot choose") +
+        f":\n{listing}\nPass --serial S or set AWTO_PHONE, or --connect IP:PORT "
+        "(Settings -> Developer options -> Wireless debugging shows the current IP:port; "
+        "it changes on every reboot).")
+
+
+def _adb(serial: str | None, *args: str, why: str, stall_s=ADB_STALL_S,
+         overall_s=None, **kw) -> ExecResult:
+    argv = ["adb"] + (["-s", serial] if serial else []) + list(args)
+    return _exec(argv, why=why, stall_s=stall_s, overall_s=overall_s or stall_s * 2, **kw)
+
+
+def adb_devices() -> list[dict]:
+    return parse_devices(_adb(None, "devices", "-l", why="list adb devices").out)
+
+
+def resolve_serial(serial: str | None = None, connect: str | None = None) -> str:
+    if connect:
+        r = _adb(None, "connect", connect, why="adb connect (wireless port changes per reboot)")
+        log(f"adb connect: {r.out.strip()}")
+        if r.rc != 0 or "connected" not in r.out or "cannot" in r.out or "failed" in r.out:
+            raise PhoneError(f"adb connect {connect} failed: {r.out.strip() or r.reason}")
+        serial = serial or connect
+    s = pick_serial(serial, os.environ.get("AWTO_PHONE"), [] if serial or
+                    os.environ.get("AWTO_PHONE") else adb_devices())
+    return s
+
+
+def installed_packages(serial: str) -> dict[str, bool]:
+    out = _adb(serial, "shell", "pm", "list", "packages", why="installed packages").out
+    have = {ln.strip().removeprefix("package:") for ln in out.splitlines()}
+    return {name: pkg in have for name, pkg in PACKAGES.items()}
+
+
+def _getprop(serial: str, prop: str) -> str:
+    return _adb(serial, "shell", "getprop", prop, why=f"getprop {prop}").out.strip()
+
+
+def _need_tool(*names: str) -> None:
+    missing = [n for n in names if not shutil.which(n)]
+    if missing:
+        raise PhoneError(f"{', '.join(missing)} not on PATH - install it or fix PATH, then retry")
+
+
+@command("find the test phone: --serial / $AWTO_PHONE / the one adb device; shows model, "
+         "Android, which of dji|bench|old-bench are installed",
+         args="[--serial S] [--connect IP:PORT]")
+@_guarded
+def cmd_phone_connect(extra: list[str]) -> int:
+    ap = _parser("phone-connect", "resolve the test phone")
+    ap.add_argument("--serial")
+    ap.add_argument("--connect", metavar="IP:PORT")
+    a, _ = _parse(ap, extra)
+    try:
+        _need_tool("adb")
+        serial = resolve_serial(a.serial, a.connect)
+    except PhoneError as e:
+        log(str(e), "ERROR")
+        return 1
+    log(f"serial  : {serial}")
+    log(f"model   : {_getprop(serial, 'ro.product.model')}")
+    log(f"android : {_getprop(serial, 'ro.build.version.release')}")
+    for name, present in installed_packages(serial).items():
+        log(f"package {name:9s} {PACKAGES[name]}: {'installed' if present else 'not installed'}")
+    print(serial)
+    return 0
 
 
 def usage() -> int:
