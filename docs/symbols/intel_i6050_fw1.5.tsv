@@ -1,0 +1,61 @@
+addr	kind	name	note	source
+0x00e80000	func	start_arm	[V] entry = SIGNED_JUMP target; reads chip reg 0x80001c (==3 -> stack top 0xfffc else 0x3cffc); sets FIQ/IRQ/ABT/UND/SVC stacks; calls cpu_dtcm_enable, cpu_itcm_enable_copy, mpu_init; blx main	docs/intel-wimax-firmware-re.md
+0x00e807cc	func	cpu_dtcm_enable	[V] mcr p15 c9,c1,c0 (data TCM region) + CR bit16 set; ARM946E-S style	disasm
+0x00e80898	func	cpu_itcm_enable_copy	[V] mcr p15 c9,c1,c1 (instr TCM region = base 0) + CR bits18/19; calls itcm_image_copy	disasm
+0x00e999f4	func	itcm_image_copy	[V] copies 0x6828 bytes from 0x740000 (SBCF load window) to 0 (ITCM): vectors, IRQ dispatch, hot Thumb code	disasm literals 0x740000/0/0x6828
+0x00e808e8	func	mpu_init	[V] programs 8 protection regions c6 c0..c7 + cache/perm regs; region table at 0xe808c4	disasm
+0x00e808c4	data	mpu_region_cfg	[V] 8 words: 0 +16MB, 0 +64KB, 0xe80000 +512KB, 0xf00000 +128KB, 0x200000 +2MB, 0xff8000 +32KB, 0xffe00000 +1MB, 0xffff0000 +32KB (base|size<<1|en)	arith of literals
+0x00ebfd32	func	main	[V] bl 4 init fns then loop: blx 0xe80e40; bl 0xec4e58 (scheduler/event loop, I)	disasm
+0x00e80068	func	aeabi_ldivmod	[I] signed 64-bit divmod wrapper (libgcc)	disasm
+0x00e80150	func	aeabi_uldivmod_core	[I] unsigned 64-bit divide core	disasm
+0x00e800bc	func	aeabi_llsl	[V] 64-bit shift left	disasm
+0x00e800e4	func	aeabi_llsr	[V] 64-bit logical shift right	disasm
+0x00e80cc4	func	trace_event_thunk	[V] ARM veneer ldr pc,[pc,-4] -> ITCM 0x4199 trace_event_itcm; 5012 callsites	disasm
+0x00004198	func	trace_event_itcm	[V] log/trace emitter (ITCM copy): r0 = hdr (level bits31:29, module id low byte; level table 0xe63c7c), r1 = fmt-string pointer stored as (ptr-0x0c104000)>>2 20-bit index; args copied into ring at 0xe4c220. Strings are NOT in the SBCF	disasm 0x4198/0xe09128
+0x00e09128	func	trace_event	[V] same emitter in main image (extended arg handling)	disasm
+0x00e63c7c	data	trace_level_by_module	[V] byte per module id, compared with level in r0 bits31:29	disasm 0xe09138
+0x00e4c220	data	trace_ring_ctl	[I] ring buffer control: +0x30 head, +0x34 prev head, +0x38 first rec, +0x3c flag	disasm 0xe091a4..0xe09218
+0x00e06800	func	fatal_assert2	[V] stores arg to global +0x20, trace_event(code,line), then halt path 0xe3d97c; 603 callers	disasm
+0x00e06824	func	fatal_assert3	[V] 3-arg variant of fatal_assert2	disasm
+0x00ec403c	func	fatal_assert2_b	[V] variant gated by 0xee2ab0, logs via thunk; 456 callers	disasm
+0x00ec4060	func	fatal_assert3_b	[V] 3-arg variant of fatal_assert2_b	disasm
+0x00e0c668	func	bitmap_test	[V] (buf, nbytes, bit) -> bit value; asserts bit>>3 < nbytes; 824 callers	disasm
+0x00e0fa4c	func	bitmap_assign	[V] (buf, nbytes, bit, val) set/clear bit; 499 callers	disasm
+0x00e058b6	func	memcpy_chunk12	[V] copies in 12-byte chunks via memcpy_small_jt; returns dst; ITCM twin at 0x326e	disasm
+0x00e43944	func	memcpy_small_jt	[V] ARM: jump table on size<13 (small copy)	disasm
+0x00dce166	func	load_be_uint	[V] (buf,len) -> big-endian integer of len bytes	disasm
+0x00e81b7c	func	exception_report	[V] Thumb; called from ITCM vector stubs with kind 0..3 (undef/pabt/dabt..) + lr; logs through fatal_assert3_b	disasm 0x00..0x134
+0x00000000	label	itcm_vectors	[V] ARM vector table (ldr pc,[pc,#0x18] x5,nop,x2) -> reset 0x40, undef 0x118, swi 0xf4, pabt 0xf8, dabt 0x108, irq 0x70, fiq 0xf0	disasm of 0x740000 image
+0x00000070	label	irq_handler	[V] saves ctx, reads VIC at 0xfff000 (+0x30), irq<32 -> dispatch via 0x5b64 else blx ip	disasm
+0x00ea5ce8	func	rf_freq_khz_to_band_idx	[V] kHz -> band idx 0..17 via cmp chain (edges 2.35..2.7 GHz step 50 MHz, 3.3..3.8 GHz); only f<2.3 GHz or >3.8 GHz is logged; 2.4-2.496 GHz maps to idx 1..3 without rejection here	intel_wimax_phy_tables.py
+0x00ea5de0	data	rf_band_edge_pool	[V] literal pool for rf_freq_khz_to_band_idx (kHz limits)	disasm
+0x00c8fc00	data	rf_band_plan_cfg	[V] block magic 0xcafe900d; 24-bit LE kHz limits at +0x28..: 2300000,2400000 | 2496000,2550000 | 2550000,2650000 | 2650000,2690000 | 3400000,3800000 (semantics I: supported band plan; excludes 2.4-2.496)	intel_wimax_phy_tables.py
+0x00eef5e4	data	rf_cal_bin_table	[V] 12-byte rows {lo_kHz,hi_kHz,idx}; groups 2180000..2861000 and 3165000..4059000 (idx0..23); I: RF calibration grid	intel_wimax_phy_tables.py
+0x00e94410	data	phy_bw_pool	[V] 8750000, 7000000 Hz; sample-rate pool at 0xe9442c: 11200000, 5600000, 8000000	disasm
+0x00ef1fb4	data	phy_numerology_5mhz	[V] record: BW 5000000, Fs-period 178571 ps, df 10937, 28000 (=5ms*Fs), symbol 576, CP 64 (FFT 512)	intel_wimax_phy_tables.py
+0x00ef2050	data	phy_numerology_8p75mhz	[V] record: BW 8750000, period 100000 ps (Fs 10 MHz), df 9766, 50000, symbol 1152, CP 128 (FFT 1024)	intel_wimax_phy_tables.py
+0x00ef20ec	data	phy_numerology_10mhz	[V] record: BW 10000000, period 89286 ps (Fs 11.2 MHz), df 10937, 56000, symbol 1152, CP 128 (FFT 1024) = measured Lightbridge numerology	intel_wimax_phy_tables.py
+0x00ef2188	data	phy_numerology_7mhz	[V] record: BW 7000000, period 125000 ps (Fs 8 MHz), df 7813, 40000, symbol 1152, CP 128	intel_wimax_phy_tables.py
+0x00e4b3ff	data	fw_version_string	[V] 'WIMAX_SW.5.10.1046'	strings
+0x00c90ec5	data	str_bts_autodetect	[V] 'BTS Autodetection 2.5GHz'	strings
+0x00e24aac	func	tls_prf_derive_keys	[I] uses labels 'master secret','key expansion' (EAP-TLS/TLS PRF)	string xref
+0x00e3eba0	func	tls_finished_verify	[I] uses 'client finished'/'server finished'	string xref
+0x00e400a4	func	pkm_cmac_keys_kek_derive	[I] label 'CMAC_KEYS+KEK' (PKMv2 key derivation)	string xref
+0x00e40458	func	pkm_bek_label_user	[I] label 'bek@wimaxforum.org'	string xref
+0x00dc3dd8	func	base64_encode	[V] standard alphabet table at 0xe4a1c4	string xref
+0x00e2ab10	func	gehdi_ul_dealloc_buf_from_data_msg	[V] name from assert text GeHdiUl_DeallocateUlBufferFromDataMsg (GeHdi_Ul.c:210)	string xref
+0x00ea6268	func	l1_rxgain_calib_search	[V] name from L1_RxGainCalib_SearchFunction strings (RxGainCalib_Evp_Kp.c:636-658)	string xref
+0x00e34384	func	txarq_age_overrun_check	[V] TxArqUtils.inl:143 'AGE OVERRUN OCCURED'	string xref
+0x00dc3c4c	func	gcs_seq_timeout_not_in_progress	[V] GenericControlSequencer_private.inl:73	string xref
+0x00ebd280	func	lta_connect_notify	[V] strings 'FW-BIS=... (LTA connected / not connected)'	string xref
+0x00ebd12c	func	l1_event_post_notify	[V] '[event posted by L1 command]'	string xref
+0x00ee7598	func	lta_no_scenario_error	[V] 'No LTA scenario loaded'	string xref
+0x00e31ed0	func	tlv_get_int_a	[V] TlvLib.Inl:50 'Can not get integer of length'	string xref
+0x00e320b4	func	tlv_get_int_b	[V] TlvLib.Inl:50 (second instance)	string xref
+0x00e32038	func	tlv_put_int_a	[V] TlvLib.Inl:75 'Can not write integer of length'	string xref
+0x00e32190	func	tlv_put_int_b	[V] TlvLib.Inl:75 (second instance)	string xref
+0x00e95064	func	fsm_check_l287	[V] Fsm.h:287/288 assert	string xref
+0x00e95018	func	fsm_check_l305	[V] Fsm.h:305/306 assert	string xref
+0x00e950f4	func	fsm_check_l213	[V] Fsm.h:213-215 assert	string xref
+0x00e95374	func	fsm_check_l226	[V] Fsm.h:226-239 asserts	string xref
+0x00e950b0	func	fsm_check_l254	[V] Fsm.h:254/255 assert	string xref
