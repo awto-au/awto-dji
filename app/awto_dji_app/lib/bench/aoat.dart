@@ -157,7 +157,7 @@ class AoatReport {
 
 /// Stream verifier, same rules as aoa_testkit.Checker. An empty chunk counts as a ZLP.
 class AoatChecker {
-  AoatChecker({this.testId, this.maxFrame = 1 << 20});
+  AoatChecker({this.testId, this.maxFrame = 1 << 23});
   final int? testId;
   final int maxFrame;
   final report = AoatReport();

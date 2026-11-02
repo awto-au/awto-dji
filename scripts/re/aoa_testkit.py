@@ -150,7 +150,7 @@ class Checker:
     """Stream parser + verifier for AOAT frames. feed() takes arbitrary chunking.
     Empty chunk = ZLP seen. Bad frames resync byte-by-byte on the magic."""
 
-    def __init__(self, test_id=None, max_frame=1 << 20):
+    def __init__(self, test_id=None, max_frame=1 << 23):
         self.test_id = test_id
         self.max_frame = max_frame
         self.buf = bytearray()
@@ -212,6 +212,31 @@ class Checker:
             elif seq < self._next_seq:
                 r.seq_dups += 1
         self._next_seq = (seq + 1) & MASK
+
+
+class SinkModel:
+    """What the app's sink mode must report for a given chunk sequence (mirror of
+    bench_modes.dart: headerless chunks < 24 B that are not AOAT fragments are counted as
+    `short`, everything else goes to the Checker). Used by the fuzz suite as the oracle."""
+
+    def __init__(self, test_id=None):
+        self.checker = Checker(test_id)
+        self.short = 0
+        self.short_bytes = 0
+
+    def feed(self, chunk):
+        if chunk and len(chunk) < MIN_FRAME and not chunk.startswith(MAGIC) and not self.checker.buf:
+            self.short += 1
+            self.short_bytes += len(chunk)
+        else:
+            self.checker.feed(chunk)
+
+    def report(self):
+        r = self.checker.report
+        d = r.as_dict()
+        d["short"] = self.short
+        d["bytes"] = r.bytes + self.short_bytes
+        return d
 
 
 # ---- DUML generator (changeable addresses, fake data) ------------------------------
