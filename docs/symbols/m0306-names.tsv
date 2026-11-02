@@ -76,3 +76,35 @@ addr	kind	name	note	source
 0x1000848c	ram	g_can2_rx1_q	[V] filled by isr_CAN2_RX1 (base 0x10008464 + 0x28); type=CanMsgQueue	decomp
 0x20020a24	ram	g_uart_port_table	[V] 100 B/entry driver objects, <=2 active (uart_table_init); see fc-io-inventory.md	fc-io-inventory.md
 0x080ab66c	table	g_flyc_param_tbl	[V] 808 x 0x3c B FlycExportParam {nameptr,valptr,valsize,type_id,limits[36],attribute,callback}; first entry cfg_var_table_size_0, last wp_setting.action_on_rc_lost_0; type=FlycExportParam[808]	scripts/re/fc_param_table.py
+0x0808ce24	func	clampf	[I] float clamp helper (a,b,c): returns the middle value for ordered bounds; 47 callers	decomp
+0x0808ce9e	func	clampf_symmetric	[V] clampf(x, -lim, lim) wrapper (56 callers)	decomp
+0x0806e7a2	func	vec3f_length	[V] sqrt(x*x+y*y+z*z) of float[3] via f2d/sqrt/d2f	decomp
+0x0806e498	func	copy_2words	[V] *dst[0..1] = *src[0..1]	decomp
+0x08063772	func	copy_words_reverse	[V] copies n words from the end (dst,src,n)	decomp
+0x08063758	func	vec_scale_f	[V] dst[i] = src[i] * k for n floats (k,dst,src,n)	decomp
+0x08083122	func	__aeabi_ui2d	[I] unsigned int -> double (exponent 0x41d - clz)	decomp
+0x0808e4a6	func	__aeabi_i2d	[I] signed int -> double (abs, then as ui2d)	decomp
+0x08088cee	func	__aeabi_cdcmple	[I] double compare setting carry/zero for the caller (used as in_CY in conditions)	decomp
+0x0805afea	func	sdio_send_command	[V] SDIO_SendCommand(SDIO_CmdInitTypeDef*): ARG <- s[0]; CMD <- index|waitresp|wait_int|wait_pend|cpsm	decomp
+0x0803ad2c	func	nvic_priority_group_config	[V] SCB_AIRCR (0xE000ED0C) <- group | 0x05FA0000 key (NVIC_PriorityGroupConfig)	decomp
+0x0803ad36	func	nvic_init	[V] NVIC_Init(NVIC_InitTypeDef*): IPR[irq] priority split by AIRCR group; ISER/ICER (0xE000E100/E180)	decomp
+0x0803ec58	func	dma_deinit	[V] DMA_DeInit(stream): CR/NDTR/PAR/M0AR/M1AR cleared, FCR=0x21, clears stream flags in LIFCR/HIFCR	decomp
+0x0803eea2	func	dma_clear_flag	[V] DMA_ClearFlag: writes LIFCR (-8) or HIFCR (-4) by flag word bit 29	decomp
+0x0803ef36	func	dma_clear_flag_dup	[V] byte-identical copy of dma_clear_flag (second compiler instance)	decomp
+0x0803eef0	func	dma_get_flag_status	[V] DMA_GetFlagStatus: reads stream FCR (+0x14) or LISR/HISR	decomp
+0x0803b4dc	func	exti_init	[I] EXTI_Init(EXTI_InitTypeDef*): IMR/EMR/RTSR/FTSR masks from line + mode + trigger	decomp
+0x0803b58e	func	exti_generate_sw_interrupt	[V] EXTI->SWIER (+0x14) <- line	decomp
+0x0803bc44	func	syscfg_exti_line_config	[V] SYSCFG->EXTICR[(pin>>2)] 4-bit field = port (SYSCFG_EXTILineConfig)	decomp
+0x08027c14	func	pwr_enter_stop_mode	[V] PWR_CR bits | SCB_SCR SLEEPDEEP, then WFI (arg 1) or WFE (PWR_EnterSTOPMode)	decomp
+0x080374be	func	adc_common_init	[V] ADC_CommonInit: ADC_CCR (0x40012304) <- mode|prescaler|dma_mode|delay	decomp
+0x080333c6	func	dwt_cyccnt_read	[V] returns DWT->CYCCNT (0xE0001004)	decomp
+0x0804d0e6	func	tim_get_it_status	[I] TIM_GetITStatus(TIMx, flag) pattern from TIM8_BRK_TIM12/TIM8_UP_TIM13 ISRs	decomp
+0x0804d0fe	func	tim_clear_it_pending_bit	[I] TIM_ClearITPendingBit(TIMx, flag)	decomp
+0x08021486	func	compass_ist83xx_init_all	[V] loops 2 compass slots (stride 0x3c) calling ist8303_init; logs "ist83xx:%d ret:%d"	strings+decomp
+0x080213aa	func	ist8303_init	[V] logs "IST8303[bus:addr]:Init..."; read id -> set mode step 1 -> set mode -> calc cali matrix	strings+decomp
+0x080211d2	func	ist8303_read_id	[V] logs "IST8303 ... ID %x", sets compass_type = COMPASS_IST8303	strings
+0x080212fa	func	ist8303_set_mode_step1	[V] logs "set mode step 1 ok/failed"	strings
+0x080214fa	func	ist8303_set_mode	[V] logs "set mode %d %d %d %d %d %d", "connect error" on failure	strings
+0x08020fca	func	ist8303_calc_cali_matrix	[V] reads 0x12 B at reg 0x9c, logs "calculate_cali_matrix: %f %f %f"	strings+decomp
+0x080214e2	func	ist8303_reg_read	[I] (dev, reg, buf, n=1) single-register read (called with reg 0xb)	decomp
+0x080214ee	func	ist8303_reg_read_block	[I] (dev, reg, buf, n) multi-byte read (called with reg 0x9c, n=0x12)	decomp

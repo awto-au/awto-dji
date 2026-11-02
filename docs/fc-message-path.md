@@ -45,6 +45,8 @@ traffic out its USART1, `m0900-can-channels.md`) into one of these — most like
 
 ## Not yet resolved (the actual command map)
 
+> Update 2026-11-02: the (set,id) -> handler map is the 65-entry table at `0x080ab43c`; IRQ 19/20/21 and 63/64/65 are CAN TX/RX0/RX1. See `m0306-naming-pass.md`.
+
 - **The (set, id) → handler dispatch is not a flat table.** Scans for `{set,id,handler}` arrays
   found only a false positive (instruction bytes at `0x080A60EC`). Dispatch is a switch
   (`tbb`/`tbh`) or a registered per-channel callback — the DUML validator `0x080304fc` has no

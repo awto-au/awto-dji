@@ -4,6 +4,12 @@ Dated changelog of fact-corrections previously narrated inline in the docs. Each
 phrased as "initial understanding -> corrected finding." The docs now state only the
 corrected/current fact; this file preserves the history for reference.
 
+## 2026-11-02 (m0306 DUML dispatch table, IRQ numbering, stale upstream rows)
+
+- **m0306 DUML dispatch table (2026-11-02):** initial understanding "65 x 8 B `{handler, key}` at `0x080ab440`" -> corrected: `{cmd_set, cmd_id, pad, handler}` at `0x080ab43c`; each handler was paired with the next entry's key. Check: handler logging `timezone set:%d` is keyed 3/0x3d. (`docs/m0306-naming-pass.md` section 2)
+- **m0306 CAN vectors (2026-11-02):** initial understanding "IRQ 19/20/21 = CAN1 RX0/RX1/SCE, 63/64 = CAN2 RX0/RX1" -> corrected: IRQ19/20/21 = CAN1 TX/RX0/RX1 (`0x08035300/0803530e/08035358`), IRQ63/64/65 = CAN2 TX/RX0/RX1. (`docs/m0306-naming-pass.md` section 3)
+- **m0306 symbol TSV (2026-11-02):** rows `is_prod_activated`, `check_activation_authority`, `dji_sdk_set_key` (V01.07.0060 map addresses) removed from `docs/symbols/m0306.tsv`; they land in MD5 code (`md5_transform` `0x08047c08`). Prose was already corrected in `fc-auth-enforcement-trace.md`.
+
 ## 2026-11-02 (m0900 load base and link XOR key)
 
 - **"True link base is `0x08000000`; `m0900_ghidra` (base `0x08008000`) is `+0x8000` off" -> "the image is linked at `0x08008000`; the CAN pass (`dataflow.md` §7-7.11) was `0x8000` low".** Reset vector `0x08008201`, Reset stub at file offset `0x200`; `scripts/re/m0900_base_check.py`. The CAN-pass `vec_36` ISR decompile was unrelated code. Addresses corrected in `dataflow.md`, scripts and `m0900-naming-pass.md` §1.
