@@ -609,6 +609,108 @@ def cmd_phone_connect(extra: list[str]) -> int:
     return 0
 
 
+# ---- load / unload ----------------------------------------------------------
+BUILDS = {
+    # name -> (package, env for the build, argv)
+    "bench": (PKG_BENCH, {"AWTO_BENCH": "1"},
+              ["flutter", "build", "apk", "--debug", "--dart-define=BENCH=true"]),
+    "dji": (PKG_DJI, {"AWTO_BENCH": None},        # None = removed from the environment
+            ["flutter", "build", "apk", "--debug"]),
+}
+
+
+def apk_copy(name: str) -> Path:
+    return APK_DIR / f"{name}-debug.apk"
+
+
+def build_apk(name: str) -> Path:
+    """Build one flavour and copy the output aside (the next build overwrites it)."""
+    _pkg, env, argv = BUILDS[name]
+    r = _exec(argv, why=f"flutter build ({name})", stall_s=BUILD_STALL_S,
+              overall_s=BUILD_OVERALL_S, env=env, cwd=APP_DIR,
+              tee=LOGS / f"build-{name}.log")
+    if r.rc != 0:
+        raise PhoneError(f"{name} build failed (rc={r.rc}) {r.reason}; see tmp/logs/build-{name}.log")
+    if not APK_OUT.is_file():
+        raise PhoneError(f"build reported success but {APK_OUT} is missing")
+    APK_DIR.mkdir(parents=True, exist_ok=True)
+    dst = apk_copy(name)
+    shutil.copyfile(APK_OUT, dst)
+    return dst
+
+
+def install_apk(serial: str, name: str, apk: Path) -> None:
+    pkg = BUILDS[name][0]
+    log(f"apk {name}: {apk} ({apk.stat().st_size / 1e6:.1f} MB)")
+    r = _adb(serial, "install", "-r", str(apk), why=f"install {name}",
+             stall_s=INSTALL_STALL_S, overall_s=INSTALL_OVERALL_S)
+    if r.rc != 0 or "Success" not in r.out:
+        raise PhoneError(f"adb install {name} failed: {r.out.strip() or r.reason}")
+    if not installed_packages(serial)[name]:
+        raise PhoneError(f"installed {apk.name} but package {pkg} is not on the phone "
+                         "(applicationId mismatch?)")
+    log(f"installed {pkg}", "ALERT")
+
+
+def load(serial: str, which: list[str], build: bool = True) -> None:
+    _need_tool("adb", *(["flutter"] if build else []))
+    for name in which:
+        if build:
+            apk = build_apk(name)
+        else:
+            apk = apk_copy(name)
+            if not apk.is_file():
+                raise PhoneError(f"--no-build but {apk} does not exist; run `./dev.py load` first")
+        install_apk(serial, name, apk)
+
+
+@command("build and install the bench (default) and/or DJI app; --both keeps each APK aside",
+         args="[--bench|--dji|--both] [--no-build] [--serial S]")
+@_guarded
+def cmd_load(extra: list[str]) -> int:
+    ap = _parser("load", "build and install")
+    g = ap.add_mutually_exclusive_group()
+    g.add_argument("--bench", action="store_true")
+    g.add_argument("--dji", action="store_true")
+    g.add_argument("--both", action="store_true")
+    ap.add_argument("--no-build", action="store_true", help="install the copies in tmp/apk/")
+    ap.add_argument("--serial")
+    a, _ = _parse(ap, extra)
+    which = ["bench", "dji"] if a.both else ["dji"] if a.dji else ["bench"]
+    try:
+        _need_tool("adb", *(["flutter"] if not a.no_build else []))
+        serial = resolve_serial(a.serial)
+        load(serial, which, build=not a.no_build)
+    except PhoneError as e:
+        log(str(e), "ERROR")
+        return 1
+    return 0
+
+
+@command("uninstall the bench, DJI or superseded old-bench package",
+         args="[--bench|--dji|--old-bench] [--serial S]")
+@_guarded
+def cmd_unload(extra: list[str]) -> int:
+    ap = _parser("unload", "adb uninstall")
+    g = ap.add_mutually_exclusive_group(required=True)
+    g.add_argument("--bench", action="store_true")
+    g.add_argument("--dji", action="store_true")
+    g.add_argument("--old-bench", action="store_true",
+                   help=f"remove the superseded id {PKG_OLD_BENCH}")
+    ap.add_argument("--serial")
+    a, _ = _parse(ap, extra)
+    pkg = PKG_OLD_BENCH if a.old_bench else PKG_DJI if a.dji else PKG_BENCH
+    try:
+        _need_tool("adb")
+        serial = resolve_serial(a.serial)
+    except PhoneError as e:
+        log(str(e), "ERROR")
+        return 1
+    r = _adb(serial, "uninstall", pkg, why=f"uninstall {pkg}")
+    log(f"adb uninstall {pkg}: {r.out.strip()}")
+    return 0 if r.rc == 0 and "Success" in r.out else 1
+
+
 def usage() -> int:
     print(__doc__.split("Scaffold usage:")[0].rstrip())
     print(f"\nUsage: ./dev.py <command> [args]\n")
