@@ -197,7 +197,7 @@ addr	kind	name	note	source
 0x08010078	func	tim2_restart	[V] if radio first-init done (S+0x109): TIM2 stop, CNT=0, start	decomp (V)
 0x08010092	func	radio_first_init	small: if [S+0x109]==0 call 0x0800bace, 0x0800bad4, set [S+0x109]=1. Does NOT call radio_config_apply	disasm (verified)
 0x080100ae	func	radio_start_chain	large init function (push.w {r1-fp,lr}); BL at 0x0801015a calls radio_config_apply (0x0800f436); also calls 0x0800f3d8 and 0x0800e820	disasm (verified)
-0x0801029e	func	radio_status_push	[V] every 50 ticks: cs9 cmd3 (5 B) -> rx 8; cs9 cmd8 (3 B) -> rx 2 and rx 0x11#7; cs9 cmd0 (0x43 B, includes radio_session_key bytes, I) -> rx 0xe; every 10 ticks cs9 cmd 0x16 (4 B) -> rx 2	decomp (V)
+0x0801029e	func	radio_status_push	[V] every 50 ticks: cs9 cmd3 (5 B) -> rx 8; cs9 cmd8 (3 B) -> rx 2 and rx 0x11#7; cs9 cmd0 (0x43 B -> rx 0xe, V): [0..0x1f]=S+0x1b0, [0x22..0x25]=S+0x9c word, [0x26..0x3d]=radio_session_key with idx 0,7,9,13,21 overwritten by S[0..4] and the 5 originals at [0x3e..0x42]; consumer m1400 duml_set9_cmd00_session_key_rx (docs/session-key-trace.md); every 10 ticks cs9 cmd 0x16 (4 B) -> rx 2	decomp (V)
 0x080103f8	func	fpga_uart_to_fc_relay	drains two rings (0x20000144 [src: FUN_0800e008, RF payload descrambler], 0x2000007b [src: usart3_irq, FPGA UART]) via duml_parser_feed; on complete frame, tail-calls send_usart1 directly - bypasses duml_dispatch entirely. Called every other tick from the main scheduler (0x080105da). See air-router-deep-dive.md §6a	disasm (verified 2026-10-25)
 0x080104bc	func	periodic_100_task	[I] every 100 ticks: jump table on state byte (S3x); on board 7 sends cs0 cmd 0x48 (5 B) to rx 1	decomp (V)
 0x080105d2	func	radio_state_get_6c	[V] returns radio_state_s+0x6c (0x20001b20); compared with 2 in fpga_link_rx_poll	decomp (V)
@@ -254,7 +254,7 @@ addr	kind	name	note	source
 0x08012690	func	flash_write_magic	flash write of 4 bytes at offset 0x7400 (helper 0x0800bc2c); returns 1 if all bytes written	disasm (inferred write)
 0x0801279a	func	load_cfg_page	reads 256 B from flash offset 0x7b00, validates via 0x08011e7a	disasm
 0x080127be	func	read_stm32_uid	copies 12 bytes from 0x1FFFF7E8; single caller 0x08011110	disasm (verified)
-0x080127d8	func	srand	[I] fills the 55-word ring from an LCG (mult 0x66d619e1... ) seeded by argument	decomp (V)
+0x080127d8	func	srand	[V] 55-word ring at rand_ring; s=seed, ring[54..0]=s+(s>>16), s=s*0x10dcd+0x66d619e1; rand A idx 31, B idx 0; state is a function of the 32-bit seed only	decomp (V)
 0x08012814	func	memcmp	[I] word compare with byte-swap on mismatch, byte tail	decomp (I)
 0x080128aa	func	__aeabi_memcpy	[I] (dst, src, n) unaligned-capable word/byte copy	decomp (I)
 0x08012934	func	__aeabi_memcpy4	[I] 4-byte-aligned copy, 32-byte unrolled	decomp (I)
@@ -359,3 +359,4 @@ addr	kind	name	note	source
 0x20002620	ram	usart1_parser	[V] type=DumlParser; size=0x10; buf usart1_parser_buf (320 B)	decomp+xref (V): usart1_pump
 0x20002630	ram	usart1_parser_buf	[V] type=u8[320]; size=0x140	decomp+xref (V): usart1_pump
 0x20002770	ram	rand_ring	[V] type=u32[55]; size=0xdc; lagged-Fibonacci state; index cells at 0x2000284c/0x20002850	decomp+xref (V): rand, srand
+0x0800eaa4	table	link_key_plaintext_const	[V] 8 B {78 65 54 87 62 23 36 47} literal-pool plaintext that radio_session_key_init 3DES-encrypts (same bytes in m1400 duml_set9_cmd00_session_key_rx)	decomp (V)

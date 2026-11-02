@@ -126,3 +126,14 @@ addr	kind	name	note	source
 0x1284a	func	p07_p09_read_frame	read-direction path: FUN_000125bc(0x61) then a length-prefixed read loop via p07_p09_bitbang_shift(0); confirms bidirectionality (found earlier today, re-confirmed by Ghidra xref)
 0xddb8	func	duml_cmd_0x23_handler	cmd_set-9(?) dispatch at 0xf47e, case 0x23: builds a 5-byte record (tag 2, len 0xf, 2 status bytes from param_1+0xb/+0xc) and enqueues it via p07_p09_ringbuf_enqueue(DAT_0000df44, ...) - DIRECT call, bypassing port_send entirely. Not yet named against the APK CmdIdType enum (not attempted this pass)	Ghidra (verified, this pass)
 0xde2a	func	duml_cmd_0x22_handler	sibling of duml_cmd_0x23_handler, cmd_set dispatch case 0x22: builds a larger (tag 4, len 0xf) record from DAT_0000df48's own stored fields, also enqueues via p07_p09_ringbuf_enqueue(DAT_0000df44, ...) directly	Ghidra (verified, this pass)
+0xce94	func	duml_set9_cmd00_session_key_rx	[V] cmd_set 9 cmd 0 handler (dispatch case 9/0 at FUN_0000f3c8 -> bl 0xf72c): copies 0x43 B payload to 0x10004442, checks bytes [0x26,0x2d,0x2f,0x33,0x3b] == radio_link_state[0..4], restores them from [0x3e..0x42], and if the 24 B differ from session_key_last: stores them at radio_link_state+0x4c, 3DES-encrypts link_key_plaintext_const into radio_link_state+0x64 (8 B), copies key words to rc_state+0x7a and deadline (tick+250000) to rc_state+0x82. Mirror of m0900 radio_session_key_init/radio_status_push	Ghidra decomp (V), issue #84
+0xf3c8	func	duml_dispatch	[V] DUML dispatcher: switch on frame[9] cmd_set, then frame[10] cmd_id; one caller (0xfce4)	Ghidra decomp (V), issue #84
+0x1a8b8	func	des3_key_schedule	[I] 3 x DES schedule over key[0..7],[8..15],[16..23] (same shape as m0900 0x0800cd92); callee of duml_set9_cmd00_session_key_rx	Ghidra decomp (I), issue #84
+0x1a908	func	des3_crypt_block	[I] 3 x DES block pass (same shape as m0900 0x0800cde2)	Ghidra decomp (I), issue #84
+0x217a8	func	memcmp	[I] compare n bytes; used for the 24 B key compare in duml_set9_cmd00_session_key_rx	Ghidra decomp (I), issue #84
+0x218d4	func	memcpy	[I] copy n bytes; used by duml_set9_cmd00_session_key_rx	Ghidra decomp (I), issue #84
+0xd254	table	link_key_plaintext_const	[V] 8 B {78 65 54 87 62 23 36 47}, identical to m0900 0x0800eaa4	literal pool, issue #84
+0x2ead4	table	des_sbox	[V] DES S-boxes as nibble bytes (S1 row 0 = 14,4,13,1,2,...); same layout as m0900 0x08015e5c	data read, issue #84
+0x100041d8	ram	radio_link_state	[V] struct: [0..4] 5 link-ID bytes compared in duml_set9_cmd00_session_key_rx; +0x4c 24 B session key; +0x64 8 B derived key (= m0900 link_xor_key); +0x70 tick+100	Ghidra decomp (V), issue #84
+0x10002838	ram	session_key_last	[V] last accepted 24 B session key (memcmp target)	Ghidra decomp (V), issue #84
+0x10004442	ram	session_key_msg_buf	[V] 0x43 B copy of the cs9 cmd0 payload	Ghidra decomp (V), issue #84

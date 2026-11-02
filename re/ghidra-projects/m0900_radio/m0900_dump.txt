@@ -24225,7 +24225,7 @@ void radio_session_key_init(void)
   undefined4 uStack_1c;
   
   iVar2 = DAT_0800ea84;
-  local_20 = DAT_0800eaa4;
+  local_20 = link_key_plaintext_const;
   uStack_1c = DAT_0800eaa8;
   if (*(char *)(DAT_0800ea84 + 7) == '\0') {
     uVar1 = DAT_e000e018;
@@ -25786,7 +25786,10 @@ void radio_start_chain(void)
 ---- radio_status_push @ 0801029e ----
 
 /* [V] every 50 ticks: cs9 cmd3 (5 B) -> rx 8; cs9 cmd8 (3 B) -> rx 2 and rx 0x11#7; cs9 cmd0 (0x43
-   B, includes radio_session_key bytes, I) -> rx 0xe; every 10 ticks cs9 cmd 0x16 (4 B) -> rx 2 */
+   B -> rx 0xe, V): [0..0x1f]=S+0x1b0, [0x22..0x25]=S+0x9c word, [0x26..0x3d]=radio_session_key with
+   idx 0,7,9,13,21 overwritten by S[0..4] and the 5 originals at [0x3e..0x42]; consumer m1400
+   duml_set9_cmd00_session_key_rx (docs/session-key-trace.md); every 10 ticks cs9 cmd 0x16 (4 B) ->
+   rx 2 */
 
 void radio_status_push(void)
 
@@ -28736,7 +28739,8 @@ void read_stm32_uid(undefined4 *param_1)
 
 ---- srand @ 080127d8 ----
 
-/* [I] fills the 55-word ring from an LCG (mult 0x66d619e1... ) seeded by argument */
+/* [V] 55-word ring at rand_ring; s=seed, ring[54..0]=s+(s>>16), s=s*0x10dcd+0x66d619e1; rand A idx
+   31, B idx 0; state is a function of the 32-bit seed only */
 
 void srand(uint param_1)
 
