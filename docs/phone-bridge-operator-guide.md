@@ -299,14 +299,14 @@ see [PC video notes](pc-video-preview.md).
 Generic AOA test rig, not DJI-specific: a Cynthion (RISC-V shell) or `t600_rc_emulator.py` plays the AOA host, this app is the AOA **device**, a script on the PC drives it over WiFi.
 
 ### Build / install / run
-- **I.** `cd app/awto_dji_app && flutter build apk --debug --dart-define=BENCH=true`; `lib/main.dart` switches on `const bool.fromEnvironment('BENCH')`.
-- **I.** Same package id (`au.awto.dji.awto_dji_app`) as the DJI app: installing it **replaces** the DJI app on the test phone (and the reverse). Without the define you get the DJI app.
-- **V.** Last build: BENCH=true debug APK built (Gradle ok). **U.** Never installed or run on a phone.
+- **V.** `cd app/awto_dji_app && AWTO_BENCH=1 flutter build apk --debug --dart-define=BENCH=true`; `lib/main.dart` switches on `const bool.fromEnvironment('BENCH')`.
+- **V.** `AWTO_BENCH=1` gives the bench its own package id `au.awto.dji.awto_dji_app.aoabench` and launcher label "AOA Bench": it installs **next to** the DJI app. Without `AWTO_BENCH` the build is the DJI app (`au.awto.dji.awto_dji_app`). Both declare the `DJI`/`T600` accessory filter, so a real attach shows Android's app chooser while both are installed.
+- **V.** Installed and run on a Pixel 3 XL (Android 12) over wireless adb: connects to the host script, state lines flow. **U.** Everything involving a USB accessory attach.
 - PC: `python3 -I scripts/re/bench_host.py --listen 9910 --tail` (port 9910 is unused elsewhere in the repo; relay uses 9900/9901).
 - Start (phone must reach the PC over WiFi):
 ```
-adb -s <serial> shell am force-stop au.awto.dji.awto_dji_app
-adb -s <serial> shell am start -n au.awto.dji.awto_dji_app/.MainActivity \
+adb -s <serial> shell am force-stop au.awto.dji.awto_dji_app.aoabench
+adb -s <serial> shell am start -n au.awto.dji.awto_dji_app.aoabench/au.awto.dji.awto_dji_app.MainActivity \
     -a au.awto.dji.action.BENCH --es host <pc-ip> --ei port 9910
 ```
 - `au.awto.dji.action.CONNECT` accepts the same `host`/`port` extras; `DISCONNECT` stops the accessory pump. Relaunch by `USB_ACCESSORY_ATTACHED` after process death has no host (not persisted): re-send the intent. **U.**
