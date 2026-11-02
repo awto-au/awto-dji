@@ -460,3 +460,14 @@ def test_dialog_accept_reports_an_unreadable_screen_instead_of_crashing():
     logged = []
     assert pud.accept("S", dump_fn=dump_fails, tap_fn=lambda xy: None, log=logged.append) == 3
     assert "cannot read the screen" in logged[0]
+
+
+def test_dialog_accept_treats_a_never_idle_foreground_as_no_dialog():
+    import phone_usb_dialog as pud
+
+    def never_idle():
+        raise pud.NeverIdle("ERROR: could not get idle state.")
+
+    logged = []
+    assert pud.accept("S", dump_fn=never_idle, tap_fn=lambda xy: None, log=logged.append) == 1
+    assert "not present" in logged[0]

@@ -61,10 +61,16 @@ def _adb(serial, *args):
                           timeout=ADB_TIMEOUT_S, check=True).stdout
 
 
+class NeverIdle(Exception):
+    """A constantly-redrawing foreground app (the bench) cannot be dumped; the dialog is not on top."""
+
+
 def dump(serial):
     local = os.path.join("tmp", f"usb_dialog_{serial}.xml")
     os.makedirs(os.path.dirname(local), exist_ok=True)
-    _adb(serial, "shell", "uiautomator", "dump", REMOTE)
+    out = _adb(serial, "shell", "uiautomator", "dump", REMOTE)
+    if "could not get idle state" in out:
+        raise NeverIdle(out.strip())
     _adb(serial, "pull", REMOTE, local)
     with open(local, encoding="utf-8") as f:
         return f.read()
@@ -80,6 +86,9 @@ def accept(serial, dump_fn=None, tap_fn=None, log=print):
     for attempt in range(1, TRIES + 1):
         try:
             d = parse_dialog(dump_fn())
+        except NeverIdle:
+            log("usb-dialog: not present (foreground app never idles, so no dialog is on top)")
+            return 1
         except (subprocess.CalledProcessError, subprocess.TimeoutExpired, ET.ParseError) as e:
             log(f"usb-dialog: cannot read the screen on try {attempt} ({type(e).__name__}); "
                 "is it on and unlocked?")
