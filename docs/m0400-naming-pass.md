@@ -123,6 +123,21 @@ byte-exact / instruction-sequence-ratio / mnemonic-only-ratio). Logs `./tmp/logs
   `arm_bitreversal_f32` - best fuzzy composite 52.4%, well under the 70% ranking floor. ARM
   Compiler 5 (armcc) against this source is the one toolchain combination left untried for this
   function family.
+  **Retested against armcc (ARM Compiler 5, #41 pt5, 2026-11-03)**, same CMSIS-DSP V1.4.5 source,
+  `-O0,-O1,-O2,-O3,-Ospace,-Otime` (`docs/toolchain-inventory.md` "CMSIS-DSP radix4 FFT family vs
+  armcc"): `radix4_butterfly_f32`/`cmplx_mag_f32` stay U (best fuzzy composite 55.3%/51.2%).
+  **`arm_bitreversal_f32` is now I (fuzzy match)** - `-Otime` gives 178B vs firmware's 176B (1%
+  size delta), 94.1% mnemonic-sequence overlap, 84.3% fuzzy composite, the first toolchain in this
+  whole investigation to cross the 70% ranking floor for this family; also 77-81% mnemonic_ratio
+  in exact mode at `-O2`/`-O3`/`-Ospace` (a second, independent signal). Still not V (not byte-
+  identical) but the strongest CMSIS-DSP evidence found - consistent with ARM Compiler 5/Keil
+  being this firmware family's toolchain (m0900 soft-float, m0400/m0306 SPL peripheral code).
+  Also searched broadly for a different FFT source entirely (ST X-CUBE-DSP, old STM32F4 SPL/
+  Discovery firmware-package DSP examples, CMSIS v4.x releases, alternative vendor DSP libraries,
+  `docs/toolchain-inventory.md` "CMSIS-DSP source-version and alternate-FFT-library search") -
+  clean negative: CMSIS v4.x ships the identical V1.4.5 file (only a non-functional macro-name
+  typo differs), and no ST package or other vendor forks/replaces CMSIS-DSP's FFT code. No new
+  source exists to try for `radix4_butterfly_f32`/`cmplx_mag_f32` - they stay genuinely U.
 - **New finding from tracing cfft_radix4_f32's calls:** `cfft_radix4_f32` (0x08008a08) tail-jumps
   (`b`) to 0x080082b0, a 176 B bit-reversal permutation that Ghidra's auto-analysis folded into
   cfft_radix4_f32's *disassembly* but never gave its own FUNCTION entry (non-contiguous function,

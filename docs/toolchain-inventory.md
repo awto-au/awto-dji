@@ -453,6 +453,80 @@ family. ARM Compiler 5 (armcc) against this same CMSIS-DSP source is the one com
 untried for this family (armcc was only retested against SPL/soft-float runtime code above, not
 CMSIS-DSP) - open for a future pass if anyone wants full toolchain coverage per re-rules.md pt 10.
 
+## CMSIS-DSP radix4 FFT family vs armcc - arm_bitreversal_f32 crosses the fuzzy floor (#41 pt5, 2026-11-03)
+
+The one toolchain left untried for this family (per the note above). Same CMSIS-DSP V1.4.5
+source/commit, same CMSIS Core headers, as the GCC/armclang passes; `--toolchain armcc
+--cpu Cortex-M4.fp.sp --float-abi hard --define ARM_MATH_CM4 --define __FPU_PRESENT=1`,
+`-O0,-O1,-O2,-O3,-Ospace,-Otime`, `--mode fuzzy`:
+
+| Function (fw size) | Best exact match | Best fuzzy composite | Verdict |
+|---|---|---|---|
+| `radix4_butterfly_f32` (836B) | `-Otime`, 802B, 5.5%/32.8% insn/mnemonic | 55.3% (`-Otime`) | **U** |
+| `cmplx_mag_f32` (236B) | `-Otime`, 246B, 18.4%/55.3% | 51.2% (`-Otime`) | **U** |
+| `arm_bitreversal_f32` (176B) | `-Otime`, 178B (near-exact size), 39.2%/**94.1%** mnemonic | **84.3%** (`-Otime`) | **I (fuzzy match)** - first time any toolchain in this investigation crosses the 70% floor for this family |
+
+`arm_bitreversal_f32` also reaches mnemonic_ratio >=70% in **exact** mode at `-O2`/`-O3`/`-Ospace`
+(77-81%, "I (same opcode sequence, different register allocation)") - a second, independent signal
+agreeing with the fuzzy result. `-Otime` is the single best match: fw 176B vs ref 178B (1% size
+delta), 94.1% mnemonic overlap, 64.2% masked-byte identity. **Still I, not V** (re-rules.md pt 7:
+V needs an exact byte-diff; confirmed not byte-identical) - but this is the strongest CMSIS-DSP
+match found anywhere in the investigation, well clear of every GCC/armclang result for the same
+function (previously best 44.2-54.6% fuzzy composite, "Fuzzy-match mode" table). `radix4_butterfly_
+f32` and `cmplx_mag_f32` do **not** share this result - both stay U against armcc too, same level
+as GCC/armclang.
+
+**Conclusion:** `arm_bitreversal_f32` is now the single strongest piece of evidence that m0400's
+CMSIS-DSP-shaped code was compiled with ARM Compiler 5 (Keil) from stock CMSIS-DSP V1.4.5 source -
+consistent with the firmware-wide ARM Compiler 5 finding (m0900 soft-float, m0400/m0306 SPL,
+above). `radix4_butterfly_f32`/`cmplx_mag_f32` remain genuinely unmatched against every toolchain
+tried (GCC x4, armclang, armcc) - either a different CMSIS-DSP point release's implementation of
+just these two functions (checked below, ruled out), a hand-tuned variant, or code this method
+can't reach.
+
+## CMSIS-DSP source-version and alternate-FFT-library search (#41 pt5, 2026-11-03)
+
+Broadened the search per Dan's request: is there an older or different FFT source DJI could have
+linked against instead of the zephyrproject-rtos/cmsis-dsp mirror's commit `147cb4e3`?
+
+- **CMSIS v4.x (`github.com/ARM-software/CMSIS_4`, tags `v4.3.0`/`v4.4.0`/`v4.5.0`, 2015-2016,
+  era-correct for Phantom 3) ships the exact same file**: `arm_cfft_radix4_f32.c`/
+  `arm_bitreversal.c`/`arm_cmplx_mag_f32.c` are all internally stamped `$Revision: V.1.4.5`,
+  `$Date: 19. March 2015` in **every** CMSIS_4 tag checked (v4.3.0 through v4.5.0) - confirmed by
+  diffing each against the already-tested `147cb4e3` source: `arm_bitreversal.c`/
+  `arm_cmplx_mag_f32.c` are byte-for-byte identical modulo line endings (`diff -w -B` = 0 lines);
+  `arm_cfft_radix4_f32.c` differs only in a macro-name typo fix (`ARM_MATH_CM0_FAMILY_FAMILY` ->
+  `ARM_MATH_CM0_FAMILY`, the exact fix `147cb4e3`'s commit message describes) that doesn't affect
+  Cortex-M4 codegen (the guarded branch is never taken on M4 either way). **No separate ARM-
+  software/CMSIS repo predates CMSIS_4** (the `ARM-software/CMSIS` name 302-redirects to
+  `CMSIS_4`, repo created 2015-06-15 - CMSIS v3.x and earlier were pre-GitHub, Keil/ARM-website-
+  distributed zip packs, not available as a git history to diff against). **Conclusion: V1.4.5
+  (March 2015) is the only radix4-FFT source that exists for this era** - already exhaustively
+  tested against GCC x4, armclang, and armcc above. Nothing new to compile.
+- **ST X-CUBE-DSP / X-CUBE-DSPDEMO**: no separate ST FFT implementation - inspected a GitHub port
+  (`rouming/X-CUBE-DSPDEMO`), its `Drivers/CMSIS` is stock CMSIS-DSP, not an ST-authored variant.
+  Ruled out.
+- **Old STM32F4 SPL/Discovery firmware packages (STSW-STM32068, STM32F4-Discovery_FW,
+  STM32Cube_FW_F4 V1.1.0 through V1.9.0+)**: `gh search code` across dozens of independent mirror
+  repos (spanning 2014-2016+ package vintages) all vendor the same unmodified
+  `CMSIS/DSP_Lib/Source/TransformFunctions/arm_cfft_radix4_f32.c` - including the well-known
+  stm32f4-discovery.net FFT/audio tutorial, which itself just calls stock `arm_cfft_radix4_f32`.
+  ST never forked CMSIS-DSP itself (unlike SPL/HAL, which is genuinely ST's own code and already
+  gave the m0400/m0306 peripheral-init V matches above) - it only re-vendors CMSIS-DSP unchanged.
+  Ruled out.
+- **Alternative vendor DSP library with a similar radix-4 complex-FFT signature**: TI DSPLib only
+  targets TI's own C6000/C674x DSP core architecture - irrelevant to a Cortex-M4F part, ruled out
+  immediately. No Freescale/NXP, Atollic, Microchip, or Renesas Cortex-M DSP library search hit
+  resembled the firmware's function signature. Ruled out, no further candidate identified.
+
+**Net result of this pass: no new FFT source found anywhere - a stronger negative than the
+GCC/armclang-only result, not a weaker one.** Every public copy of this function family, from
+every ST firmware package or demo and every CMSIS release spanning the Phantom 3 era, traces back
+to the one CMSIS-DSP V1.4.5 source already compile-diffed against three toolchain families.
+`radix4_butterfly_f32`/`cmplx_mag_f32` stay genuinely open (U against everything tried);
+`arm_bitreversal_f32` is now **I** (armcc `-Otime`, 84.3% fuzzy composite) - the strongest CMSIS-DSP
+result in the investigation, promoted from the plain shape-match it had before this pass.
+
 ## Fuzzy-match mode (`--mode fuzzy`, #41 pt 2 follow-up)
 
 For functions that already fail `--mode exact` (byte-diff) against every toolchain above - the
