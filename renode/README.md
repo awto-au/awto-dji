@@ -107,5 +107,5 @@ R 0x037 [0x0A]  ; product id
 ## Scope
 
 Interoperability for an owned aircraft (`CLAUDE.md`): structural RF-parameter recovery using
-the public UG-570 register map. No key extraction, no geofence/flight-restriction work. The
+the public UG-570 register map. Key analysis allowed (`CLAUDE.md`); no geofence/flight-restriction work. The
 tap records SPI traffic; it does not model the radio.

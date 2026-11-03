@@ -145,5 +145,5 @@ DLLs). capstone was not needed — `objdump` disassembly was sufficient for the 
    search of `DJIRcService.dll`/`DJIRc2Service.dll` for `ConnectMaster`/`MasterId`-style debug
    tags using the same `(<set>_0x<id>)` pattern that worked for cmdset 0 above.
 
-Scope: owned aircraft, interoperability only (see `../CLAUDE.md`). No key extraction, no
-geofence/flight-restriction work, no execution of DJI binaries (static analysis only).
+Scope: owned aircraft, interoperability only (see `../CLAUDE.md`). Key analysis and
+running DJI binaries (e.g. under Wine) are allowed (`../CLAUDE.md`); no geofence/flight-restriction work.

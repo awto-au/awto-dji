@@ -37,7 +37,7 @@ Family evidence: pluribus `docs/cyclonev-compressed-rbf.md`, `scripts/fpga_famil
 
 ## Lift-realism test (2026-10-26)
 
-Detection only: does the image lift to logic or noise? No key handling.
+This pass: detection only (does the image lift to logic or noise?); no key handling done, not a scope limit.
 Tool: pluribus `scripts/lift_realism.py` (branch `worktree-agent-af72405071c975740`, commit `158964bd3`), native decoder, `cyclonev_unpack.py --allow-invalid` (validation bypassed, statistics only).
 Reference: 256 Quartus-built Cyclone V e50f designs (re-lifted, largest 825 LUTs / 1040 FFs) and 3 random-CRAM controls on the same die (1 x uncompressed random frames with CRC16 recomputed; 2 x random nibble-coded stream of the image's length, same decode path as the images).
 

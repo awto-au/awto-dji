@@ -8,7 +8,7 @@
 
 Firmware: `P3X_FW_V01.11.0020` (2017-07-05) plus P3X 01.01.0006, P3S 01.01.0008, P3C 01.08.0100, P3SE 01.01.0000, P3XW 01.00.0010.
 Reproduce: `python3 scripts/re/air_survey.py` (log `tmp/logs/air_survey.log`, about 1 minute). Symbols: `docs/symbols/air_modules.tsv`.
-Scope (CLAUDE.md): interoperability only. No key values read, no auth/signing bypass, no flight-restriction work. Firmware treated as untrusted data (static analysis only).
+Scope (CLAUDE.md): interoperability; key analysis allowed, no flight-restriction work. This survey read no key values. Firmware treated as untrusted data.
 Tags: **V** verified in bytes/code (address cited), **I** inferred, **U** unknown.
 Ground side (C1/m1400) is a separate survey: not covered here.
 

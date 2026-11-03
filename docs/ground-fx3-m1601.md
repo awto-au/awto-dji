@@ -208,6 +208,6 @@ phone port is either the FX3's own (GL300b/c) or the DaVinci's (GL300a/HDMI). No
   Still I, not V: no pin-level/board confirmation that UART3's physical TX/RX pins are the ones
   wired to FX3, only that it's the one m1400 UART whose configured baud rate matches.
 - Re-check `m1601` 02.00.0006 (operator's C1 V01.06.0000).
-- Not analysed (CLAUDE.md, no keys): a 68-byte record, obfuscated with +0x55 per byte and
+- Not analysed yet (key work is allowed, `CLAUDE.md`): a 68-byte record, obfuscated with +0x55 per byte and
   CRC16-protected, read and written via `0x4000e1dc`/`0x4000e298` (`0x40003ec8`). I: MFi
   auth/config storage.

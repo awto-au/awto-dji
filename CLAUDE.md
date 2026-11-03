@@ -18,6 +18,13 @@ core and (parked) MAVLink ground clients.
   as proof.
 - Cite exact offsets / reproduction commands so claims can be re-derived.
 
+## Keys and RE scope
+
+- Key analysis, recovery, derivation and reverse engineering of firmware are in scope (Dan, 2026-11-02, widened 2026-11-04). Wine/running DJI binaries is allowed.
+- Public repo may hold a hash or partial section of a key, with a comment that the full key is held (where). Full keys stay out of the public repo.
+- Never present key work as not done, or hide how it was done. State what was recovered, by what method, at V/I/U.
+- Still out: geofence defeat, control override (`docs/SAFETY.md`).
+
 ## Docs hygiene
 
 - Dated history and superseded results live in `docs/HISTORY.md`; analysis docs state the current result only (no superseded numbers).

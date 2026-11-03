@@ -3,7 +3,7 @@
 Source: static disassembly of `P3X_FW_V01.11.0020_m0900.bin` (app at `0x08008000`; the
 bootloader at `0x08000000-0x08007FFF` is NOT in the container, so it is not analysed).
 Command names from dji-firmware-tools `dji-dumlv1-general.lua`. Tags: verified / inferred / unknown.
-Interop analysis only: no keys, no signing bypass (CLAUDE.md).
+Interop analysis; this pass touched no keys (not a scope limit, `CLAUDE.md`).
 
 ## Upgrade commands handled by the app (DUML set 0x00; dispatch table `0x0801a120`)
 

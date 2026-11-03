@@ -5,7 +5,7 @@ RTOS partition (`tmp/air/amba_P3X0020/P3X_FW_V01.11.0020_m0100_part_sys.a9s`) an
 `rfs` Linux rootfs (UBIFS, partially extracted to `tmp/air/rfs_P3X0020/` via
 `scripts/re/fpga_write_path.py` -> `scripts/re/air_survey.py`'s UBIFS walker). Tags:
 V = verified in extracted bytes, I = inferred, U = unknown/untested.
-Interop analysis only: no keys read, nothing sent to hardware for this doc.
+Interop analysis; this doc read no keys and sent nothing to hardware (not a scope limit; key work is allowed, `CLAUDE.md`).
 
 **2026-10-24 bench update:** the camera SD card was identified through its USB
 mass-storage interface and an empty diagnostic marker was written at the operator's

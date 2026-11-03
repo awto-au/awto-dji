@@ -1,6 +1,6 @@
 # FPGA bitstream encryption: DJI images
 
-Per-image status only. Family support, key mechanism and the detection evidence: pluribus `docs/fpga-encryption.md`. Detection only: no key handling or recovery.
+Per-image status only. Family support, key mechanism and the detection evidence: pluribus `docs/fpga-encryption.md`. This pass: detection only, no key handling or recovery done (not a scope limit).
 
 | Image | Family | Encrypted? | Lift possible? |
 |---|---|---|---|
