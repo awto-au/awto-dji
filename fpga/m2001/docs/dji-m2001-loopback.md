@@ -90,10 +90,16 @@ Conditions: Verilator, rtl_s emit, m1400 boot-table stimulus, 4-6M clk_main cycl
 - Gate structure (V, LUT init): chain FFs are 2:1 muxes selected by `ff_26_78_15`, e.g. `ff_19_64_0` D = sel ? `lc_18_64_5` : `ff_18_63_3` (init 0xAACC). Both sources are 0.
 - Dead frontier (dead FFs feeding the chain, probed): `ff_18_63_3`, `ff_17_63_14`, `ff_13_62_14`, `ff_18_63_1`; enable `ff_13_61_15` is live (live-RX copy-A replay run, 8M half-cycles), data is 0.
 - Frontier expansion (`loopback_mkprobes_frontier.py`, runs pf/ph/pi, same stimulus): the dead chain runs back through `fr1`..`fr5` to five M9K read ports (36,62) (23,61) (36,54) (23,55) (23,54), 4b x 2048 SDP, no init data (0 of 2048 words non-zero), we = `lc_34_61_1` / `lc_34_61_7`.
-- Those RAMs are written (output FFs go non-zero once) but only by a few 0->1->0 pulses; write data comes from `ff_102_60/61_*` via `ff_84_61_*` / `ff_87_61_*` (enable `ff_87_61_2`), sequencer enable `ff_32_73_0` <- `ff_31_73_4`.
+- Those RAMs are written (output FFs go non-zero once) but only by a few 0->1->0 pulses; write data comes from `ff_102_60/61_*` via `ff_84_61_*` / `ff_87_61_*` (enable `ff_87_61_2`).
 - Read side: read-address FFs change 1-2 times, at the times of SPI register writes (half-cycles 11148, 45452, 945036, 970124, 1912122). I: the RAMs are register-indexed lookup tables, not RX sample buffers. Not traced one-for-one to the register FFs.
-- `ff_31_73_4` also enables `ff_26_72_2` (enable of `ff_15_62_1/2`, in the playback-RAM we cone): I, one sequencer gates both paths.
-- Open: which table word is read and whether the table write (`ff_102_60/61_*`, `ff_87_61_2`, `ff_31_73_4`) ever targets it; `uplink_record_readers` outputs (record bytes are non-zero); register group `ff_37_79_*` (`ena = lc_37_82_1`, not in the SPI register map); reg 0x02 copy0 never written.
+
+Write-path static trace (2026-11-04, `cycloneiv_clean_head_ram_write_trace.py`, `nl.pkl`). Corrects the earlier "sequencer `ff_31_73_4`" framing:
+- The five head RAMs are the reg-3-indexed 2048x4 TX source tables feeding the ~9-stage TX pipeline (partition blocks `reg3_tables` / `tx_source_bank`, seeds from awtoau/pluribus#177). **I.**
+- Write-data pins are driven by 4 LUTs each, owned by `tx_source_bank` (RAMs 23,61 / 36,54 / 23,55 / 23,54) and `reg3_tables` (RAM 36,62) — **not** tied constants (**V**), so the tables can hold real data.
+- Write-enable real driver chain (**V**, one-stage netlist): `ff_87_61_2` <- `lc_87_61_2` <- `ff_99_61_0` <- { `ff_101_60_14` @`802.16-tx`, `ff_34_61_10` @`reg3_tables` }. The we is gated by the reg-3 table-select FF, **not** by the frame FSM (38,86)/(39,86) and not by `ff_31_73_4`.
+- `ff_31_73_4` is **not** a sequencer: its D driver `lc_31_73_4` has 0 input pins (all four tied `1'b1`, init 0xFFFF) => it latches constant 1 (**V**). What it "enables" is permanently on, so it sequences nothing.
+- Conclusion (**I**): the dead TXD chain is not "slaved to RX lock". The reg-3 TX source tables are simply never populated with non-zero words in the loopback stimulus (0 of 2048, line above); the write mechanism exists and is reg-3-gated. Loopback injects no uplink/table-populate data.
+- Open: a targeted sim that drives the reg-3 populate path (set reg 3 + feed uplink-record data), or forces `ff_99_61_0`/`ff_87_61_2` with a non-zero data word, to confirm the tables fill and the TXD pads move. Also still open: `uplink_record_readers` outputs; register group `ff_37_79_*` (`ena = lc_37_82_1`, not in the SPI register map); reg 0x02 copy0 never written.
 
 ## Lift faults found
 
@@ -116,4 +122,4 @@ python3.15t fpga/m2001/scripts/cycloneiv_clean_loopback_sim.py analyse --tag tx;
 ```
 Force sweep (bounded parallel): `python3.15t fpga/m2001/scripts/loopback_force_sweep.py --jobs 5`.
 Probes: `loopback_mkprobes_frontier.py [--trace TAG]` appends backward stages (`fr*`) and head-RAM write/read cones (`hw*`) to the same file. `loopback_mkprobes_ram.py` writes `tmp/loopback/probes_ram.json` (playback-RAM cones, 3 upstream FF stages, regfile copies 0x00/0x02/0x08/0x09); rebuild the sim after changing it. Decoders: `loopback_probe_boundary.py TAG` (dead FFs with live inputs), `loopback_probe_regs.py TAG` (register value history). The sim also reads `tmp/loopback/probes_extra.json` if present (earlier regfile/TX-RAM set from `spi_regs`; the file was overwritten on 2026-11-02 and not regenerated).
-Static traces: `cycloneiv_clean_fsm_rxdetect_trace.py`, `cycloneiv_clean_playback_ram_trace.py` (`--nl tmp/image_sim_dji_push/nl.pkl`).
+Static traces: `cycloneiv_clean_fsm_rxdetect_trace.py`, `cycloneiv_clean_playback_ram_trace.py`, `cycloneiv_clean_head_ram_write_trace.py` (all `--nl tmp/image_sim_dji_push/nl.pkl`; the last dumps the five head RAMs' we/data/addr direct drivers and the write-enable / `ff_31_73_4` gating).
