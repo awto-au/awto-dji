@@ -1,11 +1,12 @@
 #!/usr/bin/env python3.15t
 """Partition a lifted Cyclone IV netlist into named KNOWN blocks and UNKNOWN components; annotate the RTL.
 
-  python3.15t fpga/m2001/scripts/cycloneiv_clean_partition.py --nl NL.pkl --blocks boards/<b>/blocks.json [--build-seeds]
+  python3.15t fpga/m2001/scripts/cycloneiv_clean_partition.py --nl NL.pkl [--board fpga/m2001/board] [--build-seeds]
         [--rtl OUT.v] [--flat OUT_flat.v] [--lint] [--grow 2]
 
-Seeds (instance names / LAB coords / hard-block coords / pads) live in the committed blocks.json; --build-seeds
-regenerates it for the DJI m2001 image from this session's trace outputs (tmp/dji_spi/image_fork.json,
+Seeds (instance names / LAB coords / hard-block coords / pads) live in the committed functional_*.tsv (the
+source of truth, #98; see functional_tsv.py); --build-seeds regenerates the trace-derived blocks from this
+session's trace outputs (tmp/dji_spi/image_fork.json,
 tmp/af3 cone, tmp/cycloneiv_clean/duml_entry_trace.json, fpga/m2001/board/pins.tsv). Growth is BOUNDED
 (--grow rounds): a LUT joins a block only when every consumer is already in it, or when its LAB is mostly
 that block and it touches it; FFs only when D-source and all consumers are inside. Two blocks claiming one
@@ -621,11 +622,8 @@ def lint(path):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--nl", required=True)
-    ap.add_argument("--blocks", required=True, help="boards/<board>/blocks.json (seeds; --build-seeds writes it)")
-    ap.add_argument("--from-tsv", action="store_true",
-                    help="read seeds/rename from the committed functional_*.tsv (DB source of truth, #98) instead of blocks.json; "
-                         "board dir taken from --blocks. Becomes the default once the write-path consumers migrate.")
-    ap.add_argument("--build-seeds", action="store_true")
+    ap.add_argument("--board", default=BOARD, help="board dir holding the committed functional_*.tsv (source of truth, #98)")
+    ap.add_argument("--build-seeds", action="store_true", help="regenerate the trace-derived blocks into functional_*.tsv (hand-added blocks kept)")
     ap.add_argument("--grow", type=int, default=2)
     ap.add_argument("--rtl", help="write block-annotated structured RTL here (runs rtl.lift)")
     ap.add_argument("--flat", help="write block-annotated flat emit here")
@@ -638,7 +636,7 @@ def main():
     from lifters.cycloneiv_clean import patterns as PT
     nl = pickle.load(open(a.nl, "rb"))
     D = PT.Design(nl)
-    board_dir = os.path.dirname(os.path.abspath(a.blocks))
+    board_dir = os.path.abspath(a.board)
     import functional_tsv as FT                                # TSVs are the source of truth (#98)
     if a.build_seeds:
         gen = build_seeds(nl, D, board_dir)                     # trace-derived seed blocks (blocks.json shape)

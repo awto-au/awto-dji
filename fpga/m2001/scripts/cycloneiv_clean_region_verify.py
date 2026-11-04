@@ -4,8 +4,8 @@
   python3.15t fpga/m2001/scripts/cycloneiv_clean_region_verify.py --nl tmp/image_sim_dji_push/nl.pkl --blob 802.16-tx --model gpt-oss:20b [--write-blocks]
 Inputs: tmp/cycloneiv_clean/regions/<blob>/{cell_region.json, <rid>.json, names/<model>/<rid>.json}, regions/patterns.json.
 Output: regions/<blob>/verify_<model>.json (pass / fail / untestable per region + detail); log tmp/logs/cycloneiv_clean_region_verify.log.
---write-blocks: PASS on a DISCRIMINATING test -> fpga/m2001/board/blocks.json `blocks` as conf V (seeds = the region's cells); every other
-named region -> blocks.json `proposed` (conf I, never V).  Discriminating = lfsr_poly / crc_poly / rom_shape cos|sin|bitrev|gf_log;
+--write-blocks: PASS on a DISCRIMINATING test -> a conf-V block in fpga/m2001/board/functional_*.tsv (#98; seeds = the region's cells);
+every other named region -> functional_proposed.tsv (conf I, never V).  Discriminating = lfsr_poly / crc_poly / rom_shape cos|sin|bitrev|gf_log;
 generic tests (fifo, counter, mac_chain, xor_taps, ramp, step, decay) only support conf I.
 """
 import argparse

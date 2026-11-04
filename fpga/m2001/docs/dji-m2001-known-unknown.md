@@ -3,16 +3,16 @@
 > Moved from awtoau/pluribus on 2026-11-01. Paths under `fpga/m2001/` are in this repo (awto-au/awto-dji). `lifters/`, `docs/altera/...`, `reference/` and `tmp/` (lift artefacts such as `tmp/image_sim_dji_push/nl.pkl`) are in the pluribus checkout (`$PLURIBUS_REPO`, see `fpga/m2001/scripts/_repo.py`).
 
 Every LUT / FF / M9K / MAC / pad of the current lift is assigned to one named block or to an UNKNOWN component.
-Seeds: `fpga/m2001/board/blocks.json` (durable, extend by hand). Tool: `fpga/m2001/scripts/cycloneiv_clean_partition.py`.
+Seeds: `fpga/m2001/board/functional_*.tsv` (committed source of truth, #98; edit via `block_add.py` or `--build-seeds`, or by hand). Tool: `fpga/m2001/scripts/cycloneiv_clean_partition.py`. The gitignored annotate DB `gx150.db` is a derived index, rebuilt by `cycloneiv_clean_fold_functional.py --rebuild`.
 Evidence per block: `fpga/m2001/docs/lightbridge-fpga.md` section or awtoau/pluribus #177 comment id. Tags: **V** cell-traced, **I** inferred role, **S** structure known / function unknown, **U** unknown.
 
 ## Regenerate
 
 ```
-python3.15t fpga/m2001/scripts/cycloneiv_clean_partition.py --nl tmp/image_sim_dji_push/nl.pkl --blocks fpga/m2001/board/blocks.json \
+python3.15t fpga/m2001/scripts/cycloneiv_clean_partition.py --nl tmp/image_sim_dji_push/nl.pkl --board fpga/m2001/board \
     [--build-seeds] --rtl tmp/cycloneiv_clean/rtl_partitioned.v --flat tmp/cycloneiv_clean/rtl_flat_partitioned.v --lint
 ```
-- `--build-seeds` rewrites `blocks.json` from the trace outputs (`tmp/dji_spi/image_fork.json`, AF3 cone, `tmp/cycloneiv_clean/duml_entry_trace.json`, `pins.tsv`); omit it to use the committed seeds.
+- `--build-seeds` regenerates the trace-derived blocks in `functional_*.tsv` (`tmp/dji_spi/image_fork.json`, AF3 cone, `tmp/cycloneiv_clean/duml_entry_trace.json`, `pins.tsv`), keeping hand-added blocks; omit it to use the committed seeds. Run `cycloneiv_clean_fold_functional.py --rebuild` after any edit to refresh the DB and validate (`check()`).
 - Outputs: `tmp/cycloneiv_clean/partition.json` (cell lists per block), `partition.md` (table below), `rtl_partitioned.v` (structured RTL, statements grouped under `// ==== BLOCK: <name> (conf) ====` headers, declarations first), `rtl_flat_partitioned.v` (same for the flat emit), `partition_rtl.json` (mapping stats + lint).
 - Growth is bounded (`--grow 2`): a LUT joins a block only when every consumer is in it, or its LAB is mostly that block and it touches it; an FF only when D-source and all consumers are inside. Two blocks claiming a cell in one round = contested, left unknown (0 this run). Seed overlaps: first block wins, listed in `partition.json` (8 this run: regfile FFs also reached by engine / comparator / record-reader seeds).
 
@@ -62,7 +62,7 @@ python3.15t fpga/m2001/scripts/cycloneiv_clean_partition.py --nl tmp/image_sim_d
 
 - The two big blobs are the OFDM baseband: RX demod/FEC/descrambler and TX modulator (I); every known block touches them at its boundary (RX bus capture -> pll_b blob -> demux; record readers -> main blob -> tx_source_bank -> tx_playback).
 - They are one component each because the baseband is densely connected; splitting them needs functional anchors (next: FFT/Viterbi shapes, MAC chains per `cycloneiv-clean-mac-trace.md`), not more adjacency.
-- Names `802.16-rx` / `802.16-tx` are labels by clock domain (`rename` in `blocks.json`), not proven function. `802.16-tx` (clk_main) also holds RX bit-level logic: the descrambler bit `ff_29_65_0` and demod bit `ff_21_65_0` (both feed `rx_id_comparator`), all 7 PRBS LFSRs (3x x15 = 802.16 randomiser, 4x x11 = 802.16 pilot PRBS) and the CRC-16-CCITT. `802.16-rx` (clk_pll_b) is the sample-rate side: 0 MAC, 395 short (<= 8-bit) carry chains, 256x36 RAM banks with delay lines.
+- Names `802.16-rx` / `802.16-tx` are labels by clock domain (`functional_rename.tsv`), not proven function. `802.16-tx` (clk_main) also holds RX bit-level logic: the descrambler bit `ff_29_65_0` and demod bit `ff_21_65_0` (both feed `rx_id_comparator`), all 7 PRBS LFSRs (3x x15 = 802.16 randomiser, 4x x11 = 802.16 pilot PRBS) and the CRC-16-CCITT. `802.16-rx` (clk_pll_b) is the sample-rate side: 0 MAC, 395 short (<= 8-bit) carry chains, 256x36 RAM banks with delay lines.
 - Sub-regions: `fpga/m2001/scripts/cycloneiv_clean_region_carve.py` (#189) -> `tmp/cycloneiv_clean/regions/<blob>/` (fact sheet per region, `index.json` adjacency, `cell_region.json`).
 
 ## RTL

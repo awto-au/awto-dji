@@ -7,8 +7,9 @@ annotate DB (gx150.db, gitignored) is a DERIVED index:
   --rebuild         committed TSVs -> DB (clear the functional layer, re-add every block as
                     layer=functional), then check() against the image netlist. Run after a writer
                     edits the TSVs; DB check() is the validator.
-  --bootstrap DIR   ONE-TIME migration: board/blocks.json -> the new-shape TSVs in DIR
-                    (name-keyed, no block_id). After this blocks.json is retired.
+  --bootstrap DIR   ONE-TIME migration (already applied; blocks.json retired #98 step 5):
+                    board/blocks.json -> the new-shape TSVs in DIR (name-keyed, no block_id).
+                    To re-run, restore blocks.json from git history first.
 
 - Physical ids are shared with the pluribus image netlist; functional super-blocks overlap the
   physical-pattern partition (allowed within the layer model, awtoau/pluribus#165).

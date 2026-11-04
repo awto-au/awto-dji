@@ -3,7 +3,7 @@
 Pure TSV I/O + the blocks.json->row derivation. No pluribus import (the DB side lives in
 cycloneiv_clean_fold_functional.py). Writers (block_add.py, region_verify.py --write-blocks,
 partition.py --build-seeds) edit these files through this module; the read-path
-(partition.py --from-tsv) loads them; the gitignored annotate DB (gx150.db) is a DERIVED index
+(partition.py) loads them; the gitignored annotate DB (gx150.db) is a DERIVED index
 rebuilt from them by `fold_functional.py --rebuild`, and DB check() validates.
 
 Keyed by `name`: block ids are a DB-internal value (annotate next_block_id counts across the whole
@@ -203,7 +203,7 @@ def write_proposed(board_dir, proposed):
 # ---- read-path: TSVs -> blocks.json shape --------------------------------------------------------------------------
 
 def load(board_dir):
-    """Rebuild the blocks.json shape {blocks:[...+seeds], rename:{}, proposed:[]} for partition.py --from-tsv.
+    """Rebuild the seed-record shape {blocks:[...+seeds], rename:{}, proposed:[]} for partition.py.
     Seeds reconstructed from members: ff_/lc_ verbatim, pad_<ball>-><ball>, m9k_x_y/mac_x_y->[x,y];
     labs from the sidecar. pll_ members (clock_infra) have no blocks.json seed category -> dropped."""
     blocks = []

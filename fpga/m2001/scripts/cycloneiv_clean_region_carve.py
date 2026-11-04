@@ -2,7 +2,7 @@
 """Carve an unknown partition blob (e.g. 802.16-rx / 802.16-tx) into 50-800-LUT regions and write one dense fact sheet per region (#189 step 1).
 
   python3.15t fpga/m2001/scripts/cycloneiv_clean_region_carve.py --nl tmp/image_sim_dji_push/nl.pkl --blob 802.16-rx [--blob 802.16-tx]
-Deterministic, no LLM.  Inputs: tmp/cycloneiv_clean/partition.json (fpga/m2001/scripts/cycloneiv_clean_partition.py), fpga/m2001/board/blocks.json,
+Deterministic, no LLM.  Inputs: tmp/cycloneiv_clean/partition.json (fpga/m2001/scripts/cycloneiv_clean_partition.py), fpga/m2001/board/functional_*.tsv,
 patterns.detect() (cached tmp/cycloneiv_clean/regions/patterns.json).  Outputs tmp/cycloneiv_clean/regions/<blob>/{index.json, rNNNN.json, rNNNN.md}.
 Log tmp/logs/cycloneiv_clean_region_carve.log.
 Carve: anchors first (LFSR/CRC groups > M9K groups sharing an address bus > MAC chains > carry chains + their registers > FF groups sharing an

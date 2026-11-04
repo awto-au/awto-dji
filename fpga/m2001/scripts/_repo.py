@@ -2,7 +2,7 @@
 
   PLURIBUS  engine checkout:  $PLURIBUS_REPO -> sibling ../pluribus of this repo -> error (never a hardcoded path)
   DJI       this repo (awto-dji): git toplevel of this file, else file-relative
-  BOARD     fpga/m2001/board (pins.tsv, nets.tsv, blocks.json)
+  BOARD     fpga/m2001/board (pins.tsv, nets.tsv, functional_*.tsv)
 
 Importing this module puts PLURIBUS and PLURIBUS/scripts on sys.path (lifters, patterns, functrace, cycloneiv_clean_image_sim ...).
 Logs go to DJI/tmp/logs; lift artefacts (nl.pkl, regions/, partition.json) stay under PLURIBUS/tmp where the lift writes them.
