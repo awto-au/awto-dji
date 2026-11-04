@@ -1,0 +1,96 @@
+name	confidence	blob	region	model	model_confidence	verify	test	detail
+802.16-rx-frame-timer	I	802.16-rx	802.16-rx-r0053	gpt-oss:20b-v2	0.9	pass	counter_terminal=4	counters [4] bits vs terminal 4 (3 bits); terminal value itself not decoded
+802.16-rx-frame-timer	I	802.16-rx	802.16-rx-r0072	gpt-oss:20b-v2	0.8	fail	counter_terminal=11	no counter-shaped carry chain in region
+802.16-rx-frame-timer	I	802.16-rx	802.16-rx-r0073	gpt-oss:20b-v2	0.7	fail	counter_terminal=11	no counter-shaped carry chain in region
+struct-adder2	I	802.16-rx	802.16-rx-r0155	gpt-oss:20b-v2	0.9	fail	fifo=1	0/0 RAM tiles addressed by counters ([])
+802.16-rx-counter	I	802.16-rx	802.16-rx-r0261	gpt-oss:20b-v2	0.6	fail	counter_terminal=11	no counter-shaped carry chain in region
+802.16-rx-counter	I	802.16-rx	802.16-rx-r0283	gpt-oss:20b-v2	0.7	fail	counter_terminal=8	no counter-shaped carry chain in region
+802.16-tx-counter	I	802.16-tx	802.16-tx-r0014	gpt-oss:20b-v2	0.9	pass	counter_terminal=7	counters [7] bits vs terminal 7 (3 bits); terminal value itself not decoded
+802.16-tx-counter	I	802.16-tx	802.16-tx-r0015	gpt-oss:20b-v2	0.9	pass	counter_terminal=7	counters [7] bits vs terminal 7 (3 bits); terminal value itself not decoded
+802.16-tx-counter	I	802.16-tx	802.16-tx-r0020	gpt-oss:20b-v2	0.8	pass	counter_terminal=15	counters [15] bits vs terminal 15 (4 bits); terminal value itself not decoded
+struct-adder5	I	802.16-tx	802.16-tx-r0023	gpt-oss:20b-v2	0.9	fail	lfsr_poly=x^16+x^12+x^5+1	region LFSR/CRC groups none do not match x^16+x^12+x^5+1
+802.16-tx-mac-header	I	802.16-tx	802.16-tx-r0036	gpt-oss:20b-v2	0.7	untestable	none	no concrete predicted_test
+struct-mac1	I	802.16-tx	802.16-tx-r0040	gpt-oss:20b-v2	0.9	pass	mac_chain=1	1 MAC, 0 fed by another MAC
+802.16-tx-mac-header	I	802.16-tx	802.16-tx-r0042	gpt-oss:20b-v2	0.9	untestable	unknown	no concrete predicted_test
+struct-mac1	I	802.16-tx	802.16-tx-r0056	gpt-oss:20b-v2	0.9	pass	mac_chain=1	1 MAC, 0 fed by another MAC
+802.16-tx-frame-timer	I	802.16-tx	802.16-tx-r0057	gpt-oss:20b-v2	0.9	pass	counter_terminal=15	counters [15] bits vs terminal 15 (4 bits); terminal value itself not decoded
+802.16-tx-mac	I	802.16-tx	802.16-tx-r0062	gpt-oss:20b-v2	0.9	pass	mac_chain=1	1 MAC, 0 fed by another MAC
+struct-adder5	I	802.16-tx	802.16-tx-r0067	gpt-oss:20b-v2	0.9	fail	lfsr_poly=x^15+x+1	region LFSR/CRC groups none do not match x^15+x+1
+struct-adder2	I	802.16-tx	802.16-tx-r0072	gpt-oss:20b-v2	0.8	fail	lfsr_poly=x^16+x12+x5+1	region LFSR/CRC groups none do not match x^16+x12+x5+1
+struct-mac1	I	802.16-tx	802.16-tx-r0073	gpt-oss:20b-v2	0.9	pass	mac_chain=1	1 MAC, 0 fed by another MAC
+struct-adder4	I	802.16-tx	802.16-tx-r0074	gpt-oss:20b-v2	0.8	fail	fifo=1	0/0 RAM tiles addressed by counters ([])
+struct-mac1	I	802.16-tx	802.16-tx-r0075	gpt-oss:20b-v2	0.9	pass	mac_chain=1	1 MAC, 0 fed by another MAC
+802.16-tx-mac	I	802.16-tx	802.16-tx-r0077	gpt-oss:20b-v2	0.9	pass	mac_chain=1	1 MAC, 0 fed by another MAC
+802.16-tx-mac	I	802.16-tx	802.16-tx-r0078	gpt-oss:20b-v2	0.9	pass	mac_chain=1	1 MAC, 0 fed by another MAC
+struct-mac1	I	802.16-tx	802.16-tx-r0079	gpt-oss:20b-v2	0.9	pass	mac_chain=1	1 MAC, 0 fed by another MAC
+802.16-tx-mac-header	I	802.16-tx	802.16-tx-r0080	gpt-oss:20b-v2	0.9	pass	mac_chain=1	1 MAC, 0 fed by another MAC
+struct-adder7	I	802.16-tx	802.16-tx-r0081	gpt-oss:20b-v2	0.8	fail	lfsr_poly=x^15+x+1	region LFSR/CRC groups none do not match x^15+x+1
+802.16-tx-mac	I	802.16-tx	802.16-tx-r0082	gpt-oss:20b-v2	0.9	pass	mac_chain=1	1 MAC, 0 fed by another MAC
+802.16-tx-mac	I	802.16-tx	802.16-tx-r0083	gpt-oss:20b-v2	0.9	pass	mac_chain=1	1 MAC, 0 fed by another MAC
+802.16-tx-mac	I	802.16-tx	802.16-tx-r0098	gpt-oss:20b-v2	0.9	pass	mac_chain=1	1 MAC, 0 fed by another MAC
+802.16-tx-mac	I	802.16-tx	802.16-tx-r0109	gpt-oss:20b-v2	0.9	pass	mac_chain=1	1 MAC, 0 fed by another MAC
+802.16-tx-frame-timer	I	802.16-tx	802.16-tx-r0110	gpt-oss:20b-v2	0.9	pass	counter_terminal=15	counters [15] bits vs terminal 15 (4 bits); terminal value itself not decoded
+struct-adder5	I	802.16-tx	802.16-tx-r0115	gpt-oss:20b-v2	0.9	fail	lfsr_poly=x^15+x+1+1	region LFSR/CRC groups none do not match x^15+x+1+1
+802.16-tx-counter	I	802.16-tx	802.16-tx-r0117	gpt-oss:20b-v2	0.9	pass	counter_terminal=5	counters [5] bits vs terminal 5 (3 bits); terminal value itself not decoded
+802.16-tx-counter	I	802.16-tx	802.16-tx-r0119	gpt-oss:20b-v2	0.8	pass	counter_terminal=32	counters [32] bits vs terminal 32 (6 bits); terminal value itself not decoded
+802.16-tx-mac	I	802.16-tx	802.16-tx-r0132	gpt-oss:20b-v2	0.9	untestable	lfsr_poly=x^15+x^14+1 | crc_poly=x^16+x^12+x^5+1 | rom_shape=bitrev | counter_terminal=12 | fifo=1 | mac_chain=1 | xor_taps=2 | sim_vector=unknown	several alternative tests given (not one concrete prediction)
+802.16-tx-mac	I	802.16-tx	802.16-tx-r0143	gpt-oss:20b-v2	0.9	pass	mac_chain=1	1 MAC, 0 fed by another MAC
+struct-mac1	I	802.16-tx	802.16-tx-r0144	gpt-oss:20b-v2	0.9	pass	mac_chain=1	1 MAC, 0 fed by another MAC
+802.16-tx-mac	I	802.16-tx	802.16-tx-r0145	gpt-oss:20b-v2	0.9	pass	mac_chain=1	1 MAC, 0 fed by another MAC
+802.16-tx-mac	I	802.16-tx	802.16-tx-r0150	gpt-oss:20b-v2	0.9	pass	mac_chain=1	1 MAC, 0 fed by another MAC
+struct-mac1	I	802.16-tx	802.16-tx-r0151	gpt-oss:20b-v2	0.9	pass	mac_chain=1	1 MAC, 0 fed by another MAC
+802.16-tx-mac	I	802.16-tx	802.16-tx-r0152	gpt-oss:20b-v2	0.9	pass	mac_chain=1	1 MAC, 0 fed by another MAC
+struct-mac1	I	802.16-tx	802.16-tx-r0161	gpt-oss:20b-v2	0.9	pass	mac_chain=1	1 MAC, 0 fed by another MAC
+struct-mac1	I	802.16-tx	802.16-tx-r0163	gpt-oss:20b-v2	0.9	pass	mac_chain=1	1 MAC, 0 fed by another MAC
+struct-mem2	I	802.16-tx	802.16-tx-r0187	gpt-oss:20b-v2	0.9	pass	counter_terminal=10	counters [10] bits vs terminal 10 (4 bits); terminal value itself not decoded
+802.16-tx-counter	I	802.16-tx	802.16-tx-r0191	gpt-oss:20b-v2	0.9	pass	counter_terminal=9	counters [9] bits vs terminal 9 (4 bits); terminal value itself not decoded
+802.16-tx-counter	I	802.16-tx	802.16-tx-r0196	gpt-oss:20b-v2	0.8	fail	counter_terminal=9	no counter-shaped carry chain in region
+802.16-tx-counter	I	802.16-tx	802.16-tx-r0197	gpt-oss:20b-v2	0.9	pass	counter_terminal=12	counters [12] bits vs terminal 12 (4 bits); terminal value itself not decoded
+802.16-tx-counter	I	802.16-tx	802.16-tx-r0199	gpt-oss:20b-v2	0.9	pass	counter_terminal=6	counters [6] bits vs terminal 6 (3 bits); terminal value itself not decoded
+struct-adder6	I	802.16-tx	802.16-tx-r0200	gpt-oss:20b-v2	0.9	fail	lfsr_poly=x^15+x^1+1	region LFSR/CRC groups none do not match x^15+x^1+1
+802.16-tx-counter	I	802.16-tx	802.16-tx-r0204	gpt-oss:20b-v2	0.9	pass	fifo=1	3/3 RAM tiles addressed by counters (['counter_plus_other'])
+struct-mac1	I	802.16-tx	802.16-tx-r0205	gpt-oss:20b-v2	0.9	pass	mac_chain=1	1 MAC, 0 fed by another MAC
+802.16-tx-counter	I	802.16-tx	802.16-tx-r0206	gpt-oss:20b-v2	0.8	pass	counter_terminal=9	counters [9] bits vs terminal 9 (4 bits); terminal value itself not decoded
+802.16-tx-mac-operand	I	802.16-tx	802.16-tx-r0207	gpt-oss:20b-v2	0.9	untestable	sim_vector=MAC operand	region-only simulation not implemented in this pass
+802.16-tx-mac	I	802.16-tx	802.16-tx-r0208	gpt-oss:20b-v2	0.9	pass	mac_chain=1	1 MAC, 0 fed by another MAC
+802.16-tx-mac	I	802.16-tx	802.16-tx-r0209	gpt-oss:20b-v2	0.9	untestable	lfsr_poly=x^15+x^14+1 | crc_poly=x^16+x^12+x^5+1 | rom_shape=bitrev | counter_terminal=0 | fifo=1 | mac_chain=1 | xor_taps=2 | sim_vector=unknown	several alternative tests given (not one concrete prediction)
+802.16-tx-mac	I	802.16-tx	802.16-tx-r0210	gpt-oss:20b-v2	0.9	pass	mac_chain=1	1 MAC, 0 fed by another MAC
+802.16-tx-counter	I	802.16-tx	802.16-tx-r0218	gpt-oss:20b-v2	0.95	pass	counter_terminal=14	counters [14] bits vs terminal 14 (4 bits); terminal value itself not decoded
+802.16-tx-counter	I	802.16-tx	802.16-tx-r0219	gpt-oss:20b-v2	0.9	pass	counter_terminal=3	counters [3] bits vs terminal 3 (2 bits); terminal value itself not decoded
+802.16-tx-frame-timer	I	802.16-tx	802.16-tx-r0221	gpt-oss:20b-v2	0.8	untestable	counter_terminal=23|fifo=1	several alternative tests given (not one concrete prediction)
+struct-mac1	I	802.16-tx	802.16-tx-r0225	gpt-oss:20b-v2	0.9	pass	mac_chain=1	1 MAC, 0 fed by another MAC
+802.16-tx-frame-timer	I	802.16-tx	802.16-tx-r0227	gpt-oss:20b-v2	0.9	pass	counter_terminal=6	counters [6] bits vs terminal 6 (3 bits); terminal value itself not decoded
+802.16-tx-randomiser	I	802.16-tx	802.16-tx-r0228	gpt-oss:20b-v2	0.9	pass (structure only)	lfsr_poly=x^11+x^2+1	lfsr n=11 poly x11+x2+1 matches x^11+x^2+1 (direct or reciprocal); members ['ff_79_70_1', 'ff_79_70_4', 'ff_79_70_13']...
+802.16-tx-counter	I	802.16-tx	802.16-tx-r0231	gpt-oss:20b-v2	0.9	pass	counter_terminal=5	counters [5, 5] bits vs terminal 5 (3 bits); terminal value itself not decoded
+802.16-tx-randomiser	I	802.16-tx	802.16-tx-r0233	gpt-oss:20b-v2	0.9	pass (structure only)	lfsr_poly=x^11+x^2+1	lfsr n=11 poly x11+x2+1 matches x^11+x^2+1 (direct or reciprocal); members ['ff_86_69_4', 'ff_86_69_11', 'ff_86_69_2']...
+struct-mac1	I	802.16-tx	802.16-tx-r0237	gpt-oss:20b-v2	0.9	pass	mac_chain=1	1 MAC, 0 fed by another MAC
+struct-mac1	I	802.16-tx	802.16-tx-r0243	gpt-oss:20b-v2	0.9	pass	mac_chain=1	1 MAC, 0 fed by another MAC
+struct-mac1	I	802.16-tx	802.16-tx-r0244	gpt-oss:20b-v2	0.9	pass	mac_chain=1	1 MAC, 0 fed by another MAC
+802.16-tx-frame-timer	I	802.16-tx	802.16-tx-r0245	gpt-oss:20b-v2	0.9	pass	mac_chain=1	1 MAC, 0 fed by another MAC
+802.16-tx-counter	I	802.16-tx	802.16-tx-r0260	gpt-oss:20b-v2	0.9	pass	counter_terminal=9	counters [9, 4] bits vs terminal 9 (4 bits); terminal value itself not decoded
+802.16-tx-counter	I	802.16-tx	802.16-tx-r0266	gpt-oss:20b-v2	0.9	pass	counter_terminal=12	counters [12] bits vs terminal 12 (4 bits); terminal value itself not decoded
+802.16-tx-counter	I	802.16-tx	802.16-tx-r0268	gpt-oss:20b-v2	0.9	pass	counter_terminal=9	counters [9] bits vs terminal 9 (4 bits); terminal value itself not decoded
+802.16-tx-counter	I	802.16-tx	802.16-tx-r0269	gpt-oss:20b-v2	0.6	pass	counter_terminal=9	counters [9] bits vs terminal 9 (4 bits); terminal value itself not decoded
+802.16-tx-counter	I	802.16-tx	802.16-tx-r0270	gpt-oss:20b-v2	0.9	pass	counter_terminal=9	counters [9, 3] bits vs terminal 9 (4 bits); terminal value itself not decoded
+802.16-tx-counter	I	802.16-tx	802.16-tx-r0274	gpt-oss:20b-v2	0.9	untestable	counter_terminal=9|counter_terminal=4|fifo=1	several alternative tests given (not one concrete prediction)
+802.16-tx-mac	I	802.16-tx	802.16-tx-r0286	gpt-oss:20b-v2	0.9	pass	mac_chain=1	1 MAC, 0 fed by another MAC
+struct-mac1	I	802.16-tx	802.16-tx-r0292	gpt-oss:20b-v2	0.9	fail	rom_shape=bitrev	region has no M9K with non-zero init
+802.16-tx-mac	I	802.16-tx	802.16-tx-r0293	gpt-oss:20b-v2	0.9	pass	mac_chain=1	1 MAC, 0 fed by another MAC
+struct-mac1	I	802.16-tx	802.16-tx-r0294	gpt-oss:20b-v2	0.9	pass	mac_chain=1	1 MAC, 0 fed by another MAC
+802.16-tx-mac	I	802.16-tx	802.16-tx-r0304	gpt-oss:20b-v2	0.9	pass	mac_chain=1	1 MAC, 0 fed by another MAC
+802.16-tx-mac	I	802.16-tx	802.16-tx-r0309	gpt-oss:20b-v2	0.9	pass	mac_chain=1	1 MAC, 0 fed by another MAC
+802.16-tx-mac	I	802.16-tx	802.16-tx-r0310	gpt-oss:20b-v2	0.9	pass	mac_chain=1	1 MAC, 0 fed by another MAC
+struct-mac1	I	802.16-tx	802.16-tx-r0311	gpt-oss:20b-v2	0.9	pass	mac_chain=1	1 MAC, 0 fed by another MAC
+struct-mac1	I	802.16-tx	802.16-tx-r0317	gpt-oss:20b-v2	0.9	pass	mac_chain=1	1 MAC, 0 fed by another MAC
+struct-mac1	I	802.16-tx	802.16-tx-r0318	gpt-oss:20b-v2	0.9	pass	mac_chain=1	1 MAC, 0 fed by another MAC
+struct-mac1	I	802.16-tx	802.16-tx-r0320	gpt-oss:20b-v2	0.9	pass	mac_chain=1	1 MAC, 0 fed by another MAC
+struct-mac1	I	802.16-tx	802.16-tx-r0321	gpt-oss:20b-v2	1.0	pass	mac_chain=1	1 MAC, 0 fed by another MAC
+struct-mac1	I	802.16-tx	802.16-tx-r0324	gpt-oss:20b-v2	0.9	pass	mac_chain=1	1 MAC, 0 fed by another MAC
+struct-mac1	I	802.16-tx	802.16-tx-r0325	gpt-oss:20b-v2	0.9	pass	mac_chain=1	1 MAC, 0 fed by another MAC
+struct-mac1	I	802.16-tx	802.16-tx-r0330	gpt-oss:20b-v2	0.9	pass	mac_chain=1	1 MAC, 0 fed by another MAC
+struct-mac1	I	802.16-tx	802.16-tx-r0331	gpt-oss:20b-v2	1.0	pass	mac_chain=1	1 MAC, 0 fed by another MAC
+struct-mac1	I	802.16-tx	802.16-tx-r0332	gpt-oss:20b-v2	0.9	pass	mac_chain=1	1 MAC, 0 fed by another MAC
+struct-mac1	I	802.16-tx	802.16-tx-r0333	gpt-oss:20b-v2	0.9	pass	mac_chain=1	1 MAC, 0 fed by another MAC
+struct-mac1	I	802.16-tx	802.16-tx-r0334	gpt-oss:20b-v2	0.9	pass	mac_chain=1	1 MAC, 0 fed by another MAC
+struct-mac1	I	802.16-tx	802.16-tx-r0335	gpt-oss:20b-v2	0.9	pass	mac_chain=1	1 MAC, 0 fed by another MAC
+struct-mac1	I	802.16-tx	802.16-tx-r0336	gpt-oss:20b-v2	0.9	fail	counter_terminal=15	no counter-shaped carry chain in region

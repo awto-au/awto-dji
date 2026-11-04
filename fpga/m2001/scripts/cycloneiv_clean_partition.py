@@ -622,6 +622,9 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--nl", required=True)
     ap.add_argument("--blocks", required=True, help="boards/<board>/blocks.json (seeds; --build-seeds writes it)")
+    ap.add_argument("--from-tsv", action="store_true",
+                    help="read seeds/rename from the committed functional_*.tsv (DB source of truth, #98) instead of blocks.json; "
+                         "board dir taken from --blocks. Becomes the default once the write-path consumers migrate.")
     ap.add_argument("--build-seeds", action="store_true")
     ap.add_argument("--grow", type=int, default=2)
     ap.add_argument("--rtl", help="write block-annotated structured RTL here (runs rtl.lift)")
@@ -645,14 +648,18 @@ def main():
         json.dump(dict(netlist=os.path.relpath(a.nl, REPO), blocks=blocks + keep, **out), open(a.blocks, "w"), indent=1)
         log.info("build-seeds: %d generated blocks, %d existing kept, extra keys kept: %s", len(blocks), len(keep), sorted(out))
         log.info("wrote %d seed blocks -> %s", len(blocks), a.blocks)
-    blocks = json.load(open(a.blocks))["blocks"]
+    if a.from_tsv:                                             # read the committed functional-layer TSVs (DB source of truth, #98)
+        import functional_tsv
+        doc = functional_tsv.load(board_dir)
+    else:
+        doc = json.load(open(a.blocks))
+    blocks, ren = doc["blocks"], doc.get("rename", {})         # rename: unknown-component name -> functional name (e.g. 802.16-rx)
     for b in blocks:
         s = b["seeds"]
         for k in ("labs", "m9k", "mac"):
             s[k] = [tuple(t) for t in s.get(k, [])]
     P = Partition(nl, blocks, grow=a.grow, nets_tsv=os.path.join(board_dir, "nets.tsv"))
     unk = P.run()
-    ren = json.load(open(a.blocks)).get("rename", {})          # unknown-component name -> functional name (e.g. 802.16-rx)
     for b in P.blocks:
         b["name"] = ren.get(b["name"], b["name"])
     for c, n in list(P.assign.items()):

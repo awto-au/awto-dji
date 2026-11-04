@@ -115,7 +115,10 @@ def emit_tsv(eng, out_dir):
     functional_blocks.tsv: one row per block; functional_members.tsv: one row per member."""
     blocks, mem = A.load_all(eng, IMAGE)
     func = [b for b in blocks if (b["layer"] or "physical") == "functional"]
-    func.sort(key=lambda b: b["block_id"])
+    # emit in blocks.json order: Partition.seed() resolves seed conflicts by block order ("first wins"),
+    # so the row order is load-bearing. Sourced from blocks.json now; the TSV order is the durable copy.
+    order = {blk["name"]: i for i, blk in enumerate(json.load(open(BLOCKS))["blocks"])}
+    func.sort(key=lambda b: (order.get(b["name"], len(order)), b["block_id"]))
     os.makedirs(out_dir, exist_ok=True)
     bpath = os.path.join(out_dir, "functional_blocks.tsv")
     mpath = os.path.join(out_dir, "functional_members.tsv")
@@ -132,6 +135,39 @@ def emit_tsv(eng, out_dir):
     nmem = sum(len(mem[b["block_id"]]) for b in func)
     log.info("emitted %d blocks -> %s", len(func), bpath)
     log.info("emitted %d members -> %s", nmem, mpath)
+    emit_sidecars(out_dir)
+
+
+def emit_sidecars(out_dir):
+    """labs / rename / proposed are blocks.json data with no annotate-member home (labs are LAB coords,
+    not cell ids; rename + proposed are top-level config). Emit them verbatim so the committed TSVs fully
+    replace blocks.json as an input. Sourced from blocks.json now; becomes the durable copy."""
+    data = json.load(open(BLOCKS))
+    clean = lambda v: str(v).replace("\t", " ").replace("\n", " ")
+
+    lpath = os.path.join(out_dir, "functional_labs.tsv")
+    nlab = 0
+    with open(lpath, "w") as f:
+        f.write("name\tlab_x\tlab_y\n")
+        for blk in data["blocks"]:
+            for x, y in blk["seeds"].get("labs", []):
+                f.write(f"{blk['name']}\t{x}\t{y}\n"); nlab += 1
+    log.info("emitted %d labs -> %s", nlab, lpath)
+
+    rpath = os.path.join(out_dir, "functional_rename.tsv")
+    with open(rpath, "w") as f:
+        f.write("from\tto\n")
+        for k, v in data.get("rename", {}).items():
+            f.write(f"{k}\t{v}\n")
+    log.info("emitted %d renames -> %s", len(data.get("rename", {})), rpath)
+
+    ppath = os.path.join(out_dir, "functional_proposed.tsv")
+    cols = ["name", "confidence", "blob", "region", "model", "model_confidence", "verify", "test", "detail"]
+    with open(ppath, "w") as f:
+        f.write("\t".join(cols) + "\n")
+        for r in data.get("proposed", []):
+            f.write("\t".join(clean(r.get(c, "")) for c in cols) + "\n")
+    log.info("emitted %d proposed -> %s", len(data.get("proposed", [])), ppath)
 
 
 def main():
