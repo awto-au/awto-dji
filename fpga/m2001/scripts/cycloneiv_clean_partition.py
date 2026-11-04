@@ -639,20 +639,15 @@ def main():
     nl = pickle.load(open(a.nl, "rb"))
     D = PT.Design(nl)
     board_dir = os.path.dirname(os.path.abspath(a.blocks))
+    import functional_tsv as FT                                # TSVs are the source of truth (#98)
     if a.build_seeds:
-        blocks = build_seeds(nl, D, board_dir)
-        old = json.load(open(a.blocks)) if os.path.exists(a.blocks) else {}
-        gen = {b["name"] for b in blocks}
-        keep = [b for b in old.get("blocks", []) if b["name"] not in gen]       # hand-added / region-verified blocks survive
-        out = {k: v for k, v in old.items() if k not in ("netlist", "blocks")}  # rename, proposed, ...
-        json.dump(dict(netlist=os.path.relpath(a.nl, REPO), blocks=blocks + keep, **out), open(a.blocks, "w"), indent=1)
-        log.info("build-seeds: %d generated blocks, %d existing kept, extra keys kept: %s", len(blocks), len(keep), sorted(out))
-        log.info("wrote %d seed blocks -> %s", len(blocks), a.blocks)
-    if a.from_tsv:                                             # read the committed functional-layer TSVs (DB source of truth, #98)
-        import functional_tsv
-        doc = functional_tsv.load(board_dir)
-    else:
-        doc = json.load(open(a.blocks))
+        gen = build_seeds(nl, D, board_dir)                     # trace-derived seed blocks (blocks.json shape)
+        gen_names = {b["name"] for b in gen}
+        keep = [b for b in FT.read_blocks(board_dir) if b["name"] not in gen_names]   # hand-added / region-verified blocks survive
+        gen_rec = [FT.record(b["name"], b["confidence"], b.get("evidence") or "", b.get("note") or "", b["seeds"]) for b in gen]
+        FT.write_blocks(board_dir, gen_rec + keep)              # generated first = priority order (seed-conflict first-wins)
+        log.info("build-seeds: %d generated blocks, %d hand-added kept -> functional_*.tsv; run fold_functional.py --rebuild", len(gen_rec), len(keep))
+    doc = FT.load(board_dir)                                    # read the committed functional-layer TSVs
     blocks, ren = doc["blocks"], doc.get("rename", {})         # rename: unknown-component name -> functional name (e.g. 802.16-rx)
     for b in blocks:
         s = b["seeds"]

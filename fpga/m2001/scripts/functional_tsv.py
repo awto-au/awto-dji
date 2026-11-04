@@ -101,7 +101,7 @@ def evidence_of(raw):
     for n in dict.fromkeys(re.findall(r"#(\d+)", raw)):
         toks.append(f"issue:{n}")
     toks.append("issue:98")
-    return ";".join(toks)
+    return ";".join(dict.fromkeys(toks))      # order-preserving dedup (raw '#98' + the appended issue:98)
 
 
 def claim_of(name, conf, note):

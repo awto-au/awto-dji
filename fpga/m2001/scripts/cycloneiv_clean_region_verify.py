@@ -21,6 +21,7 @@ import numpy as np
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from _repo import PLURIBUS as REPO, DJI, BOARD  # noqa: E402,F401  (REPO = pluribus engine checkout; DJI = this repo)
+import functional_tsv as FT  # noqa: E402
 RG = os.path.join(REPO, "tmp", "cycloneiv_clean", "regions")
 log = logging.getLogger("region_verify")
 DISCRIMINATING = {"lfsr_poly", "crc_poly", "rom_shape:cos", "rom_shape:sin", "rom_shape:bitrev", "rom_shape:gf_log"}
@@ -262,11 +263,13 @@ def cell_seeds(cells):
 
 
 def write_blocks(board, verdicts, V):
-    path = os.path.join(board, "blocks.json")
-    bj = json.load(open(path))
-    keep = [b for b in bj["blocks"] if not (str(b.get("evidence", "")).startswith("region-verify") and f"({V.blob}-r" in str(b.get("evidence", "")))]
+    """Edit the committed functional_*.tsv (#98): discriminating PASS -> a conf-V block (seeds = the region's
+    cells); every named region -> a proposed (conf I) row. Prior region-verify V blocks for this blob and all
+    proposed rows for this blob are replaced; other blocks/proposals are kept. Run fold_functional.py --rebuild after."""
+    records = FT.read_blocks(board)
+    keep = [b for b in records if not ("region-verify" in b["evidence"] and f"({V.blob}-r" in b["evidence"])]
     taken = {b["name"] for b in keep}
-    prop = [p for p in bj.get("proposed", []) if p.get("blob") != V.blob]
+    prop = [p for p in FT.read_proposed(board) if p.get("blob") != V.blob]
     nv = 0
     for rid, r in sorted(verdicts.items()):
         name = r.get("name")
@@ -279,17 +282,18 @@ def write_blocks(board, verdicts, V):
             if nm in taken:
                 continue
             taken.add(nm)
-            keep.append(dict(name=nm, confidence="V", evidence=f"region-verify {r['test_key']}: {r['detail'][:200]} ({rid})",
-                             note=f"crawl #189; region {rid}; role proposed by {r['model']}: {name} (I, see proposed)", seeds=cell_seeds(V.cells[rid])))
+            ev = f"region-verify {r['test_key']}: {r['detail'][:200]} ({rid})"
+            note = f"crawl #189; region {rid}; role proposed by {r['model']}: {name} (I, see proposed)"
+            keep.append(FT.record(nm, "V", ev, note, cell_seeds(V.cells[rid])))
             prop.append(dict(name=name, confidence="I", blob=V.blob, region=rid, model=r["model"], model_confidence=r.get("confidence"),
                              verify="pass (structure only)", test=r.get("test"), detail=r["detail"][:200]))
             nv += 1
         else:
             prop.append(dict(name=name, confidence="I", blob=V.blob, region=rid, model=r["model"], model_confidence=r.get("confidence"),
                              verify=r["verdict"], test=r.get("test"), detail=r["detail"][:200]))
-    bj["blocks"], bj["proposed"] = keep, prop
-    json.dump(bj, open(path, "w"), indent=1)
-    log.info("blocks.json: %d region-verify V blocks for %s, %d proposed (I) total", nv, V.blob, len(prop))
+    FT.write_blocks(board, keep)
+    FT.write_proposed(board, prop)
+    log.info("functional_*.tsv: %d region-verify V blocks for %s, %d proposed (I) total; run fold_functional.py --rebuild", nv, V.blob, len(prop))
 
 
 def main():
