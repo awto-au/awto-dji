@@ -110,6 +110,9 @@ class _Grid extends StatelessWidget {
 
   static String _n(num? v, [int d = 0]) => v == null ? '-' : v.toStringAsFixed(d);
 
+  /// BATTERY_PROPERTY_CURRENT_NOW is uA by spec; some OEMs (Samsung) return mA. A magnitude under 20000 is mA.
+  static String _ma(int? v) => v == null ? '-' : (v.abs() < 20000 ? v : v ~/ 1000).toString();
+
   @override
   Widget build(BuildContext context) {
     final rows = <(String, String, Color?)>[
@@ -118,7 +121,7 @@ class _Grid extends StatelessWidget {
           s.usbAttached ? Colors.greenAccent : Colors.grey),
       ('  acc', '${s.manufacturer ?? '-'} / ${s.model ?? '-'} / ${s.description ?? '-'}', null),
       ('  acc', 'v=${s.version ?? '-'} uri=${s.uri ?? '-'} sn=${s.serial ?? '-'}', null),
-      ('POWER', '${s.plugged} ${s.charging} ${_n(s.voltageMv)}mV ${_n(s.currentUa)}uA',
+      ('POWER', '${s.plugged} ${s.charging} ${_n(s.voltageMv)}mV ${_ma(s.currentUa)}mA',
           s.plugged == 'none' ? Colors.grey : Colors.greenAccent),
       ('SPEED', '${s.speed}  udc=${s.udcSpeed ?? '-'}  maxpkt=${s.maxPacket ?? '-'} chunk=${s.maxChunk}', null),
       ('MSGS', '${_n(s.msgsPerSec1, 1)}/s 1s  ${_n(s.msgsPerSec10, 1)}/s 10s  ${_n(s.bytesPerSec1)}B/s', null),
