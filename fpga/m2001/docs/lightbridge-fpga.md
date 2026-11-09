@@ -39,7 +39,7 @@ Known-vs-unknown partition of every cell (blocks, coverage, annotated RTL): `fpg
 - Matches the IEEE 802.16e 10 MHz OFDMA profile in numerology (I, from memory); no 802.16e preamble, pilot placement differs, WiMAX lineage stated by public sources without parameters.
 - Weird pilots: two-level amplitude alternating by pilot ordinal, complementary between the two symbols of a pair; unexplained phase steps (90 degrees in a pair, +60/-30/-30 at class boundaries); not a frequency offset (V). Two-transmitter pairing fits (I), no decoding of the data yet.
 - Data carriers look Gaussian even at ~48 dB SNR after single- and two-path equalisation (V); modulation undecided. Pilot signs do not follow x^11+x^9+1 with any seed, including the image's (V, negative; mixed-path caveat).
-- No FEC found in the lifted logic: no convolutional encoder, RS multiplier, CRC-32, or 802.16 header CRC-8 (V on 349 modelled M9K sinks; 193 M9K and hard IP were undecoded at that time).
+- No FEC found in the decoded initialized-memory/control-bit subset examined: no convolutional encoder, RS multiplier, CRC-32, or 802.16 header CRC-8 (V on 349 modelled M9K sinks; 193 M9K and hard IP were undecoded when measured). Absence elsewhere is U.
 
 ## 5. FPGA to radio
 
@@ -85,7 +85,7 @@ Known-vs-unknown partition of every cell (blocks, coverage, annotated RTL): `fpg
 - Only 8 tiles hold data (12,993 set bits). None holds an FFT twiddle, preamble, pilot sequence, interleaver, CRC or PRBS table (V, negative).
 - Content: linear ramps (two 100-word, ~0.03 % residual), a smooth phase-like 512x18 ramp (not a sine), a 4-level staircase, decaying-exponential-like curves feeding MAC inputs (V: datapath tables, no feedback).
 - No sequencer or soft CPU (V): the 680-word 9-bit + 3-bit pair is an index/parameter ROM driving the read addresses and enables of 24 downstream M9K banks. The 7_85+7_86 pair is one 32-bit true dual-port RAM written at run time: its initial content is the SHA-1 initial hash values H0..H4 and round constants K0..K3 (words 256..264, V) plus a 128-word 16-bit microprogram (opcodes mostly decoded, V/I below). It is the working store of a microprogrammed single-wire master on pad AF3 running a DS28E01-class 1-Wire authentication exchange (V, confirmed by simulation): bus reset, skip/read ROM, write scratchpad, read authenticated page, 80-round SHA-1, 5-word compare against the returned MAC. A 10-op microinstruction format was recovered (NOP/LD/ST/store-variant/CMP/END/WAIT/TXB/RXB/LOOP, V; the SHA-1 round-body ops 3/4/7/8/9/B are I — the loop is bit-exact SHA-1 but the per-op split inside it is not verified). Timing fits standard-speed 1-Wire at an integer microsecond count (reset 480 us, write-0 60 us, write-1 1 us, etc.) on a derived engine clock (20-40 MHz; which counter produces it is U). A separate 141-FF serial loader fed from the MCU SPI byte chain can write words 256..511; no firmware path that loads it was found. Forward closure from the match flag and RAM outputs reaches only pad AF3 and engine-domain FFs (checked on all 542 modelled M9K): **the engine gates nothing else in the netlist** (V) — not the radio path, not the SPI register file, not FX3. It starts from configuration with no MCU-side enable. Likely dormant on this board variant, or feeds a peripheral never captured. The unmodified engine writes SHA-1 message words W0 = `0x01118789` and W12 = `0x79465213`, giving the 64-bit message-order authentication key `0111878979465213` (V). These words remain fixed when the simulated device ROM ID and slave key are varied; a virtual slave using this value passes authentication and a one-bit MAC corruption fails. This is therefore the key embedded in this captured FPGA image, although the MCU-side serial loader could in principle replace RAM/program material at runtime; no firmware path doing so was found. This is a different mechanism from the documented ATSHA204 (SHA-256 over I2C, on the camera/A9 and RC boards, per awto-dji's security docs): different algorithm, different bus, different board. What physical chip (if any) sits on AF3 is not identified. A real lifter bug was found and fixed along the way: `RAM_WRITE_ENABLE_INVERT` was unread by emit, affecting these 2 of 542 M9K tiles (and possibly 48 others with a related raw-pair pattern, unchecked) — tracked as #178.
-- Training/pilot/interleaver therefore come from logic, not memory.
+- Training/pilot/interleaver are not in the initial M9K contents examined (V); zero-initialised RAM may be runtime-populated, so "from logic" is I, not V.
 
 ## 9. FX3 side
 
@@ -105,7 +105,7 @@ Known-vs-unknown partition of every cell (blocks, coverage, annotated RTL): `fpg
 ## 11. Odd facts worth remembering
 
 - The image has 6 constant output pads (4 high, 2 low) and 10 "used" input pads with no consumer.
-- JTAG user interface bits and the remote-update block are in use; no transceiver or PCIe cells differ from idle (positive control missing).
+- JTAG user interface bits and the remote-update block are in use; no transceiver or PCIe cells differ from idle in the decoded subset (~31,560 GX/HSSI bits undecoded, positive control missing; U overall).
 - 20 (later 0) M9K init lists once mismatched their declared depth: width came from wired pin count; fixed.
 - 83 % of the image's arithmetic local-path FF claims are dead pass-through chain LEs (V): the image is full of long adders.
 - The wiki-reported Artosyn chips later reproduce this FPGA design exactly (public statement, not checked).
@@ -141,6 +141,7 @@ Known-vs-unknown partition of every cell (blocks, coverage, annotated RTL): `fpg
 - The uplink record's path from the baseband arithmetic to the TX sample RAMs.
 - What the microcode-like ROMs run, and any prior art (open-source or vendor) behind the tables and control.
 - Data modulation and coding on the air interface (needs a two-channel capture or the FPGA pipeline).
+- FFT-in-logic: OPEN (U). MAC chain detection traces only 1 FF hop (M9K-associated MACs: 11 at 0 hops, 32 at 1, 50 at 2), so it rules out one tightly-chained topology only. RAM-based butterflies, fabric-adder stages, deeper pipelining and time-multiplexed MAC reuse are not excluded (pluribus#181 item 5, #177 item 4).
 
 ## Pointers
 
