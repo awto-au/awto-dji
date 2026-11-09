@@ -1,8 +1,39 @@
 {
  "schema": 1,
- "generated": "2026-11-10T10:03:22+11:00",
+ "generated": "2026-11-10T10:25:01+11:00",
  "generator": "scripts/duml_catalog_build.py",
- "note": "Reconciled from docs/data/{apk,dll}-duml-commands.tsv + apk-cmdset-devicetype.tsv. Canonical source for the Dart/Python/Rust DUML bindings (awto-dji #102). fw-version coverage (duml-table-matches-*.json) to be folded in next.",
+ "note": "Reconciled from docs/data/{apk,dll}-duml-commands.tsv + apk-cmdset-devicetype.tsv. Canonical source for the Dart/Python/Rust DUML bindings (awto-dji #102). Table provenance (firmware versions the command table is sha256-matched in) under 'table_provenance'.",
+ "table_provenance": {
+  "apk_library": "tmp/apk/raw/lib/arm64-v8a/libGroudStation.so",
+  "table_sha256": "223dc119e52ee113040d6cdb17a5126e7384626a8986c9c9402cf6310dace7dd",
+  "table_length": 21,
+  "firmware_versions": [
+   {
+    "model": "C1",
+    "version": "V01.05.0070",
+    "path": "firmware/raw/C1/C1_FW_V01.05.0070.bin",
+    "sha256": "3f8e56ad728bc6b69f0c01ba4666216aa5d6c8840f294f012796770ea134f9ba"
+   },
+   {
+    "model": "C1",
+    "version": "V01.05.0072",
+    "path": "firmware/raw/C1/C1_FW_V01.05.0072",
+    "sha256": "6ef4368ceb654788fd41857efb0b0242eabb94824dd0c5d9811ee574b87d6913"
+   },
+   {
+    "model": "C1",
+    "version": "V01.05.0080",
+    "path": "firmware/raw/C1/C1_FW_V01.05.0080.bin",
+    "sha256": "683b9d65f53b930c88851b5aad8e8406168333f8dfc4e41755a12f5be51c138c"
+   },
+   {
+    "model": "C1",
+    "version": "V01.06.0000",
+    "path": "firmware/raw/C1/C1_FW_V01.06.0000.bin",
+    "sha256": "38de9e3fe0664fb43b85c11eabeed0c026dd15f80d402091ac68a0364f23d942"
+   }
+  ]
+ },
  "cmdsets": {
   "0x00": "COMMON",
   "0x01": "SPECIAL",

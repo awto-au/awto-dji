@@ -19,6 +19,7 @@ import datetime
 import json
 import logging
 import os
+import re
 
 ROOT = os.environ.get("DJI_REPO") or os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATA = os.path.join(ROOT, "docs", "data")
@@ -46,6 +47,23 @@ def norm_id(v):
 
 def key(cset, cid, name):
     return (cset, cid) if cid else (cset, "?" + (name or "").strip().lower())
+
+
+def provenance():
+    """Firmware-version coverage: which firmware the APK's DUML command TABLE (sha256-matched) appears in.
+    Table-level provenance (not per-command versioning); grounds the catalog against real firmware."""
+    p = os.path.join(DATA, "duml-table-matches-2026-10-24.json")
+    if not os.path.isfile(p):
+        return None
+    m = json.load(open(p))
+    seen, vers = set(), []
+    for x in m.get("matches", []):
+        g = re.search(r"([A-Za-z0-9]+)_FW_(V\d+\.\d+\.\d+)", x.get("path", ""))
+        if g and (g.group(1), g.group(2)) not in seen:
+            seen.add((g.group(1), g.group(2)))
+            vers.append({"model": g.group(1), "version": g.group(2), "path": x["path"], "sha256": x.get("sha256")})
+    return dict(apk_library=m.get("apk_library"), table_sha256=m.get("table_sha256"), table_length=m.get("table_length"),
+                firmware_versions=sorted(vers, key=lambda v: (v["model"], v["version"])))
 
 
 def build():
@@ -83,7 +101,8 @@ def build():
                 generator="scripts/duml_catalog_build.py",
                 note="Reconciled from docs/data/{apk,dll}-duml-commands.tsv + apk-cmdset-devicetype.tsv. "
                      "Canonical source for the Dart/Python/Rust DUML bindings (awto-dji #102). "
-                     "fw-version coverage (duml-table-matches-*.json) to be folded in next.",
+                     "Table provenance (firmware versions the command table is sha256-matched in) under 'table_provenance'.",
+                table_provenance=provenance(),
                 cmdsets=cmdsets, device_types=devtypes, n_commands=len(cmds), commands=cmds)
 
 
