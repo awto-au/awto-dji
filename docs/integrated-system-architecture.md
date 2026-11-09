@@ -42,6 +42,7 @@ Two pillars:
 ## Consolidation plan (incremental, each step shippable)
 
 1. **Build the one canonical catalog** by reconciling the `docs/data/` source tables (apk/dll/firmware) + the version-matches JSON into a single versioned DUML catalog (one file, per-command source evidence + fw-version coverage). Then generate the Dart/Python/Rust bindings from it and delete the hand-copied divergent bits. (Blocks drift; biggest win. The data exists — this is reconciliation + codegen, not authoring.)
+   - **Done:** `docs/data/duml-catalog.json` (`scripts/duml_catalog_build.py`) + Dart binding (`scripts/duml_catalog_gen_dart.py`, tested). Workflow to add/change a command: `duml-catalog-workflow.md`. **Remaining:** Python + Rust generators, then delete the hand-copied lists.
 2. **One target interface.** Formalise `LinkTransport` as THE boundary; make `sim_bridge` and the fakes implement it (or sit behind it) so Dart/Python/Rust clients attach identically.
 3. **One fake bird.** Merge `simulated_transport` (telemetry) + a command-responder (#102 phase-0) + the capture-corpus seeding (#77) into a single behavioral target. Retire the duplicate point-mass logic in `sim_bridge` (keep only its MAVLink translation, behind the bridge).
 4. **One FPGA tree.** Fold `ground/fpga/` into `fpga/`; the Verilator emit (#89) becomes a target behind the interface via the Renode co-sim bridge.

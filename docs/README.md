@@ -9,6 +9,7 @@ repair-scope rules. Technical docs link here and do not repeat them. **`HISTORY.
 of fact-changes (docs state current facts only).
 
 ## Protocol & control plane (the practical path)
+- [duml-catalog-workflow.md](duml-catalog-workflow.md) — **how to add or change a DUML command.** Canonical catalog `data/duml-catalog.json` (generated); edit the source tables (`data/`, see [data/README.md](data/README.md)) then regenerate the bindings. Single source of truth (#102).
 - [duml-protection.md](duml-protection.md) — separates APK SIMPLE XOR, ATSHA204 component authentication, RC master/slave connection and unresolved aircraft-radio protection; traces the XOR inputs.
 - [duml-encryption-types.md](duml-encryption-types.md) — the frame-header encrypt_type values (0-7), what SIMPLE does and where it is proven, vs the firmware-container field of the same name.
 - `protocol-verification.md` — DUML wire format verified byte-exact against a real packet.
