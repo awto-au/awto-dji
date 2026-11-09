@@ -1,0 +1,829 @@
+{
+ "schema": 1,
+ "generated": "2026-11-10T10:03:22+11:00",
+ "generator": "scripts/duml_catalog_build.py",
+ "note": "Reconciled from docs/data/{apk,dll}-duml-commands.tsv + apk-cmdset-devicetype.tsv. Canonical source for the Dart/Python/Rust DUML bindings (awto-dji #102). fw-version coverage (duml-table-matches-*.json) to be folded in next.",
+ "cmdsets": {
+  "0x00": "COMMON",
+  "0x01": "SPECIAL",
+  "0x02": "CAMERA",
+  "0x03": "FLYC",
+  "0x04": "GIMBAL",
+  "0x05": "CENTER",
+  "0x06": "RC",
+  "0x07": "WIFI",
+  "0x08": "DM368"
+ },
+ "device_types": {
+  "0": "WHO",
+  "1": "CAMERA",
+  "2": "APP",
+  "3": "FLYC",
+  "4": "GIMBAL",
+  "5": "CENTER",
+  "6": "RC",
+  "7": "WIFI",
+  "8": "DM368",
+  "9": "OFDM",
+  "10": "PC",
+  "11": "BATTERY",
+  "12": "DIGITAL",
+  "13": "DM368_G",
+  "14": "OSD",
+  "15": "TRANSFORM",
+  "16": "TRANSFORM_G",
+  "17": "SINGLE",
+  "18": "DOUBLE",
+  "19": "FPGA",
+  "20": "FPGA_G",
+  "27": "WIFI_G",
+  "28": "GLASS",
+  "31": "BROADCAST",
+  "100": "OTHER"
+ },
+ "n_commands": 47,
+ "commands": [
+  {
+   "cmdset": null,
+   "cmdset_name": "any",
+   "cmdid": null,
+   "name": "Cmd-set enums in APK",
+   "direction": "n/a",
+   "payload": "n/a",
+   "sources": [
+    {
+     "origin": "apk",
+     "name": "Cmd-set enums in APK",
+     "status": "verified",
+     "evidence": "CmdIdADS_B Camera Center Common Dm368 EYE Flyc Gimbal Glass NarrowBand OnBoardSDK Osd PayloadSDK RTK Rc Recognize Simulator SmartBattery Special Wifi; numeric values need a capture or bytecode"
+    }
+   ]
+  },
+  {
+   "cmdset": null,
+   "cmdset_name": "smart battery",
+   "cmdid": null,
+   "name": "Static data / dynamic data push / cell voltage push / history / barcode",
+   "direction": "dev->app",
+   "payload": "unknown",
+   "sources": [
+    {
+     "origin": "apk",
+     "name": "Static data / dynamic data push / cell voltage push / history / barcode",
+     "status": "class verified; id unknown",
+     "evidence": "DataSmartBatteryGetStaticData, ...GetPushDynamicData, ...GetPushCellVoltage, ...GetHistory, ...GetBarCode"
+    }
+   ]
+  },
+  {
+   "cmdset": "0x00",
+   "cmdset_name": "general",
+   "cmdid": "0x01",
+   "name": "Get Version / device info",
+   "direction": "app->dev (req/ack)",
+   "payload": "unknown",
+   "sources": [
+    {
+     "origin": "apk",
+     "name": "Get Version / device info",
+     "status": "inferred id; class verified",
+     "evidence": "DataCommonGetVersion, DataCommonGetDeviceInfo present; id from catalog.dart"
+    },
+    {
+     "origin": "dll",
+     "name": "QueryVersion / GetVersion",
+     "status": "confirms app (apk-duml-commands.tsv inferred id 0x01 from catalog.dart)",
+     "evidence": "DJIUavService.dll, DJIRcService.dll: literal string \"[ActionDoQueryVersion] 0_0x01\" / \"getversion(0_0x01)\" (DJIModuleUpgrader::ActionDoQueryVersion)"
+    }
+   ]
+  },
+  {
+   "cmdset": "0x00",
+   "cmdset_name": "general",
+   "cmdid": "0x07",
+   "name": "Enter Loader",
+   "direction": "app->dev",
+   "payload": "none",
+   "sources": [
+    {
+     "origin": "apk",
+     "name": "Enter Loader",
+     "status": "verified m0900 (not in APK)",
+     "evidence": "docs/fpga-upgrade-path.md"
+    },
+    {
+     "origin": "dll",
+     "name": "EnterUpgradeMode (= \"Enter Loader\")",
+     "status": "confirms firmware (m0900, docs/fpga-upgrade-path.md)",
+     "evidence": "DJIUavService.dll, DJIRcService.dll: literal string \"[ActionDoEnterUpgradeMode]0x07\""
+    }
+   ]
+  },
+  {
+   "cmdset": "0x00",
+   "cmdset_name": "general",
+   "cmdid": "0x08",
+   "name": "Update Confirm",
+   "direction": "app->dev",
+   "payload": "reply [status, blocksize u16=0x0200] (receiver 0x13)",
+   "sources": [
+    {
+     "origin": "apk",
+     "name": "Update Confirm",
+     "status": "verified m0900 (not in APK)",
+     "evidence": "docs/fpga-upgrade-path.md"
+    },
+    {
+     "origin": "dll",
+     "name": "UpgradePrepare (= \"Update Confirm\")",
+     "status": "confirms firmware (m0900, docs/fpga-upgrade-path.md)",
+     "evidence": "DJIUavService.dll, DJIRcService.dll: tag \"(0_0x08)\" beside string \"upgrade_request_receive\" (DJIModuleUpgrader::ActionDoUpgradePrepare)"
+    }
+   ]
+  },
+  {
+   "cmdset": "0x00",
+   "cmdset_name": "general",
+   "cmdid": "0x09",
+   "name": "Update Transmit",
+   "direction": "app->dev",
+   "payload": "unknown",
+   "sources": [
+    {
+     "origin": "apk",
+     "name": "Update Transmit",
+     "status": "verified m0900 no handler (not in APK)",
+     "evidence": "docs/fpga-upgrade-path.md"
+    },
+    {
+     "origin": "dll",
+     "name": "DataTransmission (= \"Update Transmit\")",
+     "status": "confirms firmware naming; m0900 itself has no handler for 0x09 (docs/fpga-upgrade-path.md) - name/id used here, handler location still unknown",
+     "evidence": "DJIUavService.dll: string \"re-data transmission %1\" beside tag \"(0x09\" (DJIFirmUpgrader1::ActionDoDataTransmission)"
+    }
+   ]
+  },
+  {
+   "cmdset": "0x00",
+   "cmdset_name": "general",
+   "cmdid": "0x0a",
+   "name": "Update Finish",
+   "direction": "app->dev",
+   "payload": "payload byte1,byte2 compared to FPGA regs",
+   "sources": [
+    {
+     "origin": "apk",
+     "name": "Update Finish",
+     "status": "verified m0900 (not in APK)",
+     "evidence": "docs/fpga-upgrade-path.md"
+    },
+    {
+     "origin": "dll",
+     "name": "UpgradeVerify (= \"Update Finish\")",
+     "status": "confirms firmware (m0900, docs/fpga-upgrade-path.md)",
+     "evidence": "DJIUavService.dll, DJIRcService.dll: tag \"(0_0x0a)\" beside string \"firmware_upgrade_finish\" (DJIModuleUpgrader::ActionDoUpgradeVerify)"
+    }
+   ]
+  },
+  {
+   "cmdset": "0x00",
+   "cmdset_name": "general",
+   "cmdid": "0x0b",
+   "name": "Reboot",
+   "direction": null,
+   "payload": null,
+   "sources": [
+    {
+     "origin": "dll",
+     "name": "Reboot",
+     "status": "confirms public dissector (o-gs/dji-firmware-tools dji-dumlv1-general.lua \"Reboot Chip\")",
+     "evidence": "DJIUavService.dll, DJIRcService.dll: tag \"(0_0xb)\" beside string \"reboot_device\" (DJIModuleUpgrader::ActionDoReboot)"
+    }
+   ]
+  },
+  {
+   "cmdset": "0x00",
+   "cmdset_name": "general",
+   "cmdid": "0x0c",
+   "name": "QueryStatus",
+   "direction": null,
+   "payload": null,
+   "sources": [
+    {
+     "origin": "dll",
+     "name": "QueryStatus",
+     "status": "confirms public dissector (o-gs/dji-firmware-tools dji-dumlv1-general.lua \"Get Device State\")",
+     "evidence": "DJIUavService.dll, DJIRcService.dll: literal string \"[ActionDoQueryStatus] 0_0x0c\" (DJIModuleUpgrader::ActionDoQueryStatus)"
+    }
+   ]
+  },
+  {
+   "cmdset": "0x00",
+   "cmdset_name": "general",
+   "cmdid": null,
+   "name": "Data locker (security code, status, format)",
+   "direction": "app->dev",
+   "payload": "unknown",
+   "sources": [
+    {
+     "origin": "apk",
+     "name": "Data locker (security code, status, format)",
+     "status": "class verified; id unknown",
+     "evidence": "DataCommonDataLocker*"
+    }
+   ]
+  },
+  {
+   "cmdset": "0x00",
+   "cmdset_name": "general",
+   "cmdid": null,
+   "name": "File transfer request/data/extended/realtime/verify",
+   "direction": "app<->dev",
+   "payload": "unknown",
+   "sources": [
+    {
+     "origin": "apk",
+     "name": "File transfer request/data/extended/realtime/verify",
+     "status": "class verified; id unknown",
+     "evidence": "DataCommonTransferFile{Request,Data,DataExtended,RealTimeData,Verify}; ITransferFileObject enums TransferCmdType/ErrorCode/VerifyType"
+    }
+   ]
+  },
+  {
+   "cmdset": "0x00",
+   "cmdset_name": "general",
+   "cmdid": null,
+   "name": "Get device serial number",
+   "direction": "app->dev",
+   "payload": "unknown",
+   "sources": [
+    {
+     "origin": "apk",
+     "name": "Get device serial number",
+     "status": "class verified; id unknown",
+     "evidence": "DataCommonGetDeviceSerialNumber"
+    }
+   ]
+  },
+  {
+   "cmdset": "0x00",
+   "cmdset_name": "general",
+   "cmdid": null,
+   "name": "Get/Set cfg file, Set newest versions",
+   "direction": "app<->dev",
+   "payload": "unknown",
+   "sources": [
+    {
+     "origin": "apk",
+     "name": "Get/Set cfg file, Set newest versions",
+     "status": "class verified; id unknown",
+     "evidence": "DataCommonGetCfgFile, DataCommonSetNewestVersions"
+    }
+   ]
+  },
+  {
+   "cmdset": "0x00",
+   "cmdset_name": "general",
+   "cmdid": null,
+   "name": "Push heartbeat",
+   "direction": "dev->app",
+   "payload": "unknown",
+   "sources": [
+    {
+     "origin": "apk",
+     "name": "Push heartbeat",
+     "status": "class verified; id unknown",
+     "evidence": "DataCommonPushHeart"
+    }
+   ]
+  },
+  {
+   "cmdset": "0x00",
+   "cmdset_name": "general",
+   "cmdid": null,
+   "name": "Push upgrade status",
+   "direction": "dev->app",
+   "payload": "unknown",
+   "sources": [
+    {
+     "origin": "apk",
+     "name": "Push upgrade status",
+     "status": "class verified; id unknown",
+     "evidence": "DataCommonGetPushUpgradeStatus(+Info)"
+    }
+   ]
+  },
+  {
+   "cmdset": "0x00",
+   "cmdset_name": "general",
+   "cmdid": null,
+   "name": "Request upgrade / Control upgrade",
+   "direction": "app->dev",
+   "payload": "unknown",
+   "sources": [
+    {
+     "origin": "apk",
+     "name": "Request upgrade / Control upgrade",
+     "status": "class verified; id unknown",
+     "evidence": "DataCommonRequestUpgrade, DataCommonControlUpgrade"
+    }
+   ]
+  },
+  {
+   "cmdset": "0x00",
+   "cmdset_name": "general",
+   "cmdid": null,
+   "name": "Set date / Restart device",
+   "direction": "app->dev",
+   "payload": "unknown",
+   "sources": [
+    {
+     "origin": "apk",
+     "name": "Set date / Restart device",
+     "status": "class verified; id unknown",
+     "evidence": "DataCommonSetDate, DataCommonRestartDevice"
+    }
+   ]
+  },
+  {
+   "cmdset": "0x02",
+   "cmdset_name": "camera",
+   "cmdid": null,
+   "name": "Push shot params / shot info / storage info / SD params",
+   "direction": "dev->app",
+   "payload": "unknown",
+   "sources": [
+    {
+     "origin": "apk",
+     "name": "Push shot params / shot info / storage info / SD params",
+     "status": "class verified; id unknown",
+     "evidence": "DataCameraGetPushShotParams, ...ShotInfo, ...StorageInfo"
+    }
+   ]
+  },
+  {
+   "cmdset": "0x02",
+   "cmdset_name": "camera",
+   "cmdid": null,
+   "name": "Push state info",
+   "direction": "dev->app",
+   "payload": "unknown",
+   "sources": [
+    {
+     "origin": "apk",
+     "name": "Push state info",
+     "status": "class verified; id unknown",
+     "evidence": "DataCameraGetPushStateInfo"
+    }
+   ]
+  },
+  {
+   "cmdset": "0x02",
+   "cmdset_name": "camera",
+   "cmdid": null,
+   "name": "Request I-frame",
+   "direction": "app->dev",
+   "payload": "unknown",
+   "sources": [
+    {
+     "origin": "apk",
+     "name": "Request I-frame",
+     "status": "class verified; id unknown",
+     "evidence": "DataCameraRequestForIFrame (relevant to video start)"
+    }
+   ]
+  },
+  {
+   "cmdset": "0x02",
+   "cmdset_name": "camera",
+   "cmdid": null,
+   "name": "Set date, camera upgrade control, push request upgrade",
+   "direction": "app<->dev",
+   "payload": "unknown",
+   "sources": [
+    {
+     "origin": "apk",
+     "name": "Set date, camera upgrade control, push request upgrade",
+     "status": "class verified; id unknown",
+     "evidence": "DataCameraSetDate, DataCameraControlUpgrade, DataCameraGetPushRequestUpgrade"
+    }
+   ]
+  },
+  {
+   "cmdset": "0x02",
+   "cmdset_name": "camera",
+   "cmdid": null,
+   "name": "Set/Get mode, photo mode, ISO, shutter, white balance, video format, image size",
+   "direction": "app<->dev",
+   "payload": "unknown",
+   "sources": [
+    {
+     "origin": "apk",
+     "name": "Set/Get mode, photo mode, ISO, shutter, white balance, video format, image size",
+     "status": "class verified; id unknown",
+     "evidence": "DataCameraSetMode/GetMode, ...Iso, ...ShutterSpeed, ...WhiteBalance, ...VideoFormat, ...ImageSize"
+    }
+   ]
+  },
+  {
+   "cmdset": "0x02",
+   "cmdset_name": "camera",
+   "cmdid": null,
+   "name": "Switch USB / Get USB status",
+   "direction": "app->dev",
+   "payload": "unknown",
+   "sources": [
+    {
+     "origin": "apk",
+     "name": "Switch USB / Get USB status",
+     "status": "class verified; id unknown",
+     "evidence": "DataCameraSwitchUSB, DataCameraGetUsbStatus"
+    }
+   ]
+  },
+  {
+   "cmdset": "0x02",
+   "cmdset_name": "camera",
+   "cmdid": null,
+   "name": "Take photo / Set record (start/stop video)",
+   "direction": "app->dev",
+   "payload": "unknown",
+   "sources": [
+    {
+     "origin": "apk",
+     "name": "Take photo / Set record (start/stop video)",
+     "status": "class verified; id unknown",
+     "evidence": "DataCameraSetPhoto, DataCameraSetRecord, DataCameraVideoControl"
+    }
+   ]
+  },
+  {
+   "cmdset": "0x03",
+   "cmdset_name": "flyc",
+   "cmdid": "0x42",
+   "name": "push re-addressed to gimbal type by m0900",
+   "direction": "dev->dev",
+   "payload": "unknown",
+   "sources": [
+    {
+     "origin": "apk",
+     "name": "push re-addressed to gimbal type by m0900",
+     "status": "verified m0900 route; name unknown",
+     "evidence": "docs/dataflow.md"
+    }
+   ]
+  },
+  {
+   "cmdset": "0x03",
+   "cmdset_name": "flyc",
+   "cmdid": "0x43",
+   "name": "OSD General (telemetry push)",
+   "direction": "dev->app",
+   "payload": "position, alt, velocity, attitude (see telemetry.dart)",
+   "sources": [
+    {
+     "origin": "apk",
+     "name": "OSD General (telemetry push)",
+     "status": "verified m0900 route; inferred layout",
+     "evidence": "DataOsdGetPushCommon class present; docs/dataflow.md 4b; id per catalog.dart"
+    }
+   ]
+  },
+  {
+   "cmdset": "0x03",
+   "cmdset_name": "flyc",
+   "cmdid": "0x44",
+   "name": "OSD Home Point (push)",
+   "direction": "dev->app",
+   "payload": "unknown",
+   "sources": [
+    {
+     "origin": "apk",
+     "name": "OSD Home Point (push)",
+     "status": "verified m0900 route",
+     "evidence": "DataOsdGetPushHome class present; docs/dataflow.md"
+    }
+   ]
+  },
+  {
+   "cmdset": "0x03",
+   "cmdset_name": "flyc",
+   "cmdid": null,
+   "name": "Active status / push active request / set active result",
+   "direction": "both",
+   "payload": "unknown",
+   "sources": [
+    {
+     "origin": "apk",
+     "name": "Active status / push active request / set active result",
+     "status": "class verified; id unknown",
+     "evidence": "DataFlycActiveStatus, DataFlycGetPushActiveRequest, DataFlycSetActiveResult (flow only, not analysed)"
+    }
+   ]
+  },
+  {
+   "cmdset": "0x03",
+   "cmdset_name": "flyc",
+   "cmdid": null,
+   "name": "Flyc joystick (virtual stick) / JoyStick params",
+   "direction": "app->dev",
+   "payload": "unknown",
+   "sources": [
+    {
+     "origin": "apk",
+     "name": "Flyc joystick (virtual stick) / JoyStick params",
+     "status": "class verified; id unknown",
+     "evidence": "DataFlycJoystick, DataFlycSetJoyStickParams (FlycMode enum) - control, not decoded"
+    }
+   ]
+  },
+  {
+   "cmdset": "0x03",
+   "cmdset_name": "flyc",
+   "cmdid": null,
+   "name": "Flyc push check status / smart battery / GPS SNR / params",
+   "direction": "dev->app",
+   "payload": "unknown",
+   "sources": [
+    {
+     "origin": "apk",
+     "name": "Flyc push check status / smart battery / GPS SNR / params",
+     "status": "class verified; id unknown",
+     "evidence": "DataFlycGetPushCheckStatus, ...PushSmartBattery, ...PushGpsSnr, ...PushParams"
+    }
+   ]
+  },
+  {
+   "cmdset": "0x03",
+   "cmdset_name": "flyc",
+   "cmdid": null,
+   "name": "Get/Set plane name, home point, date, time zone, limits, params",
+   "direction": "app<->dev",
+   "payload": "unknown",
+   "sources": [
+    {
+     "origin": "apk",
+     "name": "Get/Set plane name, home point, date, time zone, limits, params",
+     "status": "class verified; id unknown",
+     "evidence": "DataFlycGetPlaneName/SetPlaneName, ...SetHomePoint, ...SetDate, ...SetTimeZone, ...SetLimits"
+    }
+   ]
+  },
+  {
+   "cmdset": "0x03",
+   "cmdset_name": "flyc",
+   "cmdid": null,
+   "name": "Send GPS info to FC (phone GPS)",
+   "direction": "app->dev",
+   "payload": "unknown",
+   "sources": [
+    {
+     "origin": "apk",
+     "name": "Send GPS info to FC (phone GPS)",
+     "status": "class verified; id unknown",
+     "evidence": "DataFlycSendGpsInfo, DataFlycSendGpsToFlyc, DataAppPushGpsInfo"
+    }
+   ]
+  },
+  {
+   "cmdset": "0x03",
+   "cmdset_name": "flyc",
+   "cmdid": null,
+   "name": "Waypoint / hotpoint / follow-me mission upload+switch",
+   "direction": "app->dev",
+   "payload": "unknown",
+   "sources": [
+    {
+     "origin": "apk",
+     "name": "Waypoint / hotpoint / follow-me mission upload+switch",
+     "status": "class verified; id unknown",
+     "evidence": "DataFlycUploadWayPointMissionMsg, DataFlycWayPointMissionSwitch, DataFlycStartHotPointMissionWithInfo, DataFlycStartFollowMeWithInfo"
+    }
+   ]
+  },
+  {
+   "cmdset": "0x04",
+   "cmdset_name": "gimbal",
+   "cmdid": null,
+   "name": "Angle / absolute angle / speed control",
+   "direction": "app->dev",
+   "payload": "unknown",
+   "sources": [
+    {
+     "origin": "apk",
+     "name": "Angle / absolute angle / speed control",
+     "status": "class verified; id unknown",
+     "evidence": "DataGimbalAngleControl, DataGimbalAbsAngleControl, DataGimbalSpeedControl, DataGimbalSetAngle"
+    }
+   ]
+  },
+  {
+   "cmdset": "0x04",
+   "cmdset_name": "gimbal",
+   "cmdid": null,
+   "name": "Auto calibration, roll fine-tune, user params get/set/save",
+   "direction": "app<->dev",
+   "payload": "unknown",
+   "sources": [
+    {
+     "origin": "apk",
+     "name": "Auto calibration, roll fine-tune, user params get/set/save",
+     "status": "class verified; id unknown",
+     "evidence": "DataGimbalAutoCalibration, DataGimbalRollFinetune, DataGimbalSetUserParams"
+    }
+   ]
+  },
+  {
+   "cmdset": "0x04",
+   "cmdset_name": "gimbal",
+   "cmdid": null,
+   "name": "Push params",
+   "direction": "dev->app",
+   "payload": "unknown",
+   "sources": [
+    {
+     "origin": "apk",
+     "name": "Push params",
+     "status": "class verified; id unknown",
+     "evidence": "DataGimbalGetPushParams, DataGimbalGetPushType, DataGimbalGetPushUserParams"
+    }
+   ]
+  },
+  {
+   "cmdset": "0x05",
+   "cmdset_name": "center (battery)",
+   "cmdid": null,
+   "name": "Push battery common / in position / check status",
+   "direction": "dev->app",
+   "payload": "unknown",
+   "sources": [
+    {
+     "origin": "apk",
+     "name": "Push battery common / in position / check status",
+     "status": "class verified; id unknown",
+     "evidence": "DataCenterGetPushBatteryCommon, ...PushBatteryInPosition, ...PushCheckStatus"
+    }
+   ]
+  },
+  {
+   "cmdset": "0x06",
+   "cmdset_name": "rc",
+   "cmdid": null,
+   "name": "Calibration, control mode, custom function, RTC, simulation",
+   "direction": "app->dev",
+   "payload": "unknown",
+   "sources": [
+    {
+     "origin": "apk",
+     "name": "Calibration, control mode, custom function, RTC, simulation",
+     "status": "class verified; id unknown",
+     "evidence": "DataRcSetCalibration, DataRcSetControlMode, DataRcSetCustomFuction, DataRcSetRTC, DataRcSetSimulation"
+    }
+   ]
+  },
+  {
+   "cmdset": "0x06",
+   "cmdset_name": "rc",
+   "cmdid": null,
+   "name": "Gimbal control permission request/ack, gimbal speed/control mode",
+   "direction": "app<->dev",
+   "payload": "unknown",
+   "sources": [
+    {
+     "origin": "apk",
+     "name": "Gimbal control permission request/ack, gimbal speed/control mode",
+     "status": "class verified; id unknown",
+     "evidence": "DataRcRequestGimbalCtrPermission, DataRcAckGimbalCtrPermission, DataRcSetGimbalSpeed"
+    }
+   ]
+  },
+  {
+   "cmdset": "0x06",
+   "cmdset_name": "rc",
+   "cmdid": null,
+   "name": "Push params / connect status / battery info / GPS info",
+   "direction": "dev->app",
+   "payload": "unknown",
+   "sources": [
+    {
+     "origin": "apk",
+     "name": "Push params / connect status / battery info / GPS info",
+     "status": "class verified; id unknown",
+     "evidence": "DataRcGetPushParams, DataRcGetPushConnectStatus, DataRcGetPushBatteryInfo, DataRcGetPushGpsInfo"
+    }
+   ]
+  },
+  {
+   "cmdset": "0x06",
+   "cmdset_name": "rc",
+   "cmdid": null,
+   "name": "Set/Get connect master (Connected Master ID), master/slave id, search masters, slave list, name, password",
+   "direction": "app<->dev",
+   "payload": "unknown",
+   "sources": [
+    {
+     "origin": "apk",
+     "name": "Set/Get connect master (Connected Master ID), master/slave id, search masters, slave list, name, password",
+     "status": "class verified; id unknown",
+     "evidence": "DataRcSetConnectMaster/GetConnectMaster, DataRcMasterSlaveId, DataRcGetSearchMasters, DataRcSetMaster/GetMaster, DataRcSetName/GetName, DataRcSetPassword/GetPassword"
+    }
+   ]
+  },
+  {
+   "cmdset": "0x07",
+   "cmdset_name": "wifi",
+   "cmdid": null,
+   "name": "Connect master with ID + auth code; set master/slave auth code; get auth code",
+   "direction": "app<->dev",
+   "payload": "unknown",
+   "sources": [
+    {
+     "origin": "apk",
+     "name": "Connect master with ID + auth code; set master/slave auth code; get auth code",
+     "status": "class verified; id unknown",
+     "evidence": "DataWifiConnectMasterWithIdAuthCode, DataWifiSetMasterSlaveAuthCode, DataWifiGetAuthCode (names only; no values)"
+    }
+   ]
+  },
+  {
+   "cmdset": "0x07",
+   "cmdset_name": "wifi",
+   "cmdid": null,
+   "name": "Get/Set SSID, password, frequency, power, restart; push signal, master/slave status",
+   "direction": "app<->dev",
+   "payload": "unknown",
+   "sources": [
+    {
+     "origin": "apk",
+     "name": "Get/Set SSID, password, frequency, power, restart; push signal, master/slave status",
+     "status": "class verified; id unknown",
+     "evidence": "DataWifiGetSSID/SetSSID, DataWifiGetPassword/SetPassword, DataWifiGetPushSignal, DataWifiGetPushMasterSlaveStatus"
+    }
+   ]
+  },
+  {
+   "cmdset": "0x09",
+   "cmdset_name": "osd/hd-link",
+   "cmdid": "0x05,06,07,12,13",
+   "name": "FPGA/AD9363 access (m0900 handlers)",
+   "direction": "app->dev",
+   "payload": "register access",
+   "sources": [
+    {
+     "origin": "apk",
+     "name": "FPGA/AD9363 access (m0900 handlers)",
+     "status": "verified m0900 (not in APK)",
+     "evidence": "docs/dataflow.md; CmdIdOsd enum exists in APK"
+    }
+   ]
+  },
+  {
+   "cmdset": "0x09",
+   "cmdset_name": "osd/hd-link",
+   "cmdid": null,
+   "name": "SDR/link push: signal quality, channel status, config, link mode, sweep freq",
+   "direction": "dev->app",
+   "payload": "unknown",
+   "sources": [
+    {
+     "origin": "apk",
+     "name": "SDR/link push: signal quality, channel status, config, link mode, sweep freq",
+     "status": "class verified; id unknown",
+     "evidence": "DataOsdGetPushSignalQuality, ...PushChannalStatus, ...PushSdrStatusInfo, ...PushSdrLinkMode, ...PushSweepFrequency"
+    }
+   ]
+  },
+  {
+   "cmdset": "0x09",
+   "cmdset_name": "osd/hd-link",
+   "cmdid": null,
+   "name": "Set config / power / LED / SDR config / image transm mode",
+   "direction": "app->dev",
+   "payload": "unknown",
+   "sources": [
+    {
+     "origin": "apk",
+     "name": "Set config / power / LED / SDR config / image transm mode",
+     "status": "class verified; id unknown",
+     "evidence": "DataOsdSetConfig, DataOsdSetPower, DataOsdSetSDRConfigInfo, DataOsdSetSDRImageTransmMode"
+    }
+   ]
+  },
+  {
+   "cmdset": "0x0a",
+   "cmdset_name": "eye (vision)",
+   "cmdid": null,
+   "name": "Vision/obstacle push, tracking, POI, time-lapse (not P3 hardware)",
+   "direction": "dev->app",
+   "payload": "unknown",
+   "sources": [
+    {
+     "origin": "apk",
+     "name": "Vision/obstacle push, tracking, POI, time-lapse (not P3 hardware)",
+     "status": "class verified; id unknown",
+     "evidence": "DataEye* (~80 classes); P3P has downward vision only - relevance unknown"
+    }
+   ]
+  }
+ ]
+}
