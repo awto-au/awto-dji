@@ -16,15 +16,15 @@ python3.15t fpga/m2001/scripts/cycloneiv_clean_partition.py --nl tmp/image_sim_d
 - Outputs: `tmp/cycloneiv_clean/partition.json` (cell lists per block), `partition.md` (table below), `rtl_partitioned.v` (structured RTL, statements grouped under `// ==== BLOCK: <name> (conf) ====` headers, declarations first), `rtl_flat_partitioned.v` (same for the flat emit), `partition_rtl.json` (mapping stats + lint).
 - Growth is bounded (`--grow 2`): a LUT joins a block only when every consumer is in it, or its LAB is mostly that block and it touches it; an FF only when D-source and all consumers are inside. Two blocks claiming a cell in one round = contested, left unknown (0 this run). Seed overlaps: first block wins, listed in `partition.json` (8 this run: regfile FFs also reached by engine / comparator / record-reader seeds).
 
-## Coverage (lift `tmp/image_sim_dji_push/nl.pkl`, 2026-11-01)
+## Coverage (lift `tmp/image_sim_dji_push/nl.pkl`, 2026-11-09, functional layer = `functional_*.tsv`)
 
 | class | LUT | FF | M9K | MAC | pads |
 |---|---|---|---|---|---|
-| V verified | 4960 (5.6%) | 3529 (9.8%) | 73 (13.5%) | 1 (1.1%) | 66 (77.6%) |
-| I inferred | 387 (0.4%) | 58 (0.2%) | 8 (1.5%) | 4 (4.6%) | 0 (0.0%) |
+| V verified | 5570 (6.2%) | 3889 (10.8%) | 73 (13.5%) | 1 (1.1%) | 66 (77.6%) |
+| I inferred | 442 (0.5%) | 122 (0.3%) | 12 (2.2%) | 4 (4.6%) | 0 (0.0%) |
 | S structure known, function unknown | 115 (0.1%) | 9 (0.0%) | 13 (2.4%) | 0 (0.0%) | 0 (0.0%) |
-| U unknown | 83820 (93.9%) | 32277 (90.0%) | 448 (82.7%) | 82 (94.3%) | 19 (22.4%) |
-| known (V+I) | 5347 (6.0%) | 3587 (10.0%) | 81 (14.9%) | 5 (5.7%) | 66 (77.6%) |
+| U unknown | 83155 (93.1%) | 31853 (88.8%) | 444 (81.9%) | 82 (94.3%) | 19 (22.4%) |
+| known (V+I) | 6012 (6.7%) | 4011 (11.2%) | 85 (15.7%) | 5 (5.7%) | 66 (77.6%) |
 | total | 89282 | 35873 | 542 | 87 | 85 |
 
 ## Known blocks
@@ -47,6 +47,9 @@ python3.15t fpga/m2001/scripts/cycloneiv_clean_partition.py --nl tmp/image_sim_d
 | ad9363_rx_capture | V | 11 | 14 | 1 | 0 | 22 | `pins.tsv` AD9363 inputs + first capture stage (13-pad bus, M25, N25, 8 no-sink pads) |
 | reg3_tables | S | 69 | 9 | 7 | 0 | 0 | #177 6543928814 (reg 3 indexes 2048x4 tiles (36,57..62),(36,65)) |
 | tx_source_bank | S | 46 | 0 | 6 | 0 | 0 | #177 6543928814 (2048x4 bank (23,54/55/58/61),(36,54/55) feeding the TX pipeline) |
+| 802.16-tx-magfunc-rom | I | 2 | 7 | 1 | 0 | 0 | #90 rom_decode/rom_addr_trace (m9k_36_82: even-symmetric magnitude function; raddr `\|signed\|` fold via lc_44_80_10, window 128..255) |
+| 802.16-tx-config-table | I | 6 | 8 | 1 | 0 | 0 | #90 (m9k_36_64: config/linear coeff table; pad-loaded index from AB11, window 256..511) |
+| 802.16-rx-control-rom | I | 10 | 1 | 2 | 0 | 0 | #90 (m9k_94_57+94_58: 3b+9b control/schedule words; shared accumulator, outputs gate enables/muxes, no M9K-addr reach) |
 | pads_misc | U | 6 | 0 | 0 | 0 | 19 | `pins.tsv` U/I pads with no block (AD20-24, AE25, R20/R22, bank5 outs, AD5/AD13, U22, A5, AA22) |
 
 ## Unknown remainder (connected components within one clock domain)
@@ -64,6 +67,25 @@ python3.15t fpga/m2001/scripts/cycloneiv_clean_partition.py --nl tmp/image_sim_d
 - They are one component each because the baseband is densely connected; splitting them needs functional anchors (next: FFT/Viterbi shapes, MAC chains per `cycloneiv-clean-mac-trace.md`), not more adjacency.
 - Names `802.16-rx` / `802.16-tx` are labels by clock domain (`functional_rename.tsv`), not proven function. `802.16-tx` (clk_main) also holds RX bit-level logic: the descrambler bit `ff_29_65_0` and demod bit `ff_21_65_0` (both feed `rx_id_comparator`), all 7 PRBS LFSRs (3x x15 = 802.16 randomiser, 4x x11 = 802.16 pilot PRBS) and the CRC-16-CCITT. `802.16-rx` (clk_pll_b) is the sample-rate side: 0 MAC, 395 short (<= 8-bit) carry chains, 256x36 RAM banks with delay lines.
 - Sub-regions: `fpga/m2001/scripts/cycloneiv_clean_region_carve.py` (#189) -> `tmp/cycloneiv_clean/regions/<blob>/` (fact sheet per region, `index.json` adjacency, `cell_region.json`).
+
+## Init ROMs (baseband tables)
+
+Only 8 of 542 M9K carry non-zero init; all tx-side except the r0341 pair. Shapes from
+`cycloneiv_clean_rom_decode.py`, addressing from `cycloneiv_clean_rom_addr_trace.py` (#90).
+None is a twiddle/FFT, interleaver, or constellation table — so FFT size / modulation
+params are NOT in the ROMs; they must come from the loopback sim (#89 steps 3-4).
+
+| ROM | region | shape (V) | addressing (V) | role (I) | block |
+|---|---|---|---|---|---|
+| m9k_36_82 | tx r0137 | two 12b full-scale (2048) even-symmetric fields | raddr window 128..255, `\|signed\|` fold via `lc_44_80_10` | magnitude-function ROM | `802.16-tx-magfunc-rom` |
+| m9k_36_64 | tx r0135 | 9b full-scale waveform + few-valued field | addr window 256..511, pad-loaded index (shift chain from AB11) | config/linear coefficient table | `802.16-tx-config-table` |
+| m9k_94_58 + m9k_94_57 | rx r0341 | 3b {0..7} + 9b, read in lockstep | one shared accumulator index; outputs gate enables/clear-muxes, reach no M9K address | control/schedule word table | `802.16-rx-control-rom` |
+| m9k_7_57 | tx r0038 | dual phase accumulator (down-ramp P=512 + step-3 ramp) | — | address/index gen | (in r0038) |
+| m9k_7_58 | tx r0038 | 4-value LUT {3,11,18,19} | — | config map | (in r0038) |
+| m9k_7_85 / m9k_7_86 | af3_engine | sparse partial tables | — | AF3 engine ROMs | (in `af3_engine`) |
+
+Caveat: the `\|signed\|` fold and the role names are inferred (I); the shapes, windows, and
+address/output edges are netlist-verified (V). Data-output cones not yet traced for a late negate.
 
 ## RTL
 
