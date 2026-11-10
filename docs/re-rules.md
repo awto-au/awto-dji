@@ -22,4 +22,5 @@ Canonical rules: `awto-dan/docs/embedded/embedded-rules.md` section "Firmware re
 - No single-path assumption: check RX filters and independent send paths. "Excluded" needs each alternative checked (see XOR-key case, #84).
 - Trace from the real UI call site, not plausible names.
 - Over-the-air encryption is not ruled out by MCU-layer cleartext (`what-is-actually-secret.md`).
+- Scope: interoperability on the owner's aircraft; key analysis allowed; geofence defeat and control override out.
 - Old chats mined for RE findings: `chat-mining.md`.

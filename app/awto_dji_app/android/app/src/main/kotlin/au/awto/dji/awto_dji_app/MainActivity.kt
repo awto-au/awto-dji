@@ -16,6 +16,7 @@ import io.flutter.plugin.common.MethodChannel
 class MainActivity : FlutterActivity() {
     private var shim: AoaShim? = null
     private var videoShim: VideoShim? = null
+    private var benchShim: BenchShim? = null
     private var intentChannel: MethodChannel? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -26,6 +27,7 @@ class MainActivity : FlutterActivity() {
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
         shim = AoaShim(this, flutterEngine.dartExecutor.binaryMessenger)
+        benchShim = BenchShim(this, flutterEngine.dartExecutor.binaryMessenger)
         videoShim = VideoShim(this, flutterEngine.renderer, flutterEngine.dartExecutor.binaryMessenger)
 
         intentChannel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "au.awto.dji/intents")

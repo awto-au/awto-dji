@@ -25,21 +25,12 @@ RC (USB host) --USB-A--> phone (Android, AOA accessory) --WiFi--> PC relay (aoa_
 
 ## Test phone: finding and (re)connecting it
 
-The phone has no fixed address - wireless-debugging picks a new port on every reboot.
-
-1. `adb devices -l` - if already connected (USB or a prior `tcpip` session), it shows
-   up as `<ip>:<port>`.
-2. If not: the phone needs **Settings -> Developer options -> Wireless debugging**
-   on, which shows its current IP:port. Ask the operator for it rather than guessing a
-   port (the old default `5555` only works after step 3 below, not from a cold boot).
-3. Once connected at whatever port Wireless debugging shows, run
-   `adb -s <ip>:<old-port> tcpip 5555` then `adb connect <ip>:5555` - this moves it to
-   a fixed, predictable port for the rest of the session (does not survive a reboot).
-4. If a reboot happens mid-session, you're back to step 2 - the IP can also change
-   (house DHCP), so re-ask rather than retrying the last known address blindly.
+- **U.** `./dev.py phone-connect [--serial S] [--connect IP:PORT]` resolves the phone: `--serial`, else `$AWTO_PHONE`, else the one usable `adb devices -l` entry (a phone listed over USB and wireless resolves to the wireless one); several or none: prints the list and exits 1. Prints serial, model, Android release and installed state of `dji` (`au.awto.dji.awto_dji_app`), `bench` (`au.awto.aoabench`), `old-bench` (`au.awto.dji.awto_dji_app.aoabench`, superseded).
+- Wireless-debugging picks a new port on every reboot (IP can change too): take the current `IP:PORT` from Settings -> Developer options -> Wireless debugging and pass `--connect IP:PORT`; never reuse a remembered port.
+- Every other dev.py phone command takes `--serial` and resolves it the same way.
 
 At the time of writing two phones have been used: a Samsung S9 (LineageOS, 1440x2960,
-`device:starlte`), package `au.awto.dji.awto_dji_app`, and a Samsung S20+ (1440x3200,
+`device:starlte`), DJI app package `au.awto.dji.awto_dji_app`, and a Samsung S20+ (1440x3200,
 `device:y2s`), both with DJI Pilot (`dji.pilot`) also installed as a reference - the
 app that actually connects to the Phantom 3X.
 
@@ -85,6 +76,8 @@ global proxy) and re-check `ping www.google.com` from the phone before retrying
 login.
 
 ### Driving DJI Pilot as a reference app
+
+Use `./dev.py dji-pilot select-aircraft|connect|screenshot`; the raw adb below only explains what it does.
 
 No intent exists to pick the aircraft model directly (internal app state, no exported
 extras for it) - this is the fastest known manual recipe, via `adb shell input tap`/
@@ -146,14 +139,9 @@ accessory once a model is selected; the launcher activity above is just the pick
 
 ## Building and installing
 
-```
-cd app/awto_dji_app
-flutter pub get
-flutter test
-flutter analyze                       # see known unrelated findings below
-flutter build apk --debug
-adb -s <ip>:5555 install -r build/app/outputs/flutter-apk/app-debug.apk
-```
+- **U.** `./dev.py load --dji` builds the DJI app (`flutter build apk --debug`, `AWTO_BENCH` stripped from the environment) and `adb install -r`s it; `--bench` / `--both` for the bench app; `--no-build` reinstalls the APKs kept in `tmp/apk/`. Build output: `tmp/logs/build-<name>.log`; no output for 120 s = hung, killed.
+- `./dev.py unload --dji|--bench|--old-bench` uninstalls.
+- Tests/analyze stay `./dev.py test` / `./dev.py lint`.
 
 ## Driving the app: intents, not a UI form
 
@@ -162,13 +150,7 @@ driven entirely by Android intents, handled in `MainActivity.kt` ->
 `LinkHost.handle()` (`lib/link/link_host.dart`). A plain launch, or the RC's USB
 accessory attaching, auto-connects with the default relay.
 
-```
-adb -s <ip>:5555 shell am force-stop au.awto.dji.awto_dji_app   # intents to a
-                                                                   # running instance
-                                                                   # silently no-op; stop first
-adb -s <ip>:5555 shell am start -n au.awto.dji.awto_dji_app/.MainActivity \
-    -a au.awto.dji.action.CONNECT --es relay 192.168.25.114:9900
-```
+- `./dev.py phone connect [--relay HOST:PORT]` (`phone_bench.py`) force-stops the app and sends CONNECT with the extras below. What it does on the phone: `am force-stop`, then `am start -n au.awto.dji.awto_dji_app/.MainActivity -a au.awto.dji.action.CONNECT --es relay <host:port>`; intents to a running instance silently no-op, hence the stop.
 
 | Action | Extras | Effect |
 |---|---|---|
@@ -279,6 +261,102 @@ state. The APK is built, not installed or live-tested. Full app analysis retains
 two unrelated findings in `video_decoder.dart` and `video_screen.dart`.
 Android MediaCodec input-buffer scheduling remains a separate known limitation;
 see [PC video notes](pc-video-preview.md).
+
+## Answering the USB accessory dialog without touching the phone
+
+- **V.** The dialog ("Allow AWTO DJI to access ...?") blocks a non-interactive CONNECT; the shim now fails in 3 s and a repeat CONNECT after the grant connects at once (`docs/aoa-live-test-2026-10-26.md`).
+- **I.** `./dev.py grant [--serial S]` (`phone_usb_dialog.accept`) dumps the UI, ticks "Use by default for this USB accessory", taps OK from `bounds=`; exit 0 granted, 1 no dialog, 2 controls not found. Parser tested on canned XML only.
+- **I.** The "default" tick makes Android launch the app on `USB_ACCESSORY_ATTACHED` with the grant; it survives reboot, not uninstall or clear-data.
+- **U.** Persists per manufacturer+model on Android 12 (Pixel 3 XL): confirm with `dumpsys usb` on the phone after the first grant. Control ids (`android:id/alwaysUse`, `button1`) are unverified on a phone.
+
+## Emulating the RC from a PC or a Cynthion
+
+- **I.** `./dev.py rc [--serial S] [handshake|listen|replay FILE] --vid H --pid H [--seconds N] [--accept-dialog]` (front for `scripts/re/t600_rc_emulator.py`) plays the RC (AOA accessory host, manufacturer/model parsed from `aoa_identity.dart`) toward the phone: `handshake`, `listen`, `replay FILE`; log `tmp/logs/t600_rc_emulator.log`.
+- **V.** description/version/uri/serial = `DJI` / `v1.2.3.4` / `www.dji.com` / `12345678`, as read off the phone with a real RC (`docs/aoa-live-test-2026-10-23.md`).
+- **I.** Replay sends only DUML frames with receiver 0x02 (the app) and never an app-sent frame; it forwards recorded frames and builds none, so no flight-control path. Covered by `test_t600_rc_emulator.py` (fake backend).
+- **U.** Nothing here has run on hardware: PyUSB switch, bulk endpoints, re-enumeration (limit 5 s), `--accept-dialog` timing. `CynthionBackend` is a stub awaiting `usb <port> aoa|tx|rx` shell verbs.
+
+## AOA bench app
+
+Generic AOA test rig, not DJI-specific: a Cynthion (RISC-V shell) or `t600_rc_emulator.py` plays the AOA host, this app is the AOA **device**, a script on the PC drives it over WiFi.
+
+### Build / install / run
+- **U.** `./dev.py up [--serial S] [--connect IP:PORT] [--no-build]`: phone -> `load --bench` -> listener in the background -> `connect` -> listener in the foreground (^C stops it). Replaces every manual step below; not yet run end to end.
+- Steps, each also a command (all take `--serial`):
+  - `phone-connect`: find the phone.
+  - `load [--bench]`: `AWTO_BENCH=1 flutter build apk --debug --dart-define=BENCH=true`, `adb install -r`, then checks the package is on the phone.
+  - `listen [--port 9910]`: `scripts/re/bench_host.py --listen 9910 --tail` in the foreground; refuses and shows the holder if the port is in use (9910 is unused elsewhere; relay uses 9900/9901).
+  - `connect [--host H] [--port 9910] [--pkg bench|dji]`: host defaults to the local address `ip route get <phone-ip>` reports; waits 10 s for the listener's first `STATE` line (read from `tmp/logs/bench_host.log`), else prints the logcat tail.
+  - `grant`: answers the accessory dialog. `suite NAME...`: see the test catalog. `rc ...`: the RC emulator.
+- **V.** `AWTO_BENCH=1` gives the bench package id `au.awto.aoabench` and launcher label "AOA Bench" (namespace and classes stay `au.awto.dji.awto_dji_app`): it installs **next to** the DJI app (`au.awto.dji.awto_dji_app`). Both declare the `DJI`/`T600` accessory filter, so a real attach shows Android's app chooser while both are installed. `lib/main.dart` switches on `const bool.fromEnvironment('BENCH')`.
+- **I.** `connect` runs `am force-stop au.awto.aoabench`, then `am start -n au.awto.aoabench/au.awto.dji.awto_dji_app.MainActivity -a au.awto.dji.action.BENCH --es host <pc-ip> --ei port 9910` (command construction unit-tested; the stop is needed because an intent to a running app is a no-op).
+- **V.** The bench app under the earlier id `au.awto.dji.awto_dji_app.aoabench` was installed and run on a Pixel 3 XL (Android 12) over wireless adb: connects to the host script, state lines flow. **U.** The same under `au.awto.aoabench`; everything involving a USB accessory attach.
+- **U.** That superseded build is still on the test phone: `./dev.py unload --old-bench`.
+- `au.awto.dji.action.CONNECT` accepts the same `host`/`port` extras; `DISCONNECT` stops the accessory pump. Relaunch by `USB_ACCESSORY_ATTACHED` after process death has no host (not persisted): re-run `connect`. **U.**
+- Log also in the phone's external files dir: `bench.log`.
+
+### Control port (the app serves it; `./dev.py ctl`)
+- App listens on **TCP 6560** (`benchControlPort`, all interfaces, up to 4 clients) from startup. Starts in no mode (`passive`). The dial-out to the listener above is unchanged and independent.
+- Same JSON lines and commands as the host link, plus `get` and `reset`; every command gets one `{"t":"reply","cmd","ok",...}` (`ping` gets `pong`). Final `result`s are pushed to all control clients.
+- Commands: `ping`; `get` (reply: `state` = the grid, `result` = live stats of the running mode, `accessory_open`); `reset` (= `stats_reset`: zero counters, mode keeps running; a source keeps its frame index); `mode` (below; reply `m`,`test`,`switch_us`,`accessory_open`, or `ok:false`+`error` for unknown mode/pattern, state untouched); `result`; `send`; `echo`; `reconnect`/`disconnect` (close and reopen the accessory; the only way to free a write stuck on a peer that does not read).
+- Mode switch: emits the old mode's final `result`, zeroes counters, resets the mux framing; the open accessory is not touched. **V.** On the Pixel 3 XL over wifi, 40 switches (echo/sink/source/duml/passive, accessory open): in-app `switch_us` median 0.65 ms, max 8.6 ms; client round trip median 10.6 ms, max 40 ms (wifi).
+- `./dev.py ctl [--target IP | --adb [--serial S]] [--port 6560] <sub>`: `--target` = phone wifi IP, no adb; default = `adb forward tcp:0 tcp:6560` (wired or wireless adb, `$AWTO_PHONE`). Subs: `ping|get|reset|result|mode <m> k=v..|send <hex>|raw <json>|tail <s>`; prints one JSON object, exit 1 on `ok:false`. Bounds: connect 3 s, reply 2 s, then a named error. Client API: `scripts/re/bench_ctl.py` `BenchCtl` (`mode()`, `get()`, `wait_result()`).
+- Example: `./dev.py ctl --target 192.168.25.125 mode source test=4 seed=9 size_min=24 size_max=600 count=100 pattern=prbs`; the harness regenerates the stream with `aoa_testkit.expected_source(100, size_min=24, size_max=600, seed=9, pattern="prbs", test_id=4)`.
+- Source writes are bounded: `write_timeout_ms` (default (1 s + bytes / 100 kB/s) x 1.25); 3 timeouts end the run with `pass:false`. Platform writes run on a worker thread so a peer that stops reading cannot freeze the app.
+
+### Screen
+- Top half, 2 Hz: PORT (`idle|attached|permission|connected|streaming|failed` + last error), USB (attached, permission, manufacturer/model/description/version/uri/serial), POWER (BatteryManager: plugged usb/ac/wireless/none, status, mV, uA), SPEED, MSGS (1 s and 10 s rates, totals, seconds since last, CRC-bad, discarded bytes), MODE (test verdict), HOST (TCP link + RTT).
+- Bottom half: timestamped log, newest last, auto-follow, 2000-line ring, mirrored to the file and the host.
+- SPEED: Android exposes no USB speed or endpoint info for accessories. Label is **inferred** from bulk max packet (512 high, 64 full, 1024 super); the app currently has no max packet source so it shows `unknown`, plus `/sys/class/udc/*/current_speed` when readable and the largest single read (`chunk`). **U** (all three).
+- PORT `streaming` = envelope/chunk within the last 2 s.
+
+### JSON protocol (one object per line, app is the TCP client)
+| Dir | Message | Meaning |
+|---|---|---|
+| app>host | `{"t":"hello","app","build"}` | on connect (log ring replayed after) |
+| app>host | `{"t":"state", usb, power, speed, msgs, port, host, mode, echo}` | every 500 ms and at once on a discrete change |
+| app>host | `{"t":"log","ts","lvl","msg"}` | each log line |
+| app>host | `{"t":"rx","ch","len","crc_ok"}` | each decoded AOA envelope (passive/duml modes); DUML CRCs checked on ch 0x5749 |
+| app>host | `{"t":"result","test","mode","frames","bytes","pass","first_mismatch":{"seq","offset","got","expected","hint"},...}` | test verdict; `final:true` when a run ends |
+| app>host | `{"t":"pong","id"}` / `{"t":"ping","id"}` | answer to host ping / app-initiated RTT probe (host answers `{"cmd":"pong","id"}`; added beyond the brief so the grid shows RTT) |
+| host>app | `{"cmd":"ping","id"}` | app answers `pong` |
+| host>app | `{"cmd":"send","hex"}` | raw bytes on bulk-out, one write |
+| host>app | `{"cmd":"echo","on"}` | passive-mode echo of each decoded payload (not the envelope) |
+| host>app | `{"cmd":"mode","m":"passive\|echo\|sink\|source\|duml", ...params}` | see modes |
+| host>app | `{"cmd":"result"}` | emit a `result` now, test continues |
+| host>app | `{"cmd":"stats_reset"}` / `disconnect` / `reconnect` | reset counters / stop pump and auto-connect / drop and reconnect now |
+
+Bounds: host TCP connect 3 s (LAN <= 1 s, 3x); host reconnect backoff 1,2,4,8 s then 8 s (cap bounds how long a freshly started script waits); accessory retry backoff 1..8 s likewise; AoaShim permission wait 3 s; source `dur_ms` default 10 s. Each is commented where it is set.
+
+### Modes (`{"cmd":"mode","m":...}`)
+| Mode | Params | Behaviour |
+|---|---|---|
+| `passive` | none | default: decode envelopes via `AoaMux`, count, `rx` messages |
+| `echo` | none | write every raw read back unchanged (empty read -> empty write) |
+| `sink` | `test`, `expect` (auto-finish after N frames); seed/pattern/size come from each frame's header | parse AOAT stream, verify, report first mismatch offset; counts headerless `<24 B` transfers as `short`, empty reads as `zlp` |
+| `source` | `test`,`size`,`count` (0=until `dur_ms`),`rate` (fps, 0=max),`gap_ms`,`idle_ms`,`dur_ms`,`pattern` (addr\|counter\|random\|zeros\|ones\|alt\|prbs\|fixed\|ramp),`seed`,`size_min`/`size_max` (random size per frame, from seed+seq),`write_timeout_ms` | generate AOAT frames app>host; `size` 0 = empty write, `<24` = headerless address-pattern bytes |
+| `duml` | `act` (`answer` default\|`emit`), `sender`,`receiver`,`cmd_set`,`cmd_id`,`seq0`,`payload_len`,`seed`,`count`,`rate`,`bad` (none\|hdr\|crc\|mix) | answer valid DUML requests with swapped addresses, or emit enveloped DUML test frames with a fake address-pattern payload and chosen addresses / bad CRC |
+
+### AOAT test frame (shared: `scripts/re/aoa_testkit.py`, `lib/bench/aoat.dart`, vectors `scripts/re/aoat_vectors.json`)
+- Little endian: `'AOAT'`, test_id u16, pattern u8, flags u8 (bit0 last, bit1 no CRC: crc field zero, not checked), run_seed u32, seq u32, total_len u32, payload, crc32 (zlib) over all before it. Min 24 B; accepted max 8 MiB.
+- Patterns: `addr` (every 32-bit word = byte offset XOR mix(seed,seq,test): a wrong word names the offset it was generated for), `counter`, `random` (xorshift32), `zeros`/`ones`/`alt` (0xAA,0x55; bit-stuffing/NRZI stress), `prbs` (PRBS15, MSB-first, state from mix(seed,seq,test)), `fixed` (byte = seed low 8 bits), `ramp` (byte i = seed + i, same every frame). Ids 0-8 in that order.
+- A corrupt frame still localises: payload is compared to the regenerated one, first differing offset + hint reported even when the CRC also fails.
+- **V.** Python and Dart produce byte-identical frames for the golden vectors (both test suites).
+
+### Test catalog (`./dev.py suite NAME...`, i.e. `scripts/re/bench_host.py --suite <name>`; the suite owns the port, so no `listen` running; peer = the other end of the cable)
+| Suite | Cases | Bounds |
+|---|---|---|
+| `size_sweep` | 0,1,2,3,7,8,15,16,31,32,63,64,65,127,128,255,256,511,512,513,1023,1024,1025,4095,4096,16383,16384,65535,65536 B, both directions | wait = 1 s + bytes / 100 kB/s (slowest plausible full-speed rate, 10x under ceiling) |
+| `zero_length` | frame-level empty payload (24 B frame); USB-level: exact multiples of the peer's max packet (64 or 512) sent with and without a trailing ZLP, both directions; reported as `ZLP:` cases | same |
+| `throughput` | 64, 512, 4096, 16384, 65536 B per direction, bytes/s over a 2 s window (>10 state ticks, skips ramp-up, 20 windows = 40 s) | window + 1 s |
+| `limits` | largest accepted transfer (128 KiB doubling to 4 MiB), 10000 x 24 B back-to-back, 5 s idle then 200 x 512 B burst (5 s = 2.5x Android's 2 s USB autosuspend) | per size |
+| `fuzz` | `suite fuzz --fuzz-seed N` (logged; omitted = random, printed): random sizes/patterns/gaps, truncated and oversized frames, DUML with bad CRC, ZLPs; oracle = `aoa_testkit.SinkModel` over the same chunks | bytes-based |
+| `soak` | `suite soak --soak-minutes N` stream from seq 0xFFFFFF00 (u32 wrap in first 256 frames), 10 s windows, drift = max deviation from median < 50% | N min |
+
+- API: `BenchHost.start()`, `wait_for_state(pred, timeout)`, `wait_for_result(...)`, `send_cmd(dict)`, `latest_state()`, `log_lines()`, `ping()`; `Peer` interface (`tx`, `rx`, `max_packet`) is implemented by `EmulatorPeer` (over `t600_rc_emulator.Backend`) or a Cynthion shell driver. CLI `--peer none` runs app-only steps and fails peer steps.
+- **V.** pytest: `scripts/re/test_aoa_testkit.py`, `scripts/re/test_bench_host.py` (fake in-process app + loop peer); `flutter test` covers model, AOAT codec, mode engine, controller over loopback TCP.
+- **I.** Fuzz oracle matches the Dart sink only as far as the two implementations agree on edge cases (headerless chunk rule, resync); only checked Python-vs-fake-app.
+- **U.** Everything on hardware: `BenchShim.kt` (accessory info, battery, udc speed, log dir); `FileOutputStream.write` of 0 bytes emitting a ZLP; `FileInputStream.read` surfacing a ZLP as a 0-length read; transfers >= 64 KiB through the accessory driver; read coalescing vs the sink's chunk rule; WiFi half-open detection (no heartbeat from the app side beyond RTT probe); bench screen layout on a phone; `EmulatorPeer`/Cynthion driver against real USB.
 
 ## What this doesn't cover
 

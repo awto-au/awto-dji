@@ -35,6 +35,8 @@ class AoaShim(private val ctx: Context, messenger: BinaryMessenger) :
     private var output: FileOutputStream? = null
     private var reader: Thread? = null
     private var permReceiver: BroadcastReceiver? = null
+    // One writer thread per session (a write blocked on the old peer must not stall the new one).
+    private var writer: java.util.concurrent.ExecutorService? = null
     @Volatile private var generation = 0L
 
     init {
@@ -55,13 +57,18 @@ class AoaShim(private val ctx: Context, messenger: BinaryMessenger) :
             "write" -> {
                 val data = call.arguments as? ByteArray
                 val out = output
-                if (data == null || out == null) {
+                val w = writer
+                if (data == null || out == null || w == null) {
                     result.error("not_open", "accessory not open", null)
-                } else try {
-                    out.write(data)
-                    result.success(null)
-                } catch (e: java.io.IOException) {
-                    result.error("io", e.message, null)
+                } else w.execute {
+                    // Off the main thread: a peer that stops reading blocks write() and
+                    // would freeze the Dart side too. One thread keeps write order.
+                    try {
+                        out.write(data)
+                        main.post { result.success(null) }
+                    } catch (e: java.io.IOException) {
+                        main.post { result.error("io", e.message, null) }
+                    }
                 }
             }
             "disconnect" -> { closeAccessory(); result.success(null) }
@@ -99,18 +106,18 @@ class AoaShim(private val ctx: Context, messenger: BinaryMessenger) :
                 }
             }
         }
-        // A real system dialog waiting on a human tap, not a hardware handshake -
-        // 60s is generous for someone to notice and respond, not a device timing
-        // bound. Without this, a non-interactive launch (e.g. `adb shell am start`)
-        // with nothing to answer the dialog hangs AoaTransport.connect() in
-        // LinkState.connecting forever (awto-dji, intent-driven-connect permission gap).
+        // Waits for Android's "Allow ... to access ..." dialog (USB accessory permission).
+        // Expected: with the grant present the connect completes in well under a second
+        // (docs/aoa-live-test-2026-10-26.md); 3 s is ~3x that margin, not a human-tap bound.
+        // On expiry: fail fast (LinkState.failed); the dialog stays up, the caller answers
+        // it and sends the CONNECT intent again, which then connects at once.
         timeoutRunnable = Runnable {
             if (permReceiver === rx) {
                 ctx.unregisterReceiver(rx)
                 permReceiver = null
                 result.error(
                     "permission_timeout",
-                    "USB accessory permission dialog went unanswered for 60s",
+                    "USB accessory permission not granted within 3 s; dialog still showing - answer it and send CONNECT again",
                     null,
                 )
             }
@@ -126,23 +133,28 @@ class AoaShim(private val ctx: Context, messenger: BinaryMessenger) :
         val flags = if (Build.VERSION.SDK_INT >= 31) PendingIntent.FLAG_MUTABLE else 0
         val pi = PendingIntent.getBroadcast(ctx, 0, Intent(action).setPackage(ctx.packageName), flags)
         usb.requestPermission(acc, pi)
-        main.postDelayed(timeoutRunnable, 60_000)
+        main.postDelayed(timeoutRunnable, 3_000)
     }
 
     private fun open(acc: UsbAccessory, result: MethodChannel.Result) {
+        // Close the old session first: two fds on the accessory at once let the old
+        // close tear down or steal the new session's endpoints.
+        closeAccessory()
         val fd = usb.openAccessory(acc)
         if (fd == null) {
             result.error("open_failed", "openAccessory returned null", null)
             return
         }
-        closeAccessory()
         pfd = fd
         input = FileInputStream(fd.fileDescriptor)
         output = FileOutputStream(fd.fileDescriptor)
         val stream = input!!
         val readerGeneration = generation
+        writer = java.util.concurrent.Executors.newSingleThreadExecutor()
+        Log.i("AoaShim", "session gen=$readerGeneration open, reader starting")
         reader = Thread {
             val buf = ByteArray(16384)
+            Log.i("AoaShim", "reader gen=$readerGeneration running")
             try {
                 while (true) {
                     val n = stream.read(buf)
@@ -155,16 +167,19 @@ class AoaShim(private val ctx: Context, messenger: BinaryMessenger) :
             }
             main.post { if (generation == readerGeneration) sink?.endOfStream() }
         }.also { it.isDaemon = true; it.start() }
-        result.success(null)
+        result.success(readerGeneration)
     }
 
     private fun closeAccessory() {
         generation++
+        writer?.shutdownNow()
+        writer = null
         val oldReader = reader
         // input.close() first: closing the FileInputStream (not just the
         // ParcelFileDescriptor wrapper) is what reliably interrupts a thread
         // already blocked inside its read() call on this driver.
         try { input?.close() } catch (_: java.io.IOException) {}
+        try { output?.close() } catch (_: java.io.IOException) {}
         try { pfd?.close() } catch (_: java.io.IOException) {}
         pfd = null; input = null; output = null
         reader = null
