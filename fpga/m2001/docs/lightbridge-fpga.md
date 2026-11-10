@@ -14,12 +14,24 @@ Known-vs-unknown partition of every cell (blocks, coverage, annotated RTL): `fpg
 - Role: AD9363 digital interface + OFDM receive path + MCU control + H.264 byte output to FX3.
 - Quartus-built (assumed, first-pass scope). Hard blocks used: LABs, M9K, MAC, 2 PLLs, IO, JTAG user, remote update (I).
 
-## 2. Decode status (DJI tier run 46, fast gate run 45)
+## 2. Decode status (run 2026-11-10, pluribus 5d891e7d8, awto-dji 993ad85)
 
-- 89,282 LUTs, 35,873 FFs (gate, emit and netlist agree), 85 used IO pads, 542 M9K with routed outputs (8 hold data), 87 MACs (2 in 9-bit mode), 2 PLLs, 6 clock domains.
-- 6,154 of 6,154 frames pass CRC; 0 fan-in conflicts; 0 undriven nets; 99.05 % of set bits explained, 56.47 % validated.
-- Fast gate (134 designs): pips 656,759 / 2 missing; lut_init and pins 0 missing; register_clock 3 missing.
-- Readable lift: 1,377 adders, 198 subtractors, 260 comparators, 226 counters, 21 FSMs, 332 flat LUTs left of 89,282 (`docs/altera/cycloneIV/cycloneiv-clean-rtl.md`, multi-LE tail strip, #165).
+- Conditions: P3X_FW_V01.01.0008 m2001 image; `scripts/cycloneiv_clean_gate.py --tier fast|full`, `scripts/cycloneiv_clean_image_build.py`, `scripts/cycloneiv_clean_image.py`, `scripts/cycloneiv_clean_rtl.py --image`; not recorded to the gate DB (no `--record`).
+- 89,282 LUTs (20,260 carry mode), 35,873 FFs (gate, emit and netlist agree), 85 used IO pads, 542 M9K with routed outputs (8 hold data), 87 MACs (2 in 9-bit mode), 2 PLLs, 6 clock domains.
+- 6,154 of 6,154 frames pass CRC; 0 fan-in conflicts; 0 undriven used nodes.
+- Gate per category, matched / missing / extra / wrong (vendor oracle, Quartus builds):
+
+| category | fast, 135 designs | full, 533 designs |
+|---|---|---|
+| pips | 656,881 / 0 / 0 / 0 | 1,103,349 / 193 / 0 / 0 |
+| nets | 67,127 / 0 / 0 / 0 | 138,773 / 51 / 0 / 0 |
+| lut_init | 77,844 / 0 / 0 / 0 | 150,484 / 0 / 0 / 0 |
+| register_clock | 16,941 / 0 / 0 / 0 | 50,517 / 0 / 0 / 0 |
+| pins | 6,741 / 0 / 0 / 0 | 12,499 / 0 / 0 / 0 |
+
+  - All 193 full-tier missing pips are `LAB_CLK -> BLK_CLK_BUF`; the 51 missing nets are not broken down by the gate.
+  - Fast tier is the image-independent specimen gate; it says nothing about the image's own fault rate (no oracle for the image).
+- Readable lift: 1,382 adders, 201 subtractors, 260 comparators, 226 counters, 21 FSMs, 347 flat LUTs left of 89,282 (`docs/altera/cycloneIV/cycloneiv-clean-rtl.md`, #165).
 - Simulation: Verilator runs both flat emit and RTL (RTL equals flat on idle and SPI programs).
 
 ## 3. Radio chain
@@ -135,13 +147,23 @@ Known-vs-unknown partition of every cell (blocks, coverage, annotated RTL): `fpg
 
 ## 12. Open
 
-- Receive pipeline (RX pads to demodulation), TX RAM write path and I/Q order, PLL clock plan, SPI frame register mapping.
+Decode gaps (run 2026-11-10, pluribus 5d891e7d8; counts from `nl.und` and `scripts/cycloneiv_clean_m9k_modes.py`):
+- IO standard undecoded on 75 pads, IO termination on 44, 1 input pad with an undecoded IO site (direction from routing only) (V).
+- M9K output-register CE select set on 14 tiles (9 port A + 5 port B), output clear (`RAM_USE_CLR_DATA_OUT`) on 101 tiles: decoded to bits, not used by emit (V).
+- M9K read enable (`RAM_RE_FAST_MUX`, `RAM_READ_ENABLE_INVERT`) and address stall: not consumed by emit; all 542 tiles show `RE_FAST_MUX` = `01000000` on both ports, invert bit 177 / 365 (port A set / clear) (V); effect on the netlist U. No address-stall group identified in the lifter, count U.
+- Header option register: 14 of 320 bits differ from a Quartus reference build (lanes 0, 1, 3), meaning undecoded (V).
+- Full-tier gate: 193 missing pips (all `LAB_CLK -> BLK_CLK_BUF`) and 51 missing nets, root cause not found.
+
+Function gaps:
+- Receive pipeline (RX pads to demodulation), TX RAM write path and I/Q order, SPI frame register mapping.
 - Lock bit, FPGA id word. (ID comparator inputs and the readback snapshot source: resolved, section 6.)
 - Which MCU UART pins AC10/AC11 land on, and the (17,45) field value that steers the demux (video vs DUML): MCU-side / value-level, not structural.
 - The uplink record's path from the baseband arithmetic to the TX sample RAMs.
 - What the microcode-like ROMs run, and any prior art (open-source or vendor) behind the tables and control.
 - Data modulation and coding on the air interface (needs a two-channel capture or the FPGA pipeline).
 - FFT-in-logic: OPEN (U). MAC chain detection traces only 1 FF hop (M9K-associated MACs: 11 at 0 hops, 32 at 1, 50 at 2), so it rules out one tightly-chained topology only. RAM-based butterflies, fabric-adder stages, deeper pipelining and time-multiplexed MAC reuse are not excluded (pluribus#181 item 5, #177 item 4).
+
+Closed since the previous list: unresolved FF ASDATA sources (131 -> 0, F-020); PLL clock plan and input (both PLLs traced to ball B14, section 10); `RAM_WE_FAST_MUX` values (only `00000000` / `10000000` / `01000000` over 542 tiles).
 
 ## Pointers
 
