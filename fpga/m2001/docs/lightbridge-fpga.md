@@ -129,7 +129,7 @@ Known-vs-unknown partition of every cell (blocks, coverage, annotated RTL): `fpg
 - Datapath (V): a 32-bit bitwise accumulator register, a 32-bit RAM-word register, a 31-LE carry-chain adder for the SHA-1 additions; state and message schedule both live in RAM, schedule updated in place at W[t mod 16].
 - Compare (V): raw a..e after 80 rounds, no final IV addition, against the 5 received words; one flag FF goes high on an exact match in the correct byte order (tested: 1 correct order passes, 7 wrong byte orders and a 1-bit-flipped MAC all fail).
 - AF3 has pull-up off in the image (needs an external pull-up to work on real hardware).
-- Open: per-op split of the round-body ops, CRC-8/16 handling (shapes suggestive, I), which counter derives the engine clock, the T367/T369 serial-loader sources, and the #178 write-enable-invert question for the other 48 similarly-patterned M9K tiles.
+- Open: per-op split of the round-body ops, CRC-8/16 handling (shapes suggestive, I), which counter derives the engine clock and the T367/T369 serial-loader sources. M9K write-enable polarity and port line: established by Quartus specimens (pluribus#181 item 7, `RAM_WE_FAST_MUX` + `RAM_WRITE_ENABLE_INVERT`); the engine write enable is port A, AF3 oracle 4/4 on 2026-11-10 (pluribus 5d891e7d8, V).
 
 ## 11b. m2001 version inventory and key comparison
 
