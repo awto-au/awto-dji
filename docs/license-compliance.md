@@ -61,7 +61,7 @@ repo. All such files live outside it (analysis env only). Verified with `git ls-
 | `app/packages/duml` (Dart) | GPL-3.0-only (SPDX note) | none (pure Dart) | — | n/a — clean |
 | `app/packages/geofence` (Dart) | GPL-3.0-only (SPDX note) | none (pure Dart) | — | n/a — clean |
 | `ground/python`* | GPL-3.0-only | pymavlink | LGPL-3.0 | yes |
-| `ground/rust`* | GPL-3.0-only | mavlink | MIT / Apache-2.0 | yes |
+| `debris/code/rust/ground-rust`* (parked) | GPL-3.0-only | mavlink | MIT / Apache-2.0 | yes (parked) |
 
 \* parked, not yet committed. Dev-only `test` (Dart) is BSD-3-Clause, GPL-compatible.
 

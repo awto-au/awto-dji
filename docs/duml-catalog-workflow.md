@@ -39,4 +39,4 @@ integrated-system consolidation (`integrated-system-architecture.md`, #102).
 
 ## Adding a language binding
 
-Write `scripts/duml_catalog_gen_<lang>.py` reading `duml-catalog.json`, emitting the same shape as the Dart one (a const list of entries + a cmdset map), with a `// generated — do not edit` header and a test. Then retire that language's hand-copied command list. Targets: Python (`ground/`), Rust (`rust/awto_dji_core`).
+Write `scripts/duml_catalog_gen_<lang>.py` reading `duml-catalog.json`, emitting the same shape as the Dart one (a const list of entries + a cmdset map), with a `// generated — do not edit` header and a test. Then retire that language's hand-copied command list. Remaining target: **Python** (`ground/`). (Rust is parked — `debris/code/rust/`; no binding unless a Cloud-API use case returns.)

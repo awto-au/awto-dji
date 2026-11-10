@@ -7,8 +7,10 @@ next steps), then `docs/README.md` (doc index).
 
 Interoperability software to control/monitor a **DJI Phantom 3 Professional directly**
 (app-to-bird), for an aircraft the operator (dan@awto.au) **owns** — a Flutter app with a
-pure-Dart DUML implementation, not the DJI Cloud API. There is also a Rust direct-control
-core and (parked) MAVLink ground clients.
+pure-Dart DUML implementation, not the DJI Cloud API. Two active languages: **Dart** (the app +
+DUML codec) and **Python** (RE tooling + the MAVLink↔DUML ground bridge). A Rust Cloud-API core
+and the Rust ground client are **parked** in `debris/code/rust/` (wrong path for app-to-bird, no
+consumer — see its `PARKED.md`).
 
 ## Honesty conventions (followed throughout the docs)
 
@@ -39,7 +41,9 @@ core and (parked) MAVLink ground clients.
 
 - `app/packages/duml/` — pure-Dart DUML codec + `tool/telemetry_scan.dart` (telemetry/ID
   scanner). `app/packages/geofence/` — safety gate. Both have passing tests.
-- `rust/awto_dji_core/` — Rust protocol/client/DRC core + FFI. `ground/` — parked MAVLink.
+- `ground/python/` — MAVLink↔DUML ground bridge (`duml_bridge.py`, `sim_bridge.py`) + RE tooling.
+- `scripts/`, `fpga/m2001/scripts/` — RE/analysis + the DUML catalog pipeline (`duml_catalog_build.py`).
+- `debris/code/rust/` — **parked** Rust Cloud-API core + ground client (see `PARKED.md`).
 - `docs/` — ~22 analysis docs (index in `docs/README.md`).
 - `scripts/fpga/` — Mistral netlist analysis scripts. `scripts/verify_protocol.py`.
 

@@ -17,8 +17,9 @@ backs it.
 |---|---|
 | `app/packages/duml/` | pure-Dart DUML codec + `tool/telemetry_scan.dart` (telemetry / Master-ID scanner); tests pass |
 | `app/packages/geofence/` | pure-Dart public-airspace safety gate (no-fly/altitude); tests pass |
-| `rust/awto_dji_core/` | Rust direct-control core (protocol/client/DRC + FFI) |
-| `ground/` | MAVLink ground-station clients (parked — app-to-bird first) |
+| `ground/python/` | MAVLink↔DUML ground bridge + RE tooling |
+| `scripts/`, `fpga/m2001/scripts/` | RE/analysis + the DUML catalog pipeline |
+| `debris/code/rust/` | **parked** Rust Cloud-API core + ground client (wrong path, no consumer — see `PARKED.md`) |
 | `docs/` | reverse-engineering analysis & plans |
 | `scripts/` | protocol verification + FPGA netlist analysis |
 

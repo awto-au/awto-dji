@@ -38,8 +38,8 @@ first; this README is build/integration notes only.
   intentional, so the same handler code works unmodified in either mode.
   DUML framing (SOF `0x55`, CRC8 seed `0x77`, CRC16 seed `0x3692`) belongs
   in the glue code around whichever transport function you provide, mirror
-  the already-verified codec in `app/packages/duml` (Dart) or
-  `rust/awto_dji_core` (Rust).
+  the already-verified codec in `app/packages/duml` (Dart; the Rust core is
+  parked — `debris/code/rust/`).
 - §2 → `readmem.h`/`.c`.
 - §3 → `hook.h`/`.c`, `trace_pipe.h`/`.c`.
 - §4/§5 (caveats, bench-safety) → enforced partly by code (read-only

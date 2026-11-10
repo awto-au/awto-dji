@@ -73,7 +73,7 @@ the stock image/loader, not guessed.
 | HAL | STM32Cube **HAL** (clean-room; DJI used SPL, we don't need to match) | ST |
 | RTOS | **FreeRTOS** (replaces DJI's µC/OS-III) | — |
 | Framework/logging | operator's `prntc` / awto-l8 glue | **operator-supplied** (component slot; not in this repo) |
-| DUML stack | port of the verified codec: `0x55` SOF, CRC8 seed `0x77`, CRC16 seed `0x3692`, device-type routing | `app/packages/duml` (Dart) + `rust/awto_dji_core` to port from |
+| DUML stack | port of the verified codec: `0x55` SOF, CRC8 seed `0x77`, CRC16 seed `0x3692`, device-type routing | `app/packages/duml` (Dart) to port from (the Rust core is parked — `debris/code/rust/`) |
 | Transport | CAN1 on **PD0 (RX)/PD1 (TX) AF9**, FC device-type frames (IDs `0x41x`) | `fc-io-inventory.md`, `m0900-can-channels.md` |
 | Commands | GetVersion; **read_memory (dump)**; later: param/control surface | this plan |
 

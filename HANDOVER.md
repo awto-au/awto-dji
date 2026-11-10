@@ -16,8 +16,8 @@ only (see safety scope in `CLAUDE.md`).
 |---|---|---|
 | `app/packages/duml/` | pure-Dart DUML codec (CRCs, packet, framer) + **telemetry scanner** (`tool/telemetry_scan.dart`) that surfaces the Master-ID/SN and decodes OSD from a capture | tests pass (14) |
 | `app/packages/geofence/` | pure-Dart public-airspace safety gate (no-fly/altitude) | tests pass (9) |
-| `rust/awto_dji_core/` | Rust direct-control core (protocol/client/DRC + FFI for Flutter) | builds |
-| `ground/python`, `ground/rust` | MAVLink ground-station clients | PARKED (app-to-bird first) |
+| `ground/python/` | MAVLink↔DUML ground bridge (`duml_bridge.py`, `sim_bridge.py`) + MAVLink clients | active tooling; GCS path parked (app-to-bird first) |
+| `debris/code/rust/` | **parked** Rust Cloud-API core (`awto_dji_core`) + Rust ground client | PARKED 2026-11-10 — wrong path (Cloud API, not direct), no consumer; see `PARKED.md` |
 
 Dart SDK: a bundled one was used from a Flutter checkout in scratch; install Flutter/Dart on
 Selwyn to run `dart test` / `dart run`.
@@ -109,7 +109,7 @@ product-path questions. Do not use GO 4's absent callers to conclude P3 incapabi
    tables, a few kernel drivers (ADV761x HDMI receiver, I2C recovery), FX2 USB drivers, and the
    `encode_usb` app (TI encode demo reworked). Disassembly: the DM368 sends raw H.264 slices (no header, no DUML) over USB EP2 into the AUTOOUT FX2, so DUML and video must meet in the air FPGA (I). Next: extract TI's
    DM368 DVSDK installer for the PSP 03.21 kernel and the encode demo, then diff at function level.
-5. Build out the Flutter app-to-bird UI on top of `app/packages/duml` + `rust/awto_dji_core`.
+5. Build out the Flutter app-to-bird UI on top of `app/packages/duml` (pure Dart; the Rust core is parked — `debris/code/rust/`).
 
 ## Reproduce the key MCU proofs (with your own `c1_m1400.bin`)
 
